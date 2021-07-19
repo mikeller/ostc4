@@ -13,8 +13,22 @@
 		</buildCommand>
 		<buildCommand>
 			<name>org.eclipse.cdt.managedbuilder.core.ScannerConfigBuilder</name>
+			<triggers>full,</triggers>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.ui.externaltools.ExternalToolBuilder</name>
 			<triggers>full,incremental,</triggers>
 			<arguments>
+				<dictionary>
+					<key>LaunchConfigHandle</key>
+					<value>&lt;project&gt;/.externalToolBuilders/Package firmware only.launch</value>
+				</dictionary>
+				<dictionary>
+					<key>incclean</key>
+					<value>true</value>
+				</dictionary>
 			</arguments>
 		</buildCommand>
 	</buildSpec>
@@ -40,7 +54,7 @@
 	<variableList>
 		<variable>
 			<name>OSTC4</name>
-			<value>$%7BWORKSPACE_LOC%7D/ostc4</value>
+			<value>file:/home/mikeller/git/ostc4</value>
 		</variable>
 	</variableList>
 </projectDescription>
