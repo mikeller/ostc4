@@ -11,10 +11,11 @@ BUILD_PATH="$HOME/ac6_workspace"
 BUILD_TYPE="Debug"
 
 # build project names
-CPU1_DISCOVERY="ostc4_discovery"
-CPU1_FONTPACK="ostc4_fontpack"
-CPU2_RTE="ostc4_rte"
+CPU1_DISCOVERY="Firmware"
+CPU1_FONTPACK="FontPack"
+CPU2_RTE="RTE"
 
+PROJECT_NAME_PREFIX="OSTC4_"
 #
 # End of path and file name settings
 #
@@ -22,20 +23,20 @@ CPU2_RTE="ostc4_rte"
 #
 # Copy the bin files to pack. Build them seperately
 #
-cp $BUILD_PATH/$CPU1_DISCOVERY/$BUILD_TYPE/$CPU1_DISCOVERY.bin .
-cp $BUILD_PATH/$CPU1_FONTPACK/$BUILD_TYPE/$CPU1_FONTPACK.bin .
-cp $BUILD_PATH/$CPU2_RTE/$BUILD_TYPE/$CPU2_RTE.bin .
+cp $BUILD_PATH/$CPU1_DISCOVERY/$BUILD_TYPE/${PROJECT_NAME_PREFIX}$CPU1_DISCOVERY.bin .
+cp $BUILD_PATH/$CPU1_FONTPACK/$BUILD_TYPE/${PROJECT_NAME_PREFIX}$CPU1_FONTPACK.bin .
+cp $BUILD_PATH/$CPU2_RTE/$BUILD_TYPE/${PROJECT_NAME_PREFIX}$CPU2_RTE.bin .
 
 #
 # OSTC4pack_V4 all
 #
-./src/OSTC4pack_V4 1 $CPU1_DISCOVERY.bin
-./src/OSTC4pack_V4 2 $CPU1_FONTPACK.bin
-./src/OSTC4pack_V4 0 $CPU2_RTE.bin
+./src/OSTC4pack_V4 1 ${PROJECT_NAME_PREFIX}$CPU1_DISCOVERY.bin
+./src/OSTC4pack_V4 2 ${PROJECT_NAME_PREFIX}$CPU1_FONTPACK.bin
+./src/OSTC4pack_V4 0 ${PROJECT_NAME_PREFIX}$CPU2_RTE.bin
 
 #
 # Final pack
 #
-./src/checksum_final_add_fletcher ${CPU1_DISCOVERY}_upload.bin \
-				${CPU1_FONTPACK}_upload.bin \
-				${CPU2_RTE}_upload.bin
+./src/checksum_final_add_fletcher ${PROJECT_NAME_PREFIX}${CPU1_DISCOVERY}_upload.bin \
+	${PROJECT_NAME_PREFIX}${CPU1_FONTPACK}_upload.bin \
+	${PROJECT_NAME_PREFIX}${CPU2_RTE}_upload.bin
