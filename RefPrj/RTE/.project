@@ -40,7 +40,7 @@
 	<variableList>
 		<variable>
 			<name>OSTC4</name>
-			<value>$%7BWORKSPACE_LOC%7D/ostc4</value>
+			<value>file:/home/mikeller/git/ostc4</value>
 		</variable>
 	</variableList>
 </projectDescription>
