@@ -65,7 +65,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
     .versionBeta    = 0,
 
     /* 4 bytes with trailing 0 */
-    .signature = "mh",
+    .signature = "mk",
 
     .release_year = 23,
     .release_month = 8,
