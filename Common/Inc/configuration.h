@@ -76,10 +76,10 @@
 /*#define ENABLE_GNSS_EXTERN*/
 
 /* Enable to have internal (OSTC5) GPS sensor functionality available */
-/*#define ENABLE_GNSS_INTERN*/
+#define ENABLE_GNSS_INTERN
 
 /* Enable to provide UTC time to GNSS module at startup. ! CAUTION ! Incorrect time will reduce performance of module */
-/* #define ENABLE_GNSS_TIME_INIT */
+#define ENABLE_GNSS_TIME_INIT
 
 /* Enable to have Sentinel rebreather interface available */
 /* #define ENABLE_SENTINEL_MODE */
