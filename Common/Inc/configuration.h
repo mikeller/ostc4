@@ -46,7 +46,7 @@
 /* #define ENABLE_ANALYSE_SAMPLES */
 
 /* Enable to have access to the debug view options (turn on / off via menu instead of compile switch) */
-/* #define HAVE_DEBUG_VIEW */
+#define HAVE_DEBUG_VIEW
 
 /* Enable to have runtime information displayed in t7 debug view */
 /* #define T7_DEBUG_RUNTIME */

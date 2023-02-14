@@ -1,6 +1,7 @@
 *.bin
 Debug
 Release
+Library
 ostc4pack/src/OSTC4pack_V4
 ostc4pack/src/checksum_final_add_fletcher
 RefPrj/*/OSTC_Discovery.xml

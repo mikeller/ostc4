@@ -12,8 +12,8 @@
 <targetDefinitions>
   <board id="ostc4_rte2">
     <name>OSTC4_RTE2</name>
-    <dbgIF>JTAG</dbgIF>
     <dbgIF>SWD</dbgIF>
+    <dbgIF>JTAG</dbgIF>
     <dbgDEV>ST-Link</dbgDEV>
     <mcuId>stm32f411retx</mcuId>
   </board>
