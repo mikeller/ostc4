@@ -345,6 +345,7 @@ uint8_t OnAction_DM_Mix(uint32_t editId, uint8_t blockNumber, uint8_t digitNumbe
         for(int i=1;i<=(2*NUM_GASES);i++)
             editGasPage.pGasLine[i].note.ub.first = 0;
 
+        // the fix was already done upstream in d8f6dd2122353c2a4d096cd64459636ada3866dc by reversing the order of these statements, closing this
         tMEGas_check_switch_to_bailout();
         setActualGas_ExtraGas(&stateUsedWrite->lifeData, newOxygen, newHelium, 0);
         return EXIT_TO_HOME;
