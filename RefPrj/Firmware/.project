@@ -25,10 +25,6 @@
 					<key>LaunchConfigHandle</key>
 					<value>&lt;project&gt;/.externalToolBuilders/Package firmware only.launch</value>
 				</dictionary>
-				<dictionary>
-					<key>incclean</key>
-					<value>true</value>
-				</dictionary>
 			</arguments>
 		</buildCommand>
 	</buildSpec>
