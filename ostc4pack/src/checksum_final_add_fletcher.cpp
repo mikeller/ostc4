@@ -49,12 +49,28 @@ hw_ostc3_firmware_checksum (unsigned char *result1, unsigned char *result2, unsi
 int main(int argc, char** argv) {
 	
 	
+	char *file;
+	char *file2;
+	char *file3;
+    switch (argc) {
+    case 4:
+        file3 = argv[3];
+    case 3:
+        file2 = argv[2];
+    case 2:
+        file = argv[1];
+
+        break;
+    case 1:
+    default:
+	    printf("Invalid number of arguments. Usage: checksum_final_add_fletcher <file1> [(<file2>|null) [<file3>]]\n");
+
+        return -1;
+    }
+
 	FILE *fp, * fpout;
 	size_t lenTotal,lenTemp;
 	unsigned char buf[2000000];
-	char *file = argv[1];
-	char *file2 =  argv[2];
-	char *file3 =  argv[3];
 	unsigned int pruefsumme;
 	unsigned char buf2[4];
 
@@ -82,7 +98,7 @@ int main(int argc, char** argv) {
 	printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 	fclose(fp);
 
-	if(file2)
+	if(file2 && strcmp(file2, "null") != 0)
 	{
 		if (NULL == (fp = fopen(file2, "rb")))
 		{
