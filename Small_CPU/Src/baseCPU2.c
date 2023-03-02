@@ -167,8 +167,8 @@ uint8_t hasExternalClock(void) {
 const SFirmwareData cpu2_FirmwareData __attribute__(( section(".firmware_data") ))= {
 		.versionFirst = 3,
 		.versionSecond = 0,
-		.versionThird = 1,
-		.versionBeta = 1,
+		.versionThird = 0,
+		.versionBeta = 0,
 
 /* 4 bytes with trailing 0 */
 		.signature = "mh",
