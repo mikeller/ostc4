@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
         break;
     case 1:
     default:
-	    printf("Invalid number of arguments. Usage: checksum_final_add_fletcher <file1> [<file2>|null [<file3>]]\n");
+	    printf("Invalid number of arguments. Usage: checksum_final_add_fletcher <file1> [(<file2>|null) [<file3>]]\n");
 
         return -1;
     }
