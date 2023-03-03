@@ -1,0 +1,37 @@
+Code    Value
+
+\001    center
+\002    right
+\003    doubleSize
+\004    NOP
+\005    checkbox checked
+\006    checkbox unchecked
+\007    invert                  \a
+\010    use color               \b
+\011    tab                         \t
+\012    line feed           \n
+\014    top align               \f
+\015    carriage return \r
+\016    O:o O.o style
+\017    back to O font
+\020    white / color 0
+\021    dark grey
+\022    units
+\023    blau
+\024    CLUT_WarningYellow
+\025    CLUT_WarningRed
+\026    CLUT_NiceGreen / color 11
+\027    DIVE_MainColorIfNotWhite / color 8
+\030    DIVE_PluginBoxMainColor
+\031    DIVE_PluginBoxGrey also used to display deactivation
+\032    DIVE_LabelColor
+\033    NUSED \c ESC
+\034    monospaced space large size mode
+\035    standard space size mode
+\040    space == begin of text
+ ...
+\x7F/\177 del space with size of next char
+\x7F\x7F/\177\177 del del = space with size of next byte
+\x80    begin of TXT_Substring with Language support
+/xFF    TXT_2BYTE
+
