@@ -860,3 +860,9 @@ uint8_t isLoopMode(uint8_t Mode)
 	}
 	return retVal;
 }
+
+void setCompassHeading(uint16_t heading)
+{
+    // if heading == 0 set compassHeading to 360, because compassHeading == 0 means 'off'
+    stateUsedWrite->diveSettings.compassHeading =  ((heading - 360) % 360) + 360;
+}

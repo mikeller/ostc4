@@ -29,6 +29,8 @@
 #define T7_H
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdbool.h>
+
 #include "stm32f4xx_hal.h"
 #include "gfx_engine.h"
 #include "configuration.h"
@@ -79,6 +81,7 @@ void init_t7_compass(void);
 uint8_t t7_GetEnabled_customviews();
 uint8_t t7_customview_disabled(uint8_t view);
 
+bool t7_isCompassShowing(void);
 /*
 	 void t7c_refresh(uint32_t FramebufferStartAddress);
 */

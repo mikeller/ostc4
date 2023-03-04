@@ -502,4 +502,5 @@ _Bool is_ambient_pressure_close_to_surface(SLifeData *lifeData);
 
 uint8_t isLoopMode(uint8_t Mode);
 
+void setCompassHeading(uint16_t heading);
 #endif // DATA_CENTRAL_H

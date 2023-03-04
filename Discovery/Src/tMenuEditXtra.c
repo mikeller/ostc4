@@ -398,7 +398,7 @@ void openEdit_CompassHeading(void)
 
 uint8_t OnAction_CompassHeading	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	stateUsedWrite->diveSettings.compassHeading = (uint16_t)stateUsed->lifeData.compass_heading;
+	setCompassHeading((uint16_t)stateUsed->lifeData.compass_heading);
     exitMenuEdit_to_Home_with_Menu_Update();
     return EXIT_TO_HOME;
 }

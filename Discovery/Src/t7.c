@@ -2781,6 +2781,11 @@ void t7_refresh_divemode(void)
         snprintf(TextR1,TEXTSIZE,"\a\001%c%c", TXT_2BYTE, TXT2BYTE_DiveMenuQ);
         GFX_write_string_color(&FontT48,&t7c2,TextR1,0,CLUT_WarningYellow);
     }
+    else if(get_globalState() == StDBEAR)
+    {
+        snprintf(TextR1, TEXTSIZE, "\a\001 %c%c? ", TXT_2BYTE, TXT2BYTE_DiveBearingQ);
+        GFX_write_string_color(&FontT48,&t7c2,TextR1,0,CLUT_WarningYellow);
+    }
     else if(get_globalState() == StDSIM1)
     {
         snprintf(TextR1,TEXTSIZE,"\a\001%c%c", TXT_2BYTE, TXT2BYTE_DiveQuitQ);
@@ -4461,4 +4466,9 @@ void t7_ChargerView(void)
         	GFX_graph_print(&t7screen, &wintemp, 1,1,0, 10, getChargeLog(), 60, CLUT_Font031, NULL);
     }
 
+}
+
+bool t7_isCompassShowing(void)
+{
+    return selection_customview == CVIEW_Compass || selection_custom_field == LLC_Compass;
 }
