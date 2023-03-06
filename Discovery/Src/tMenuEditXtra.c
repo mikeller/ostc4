@@ -27,6 +27,8 @@
 //////////////////////////////////////////////////////////////////////////////
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdbool.h>
+
 #include "tMenuEditXtra.h"
 
 #include "gfx_fonts.h"
@@ -389,10 +391,57 @@ void refresh_CO2Data(void)
     tMenuEdit_refresh_field(StMXTRA_CO2_Sensor_Calib);
 }
 
+static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    stateUsedWrite->diveSettings.compassHeading = 0;
+
+    exitMenuEdit_to_Home_with_Menu_Update();
+
+    return EXIT_TO_HOME;
+}
+
+
+static uint8_t OnAction_CompassHeadingReset(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    stateUsedWrite->diveSettings.compassHeading = settingsGetPointer()->compassBearing;
+
+    exitMenuEdit_to_Home_with_Menu_Update();
+
+    return EXIT_TO_HOME;
+}
+
+
 void openEdit_CompassHeading(void)
 {
-    write_field_button(StMXTRA_CompassHeading,20, 800, ME_Y_LINE4, &FontT48, "Set");
+    char text[32];
+    snprintf(text, 32, "\001%c%c", TXT_2BYTE, TXT2BYTE_CompassHeading);
+    write_topline(text);
+
+    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Set);
+    write_field_button(StMXTRA_CompassHeading, 20, 800, ME_Y_LINE3, &FontT48, text);
+
+    bool headingIsSet = stateUsed->diveSettings.compassHeading;
+    snprintf(text, 32, "%s%c%c", makeGrey(!headingIsSet), TXT_2BYTE, TXT2BYTE_Clear);
+    if (headingIsSet) {
+        write_field_button(StMXTRA_CompassHeadingClear, 20, 800, ME_Y_LINE4, &FontT48, text);
+    } else {
+        write_label_var(20, 800, ME_Y_LINE4, &FontT48, text);
+    }
+
+    int16_t compassBearing = settingsGetPointer()->compassBearing;
+    bool headingResettable = compassBearing && compassBearing != stateUsed->diveSettings.compassHeading;
+    snprintf(text, 32, "%s%c%c (%03u`)", makeGrey(!headingResettable), TXT_2BYTE, TXT2BYTE_Reset, compassBearing);
+    if (headingResettable) {
+        write_field_button(StMXTRA_CompassHeadingReset, 20, 800, ME_Y_LINE5, &FontT48, text);
+    } else {
+        write_label_var(20, 800, ME_Y_LINE5, &FontT48, text);
+    }
+
     setEvent(StMXTRA_CompassHeading,  (uint32_t)OnAction_CompassHeading);
+    setEvent(StMXTRA_CompassHeadingClear,  (uint32_t)OnAction_CompassHeadingClear);
+    setEvent(StMXTRA_CompassHeadingReset,  (uint32_t)OnAction_CompassHeadingReset);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
 

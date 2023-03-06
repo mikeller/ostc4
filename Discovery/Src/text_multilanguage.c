@@ -776,6 +776,27 @@ static uint8_t text_FR_EndDiveMode[] = "End dive";
 static uint8_t text_IT_EndDiveMode[] = "End dive";
 static uint8_t text_ES_EndDiveMode[] = "End dive";
 
+// Dive Menu
+static uint8_t text_EN_Set[] = "Set";
+static uint8_t text_DE_Set[] = "Setzen";
+static uint8_t text_FR_Set[] = "Réinitialiser";
+static uint8_t text_IT_Set[] = "Impostare";
+static uint8_t text_ES_Set[] = "Establecer";
+
+// Dive Menu
+static uint8_t text_EN_Clear[] = "Clear";
+static uint8_t text_DE_Clear[] = "Löschen";
+static uint8_t text_FR_Clear[] = "Annuler";
+static uint8_t text_IT_Clear[] = "Cancellare";
+static uint8_t text_ES_Clear[] = "Borrar";
+
+// Dive Menu
+static uint8_t text_EN_Reset[] = "Reset";
+static uint8_t text_DE_Reset[] = "Zurücksetzen";
+static uint8_t text_FR_Reset[] = "Réinitialiser";
+static uint8_t text_IT_Reset[] = "Ripristina";
+static uint8_t text_ES_Reset[] = "Restaurar";
+
 // Menu SIM
 static uint8_t text_EN_Simulator[] = "Simulator";
 static uint8_t text_DE_Simulator[] = "";
@@ -2070,4 +2091,8 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_CcrSummary, 	{text_EN_CcrSummary, text_DE_CcrSummary, text_FR_CcrSummary, text_IT_CcrSummary, text_ES_CcrSummary}},
 	{(uint8_t)TXT2BYTE_Setpoint, 	{text_EN_Setpoint, text_DE_Setpoint, text_FR_Setpoint, text_IT_Setpoint, text_ES_Setpoint}},
 	{(uint8_t)TXT2BYTE_Scrubber, 	{text_EN_Scrubber, text_DE_Scrubber, text_FR_Scrubber, text_IT_Scrubber, text_ES_Scrubber}},
+
+	{(uint8_t)TXT2BYTE_Set, 	{text_EN_Set, text_DE_Set, text_FR_Set, text_IT_Set, text_ES_Set}},
+	{(uint8_t)TXT2BYTE_Clear, 	{text_EN_Clear, text_DE_Clear, text_FR_Clear, text_IT_Clear, text_ES_Clear}},
+	{(uint8_t)TXT2BYTE_Reset, 	{text_EN_Reset, text_DE_Reset, text_FR_Reset, text_IT_Reset, text_ES_Reset}},
 };

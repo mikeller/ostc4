@@ -195,6 +195,8 @@
 /* DIVE MODE */
 #define StMXTRA_ResetStopwatch	_MB(2,4,1,1,0)
 #define StMXTRA_CompassHeading	_MB(2,4,2,1,0)
+#define StMXTRA_CompassHeadingClear	_MB(2,4,2,2,0)
+#define StMXTRA_CompassHeadingReset	_MB(2,4,2,3,0)
 
  /* SURFACE MODE */
 

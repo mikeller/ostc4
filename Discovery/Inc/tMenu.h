@@ -31,6 +31,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "stm32f4xx_hal.h"
 #include "base.h"
 #include "gfx.h"
@@ -85,4 +86,5 @@ void unblock_diluent_page(void);
 
 void selectPage(uint32_t selection);
 
+char *makeGrey(bool isGrey);
 #endif /* TMENU_H */

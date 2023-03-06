@@ -1402,3 +1402,8 @@ static void draw_tMheader(uint8_t page)
     }
     tMscreen.FBStartAdress = pBackup;
 }
+
+char *makeGrey(bool isGrey)
+{
+    return isGrey ? "\031" : "";
+}
