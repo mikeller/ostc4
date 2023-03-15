@@ -8,7 +8,7 @@
 PROJECT_PATH="$HOME/git/ostc4"
 
 # Debug or Release build
-BUILD_TYPE="Debug"
+BUILD_TYPE="Release"
 
 # build project names
 CPU1_DISCOVERY="Firmware"
