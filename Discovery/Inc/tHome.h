@@ -75,6 +75,7 @@ enum CUSTOMVIEWS
 		CVIEW_CompassDebug,
 		CVIEW_SummaryOfLeftCorner,
 		CVIEW_Charger,
+		CVIEW_CcrSummary,
 		CVIEW_END,
 		CVIEW_T3_Decostop,
 		CVIEW_T3_TTS,

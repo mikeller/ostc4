@@ -141,8 +141,10 @@ const uint8_t customviewsSurfaceStandard[] =
     CVIEW_sensors,
     CVIEW_Compass,
     CVIEW_Tissues,
+    CVIEW_Gaslist,
     CVIEW_sensors_mV,
 	CVIEW_Charger,
+    CVIEW_CcrSummary,
     CVIEW_END
 };
 
@@ -172,6 +174,8 @@ const uint8_t *customviewsSurface	= customviewsSurfaceStandard;
 
 #define SHOW_AMBIENTE_SURFACE_DELTA		(0.02f)
 #define SHOW_AMBIENTE_DEBOUNCE			(0.003f)
+
+#define MAX_NUM_SUMMARY_LINES 6
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -1646,10 +1650,11 @@ uint8_t t7_customview_disabled(uint8_t view)
 {
 	uint8_t i = 0;
 	uint8_t cv_disabled = 0;
+    SSettings *settings = settingsGetPointer();
 
    	while(cv_changelist[i] != CVIEW_END)
     {
-         if((view == cv_changelist[i]) && !CHECK_BIT_THOME(settingsGetPointer()->cv_configuration, cv_changelist[i]))
+         if((view == cv_changelist[i]) && !CHECK_BIT_THOME(settings->cv_configuration, cv_changelist[i]))
          {
         	 cv_disabled = 1;
                break;
@@ -1668,6 +1673,9 @@ uint8_t t7_customview_disabled(uint8_t view)
        	cv_disabled = 1;
     }
 
+    if (view == CVIEW_CcrSummary && !isLoopMode(settings->dive_mode)) {
+        cv_disabled = 1;
+    }
 
     return cv_disabled;
 }
@@ -1756,6 +1764,206 @@ uint8_t t7_get_length_of_customtext(void)
 bool isCompassCalibrated(void)
 {
     return stateUsed->lifeData.compass_heading != -1;
+}
+
+
+static void t7_CcrSummary(SSettings *settings)
+{
+    unsigned numLines = 1; // CCR Mode
+
+    SGasLine *diluentsToShow[MAX_NUM_SUMMARY_LINES - 1] = { NULL };
+    unsigned i = NUM_OFFSET_DILUENT + 1;
+    // Add diluent at start of dive
+    while (i <= NUM_OFFSET_DILUENT + 1 + NUM_GASES) {
+        if (settings->gas[i].note.ub.active && settings->gas[i].note.ub.first) {
+            diluentsToShow[0] = &settings->gas[i];
+            numLines++;
+
+            break;
+        }
+
+        i++;
+    }
+
+    bool showScrubberTime = false;
+    if (settings->scrubTimerMode != SCRUB_TIMER_OFF) {
+        numLines++;
+        showScrubberTime = true;
+    }
+
+    bool showManualSetpoints = false;
+    unsigned offset;
+    SSetpointLine *setpointsToShow[MAX_NUM_SUMMARY_LINES - 1] = { NULL };
+    if (settings->CCR_Mode == CCRMODE_FixedSetpoint || settings->fallbackToFixedSetpoint) {
+        // Add setpoint at start of dive
+        offset = numLines;
+        i = 1;
+        while (i <= NUM_GASES) {
+            if (settings->setpoint[i].note.ub.active && settings->setpoint[i].note.ub.first) {
+                setpointsToShow[numLines - offset] = &settings->setpoint[i];
+                numLines++;
+
+                break;
+            }
+
+            i++;
+        }
+
+        if (settings->autoSetpoint) {
+            i = 1;
+            while (i <= NUM_GASES && numLines < MAX_NUM_SUMMARY_LINES) {
+                if (settings->setpoint[i].note.ub.active && !settings->setpoint[i].note.ub.first && settings->setpoint[i].depth_meter) {
+                    setpointsToShow[numLines - offset] = &settings->setpoint[i];
+                    numLines++;
+                }
+
+                i++;
+            }
+        } else {
+            showManualSetpoints = true;
+        }
+    }
+
+    // Add remaining active diluents
+    i = NUM_OFFSET_DILUENT + 1;
+    offset = numLines;
+    if (diluentsToShow[0]) {
+        offset--;
+    }
+    while (i < NUM_OFFSET_DILUENT + 1 + NUM_GASES && numLines < MAX_NUM_SUMMARY_LINES) {
+        if (settings->gas[i].note.ub.active && !settings->gas[i].note.ub.first) {
+            diluentsToShow[numLines - offset] = &settings->gas[i];
+            numLines++;
+        }
+
+        i++;
+    }
+
+    if (showManualSetpoints) {
+        // Fill up the remaining lines with setpoints
+        offset = numLines;
+        if (setpointsToShow[0]) {
+            offset--;
+        }
+        i = 2;
+        while (i <= NUM_GASES && numLines < MAX_NUM_SUMMARY_LINES) {
+            if (settings->setpoint[i].note.ub.active && !settings->setpoint[i].note.ub.first) {
+                setpointsToShow[numLines - offset] = &settings->setpoint[i];
+                numLines++;
+            }
+
+            i++;
+        }
+    }
+
+    char heading[128];
+    unsigned headingIndex = 0;
+
+    char data[128];
+    unsigned dataIndex = 0;
+
+    heading[headingIndex++] = '\032';
+    heading[headingIndex++] = '\016';
+    heading[headingIndex++] = '\016';
+    heading[headingIndex++] = TXT_CCRmode;
+
+    data[dataIndex++] = '\t';
+    char *modeText;
+    if (settings->CCR_Mode == CCRMODE_Sensors) {
+        if (settings->fallbackToFixedSetpoint) {
+            modeText = (char *)&"Sens/FB";
+        } else {
+            modeText = (char *)&"Sensor";
+        }
+    } else {
+        modeText = (char *)&"Fixed";
+    }
+    dataIndex += snprintf(&data[dataIndex], 10, "\020%s", modeText);
+
+    i = 0;
+    while (setpointsToShow[i] != NULL && i < MAX_NUM_SUMMARY_LINES - 1) {
+        heading[headingIndex++] = '\n';
+        heading[headingIndex++] = '\r';
+        if (i == 0) {
+            heading[headingIndex++] = TXT_2BYTE;
+            heading[headingIndex++] = TXT2BYTE_Setpoint;
+        }
+
+        data[dataIndex++] = '\n';
+        data[dataIndex++] = '\r';
+        data[dataIndex++] = '\t';
+        dataIndex += snprintf(&data[dataIndex], 10, "\020%01.2f", setpointsToShow[i]->setpoint_cbar / 100.0);
+        if (settings->autoSetpoint) {
+            dataIndex += snprintf(&data[dataIndex], 10, "\016\016 %um\017", setpointsToShow[i]->depth_meter);
+        }
+
+        i++;
+    }
+
+    i = 0;
+    while (diluentsToShow[i] != NULL && i < MAX_NUM_SUMMARY_LINES - 1) {
+        heading[headingIndex++] = '\n';
+        heading[headingIndex++] = '\r';
+        if (i == 0) {
+            heading[headingIndex++] = TXT_Diluent_Gas_Edit;
+        }
+
+        data[dataIndex++] = '\n';
+        data[dataIndex++] = '\r';
+        data[dataIndex++] = '\t';
+        data[dataIndex++] = '\020';
+        dataIndex += write_gas(&data[dataIndex], diluentsToShow[i]->oxygen_percentage, diluentsToShow[i]->helium_percentage);
+        if (diluentsToShow[i]->note.ub.deco) {
+            char *space = " ";
+            if (diluentsToShow[i]->depth_meter > 99) {
+                space = (char *)"";
+            }
+            dataIndex += snprintf(&data[dataIndex], 10, "\016\016%s%um\017", space, diluentsToShow[i]->depth_meter);
+        }
+
+        i++;
+    }
+
+    if (showScrubberTime) {
+        heading[headingIndex++] = '\n';
+        heading[headingIndex++] = '\r';
+        heading[headingIndex++] = TXT_2BYTE;
+        heading[headingIndex++] = TXT2BYTE_Scrubber;
+
+        data[dataIndex++] = '\n';
+        data[dataIndex++] = '\r';
+        data[dataIndex++] = '\t';
+        dataIndex += printScrubberText(&data[dataIndex], 10, settings);
+    }
+
+    heading[headingIndex++] = '\017';
+    heading[headingIndex++] = 0;
+
+    data[dataIndex++] = 0;
+
+    t7cY0free.WindowLineSpacing = 48;
+    t7cY0free.WindowNumberOfTextLines = 6;
+    t7cY0free.WindowTab = 375;
+
+    t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
+    if (!settings->FlipDisplay) {
+        t7cY0free.WindowX0 += 10;
+        t7cY0free.WindowY0 += 10;
+        t7cY0free.WindowY1 = 355;
+        GFX_write_string(&FontT24, &t7cY0free, heading, 1);
+        t7cY0free.WindowX0 -= 10;
+        t7cY0free.WindowY0 -= 10;
+    } else {
+        t7cY0free.WindowY1 -= 10;
+        t7cY0free.WindowX1 -= 10;
+        GFX_write_string(&FontT24, &t7cY0free, heading, 1);
+        t7cY0free.WindowY1 += 10;
+        t7cY0free.WindowX1 += 10;
+    }
+
+    t7_colorscheme_mod(data);
+
+    GFX_write_string(&FontT42, &t7cY0free, data, 1);
 }
 
 
@@ -2296,6 +2504,13 @@ void t7_refresh_customview(void)
         t7cY0free.WindowLineSpacing = 48;
         t7cY0free.WindowNumberOfTextLines = 6;
         GFX_write_string(&FontT42, &t7cY0free, text, 1);
+        break;
+    case CVIEW_CcrSummary:
+        snprintf(text, 100, "\032\f\001%c%c", TXT_2BYTE, TXT2BYTE_CcrSummary);
+        GFX_write_string(&FontT42, &t7cH, text, 0);
+
+        t7_CcrSummary(pSettings);
+
         break;
     }
 }

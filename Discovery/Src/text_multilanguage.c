@@ -1784,6 +1784,24 @@ static uint8_t text_FR_NotCalibrated[] = "non calibrée";
 static uint8_t text_IT_NotCalibrated[] = "non calibrata";
 static uint8_t text_ES_NotCalibrated[] = "no calibrada";
 
+static uint8_t text_EN_CcrSummary[] = "CCR Overview";
+static uint8_t text_DE_CcrSummary[] = "CCR Uebersicht"; // T42 hat keine großen Umlaute hw 170103
+static uint8_t text_FR_CcrSummary[] = "Aperçu du CCR";
+static uint8_t text_IT_CcrSummary[] = "Panoramica CCR";
+static uint8_t text_ES_CcrSummary[] = "Desc. gen. CCR";
+
+static uint8_t text_EN_Setpoint[] = "Setpoint";
+static uint8_t text_DE_Setpoint[] = "Setpoint";
+static uint8_t text_FR_Setpoint[] = "Setpoint";
+static uint8_t text_IT_Setpoint[] = "Setpoint";
+static uint8_t text_ES_Setpoint[] = "Setpoint";
+
+static uint8_t text_EN_Scrubber[] = "Scrubber";
+static uint8_t text_DE_Scrubber[] = "Atemkalk";
+static uint8_t text_FR_Scrubber[] = "Scrubber";
+static uint8_t text_IT_Scrubber[] = "Scrubber";
+static uint8_t text_ES_Scrubber[] = "Scrubber";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2048,4 +2066,8 @@ const tText text_array2[] =
 
 	{(uint8_t)TXT2BYTE_CheckSettings, 	{text_EN_CheckSettings, text_DE_CheckSettings, text_FR_CheckSettings, text_IT_CheckSettings, text_ES_CheckSettings}},
 	{(uint8_t)TXT2BYTE_NotCalibrated, 	{text_EN_NotCalibrated, text_DE_NotCalibrated, text_FR_NotCalibrated, text_IT_NotCalibrated, text_ES_NotCalibrated}},
+
+	{(uint8_t)TXT2BYTE_CcrSummary, 	{text_EN_CcrSummary, text_DE_CcrSummary, text_FR_CcrSummary, text_IT_CcrSummary, text_ES_CcrSummary}},
+	{(uint8_t)TXT2BYTE_Setpoint, 	{text_EN_Setpoint, text_DE_Setpoint, text_FR_Setpoint, text_IT_Setpoint, text_ES_Setpoint}},
+	{(uint8_t)TXT2BYTE_Scrubber, 	{text_EN_Scrubber, text_DE_Scrubber, text_FR_Scrubber, text_IT_Scrubber, text_ES_Scrubber}},
 };
