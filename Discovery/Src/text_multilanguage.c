@@ -797,6 +797,7 @@ static uint8_t text_FR_Reset[] = "Réinitialiser";
 static uint8_t text_IT_Reset[] = "Ripristina";
 static uint8_t text_ES_Reset[] = "Restaurar";
 
+
 // Menu SIM
 static uint8_t text_EN_Simulator[] = "Simulator";
 static uint8_t text_DE_Simulator[] = "";
@@ -1823,6 +1824,18 @@ static uint8_t text_FR_Scrubber[] = "Scrubber";
 static uint8_t text_IT_Scrubber[] = "Scrubber";
 static uint8_t text_ES_Scrubber[] = "Scrubber";
 
+static uint8_t text_EN_BailoutShort[] = "BO";
+static uint8_t text_DE_BailoutShort[] = "BO";
+static uint8_t text_FR_BailoutShort[] = "BO";
+static uint8_t text_IT_BailoutShort[] = "BO";
+static uint8_t text_ES_BailoutShort[] = "BO";
+
+static uint8_t text_EN_LoopShort[] = "CC";
+static uint8_t text_DE_LoopShort[] = "KL";
+static uint8_t text_FR_LoopShort[] = "CC";
+static uint8_t text_IT_LoopShort[] = "CC";
+static uint8_t text_ES_LoopShort[] = "CC";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2091,6 +2104,8 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_CcrSummary, 	{text_EN_CcrSummary, text_DE_CcrSummary, text_FR_CcrSummary, text_IT_CcrSummary, text_ES_CcrSummary}},
 	{(uint8_t)TXT2BYTE_Setpoint, 	{text_EN_Setpoint, text_DE_Setpoint, text_FR_Setpoint, text_IT_Setpoint, text_ES_Setpoint}},
 	{(uint8_t)TXT2BYTE_Scrubber, 	{text_EN_Scrubber, text_DE_Scrubber, text_FR_Scrubber, text_IT_Scrubber, text_ES_Scrubber}},
+	{(uint8_t)TXT2BYTE_BailoutShort, 	{text_EN_BailoutShort, text_DE_BailoutShort, text_FR_BailoutShort, text_IT_BailoutShort, text_ES_BailoutShort}},
+	{(uint8_t)TXT2BYTE_LoopShort, 	{text_EN_LoopShort, text_DE_LoopShort, text_FR_LoopShort, text_IT_LoopShort, text_ES_LoopShort}},
 
 	{(uint8_t)TXT2BYTE_Set, 	{text_EN_Set, text_DE_Set, text_FR_Set, text_IT_Set, text_ES_Set}},
 	{(uint8_t)TXT2BYTE_Clear, 	{text_EN_Clear, text_DE_Clear, text_FR_Clear, text_IT_Clear, text_ES_Clear}},

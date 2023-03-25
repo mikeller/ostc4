@@ -145,12 +145,16 @@ void openEdit_GasOC(uint8_t line)
 
 
 /* dive mode */
-void openEdit_DiveSelectBetterGas(void)
+void openEdit_DiveSelectBetterGas(bool doBailout)
 {
-    uint8_t gasId, ccr;
+    uint8_t gasId;
+    if (doBailout) {
+        gasId = actualBetterBailoutGasId();
+    } else {
+        gasId = actualBetterGasId();
+    }
 
-    gasId = actualBetterGasId();
-    ccr = 0;
+    uint8_t ccr = 0;
     if(gasId>5)
     {
         gasId -= 5;

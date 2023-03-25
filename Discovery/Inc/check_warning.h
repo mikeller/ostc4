@@ -28,12 +28,15 @@
 #define CHECK_WARNING_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
 #include "data_central.h"
 
 /* Exported function prototypes ----------------------------------------------*/
 void check_warning(void);
 void check_warning2(SDiveState *pDiveState);
 uint8_t actualBetterGasId(void);
+uint8_t actualBetterBailoutGasId(void);
 uint8_t actualBetterSetpointId(void);
 uint8_t actualLeftMaxDepth(const SDiveState * pDiveState);
 void set_warning_fallback(void);

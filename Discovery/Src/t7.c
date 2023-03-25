@@ -2780,6 +2780,20 @@ void t7_refresh_divemode(void)
     {
         snprintf(TextR1,TEXTSIZE,"\a\001%c%c", TXT_2BYTE, TXT2BYTE_DiveMenuQ);
         GFX_write_string_color(&FontT48,&t7c2,TextR1,0,CLUT_WarningYellow);
+    } else if (get_globalState() == StDBAILOUT) {
+        if (isLoopMode(stateUsed->diveSettings.diveMode)) {
+            textPointer = snprintf(TextR1, TEXTSIZE, "\a\001 %c%c ", TXT_2BYTE, TXT2BYTE_BailoutShort);
+            textPointer += tHome_gas_writer(stateUsed->diveSettings.gas[actualBetterBailoutGasId()].oxygen_percentage, stateUsed->diveSettings.gas[actualBetterBailoutGasId()].helium_percentage, &TextR1[textPointer]);
+            TextR1[textPointer++] = ' ';
+            TextR1[textPointer++] = '?';
+        } else {
+            textPointer = snprintf(TextR1, TEXTSIZE, "\a\001 %c%c %01.2f/", TXT_2BYTE, TXT2BYTE_LoopShort, stateUsed->diveSettings.setpoint[actualBetterSetpointId()].setpoint_cbar / 100.0);
+            textPointer += tHome_gas_writer(stateUsed->diveSettings.gas[stateUsed->lifeData.lastDiluent_GasIdInSettings].oxygen_percentage, stateUsed->diveSettings.gas[stateUsed->lifeData.lastDiluent_GasIdInSettings].helium_percentage, &TextR1[textPointer]);
+            TextR1[textPointer++] = ' ';
+            TextR1[textPointer++] = '?';
+        }
+
+        GFX_write_string_color(&FontT48, &t7c2, TextR1, 0, CLUT_WarningYellow);
     }
     else if(get_globalState() == StDBEAR)
     {

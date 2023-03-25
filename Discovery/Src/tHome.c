@@ -181,6 +181,16 @@ static void checkSetStateSim(SSettings *settings)
 }
 
 
+static void checkSetStateCompassSim(SSettings *settings)
+{
+    if (settings->design == 7 && t7_isCompassShowing()) {
+        set_globalState(StDBEAR);
+    } else {
+        checkSetStateSim(settings);
+    }
+}
+
+
 void tHomeDiveMenuControl(uint8_t sendAction)
 {
     SSettings *settings = settingsGetPointer();
@@ -271,16 +281,19 @@ void tHomeDiveMenuControl(uint8_t sendAction)
             break;
 
         case StDMENU:
-            if (settings->design == 7 && t7_isCompassShowing()) {
-                set_globalState(StDBEAR);
+            if (settings->design == 7 && isLoopMode(settings->dive_mode)) {
+                set_globalState(StDBAILOUT);
 
                 break;
             }
 
-            checkSetStateSim(settings);
+            checkSetStateCompassSim(settings);
 
             break;
+        case StDBAILOUT:
+            checkSetStateCompassSim(settings);
 
+            break;
         case StDSIM1:
                 set_globalState(StDSIM2);
             break;
@@ -407,11 +420,11 @@ void tHomeDiveMenuControl(uint8_t sendAction)
         switch(get_globalState())
         {
         case StDMGAS:
-            openEdit_DiveSelectBetterGas();
+            openEdit_DiveSelectBetterGas(false);
             set_globalState(StD);
             break;
         case StDMSPT:
-            openEdit_DiveSelectBetterSetpoint();
+            openEdit_DiveSelectBetterSetpoint(false);
             set_globalState(StD);
             break;
 
@@ -473,6 +486,20 @@ void tHomeDiveMenuControl(uint8_t sendAction)
         		Sim_DecreasePPO(2);
 			break;
 #endif
+        case StDBAILOUT:
+            if (isLoopMode(stateUsed->diveSettings.diveMode)) {
+                tMEGas_check_switch_to_bailout();
+
+                openEdit_DiveSelectBetterGas(true);
+            } else {
+                checkSwitchToLoop();
+
+                openEdit_DiveSelectBetterSetpoint(true);
+            }
+
+            set_globalState(StD);
+
+            break;
         case StDBEAR: // t5_gauge, t7
             setCompassHeading((uint16_t)stateUsed->lifeData.compass_heading);
             set_globalState(StD);

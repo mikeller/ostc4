@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 void openEdit_Setpoint(uint8_t line);
-void openEdit_DiveSelectBetterSetpoint(void);
+void openEdit_DiveSelectBetterSetpoint(bool useLastDiluent);
 
+void checkSwitchToLoop(void);
 #endif /* TMENU_EDIT_SETPOINT_H */

@@ -1659,7 +1659,7 @@ static void deco_loop(void)
 
     if((stateUsed->warnings.betterSetpoint) && (settingsGetPointer()->autoSetpoint) && (settingsGetPointer()->CCR_Mode == CCRMODE_FixedSetpoint))
    	{
-    	openEdit_DiveSelectBetterSetpoint();
+        openEdit_DiveSelectBetterSetpoint(false);
    	}
 
     decoLock = DECO_CALC_running;

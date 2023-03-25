@@ -42,7 +42,6 @@
 
 #define EXT_INTERFACE_SENSOR_CNT	(5u)		/* 5 sensors may be connected to the external interface */
 
-
 /* Helper structs ------------------------------------------------------------*/
 
 //struct SGas

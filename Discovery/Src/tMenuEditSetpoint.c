@@ -27,6 +27,8 @@
 //////////////////////////////////////////////////////////////////////////////
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdbool.h>
+
 #include "tMenuEditSetpoint.h"
 
 #include "check_warning.h"
@@ -54,6 +56,16 @@ static uint8_t OnAction_SP_DM_Sensor2	(uint32_t editId, uint8_t blockNumber, uin
 static uint8_t OnAction_SP_DM_Sensor3	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 /* Exported functions --------------------------------------------------------*/
+
+void checkSwitchToLoop(void)
+{
+    if(!isLoopMode(stateUsedWrite->diveSettings.diveMode)) {
+        stateUsedWrite->diveSettings.diveMode = settingsGetPointer()->dive_mode;
+
+        unblock_diluent_page();
+    }
+}
+
 
 void openEdit_Setpoint(uint8_t line)
 {
@@ -121,11 +133,7 @@ void openEdit_Setpoint(uint8_t line)
 
         setActualGas_DM(&stateUsedWrite->lifeData,actualGasID,setpointCbar);
 
-        if(!isLoopMode(stateUsedWrite->diveSettings.diveMode))
-        {
-        	stateUsedWrite->diveSettings.diveMode = settingsGetPointer()->dive_mode;
-            unblock_diluent_page();
-        }
+        checkSwitchToLoop();
 
         clear_warning_fallback();
 
@@ -329,7 +337,7 @@ static uint8_t OnAction_SP_Setpoint(uint32_t editId, uint8_t blockNumber, uint8_
     return EXIT_TO_MENU;
 }
 
-void openEdit_DiveSelectBetterSetpoint(void)
+void openEdit_DiveSelectBetterSetpoint(bool useLastDiluent)
 {
     uint8_t spId;
     uint8_t depth;
@@ -351,10 +359,18 @@ void openEdit_DiveSelectBetterSetpoint(void)
 		// new setpoint
 		stateUsedWrite->diveSettings.setpoint[spId].note.ub.first = 1;
 
+        uint8_t gasId;
+        if (useLastDiluent) {
+            gasId = stateUsed->lifeData.lastDiluent_GasIdInSettings;
+        } else {
+            gasId = stateUsed->lifeData.actualGas.GasIdInSettings;
+        }
+
 		// change in lifeData
-		setActualGas_DM(&stateUsedWrite->lifeData, stateUsedWrite->lifeData.actualGas.GasIdInSettings, stateUsedWrite->diveSettings.setpoint[spId].setpoint_cbar);
+		setActualGas_DM(&stateUsedWrite->lifeData, gasId, stateUsedWrite->diveSettings.setpoint[spId].setpoint_cbar);
     }
 }
+
 
 static uint8_t OnAction_SP_DM_Sensor1	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
