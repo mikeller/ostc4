@@ -29,6 +29,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "tMenu.h"
 #include "tStructure.h"
 #include "tMenuXtra.h"
@@ -152,17 +153,24 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 
         if((line == 0) || (line == 2))
          {
+             bool canDoFallback = pSettings->CCR_Mode == CCRMODE_Sensors;
+             if (!canDoFallback) {
+                 text[textPointer++] = '\031';
+             }
              textPointer += snprintf(&text[textPointer], 60,\
                  "%c"
                  ,TXT_Fallback
              );
 
              text[textPointer++] = '\t';
-             if(settingsGetPointer()->fallbackToFixedSetpoint)
+             if(settingsGetPointer()->fallbackToFixedSetpoint && canDoFallback)
                  text[textPointer++] = '\005';
              else
                  text[textPointer++] = '\006';
 
+             if (!canDoFallback) {
+                 text[textPointer++] = '\020';
+             }
              strcpy(&text[textPointer],"\n\r");
              textPointer += 2;
          }

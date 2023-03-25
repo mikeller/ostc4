@@ -79,7 +79,6 @@ void openEdit_Xtra(uint8_t line)
 {
     set_globalState_Menu_Line(line);
 
-
     /* DIVE MODE */
     if(actual_menu_content != MENU_SURFACE)
     {
@@ -114,7 +113,7 @@ void openEdit_Xtra(uint8_t line)
     }
     else /* surface mode */
     {
-    	if((settingsGetPointer()->dive_mode != DIVEMODE_PSCR) && (line > 3))		/* PSCR items are only optional */
+        if((settingsGetPointer()->dive_mode != DIVEMODE_PSCR) && (line > 3))		/* PSCR items are only optional */
 		{
 			line = 6;
 		}
@@ -192,14 +191,10 @@ static void openEdit_Fallback(void)
 
     SSettings *pSettings = settingsGetPointer();
 
-    if(pSettings->fallbackToFixedSetpoint == 0)
-    {
-    	pSettings->fallbackToFixedSetpoint = 1;
+    if (pSettings->CCR_Mode == CCRMODE_Sensors) {
+        pSettings->fallbackToFixedSetpoint = (pSettings->fallbackToFixedSetpoint + 1) % 2;
     }
-    else
-    {
-    	pSettings->fallbackToFixedSetpoint = 0;
-    }
+
     exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
 }
 
