@@ -1801,7 +1801,7 @@ uint8_t getDiluent(int  i,uint8_t * data)
     return 0x4d;
 }
 
-uint8_t setSetpoint(int  i,uint8_t * data)
+static uint8_t setSetpoint(int  i,uint8_t * data)
 {
         if(!checkValue(data[1],50,160))
             return ERROR_;

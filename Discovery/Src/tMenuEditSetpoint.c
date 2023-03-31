@@ -47,6 +47,8 @@ typedef struct
 /* Private variables ---------------------------------------------------------*/
 static SEditSetpointPage editSetpointPage;
 
+static uint8_t switchToSetpointCbar;
+
 /* Private function prototypes -----------------------------------------------*/
 
 /* Announced function prototypes -----------------------------------------------*/
@@ -368,6 +370,40 @@ void openEdit_DiveSelectBetterSetpoint(bool useLastDiluent)
 
 		// change in lifeData
 		setActualGas_DM(&stateUsedWrite->lifeData, gasId, stateUsedWrite->diveSettings.setpoint[spId].setpoint_cbar);
+    }
+}
+
+
+bool findSwitchToSetpoint(void)
+{
+    uint8_t setpointLowId = getSetpointLowId();
+    uint8_t setpointHighId = getSetpointHighId();
+    uint8_t setpointCurrentCbar = stateUsed->lifeData.actualGas.setPoint_cbar;
+    if (setpointLowId && setpointCurrentCbar != stateUsed->diveSettings.setpoint[setpointLowId].setpoint_cbar && ((!setpointHighId || setpointCurrentCbar == stateUsed->diveSettings.setpoint[setpointHighId].setpoint_cbar) || stateUsed->lifeData.depth_meter < stateUsed->diveSettings.setpoint[setpointLowId].depth_meter)) {
+        switchToSetpointCbar = stateUsed->diveSettings.setpoint[setpointLowId].setpoint_cbar;
+    } else if (setpointHighId && setpointCurrentCbar != stateUsed->diveSettings.setpoint[setpointHighId].setpoint_cbar) {
+        switchToSetpointCbar = stateUsed->diveSettings.setpoint[setpointHighId].setpoint_cbar;
+    } else {
+        // We don't have a setpoint to switch to
+        switchToSetpointCbar = 0;
+
+        return false;
+    }
+
+    return true;
+}
+
+
+uint8_t getSwitchToSetpointCbar(void)
+{
+    return switchToSetpointCbar;
+}
+
+
+void checkSwitchSetpoint(void)
+{
+    if (switchToSetpointCbar) {
+        setActualGas_DM(&stateUsedWrite->lifeData, stateUsed->lifeData.lastDiluent_GasIdInSettings, switchToSetpointCbar);
     }
 }
 

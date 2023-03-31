@@ -360,6 +360,7 @@ extern const tText text_array2[];
 
         TXT2BYTE_BailoutShort,
         TXT2BYTE_LoopShort,
+        TXT2BYTE_SetpointShort,
 
 		TXT2BYTE_END
 };

@@ -1836,6 +1836,12 @@ static uint8_t text_FR_LoopShort[] = "CC";
 static uint8_t text_IT_LoopShort[] = "CC";
 static uint8_t text_ES_LoopShort[] = "CC";
 
+static uint8_t text_EN_SetpointShort[] = "SP";
+static uint8_t text_DE_SetpointShort[] = "SP";
+static uint8_t text_FR_SetpointShort[] = "SP";
+static uint8_t text_IT_SetpointShort[] = "SP";
+static uint8_t text_ES_SetpointShort[] = "SP";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2106,6 +2112,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Scrubber, 	{text_EN_Scrubber, text_DE_Scrubber, text_FR_Scrubber, text_IT_Scrubber, text_ES_Scrubber}},
 	{(uint8_t)TXT2BYTE_BailoutShort, 	{text_EN_BailoutShort, text_DE_BailoutShort, text_FR_BailoutShort, text_IT_BailoutShort, text_ES_BailoutShort}},
 	{(uint8_t)TXT2BYTE_LoopShort, 	{text_EN_LoopShort, text_DE_LoopShort, text_FR_LoopShort, text_IT_LoopShort, text_ES_LoopShort}},
+	{(uint8_t)TXT2BYTE_SetpointShort, 	{text_EN_SetpointShort, text_DE_SetpointShort, text_FR_SetpointShort, text_IT_SetpointShort, text_ES_SetpointShort}},
 
 	{(uint8_t)TXT2BYTE_Set, 	{text_EN_Set, text_DE_Set, text_FR_Set, text_IT_Set, text_ES_Set}},
 	{(uint8_t)TXT2BYTE_Clear, 	{text_EN_Clear, text_DE_Clear, text_FR_Clear, text_IT_Clear, text_ES_Clear}},

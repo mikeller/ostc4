@@ -46,6 +46,7 @@
 #include "motion.h"
 #include "configuration.h"
 #include "base.h"
+#include "tMenuEditSetpoint.h"
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -2792,6 +2793,10 @@ void t7_refresh_divemode(void)
             TextR1[textPointer++] = ' ';
             TextR1[textPointer++] = '?';
         }
+
+        GFX_write_string_color(&FontT48, &t7c2, TextR1, 0, CLUT_WarningYellow);
+    } else if (get_globalState() == StDSETPOINT) {
+        snprintf(TextR1, TEXTSIZE, "\a\001 %c%c %01.2f? ", TXT_2BYTE, TXT2BYTE_SetpointShort, getSwitchToSetpointCbar() / 100.0);
 
         GFX_write_string_color(&FontT48, &t7c2, TextR1, 0, CLUT_WarningYellow);
     }

@@ -291,6 +291,16 @@ void tHomeDiveMenuControl(uint8_t sendAction)
 
             break;
         case StDBAILOUT:
+            if (settingsGetPointer()->dive_mode == DIVEMODE_CCR && isLoopMode(stateUsed->diveSettings.diveMode) && findSwitchToSetpoint()) {
+                set_globalState(StDSETPOINT);
+
+                break;
+            }
+
+            checkSetStateCompassSim(settings);
+
+            break;
+        case StDSETPOINT:
             checkSetStateCompassSim(settings);
 
             break;
@@ -496,6 +506,12 @@ void tHomeDiveMenuControl(uint8_t sendAction)
 
                 openEdit_DiveSelectBetterSetpoint(true);
             }
+
+            set_globalState(StD);
+
+            break;
+        case StDSETPOINT:
+            checkSwitchSetpoint();
 
             set_globalState(StD);
 
