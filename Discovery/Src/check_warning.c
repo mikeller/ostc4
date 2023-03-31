@@ -32,6 +32,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 
+#include <stdbool.h>
+
 #include "data_exchange.h"
 #include "check_warning.h"
 #include "settings.h"
@@ -44,7 +46,7 @@
 
 /* Private variables with access ----------------------------------------------*/
 static uint8_t betterGasId = 0;
-static uint8_t betterSetpointId = 0;
+static uint8_t betterSetpointId = 1;
 static int8_t fallback = 0;
 static uint16_t debounceFallbackTimeMS = 0;
 
@@ -286,40 +288,82 @@ static int8_t check_BetterGas(SDiveState * pDiveState)
 	return pDiveState->warnings.betterGas;
 }
 
-/* check for better travel!!! setpoint hw 151210
- */ 
-static int8_t check_BetterSetpoint(SDiveState * pDiveState)
+
+uint8_t getSetpointLowId(void)
 {
-	pDiveState->warnings.betterSetpoint = 0;
-	betterSetpointId = 0;
-	uint8_t bestSetpointDepth = 0; // travel the deeper, the better
-	uint8_t betterSetpointIdLocal = 0; // nothing better
+    uint8_t setpointLowId = 0;
+    uint8_t setpointLowDepthM = UINT8_MAX;
+    for (unsigned i = 1; i <= NUM_GASES; i++) {
+        if (stateUsed->diveSettings.setpoint[i].depth_meter && stateUsed->diveSettings.setpoint[i].depth_meter < setpointLowDepthM) {
+            setpointLowId = i;
+            setpointLowDepthM = stateUsed->diveSettings.setpoint[i].depth_meter;
+        }
+    }
+
+    return setpointLowId;
+}
 
 
-	if((stateUsed->mode == MODE_DIVE) && (pDiveState->diveSettings.diveMode == DIVEMODE_CCR))
-	{
-		if(!actualLeftMaxDepth(pDiveState)) /* travel gases */
-		{
-			for(int i=1; i<=NUM_GASES; i++)
-			{
-				if(	 (pDiveState->diveSettings.setpoint[i].note.ub.active)
-					&& (pDiveState->diveSettings.setpoint[i].depth_meter)
-					&& (pDiveState->diveSettings.setpoint[i].depth_meter <= ( pDiveState->lifeData.depth_meter + 0.01f ))
-					&& (pDiveState->diveSettings.setpoint[i].depth_meter >= bestSetpointDepth)
-				)
-					{
-						betterSetpointIdLocal = i;
-						bestSetpointDepth = pDiveState->diveSettings.setpoint[i].depth_meter;
-					}
-			}
-			if((betterSetpointIdLocal) && (pDiveState->diveSettings.setpoint[betterSetpointIdLocal].setpoint_cbar  != pDiveState->lifeData.actualGas.setPoint_cbar))
-			{
-				betterSetpointId = betterSetpointIdLocal;
-				pDiveState->warnings.betterSetpoint = 1;
-			}
-		}
-	}
-	return pDiveState->warnings.betterSetpoint;
+uint8_t getSetpointHighId(void)
+{
+    uint8_t setpointHighId = 0;
+    uint8_t setpointHighDepthM = 0;
+    for (unsigned i = 1; i <= NUM_GASES; i++) {
+        if (stateUsed->diveSettings.setpoint[i].depth_meter && stateUsed->diveSettings.setpoint[i].depth_meter >= setpointHighDepthM) {
+            setpointHighId = i;
+            setpointHighDepthM = stateUsed->diveSettings.setpoint[i].depth_meter;
+        }
+    }
+
+    return setpointHighId;
+}
+
+
+/* check for better travel!!! setpoint hw 151210
+ */
+static int8_t check_BetterSetpoint(SDiveState *diveState)
+{
+    diveState->warnings.betterSetpoint = 0;
+
+    if (stateUsed->mode != MODE_DIVE) {
+        betterSetpointId = 1;
+
+        return 0;
+    }
+
+    SSettings *settings = settingsGetPointer();
+
+    float currentDepthM = diveState->lifeData.depth_meter;
+    if (settings->dive_mode == DIVEMODE_CCR && diveState->lifeData.lastSetpointChangeDepthM != currentDepthM) {
+        float lastChangeDepthM = diveState->lifeData.lastSetpointChangeDepthM;
+        bool descending = currentDepthM > lastChangeDepthM;
+        uint8_t setpointLowId = getSetpointLowId();
+        uint8_t setpointHighId = getSetpointHighId();
+        uint8_t betterSetpointIdLocal = 0;
+        uint8_t betterSetpointSwitchDepthM = descending ? 0 : UINT8_MAX;
+
+        for (unsigned i = 1; i <= NUM_GASES; i++) {
+            uint8_t switchDepthM = diveState->diveSettings.setpoint[i].depth_meter;
+            if (!switchDepthM || (descending && i == setpointLowId) || (!descending && i == setpointHighId)) {
+                continue;
+            }
+
+            if ((descending && lastChangeDepthM < switchDepthM && switchDepthM < currentDepthM && switchDepthM > betterSetpointSwitchDepthM)
+                || (!descending && lastChangeDepthM > switchDepthM && switchDepthM > currentDepthM && switchDepthM <= betterSetpointSwitchDepthM)) {
+                betterSetpointIdLocal = i;
+                betterSetpointSwitchDepthM = switchDepthM;
+            }
+        }
+
+        if (betterSetpointIdLocal) {
+            betterSetpointId = betterSetpointIdLocal;
+            if (diveState->diveSettings.diveMode == DIVEMODE_CCR && diveState->diveSettings.setpoint[betterSetpointIdLocal].setpoint_cbar != diveState->lifeData.actualGas.setPoint_cbar) {
+                diveState->warnings.betterSetpoint = 1;
+            }
+        }
+    }
+
+    return diveState->warnings.betterSetpoint;
 }
 
 

@@ -210,8 +210,9 @@ typedef struct
 	 * includes setpoint information
 	 */
 	SGas actualGas;
+
 	uint8_t lastDiluent_GasIdInSettings;
-	uint8_t gas_temp2;
+    float lastSetpointChangeDepthM;
 
 	/* calculated by DataEX_copy_to_LifeData()
 			bottle_bar array size is made like this to have multiples of 32bit

@@ -501,8 +501,10 @@ void setActualGas(SLifeData *lifeData, uint8_t gasId, uint8_t setpoint_cbar)
 	lifeData->actualGas.change_during_ascent_depth_meter_otherwise_zero = 0;
 	lifeData->actualGas.AppliedDiveMode = stateUsed->diveSettings.diveMode;
 	lifeData->actualGas.pscr_factor = 1.0 / pSettings->pscr_lung_ratio * pSettings->pscr_o2_drop;
-	if(isLoopMode(pSettings->dive_mode) && (gasId > NUM_OFFSET_DILUENT))
+	if (isLoopMode(pSettings->dive_mode) && gasId > NUM_OFFSET_DILUENT) {
 		lifeData->lastDiluent_GasIdInSettings = gasId;
+        lifeData->lastSetpointChangeDepthM = lifeData->depth_meter;
+    }
 }
 
 
