@@ -309,10 +309,21 @@ void tInfo_write_content_simple(uint16_t XleftGimpStyle, uint16_t XrightGimpStyl
     hgfx.WindowX0 = XleftGimpStyle;
     hgfx.WindowX1 = XrightGimpStyle;
     hgfx.WindowY1 = 479 - YtopGimpStyle;
-    if(hgfx.WindowY1 < Font->height)
-        hgfx.WindowY0 = 0;
+
+
+    if(!settingsGetPointer()->FlipDisplay)
+    {
+    	hgfx.WindowY1 = 479 - YtopGimpStyle;
+    	if(hgfx.WindowY1 < Font->height)
+    	        hgfx.WindowY0 = 0;
+    	    else
+    	        hgfx.WindowY0 = hgfx.WindowY1 - Font->height;
+    }
     else
-        hgfx.WindowY0 = hgfx.WindowY1 - Font->height;
+    {
+    	hgfx.WindowY0 = YtopGimpStyle;
+    	hgfx.WindowY1 = YtopGimpStyle + Font->height;
+    }
 
     GFX_write_string_color(Font, &hgfx, text, 0, color);
 }
