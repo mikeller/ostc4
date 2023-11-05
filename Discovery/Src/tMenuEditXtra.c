@@ -54,9 +54,6 @@ static void openEdit_Scrubber(void);
 #ifdef ENABLE_PSCR_MODE
 static void openEdit_PSCR(void);
 #endif
-#ifdef ENABLE_CO2_SUPPORT
-static void openEdit_CO2Sensor(void);
-#endif
 
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_CompassHeading	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -67,11 +64,6 @@ static uint8_t OnAction_ScrubberMode(uint32_t editId, uint8_t blockNumber, uint8
 #ifdef ENABLE_PSCR_MODE
 static uint8_t OnAction_PSCRO2Drop(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_PSCRLungRation(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-#endif
-
-#ifdef ENABLE_CO2_SUPPORT
-static uint8_t OnAction_CO2OnOff(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-static uint8_t OnAction_CO2Calib(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #endif
 
 /* Exported functions --------------------------------------------------------*/
@@ -130,10 +122,6 @@ void openEdit_Xtra(uint8_t line)
 				break;
 #ifdef ENABLE_PSCR_MODE
 			case 4: openEdit_PSCR();
-				break;
-#endif
-#ifdef ENABLE_CO2_SUPPORT
-			case 6: openEdit_CO2Sensor();
 				break;
 #endif
 			default:
@@ -320,42 +308,6 @@ static void openEdit_PSCR(void)
     setEvent(StMXTRA_PSCR_LUNG_RATIO,	(uint32_t)OnAction_PSCRLungRation);
 }
 
-
-#ifdef ENABLE_CO2_SUPPORT
-static void openEdit_CO2Sensor()
-{
-    char text[32];
-
-    resetMenuEdit(CLUT_MenuPageXtra);
-
-    snprintf(text,32,"\001%c",TXT_CO2Sensor);
-    write_topline(text);
-
-    refresh_CO2Data();
-    if(settingsGetPointer()->co2_sensor_active)
-    {
-    	text[0] = '\005';
-    }
-    else
-    {
-        text[0] = '\006';
-    }
-    text[0] = TXT_CO2Sensor;
-    text[1] = 0;
-
-    write_field_on_off(StMXTRA_CO2_Sensor,	 30, 95, ME_Y_LINE3,  &FontT48, text, settingsGetPointer()->co2_sensor_active);
-
-   	text[0] = TXT_2BYTE;
-    text[1] = TXT2BYTE_O2Calib;
-    text[2] = 0;
-    write_field_button(StMXTRA_CO2_Sensor_Calib,30, 800, ME_Y_LINE4,  &FontT48, text);
-
-    setEvent(StMXTRA_CO2_Sensor,	(uint32_t)OnAction_CO2OnOff);
-    setEvent(StMXTRA_CO2_Sensor_Calib,	(uint32_t)OnAction_CO2Calib);
-
-    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
-}
-#endif
 
 
 static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
@@ -684,26 +636,4 @@ static uint8_t OnAction_PSCRLungRation(uint32_t editId, uint8_t blockNumber, uin
 }
 #endif
 
-#ifdef ENABLE_CO2_SUPPORT
-static uint8_t OnAction_CO2OnOff(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-	SSettings *pSettings = settingsGetPointer();
-	if(pSettings->co2_sensor_active)
-	{
-		pSettings->co2_sensor_active = 0;
-		tMenuEdit_set_on_off(StMXTRA_CO2_Sensor,0);
-	}
-	else
-	{
-		pSettings->co2_sensor_active = 1;
-		tMenuEdit_set_on_off(StMXTRA_CO2_Sensor,1);
-	}
-	return UPDATE_DIVESETTINGS;
-}
 
-static uint8_t OnAction_CO2Calib(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-	DataEX_setExtInterface_Cmd(EXT_INTERFACE_CO2_CALIB);
-	return UPDATE_DIVESETTINGS;
-}
-#endif

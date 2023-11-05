@@ -200,12 +200,6 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
              }
         }
 #endif
-#ifdef ENABLE_CO2_SUPPORT
-        if((line == 0) || (line == 4))
-         {
-             textPointer += snprintf(&text[textPointer], 60, "%c", TXT_CO2Sensor);
-         }
-#endif
     }
     return StMXTRA;
 }
