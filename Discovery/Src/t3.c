@@ -1295,6 +1295,26 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
             }
             GFX_write_string(&FontT105,tXc1,text,0);
 
+            if((pSettings->co2_sensor_active) && isLoopMode(pSettings->dive_mode))
+            {
+            	snprintf(text,TEXTSIZE,"\032\001\f%c",TXT_CO2Sensor);
+                GFX_write_string(&FontT42,tXc1,text,0);
+                textpointer = 0;
+                if(stateUsed->lifeData.CO2_data.CO2_ppm < CO2_WARNING_LEVEL_PPM)
+                {
+                	text[textpointer++] = '\020';
+                }
+                else if(stateUsed->lifeData.CO2_data.CO2_ppm < CO2_ALARM_LEVEL_PPM)
+                {
+                	text[textpointer++] = '\024';	/* yellow */
+                }
+                else
+                {
+                	text[textpointer++] = '\025'; 	/* red */
+                }
+                snprintf(&text[textpointer],TEXTSIZE,"\001%5ld",stateUsed->lifeData.CO2_data.CO2_ppm);
+                GFX_write_string(&FontT105,tXc1,text,1);
+            }
 
             if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && isLoopMode(pSettings->dive_mode))
             {
