@@ -119,7 +119,8 @@ uint8_t first:1;
 uint8_t deco:1;
 uint8_t travel:1;
 uint8_t off:1;
-uint8_t spare:3;
+uint8_t decocalc:1;
+uint8_t spare:2;
 } gasubit8_t;
 
 typedef union{

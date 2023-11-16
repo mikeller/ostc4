@@ -449,7 +449,8 @@ void refresh_PlanResult_helper(char *text, int start)
 
     for(int i = 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
     {
-        if(stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+        if((stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+        	|| (stateSimGetPointer()->diveSettings.gas[stateSimGetPointer()->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
                 break;
         depthChange = stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
         if(depthPrev <= depthChange)
@@ -464,7 +465,8 @@ void refresh_PlanResult_helper(char *text, int start)
 
     for(int i = GasIdPrev + 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
     {
-            if(stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+            if((stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+            	|| (stateSimGetPointer()->diveSettings.gas[stateSimGetPointer()->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
                     break;
             depthChange = stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
             if((depthChange < depthPrev) && (depthChange >= depthNext))

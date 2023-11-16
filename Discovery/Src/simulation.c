@@ -466,7 +466,8 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
         // ascend (deco) gases
         for(int i=1; i<=5;i++)
         {
-            if(pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+            if((pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+            		|| (pDiveState->diveSettings.gas[pDiveState->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
                 break;
             gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
             gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].GasIdInSettings;

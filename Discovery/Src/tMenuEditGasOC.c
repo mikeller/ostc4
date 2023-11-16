@@ -66,6 +66,7 @@ uint8_t OnAction_Mix			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumbe
 uint8_t OnAction_GasType		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ChangeDepth	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetToMOD		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_CalcDeco		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_BottleSize		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 uint8_t OnAction_First			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -204,11 +205,8 @@ void openEdit_DiveGasSelect_Subroutine(uint8_t line, uint8_t ccr)
     	return;
     }
 #endif
-    for(int i=0;i<(1+ (2*NUM_GASES));i++)
-        editGasPage.pGasLine[i].note.ub.first = 0;
 
     editGasPage.pGasLine[editGasPage.gasID].note.ub.active = 1;
-    editGasPage.pGasLine[editGasPage.gasID].note.ub.first = 1;
     setActualGas_DM(&stateUsedWrite->lifeData,editGasPage.gasID,setpoint);
 }
 
@@ -385,7 +383,7 @@ void tMEGas_check_switch_to_bailout(void)
 /* surface mode */
 void openEdit_Gas(uint8_t line, uint8_t ccr)
 {
-    uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off;//, bottleSizeLiter;
+    uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off, decocalc;//, bottleSizeLiter;
 
     char text[32];
     char textMOD[32];
@@ -424,6 +422,7 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
     deco = editGasPage.pGasLine[gasID].note.ub.deco;
     travel = editGasPage.pGasLine[gasID].note.ub.travel;
     off = editGasPage.pGasLine[gasID].note.ub.off;
+    decocalc = editGasPage.pGasLine[gasID].note.ub.decocalc;
     //bottleSizeLiter = editGasPage.pGasLine[gasID].bottle_size_liter;
 
     if(active)
@@ -480,11 +479,19 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
         write_field_button(StMOG_GasType,	20, 710, ME_Y_LINE2, &FontT48, text);
 
 
-        if(deco)
+        if((deco) || (travel && ccr))
         {
             text[0] = TXT_ChangeDepth;
             text[1] = ' ';
-            text[2] = TXT_Deco;
+
+			if(deco)
+			{
+				text[2] = TXT_Deco;
+			}
+			else
+			{
+				text[2] = TXT_Travel;
+			}
             text[3] = 0;
             write_label_var(  20 ,800, ME_Y_LINE3, &FontT48, text);
 
@@ -501,6 +508,16 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
             text[txtptr++] = TXT2BYTE_SetToMOD;
             text[txtptr++] = 0;
             write_field_button(StMOG_SetToMOD,		20, 710, ME_Y_LINE4, &FontT48,text);
+
+            if(deco)
+            {
+				txtptr = 0;
+				text[txtptr++] = TXT_2BYTE;
+				text[txtptr++] = TXT2BYTE_CalculateDeco;
+				text[txtptr++] = 0;
+
+				write_field_on_off(StMOG_CalcDeco, 20, 710, ME_Y_LINE5, &FontT48, text, decocalc);
+            }
         }
         else
         {
@@ -547,10 +564,14 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
         setEvent(StMOG_Mix, 					(uint32_t)OnAction_Mix);
         setEvent(StMOG_GasType,				(uint32_t)OnAction_GasType);
 
-        if(deco)
+        if((deco) || (travel && ccr))
         {
             setEvent(StMOG_ChangeDepth,		(uint32_t)OnAction_ChangeDepth);
             setEvent(StMOG_SetToMOD,		(uint32_t)OnAction_SetToMOD);
+        }
+        if(deco)
+        {
+        	setEvent(StMOG_CalcDeco,		(uint32_t)OnAction_CalcDeco);
         }
 /*
         setEvent(StMOG_Bottle, 				(uint32_t)OnAction_BottleSize);
@@ -1091,12 +1112,33 @@ uint8_t OnAction_SetToMOD	(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 {
     uint8_t newChangeDepth = editGasPage.mod;
 
-    editGasPage.pGasLine[editGasPage.gasID].depth_meter = newChangeDepth;
+    if(editGasPage.pGasLine[editGasPage.gasID].note.ub.travel)
+    {
+    	editGasPage.pGasLine[editGasPage.gasID].depth_meter_travel= newChangeDepth;
+    }
+    else
+    {
+    	editGasPage.pGasLine[editGasPage.gasID].depth_meter = newChangeDepth;
+    }
     tMenuEdit_newInput(StMOG_ChangeDepth, unit_depth_integer(newChangeDepth), 0, 0, 0);
 
     return UPDATE_DIVESETTINGS;
 }
 
+uint8_t OnAction_CalcDeco	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    if(editGasPage.pGasLine[editGasPage.gasID].note.ub.decocalc)
+    {
+    	editGasPage.pGasLine[editGasPage.gasID].note.ub.decocalc = 0;
+    }
+    else
+    {
+    	editGasPage.pGasLine[editGasPage.gasID].note.ub.decocalc = 1;
+    }
+    tMenuEdit_set_on_off(editId, editGasPage.pGasLine[editGasPage.gasID].note.ub.decocalc);
+
+    return UPDATE_DIVESETTINGS;
+}
 
 uint8_t OnAction_ChangeDepth(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
@@ -1117,7 +1159,15 @@ uint8_t OnAction_ChangeDepth(uint32_t editId, uint8_t blockNumber, uint8_t digit
         }
         if(newDepth > 255)
             newDepth = 255;
-        editGasPage.pGasLine[editGasPage.gasID].depth_meter = newDepth;
+
+        if(editGasPage.pGasLine[editGasPage.gasID].note.ub.travel)
+        {
+        	editGasPage.pGasLine[editGasPage.gasID].depth_meter_travel = newDepth;
+        }
+        else
+        {
+        	editGasPage.pGasLine[editGasPage.gasID].depth_meter = newDepth;
+        }
         tMenuEdit_newInput(editId, unit_depth_integer(newDepth), 0, 0, 0);
         return UPDATE_DIVESETTINGS;
     }

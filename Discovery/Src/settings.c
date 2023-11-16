@@ -89,7 +89,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF0028,
+    .header = 0xFFFF0029,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -581,7 +581,19 @@ void set_new_settings_missing_in_ext_flash(void)
     	pSettings->cv_config_BigScreen = pSettings->cv_config_BigScreen >> (LEGACY_T3_START_ID_PRE_TIMER - 3);
     	pSettings->cv_config_BigScreen &= ~0x00000007;		/* just to be sure: clear lower three bits */
     	pSettings->cv_config_BigScreen |= tmp;
-
+    	// no break;
+    case 0xFFFF0028:						/* In previous version deco gases were automatically used for deco calculation */
+        for(tmp=1; tmp<=2*NUM_GASES; tmp++) /* This is now handled by an additional parameter. Set it to true to maintain same behavior as before */
+        {
+            if(Settings.gas[tmp].note.ub.deco)
+            {
+            	Settings.gas[tmp].note.ub.decocalc = 1;
+            }
+            else
+            {
+            	Settings.gas[tmp].note.ub.decocalc = 0;
+            }
+        }
     	// no break;
     default:
         pSettings->header = pStandard->header;
