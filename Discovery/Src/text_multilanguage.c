@@ -288,8 +288,8 @@ static uint8_t text_IT_Deco[] = "Deco";
 static uint8_t text_ES_Deco[] = "Deco";
 
 // Menu Gas
-static uint8_t text_EN_Travel[] = "Travel";
-static uint8_t text_DE_Travel[] = "Reise";
+static uint8_t text_EN_Travel[] = "Work";
+static uint8_t text_DE_Travel[] = "Arbeit";
 static uint8_t text_FR_Travel[] = "Travel";
 static uint8_t text_IT_Travel[] = "Viaggio";
 static uint8_t text_ES_Travel[] = "Viaje";
@@ -1589,8 +1589,8 @@ static uint8_t text_FR_ShowDebug[] = "Info de déboguage";
 static uint8_t text_IT_ShowDebug[] = "Informazioni Debug";
 static uint8_t text_ES_ShowDebug[] = "Información de depuración";
 
-static uint8_t text_EN_SimTravelGas[] = "Travel Gas";
-static uint8_t text_DE_SimTravelGas[] = "Reise Gas";
+static uint8_t text_EN_SimTravelGas[] = "Work Gas";
+static uint8_t text_DE_SimTravelGas[] = "Arbeitsgas";
 static uint8_t text_FR_SimTravelGas[] = "Gaz Travel";
 static uint8_t text_IT_SimTravelGas[] = "Gas da viaggio";
 static uint8_t text_ES_SimTravelGas[] = "Gas de viaje";
