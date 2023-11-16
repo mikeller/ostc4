@@ -129,7 +129,8 @@
 #define StMOG_GasType				_MB(2,1,255,2,0)
 #define StMOG_ChangeDepth		_MB(2,1,255,3,0)
 #define StMOG_SetToMOD			_MB(2,1,255,4,0)
-#define StMOG_Bottle				_MB(2,1,255,5,0)
+#define StMOG_CalcDeco				_MB(2,1,255,5,0)
+/* #define StMOG_Bottle				_MB(2,1,255,5,0) */
 
 #define StMOG_MOD					_MB(2,1,255,9,0)
 
