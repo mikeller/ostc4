@@ -220,9 +220,10 @@ static int8_t check_O2_sensors(SDiveState * pDiveState)
 static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState *diveState)
 {
     SDiveSettings diveSettings = diveState->diveSettings;
-
+    SGasLine localGas;
     uint8_t betterGasIdLocal = startingGasId;
     uint8_t bestGasDepth = 255;
+    uint8_t i;
 
     uint8_t gasIdOffset;
     if (getDiluent) {
@@ -233,12 +234,19 @@ static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState
 
 	/* life data is float, gas data is uint8 */
     if (actualLeftMaxDepth(diveState)) { /* deco gases */
-        for (int i=1+gasIdOffset; i<= 5+gasIdOffset; i++) {
-            if ((diveSettings.gas[i].note.ub.active)
-                && (diveSettings.gas[i].note.ub.deco)
-                && (diveSettings.gas[i].depth_meter)
-                && (diveSettings.gas[i].depth_meter >= (diveState->lifeData.depth_meter - 0.01f ))
-                && (diveSettings.gas[i].depth_meter <= bestGasDepth)) {
+        for (i=1+gasIdOffset; i<= 5+gasIdOffset; i++) {
+        	memcpy(&localGas,&diveSettings.gas[i],sizeof(SGasLine));
+        	if((localGas.note.ub.first) && (diveSettings.diveMode == DIVEMODE_PSCR))	/* handle first gas as if it would be a deco gas set to MOD */
+        	{
+        		localGas.note.ub.active = 1;
+        		localGas.note.ub.deco = 1;
+        		localGas.depth_meter = calc_MOD(i);
+        	}
+            if ((localGas.note.ub.active)
+                && (localGas.note.ub.deco)
+                && (localGas.depth_meter)
+                && (localGas.depth_meter >= (diveState->lifeData.depth_meter - 0.01f ))
+                && (localGas.depth_meter <= bestGasDepth)) {
                 betterGasIdLocal = i;
                 bestGasDepth = diveSettings.gas[i].depth_meter;
             }
@@ -246,7 +254,7 @@ static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState
     } else { /* travel gases */
         bestGasDepth = 0;
         //check for travalgas
-        for (int i = 1 + gasIdOffset; i <= 5 + gasIdOffset; i++) {
+        for (i = 1 + gasIdOffset; i <= 5 + gasIdOffset; i++) {
             if ((diveSettings.gas[i].note.ub.active)
                 && (diveSettings.gas[i].note.ub.travel)
                 && (diveSettings.gas[i].depth_meter_travel)
@@ -257,6 +265,18 @@ static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState
             }
         }
     }
+    if((!getDiluent) && (betterGasIdLocal > NUM_OFFSET_DILUENT))	/* an OC gas was requested but Id is pointing to a diluent => return first OC */
+    {
+    	for (i = 1 ; i <= NUM_OFFSET_DILUENT; i++)
+    	{
+    		if(diveSettings.gas[i].note.ub.first)
+    		{
+    			betterGasIdLocal = i;
+    			break;
+    		}
+    	}
+    }
+
 
     return betterGasIdLocal;
 }
@@ -558,7 +578,7 @@ static int8_t check_pressureSensor(SDiveState * pDiveState)
 #ifdef ENABLE_CO2_SUPPORT
 static int8_t check_co2(SDiveState * pDiveState)
 {
-	if(pDiveState->mode != MODE_DIVE)
+	if((pDiveState->mode != MODE_DIVE) || (settingsGetPointer()->co2_sensor_active == 0))
 	{
 		pDiveState->warnings.co2High = 0;
 	}

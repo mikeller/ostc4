@@ -1159,7 +1159,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		pStateReal->sensorErrorsRTE = dataIn.sensorErrors;
 
 		/* data from CO2 sensor */
-		pStateReal->lifeData.CO2_data.CO2_ppm = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_CO2)].CO2_ppm * 10;	/* Scale factor depends on sensor */
+		pStateReal->lifeData.CO2_data.CO2_ppm = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_CO2)].CO2_ppm;
 		pStateReal->lifeData.CO2_data.signalStrength = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_CO2)].CO2_signalStrength;
 
 #ifdef ENABLE_EXTERNAL_PRESSURE
