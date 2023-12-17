@@ -188,6 +188,11 @@ static uint8_t text_FR_CompassDeclination[] = "Déclinaison";
 static uint8_t text_IT_CompassDeclination[] = "Ddeclinazione";
 static uint8_t text_ES_CompassDeclination[] = "Declinación";
 
+static uint8_t text_EN_Autofocus[] = "Autofocus";
+static uint8_t text_DE_Autofocus[] = "Automatik";
+static uint8_t text_FR_Autofocus[] = "";
+static uint8_t text_IT_Autofocus[] = "";
+static uint8_t text_ES_Autofocus[] = "";
 
 // Menu SYS1 and Customview header
 static uint8_t text_EN_Compass[] = "Compass";
@@ -288,8 +293,8 @@ static uint8_t text_IT_Deco[] = "Deco";
 static uint8_t text_ES_Deco[] = "Deco";
 
 // Menu Gas
-static uint8_t text_EN_Travel[] = "Work";
-static uint8_t text_DE_Travel[] = "Arbeit";
+static uint8_t text_EN_Travel[] = "Travel";
+static uint8_t text_DE_Travel[] = "Reise";
 static uint8_t text_FR_Travel[] = "Travel";
 static uint8_t text_IT_Travel[] = "Viaggio";
 static uint8_t text_ES_Travel[] = "Viaje";
@@ -1589,8 +1594,8 @@ static uint8_t text_FR_ShowDebug[] = "Info de déboguage";
 static uint8_t text_IT_ShowDebug[] = "Informazioni Debug";
 static uint8_t text_ES_ShowDebug[] = "Información de depuración";
 
-static uint8_t text_EN_SimTravelGas[] = "Work Gas";
-static uint8_t text_DE_SimTravelGas[] = "Arbeitsgas";
+static uint8_t text_EN_SimTravelGas[] = "Travel Gas";
+static uint8_t text_DE_SimTravelGas[] = "Reise Gas";
 static uint8_t text_FR_SimTravelGas[] = "Gaz Travel";
 static uint8_t text_IT_SimTravelGas[] = "Gas da viaggio";
 static uint8_t text_ES_SimTravelGas[] = "Gas de viaje";
@@ -2043,6 +2048,7 @@ const tText text_array2[] =
     {(uint8_t)TXT2BYTE_CompassCalib, 	{text_EN_CompassCalib, text_DE_CompassCalib, text_FR_CompassCalib, text_IT_CompassCalib, text_ES_CompassCalib}},
 	{(uint8_t)TXT2BYTE_CompassInertia,	{text_EN_CompassInertia, text_DE_CompassInertia, text_FR_CompassInertia, text_IT_CompassInertia, text_ES_CompassInertia}},
 	{(uint8_t)TXT2BYTE_CompassDeclination,	{text_EN_CompassDeclination, text_DE_CompassDeclination, text_FR_CompassDeclination, text_IT_CompassDeclination, text_ES_CompassDeclination}},
+	{(uint8_t)TXT2BYTE_Autofocus	,	{text_EN_Autofocus, text_DE_Autofocus, text_FR_Autofocus, text_IT_Autofocus, text_ES_Autofocus}},
 	{(uint8_t)TXT2BYTE_UseSensor,		{text_EN_UseSensor, text_DE_UseSensor, text_FR_UseSensor, text_IT_UseSensor, text_ES_UseSensor}},
 	{(uint8_t)TXT2BYTE_AutomaticSP,		{text_EN_AutomaticSP, text_DE_AutomaticSP, text_FR_AutomaticSP, text_IT_AutomaticSP, text_ES_AutomaticSP}},
     {(uint8_t)TXT2BYTE_WarnDecoMissed,  {text_EN_WarnDecoMissed, text_DE_WarnDecoMissed, text_FR_WarnDecoMissed, text_IT_WarnDecoMissed, text_ES_WarnDecoMissed}},

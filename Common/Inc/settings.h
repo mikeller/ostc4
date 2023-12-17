@@ -311,6 +311,7 @@ typedef struct
 	uint16_t scrubTimerCur_Obsolete;	/* have been replaced with new scrubber data format */
 	uint8_t scrubTimerMode;
 	uint8_t ext_sensor_map[8];		/* redefined in 0xFFFF0027 */
+	uint8_t cvAutofocus;
 } SSettings;
 
 typedef struct

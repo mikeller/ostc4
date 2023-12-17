@@ -63,6 +63,7 @@ char customviewBF_TXT2BYTE_helper(uint8_t customViewId);
 uint8_t OnAction_CViewTimeout  (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CViewStandard (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CViewStandardBF(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_CViewAutofocusBF(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CornerTimeout (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CornerStandard(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CViewPortCalib(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -114,6 +115,16 @@ void refresh_Customviews(void)
     text[5] = customviewBF_TXT2BYTE_helper(settingsGetPointer()->tX_customViewPrimaryBF);
     text[6] = 0;
     write_label_var(  30, 700, ME_Y_LINE3, &FontT48, text);
+
+    /* Bigfont autofocus selector */
+    textpointer = 0;
+    text[textpointer++] = TXT_2BYTE;
+    text[textpointer++] = TXT2BYTE_ExtraDisplay;
+    textpointer += snprintf(&text[textpointer],20,"  %c%c",TXT_2BYTE, TXT2BYTE_Autofocus);
+    write_label_var(  30, 700, ME_Y_LINE4, &FontT48, text);
+
+    tMenuEdit_refresh_field(StMCustom1_CViewAutoFocusBF);
+
 
     // field corner  return
     textpointer = 0;
@@ -377,14 +388,14 @@ void openEdit_Customview(void)
     write_field_button(StMCustom1_CViewTimeout,		400, 700, ME_Y_LINE1,  &FontT48, "");
     write_field_button(StMCustom1_CViewStandard,	400, 700, ME_Y_LINE2,  &FontT48, "");
     write_field_button(StMCustom1_CViewStandardBF,	400, 700, ME_Y_LINE3,  &FontT48, "");
-
+    write_field_on_off(StMCustom1_CViewAutoFocusBF,	650, 700, ME_Y_LINE4,  &FontT48, "", settingsGetPointer()->cvAutofocus);
     write_field_button(StMCustom1_CornerTimeout,	400, 700, ME_Y_LINE5,  &FontT48, "");
     write_field_button(StMCustom1_CornerStandard,	400, 700, ME_Y_LINE6,  &FontT48, "");
 
     setEvent(StMCustom1_CViewTimeout,		(uint32_t)OnAction_CViewTimeout);
     setEvent(StMCustom1_CViewStandard,		(uint32_t)OnAction_CViewStandard);
     setEvent(StMCustom1_CViewStandardBF,	(uint32_t)OnAction_CViewStandardBF);
-
+    setEvent(StMCustom1_CViewAutoFocusBF,	(uint32_t)OnAction_CViewAutofocusBF);
     setEvent(StMCustom1_CornerTimeout,		(uint32_t)OnAction_CornerTimeout);
     setEvent(StMCustom1_CornerStandard,		(uint32_t)OnAction_CornerStandard);
 }
@@ -646,6 +657,20 @@ uint8_t OnAction_CViewStandardBF(uint32_t editId, uint8_t blockNumber, uint8_t d
     return UPDATE_DIVESETTINGS;
 }
 
+uint8_t OnAction_CViewAutofocusBF(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
+	if(pSettings->cvAutofocus)
+	{
+		pSettings->cvAutofocus = 0;
+	}
+	else
+	{
+		pSettings->cvAutofocus = 1;
+	}
+	tMenuEdit_set_on_off(editId, pSettings->cvAutofocus);
+	return UPDATE_DIVESETTINGS;
+}
 
 uint8_t OnAction_CornerTimeout(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
@@ -1063,4 +1088,45 @@ void CustomviewDivemode_refresh()
          write_label_var( 30, 800, ME_Y_LINE6, &FontT48, text);
      }
      write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+uint8_t HandleAFCompass()
+{
+	static uint8_t debounce = 0;
+	static uint8_t lastState = 0;
+	uint8_t detectionState = 0;
+
+	float pitch = stateRealGetPointer()->lifeData.compass_pitch;
+	float roll = stateRealGetPointer()->lifeData.compass_roll;
+
+	if((pitch > -5.0) && (pitch < 5.0) && (roll > -5.0) && (roll < 5.0))		/* OSTC in horizontal position */
+	{
+		if(debounce < 10) debounce++;
+		if(debounce == 10)
+		{
+			detectionState = 1;
+		//	debounce = 0;
+		//	t3_select_customview(CVIEW_T3_Navigation);
+		}
+	}
+	else
+	{
+		if(debounce > 0) debounce--;
+		if(debounce == 0)
+		{
+			detectionState = 2;
+		}
+	}
+	if(detectionState)	/* no state change => return 0 */
+	{
+		if((detectionState == lastState))
+		{
+			detectionState = 0;
+		}
+		else
+		{
+			lastState = detectionState;
+		}
+	}
+	return detectionState;
 }

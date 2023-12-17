@@ -39,5 +39,6 @@ void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist);
 void openEdit_CustomviewDivemodeMenu(uint8_t line);
 void CustomviewDivemode_refresh();
 void refresh_ViewPort(void);
+uint8_t HandleAFCompass(void);
 
 #endif /* TMENU_EDIT_CUSTOM_H */

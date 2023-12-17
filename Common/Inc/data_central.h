@@ -351,6 +351,8 @@ typedef struct
 
 	uint8_t pscr_o2_drop;
 	uint8_t pscr_lung_ratio;
+
+	uint32_t activeAFViews;
  }  SDiveSettings;
 
 enum CHARGE_STATUS{

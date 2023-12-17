@@ -72,6 +72,8 @@
 #include "tCCR.h"
 #include "crcmodel.h"
 #include "configuration.h"
+#include "tHome.h"
+#include "t3.h"
 
 static SDiveState stateReal = { 0 };
 SDiveState stateSim = { 0 };
@@ -374,6 +376,12 @@ void createDiveSettings(void)
 			 stateReal.diveSettings.input_second_to_last_stop_depth_bar = stateReal.diveSettings.input_next_stop_increment_depth_bar * i;
 			 break;
 		}
+	}
+	/* generate Bitfield of active T3 views */
+	stateReal.diveSettings.activeAFViews = 0;
+	if(t3_customview_disabled(CVIEW_T3_Navigation) == 0)
+	{
+		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_Navigation);
 	}
 }
 

@@ -358,8 +358,9 @@
 #define StMCustom1_CViewTimeout		_MB(2,9,1,1,0)
 #define StMCustom1_CViewStandard	_MB(2,9,1,2,0)
 #define StMCustom1_CViewStandardBF	_MB(2,9,1,3,0)
-#define StMCustom1_CornerTimeout	_MB(2,9,1,4,0)
-#define StMCustom1_CornerStandard	_MB(2,9,1,5,0)
+#define StMCustom1_CViewAutoFocusBF	_MB(2,9,1,4,0)
+#define StMCustom1_CornerTimeout	_MB(2,9,1,5,0)
+#define StMCustom1_CornerStandard	_MB(2,9,1,6,0)
 
 #define StMCustom2_BFSelection		_MB(2,9,2,1,0)
 
