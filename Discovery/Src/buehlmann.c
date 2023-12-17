@@ -258,8 +258,7 @@ void buehlmann_calc_deco(SLifeData* pLifeData, SDiveSettings * pDiveSettings, SD
 		gStop.depth = next_depth;
     for(i = gGas_id + 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
     {
-        if((pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-        		|| (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
+        if(pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
             break;
         float pressureChange =  ((float)pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero) / 10;
         if(gStop.depth <= pressureChange + 0.00001f)
@@ -459,8 +458,7 @@ static int ascend_with_all_gaschanges(SDiveSettings *pDiveSettings, float pressu
         pressureTop_tmp = pressureTop;
         for(i = gGas_id + 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
         {
-            if((pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-            		|| (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
+            if(pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
                 break;
             pressureChange = gSurface_pressure_bar + ((float)pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero) / 10;
             if(pressureBottom <= pressureChange)
@@ -475,8 +473,7 @@ static int ascend_with_all_gaschanges(SDiveSettings *pDiveSettings, float pressu
         }
         for(i = gGas_id + 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
         {
-            if((pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-            	|| (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
+            if(pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
                 break;
             pressureChange = gSurface_pressure_bar + ((float)pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero)/ 10;
             if((pressureChange < pressureBottom) && (pressureChange > pressureTop))
