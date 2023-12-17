@@ -48,6 +48,10 @@
 
 #define MAX_FOCUS_LIMITER	(2u)	/* max number for reducing the spot used for focus detection */
 
+/* defines for autofocus of compass */
+#define AF_COMPASS_ACTIVATION_ANGLE	(5.0f)	/* angle for pitch and roll. Compass gets activated in case the value is smaller (OSTC4 hold in horitontal position */
+#define AF_COMPASS_DEBOUNCE			(10u)	/* debouncing value to avoid compass activation during normal movement */
+
 static uint8_t customviewsSubpage = 0;
 static uint8_t customviewsSubpageMax = 0;	/* number of pages needed to display all selectable views */
 static const uint8_t*	pcv_curchangelist;
@@ -1093,20 +1097,19 @@ void CustomviewDivemode_refresh()
 uint8_t HandleAFCompass()
 {
 	static uint8_t debounce = 0;
-	static uint8_t lastState = 0;
-	uint8_t detectionState = 0;
+	static uint8_t lastState = AF_VIEW_NOCHANGE;
+	uint8_t detectionState = AF_VIEW_NOCHANGE;
 
 	float pitch = stateRealGetPointer()->lifeData.compass_pitch;
 	float roll = stateRealGetPointer()->lifeData.compass_roll;
 
-	if((pitch > -5.0) && (pitch < 5.0) && (roll > -5.0) && (roll < 5.0))		/* OSTC in horizontal position */
+	/* OSTC in horizontal position ?*/
+	if((pitch > -AF_COMPASS_ACTIVATION_ANGLE) && (pitch < AF_COMPASS_ACTIVATION_ANGLE) && (roll > -AF_COMPASS_ACTIVATION_ANGLE) && (roll < AF_COMPASS_ACTIVATION_ANGLE))
 	{
-		if(debounce < 10) debounce++;
-		if(debounce == 10)
+		if(debounce < AF_COMPASS_DEBOUNCE) debounce++;
+		if(debounce == AF_COMPASS_DEBOUNCE)
 		{
-			detectionState = 1;
-		//	debounce = 0;
-		//	t3_select_customview(CVIEW_T3_Navigation);
+			detectionState = AF_VIEW_ACTIVATED;
 		}
 	}
 	else
@@ -1114,14 +1117,14 @@ uint8_t HandleAFCompass()
 		if(debounce > 0) debounce--;
 		if(debounce == 0)
 		{
-			detectionState = 2;
+			detectionState = AF_VIEW_DEACTIVATED;
 		}
 	}
 	if(detectionState)	/* no state change => return 0 */
 	{
 		if((detectionState == lastState))
 		{
-			detectionState = 0;
+			detectionState = AF_VIEW_NOCHANGE;
 		}
 		else
 		{

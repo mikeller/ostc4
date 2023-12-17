@@ -544,7 +544,11 @@ int main(void)
         		HandleMotionDetection();
         	}
 #endif
-
+		/* Autofocus for T3 view */
+        	if((settingsGetPointer()->cvAutofocus) && (settingsGetPointer()->design == 3) && (get_globalState() == StD) && (stateUsed->mode == MODE_DIVE))
+        	{
+        		t3_handleAutofocus();
+        	}
 #ifdef SIM_WRITES_LOGBOOK
         if(stateUsed == stateSimGetPointer())
             logbook_InitAndWrite(stateUsed);

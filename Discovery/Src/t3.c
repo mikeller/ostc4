@@ -40,6 +40,7 @@
 #include "unit.h"
 #include "motion.h"
 #include "logbook_miniLive.h"
+#include "tMenuEditCustom.h"
 
 
 #define CV_PROFILE_WIDTH		(600U)
@@ -1986,4 +1987,27 @@ int printScrubberText(char *text, size_t size, SSettings *settings)
     } else {
         return snprintf(text, size, "%c%u\016\016%%\017", colour, currentTimerMinutes * 100 / settingsGetPointer()->scrubberData[settings->scubberActiveId].TimerMax);
     }
+}
+void t3_handleAutofocus(void)
+{
+	static uint8_t returnView = CVIEW_T3_END;
+
+	if(stateUsed->diveSettings.activeAFViews & (1 << CVIEW_T3_Navigation))
+	{
+		switch(HandleAFCompass())
+		{
+			case AF_VIEW_ACTIVATED:	returnView = t3_selection_customview;
+									t3_select_customview(CVIEW_T3_Navigation);
+
+				break;
+			case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == CVIEW_T3_Navigation))
+										{
+											t3_select_customview(returnView);
+											returnView = CVIEW_T3_END;
+										}
+				break;
+			default:
+				break;
+		}
+	}
 }
