@@ -537,6 +537,9 @@ char customviewBF_TXT2BYTE_helper(uint8_t customViewId)
         text = TXT2BYTE_Profile;
         break;
 #endif
+    case CVIEW_T3_Temperature:
+    	text = TXT2BYTE_AmbientTemperature;
+    	break;
     case CVIEW_T3_GasList:
         text = TXT2BYTE_Gaslist;
         break;
@@ -866,6 +869,12 @@ void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
 	uint32_t id;
 
     uint8_t i;
+    uint8_t endID = CVIEW_END;
+
+    if(pcv_changelist == cv_changelist_BS)
+    {
+    	endID = CVIEW_T3_END;
+    }
 
     resetMenuEdit(CLUT_MenuPageCustomView);
 	customviewsSubpageMax = (tHome_getNumberOfAvailableCVs(pcv_changelist) / CV_PER_PAGE) + 1;
@@ -882,7 +891,7 @@ void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
      {
     	textPointer = 0;
      	id = pcv_changelist[customviewsSubpage * 5 + i];
-     	if((id == CVIEW_END) || (id == CVIEW_T3_END))	/* last list item? */
+     	if(id == endID) /* last list item? */
      	{
      		break;
      	}
@@ -947,7 +956,7 @@ void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
      for(i=0; i<5;i++)		/* fill maximum 5 items and leave last one for sub page selection */
      {
      	id = pcv_changelist[customviewsSubpage * 5 + i];
-     	if((id == CVIEW_END) || (id == CVIEW_T3_END))	/* last list item? */
+     	if(id == endID)		/* last list item? */
      	{
      		break;
      	}
@@ -1033,6 +1042,12 @@ void CustomviewDivemode_refresh()
 	uint32_t id;
 
     uint8_t i;
+    uint8_t endID = CVIEW_END;
+
+    if(pcv_curchangelist == cv_changelist_BS)
+    {
+    	endID = CVIEW_T3_END;
+    }
 
     text[textPointer++] = '\001';
     text[textPointer++] = TXT_2BYTE;
@@ -1047,7 +1062,7 @@ void CustomviewDivemode_refresh()
      {
     	textPointer = 0;
      	id = pcv_curchangelist[customviewsSubpage * 5 + i];
-     	if((id == CVIEW_END) || (id == CVIEW_T3_END))	/* last list item? */
+     	if(id == endID)	/* last list item? */
      	{
      		break;
      	}
