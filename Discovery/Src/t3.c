@@ -66,27 +66,6 @@ uint8_t t3_selection_customview = CVIEW_noneOrDebug;
 
 /* Private types -------------------------------------------------------------*/
 #define TEXTSIZE 16
-#define NUMBER_OF_VIEWS 7	/* number of views defined in the array below */
-
-const uint8_t t3_customviewsStandard[] =
-{
-    CVIEW_T3_Decostop,
-    CVIEW_sensors,
-    CVIEW_Compass,
-    CVIEW_T3_MaxDepth,
-    CVIEW_T3_StopWatch,
-    CVIEW_T3_TTS,
-    CVIEW_T3_ppO2andGas,
-	CVIEW_T3_GasList,
-	CVIEW_T3_Navigation,
-	CVIEW_T3_DepthData,
-	CVIEW_noneOrDebug,
-	CVIEW_T3_DecoTTS,
-#ifdef ENABLE_T3_PROFILE_VIEW
-	CVIEW_T3_Profile,
-#endif
-    CVIEW_T3_END
-};
 
 /* Private function prototypes -----------------------------------------------*/
 void t3_refresh_divemode(void);
@@ -102,7 +81,7 @@ void t3_init(void)
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
 
-    t3_selection_customview = t3_customviewsStandard[0];
+    t3_selection_customview = cv_changelist_BS[0];
 
     t3screen.FBStartAdress = 0;
     t3screen.ImageHeight = 480;
@@ -903,7 +882,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
 
 void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXc1, GFX_DrawCfgWindow* tXc2, uint8_t mode)
 {
-	static uint8_t last_customview = CVIEW_END;
+	static uint8_t last_customview = CVIEW_T3_END;
 
     char text[30];
     uint16_t textpointer = 0;
@@ -972,7 +951,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
     {
     	heading = (uint16_t)stateUsed->lifeData.compass_heading;
     }
-	if(last_customview != tX_selection_customview)		/* check if current selection is disabled and should be skipped */
+	if((last_customview != tX_selection_customview)	&& (settingsGetPointer()->design == 3))	/* check if current selection is disabled and should be skipped */
 	{
 		if(t3_customview_disabled(tX_selection_customview))
 		{
@@ -1256,7 +1235,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         }
         break;
 
-    case CVIEW_sensors:
+    case CVIEW_T3_sensors:
         snprintf(text,TEXTSIZE,"\032\f%c%c",TXT_2BYTE,TXT2BYTE_O2monitor);
         GFX_write_string(&FontT42,tXc1,text,0);
 
@@ -1676,7 +1655,7 @@ uint8_t t3_customview_disabled(uint8_t view)
          i++;
     }
 
-    if (((view == CVIEW_sensors) || (view == CVIEW_sensors_mV)) &&
+    if ((view == CVIEW_T3_sensors) &&
        	((stateUsed->diveSettings.ppo2sensors_deactivated == 0x07) || (stateUsed->diveSettings.ccrOption == 0) || stateUsed->warnings.fallback))
     {
       	cv_disabled = 1;
@@ -1688,7 +1667,7 @@ uint8_t t3_customview_disabled(uint8_t view)
 uint8_t t3_change_customview(uint8_t action)
 {
 
-    t3_basics_change_customview(&t3_selection_customview, t3_customviewsStandard, action);
+    t3_basics_change_customview(&t3_selection_customview, cv_changelist_BS, action);
     return t3_selection_customview;
 }
 
@@ -1709,6 +1688,7 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     	if (tX_customviews[index] == *tX_selection_customview)
     	{
     		curViewIdx = index;
+    		break;
     	}
     	index++;
     }
@@ -1752,7 +1732,7 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     			break;
 		}
 
-		if(t3_customview_disabled(tX_customviews[index]))
+		if((tX_customviews == cv_changelist_BS) && (t3_customview_disabled(tX_customviews[index])))
 		{
 			iterate = 1;
 			if(*tX_selection_customview == tX_customviews[index])
@@ -1952,7 +1932,7 @@ uint8_t t3_GetEnabled_customviews()
 	uint8_t increment = 1;
     uint8_t enabledViewCnt = 0;
 
-    pViews = (uint8_t*)t3_customviewsStandard;
+    pViews = (uint8_t*)cv_changelist_BS;
     while((*pViews != CVIEW_T3_END))
     {
     	increment = 1;

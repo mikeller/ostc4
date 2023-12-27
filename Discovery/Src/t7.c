@@ -120,22 +120,6 @@ SBackground background =
 
 
 /* Private types -------------------------------------------------------------*/
-const uint8_t customviewsDiveStandard[] =
-{
-    CVIEW_sensors,
-    CVIEW_Compass,
-    CVIEW_Decolist,
-    CVIEW_Tissues,
-    CVIEW_Profile,
-    CVIEW_Gaslist,
-    CVIEW_sensors_mV,
-    CVIEW_EADTime,
-    CVIEW_SummaryOfLeftCorner,
-    CVIEW_Timer,
-    CVIEW_noneOrDebug,
-    CVIEW_END,
-    CVIEW_END
-};
 
 const uint8_t customviewsSurfaceStandard[] =
 {
@@ -155,7 +139,7 @@ const uint8_t customviewsSurfaceStandard[] =
 
 static uint8_t selection_custom_field = LLC_Temperature;
 
-const uint8_t *customviewsDive		= customviewsDiveStandard;
+const uint8_t *customviewsDive		= cv_changelist;
 const uint8_t *customviewsSurface	= customviewsSurfaceStandard;
 
 #define TEXTSIZE 30
@@ -580,42 +564,7 @@ void t7_refresh(void)
 
     if(stateUsed->mode == MODE_DIVE)
     {
-        if(last_mode != MODE_DIVE)
-        {
-            last_mode = MODE_DIVE;
-            /* lower left corner primary */
-            selection_custom_field = settingsGetPointer()->tX_userselectedLeftLowerCornerPrimary;
-            /* custom view primary OR debug if automatic return is off | T7 is default dive view => also initialize big font view */
-            if((settingsGetPointer()->tX_customViewTimeout == 0) && (settingsGetPointer()->showDebugInfo))
-            {
-            	selection_customview = CVIEW_noneOrDebug;
-            	t3_select_customview(CVIEW_noneOrDebug);
-            }
-            else
-            {
-                selection_customview = settingsGetPointer()->tX_customViewPrimary;
-                t3_set_customview_to_primary();
-            }
-            t7_change_customview(ACTION_END);
-
-            if((settingsGetPointer()->MotionDetection != MOTION_DETECT_OFF))
-            {
-            	InitMotionDetection();
-            }
-
-            if(settingsGetPointer()->extraDisplay == EXTRADISPLAY_BFACTIVE)
-            {
-                settingsGetPointer()->design = 3;
-                releaseAllFramesExcept(22,t7screen.FBStartAdress);
-                releaseFrame(22,t7screen.FBStartAdress);
-                set_globalState(StD);
-                return;
-            }
-        }
-
-        if(status.page == PageSurface)
-            set_globalState(StD);
-
+    	/* T7 refresh is usally called at start of dive. Based on divesettings the design will be changed and T7 no longer called */
         if(stateUsed->diveSettings.diveMode == DIVEMODE_Gauge)
         {
             settingsGetPointer()->design = 5;
@@ -632,8 +581,44 @@ void t7_refresh(void)
         }
         else
         {
-            t7_refresh_divemode();
-        }
+			if(last_mode != MODE_DIVE)
+			{
+				last_mode = MODE_DIVE;
+				/* lower left corner primary */
+				selection_custom_field = settingsGetPointer()->tX_userselectedLeftLowerCornerPrimary;
+				/* custom view primary OR debug if automatic return is off | T7 is default dive view => also initialize big font view */
+				if((settingsGetPointer()->tX_customViewTimeout == 0) && (settingsGetPointer()->showDebugInfo))
+				{
+					selection_customview = CVIEW_noneOrDebug;
+					t3_select_customview(CVIEW_noneOrDebug);
+				}
+				else
+				{
+					selection_customview = settingsGetPointer()->tX_customViewPrimary;
+				}
+				t7_change_customview(ACTION_END);
+
+				if((settingsGetPointer()->MotionDetection != MOTION_DETECT_OFF))
+				{
+					InitMotionDetection();
+				}
+
+				if((settingsGetPointer()->extraDisplay == EXTRADISPLAY_BFACTIVE) && ( settingsGetPointer()->design == 7))
+				{
+					settingsGetPointer()->design = 3;
+					t3_set_customview_to_primary();
+					releaseAllFramesExcept(22,t7screen.FBStartAdress);
+					releaseFrame(22,t7screen.FBStartAdress);
+					set_globalState(StD);
+					return;
+				}
+			}
+
+			if(status.page == PageSurface)
+				set_globalState(StD);
+
+			t7_refresh_divemode();
+       }
     }
     else // from if(stateUsed->mode == MODE_DIVE)
     {

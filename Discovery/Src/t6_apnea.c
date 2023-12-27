@@ -46,7 +46,7 @@ GFX_DrawCfgWindow	t6c1;
 GFX_DrawCfgWindow	t6c2;
 GFX_DrawCfgWindow	t6c3; // for menu text
 
-uint8_t t6_selection_customview = 0;
+uint8_t t6_selection_customview = CVIEW_T3_noneOrDebug;
 
 /* Imported function prototypes ---------------------------------------------*/
 
@@ -61,7 +61,7 @@ uint8_t t6_selection_customview = 0;
 
 const uint8_t t6_customviewsStandard[] =
 {
-    CVIEW_noneOrDebug,
+	CVIEW_T3_noneOrDebug,
     CVIEW_T3_Temperature,
     CVIEW_T3_END
 };
