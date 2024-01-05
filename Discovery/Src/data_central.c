@@ -383,6 +383,10 @@ void createDiveSettings(void)
 	{
 		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_Navigation);
 	}
+	if(t3_customview_disabled(CVIEW_T3_GasList) == 0)
+	{
+		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_GasList);
+	}
 }
 
 

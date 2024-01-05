@@ -233,6 +233,10 @@ void tHomeDiveMenuControl(uint8_t sendAction)
             								{
                         						set_globalState(StDMGAS);
             								}
+            								else
+            								{
+            									set_globalState(StDMENU);
+            								}
             			break;
 #ifdef ENABLE_T3_PPO_SIM
             		case CVIEW_sensors:		if(is_stateUsedSetToSim())

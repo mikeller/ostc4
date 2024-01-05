@@ -1968,6 +1968,51 @@ int printScrubberText(char *text, size_t size, SSettings *settings)
         return snprintf(text, size, "%c%u\016\016%%\017", colour, currentTimerMinutes * 100 / settingsGetPointer()->scrubberData[settings->scubberActiveId].TimerMax);
     }
 }
+
+uint8_t t3_HandleAFGaslist()
+{
+	static uint8_t debounce = 0;
+	static uint8_t lastState = AF_VIEW_NOCHANGE;
+	uint8_t detectionState = AF_VIEW_NOCHANGE;
+
+	if((stateUsed->warnings.betterGas) /* switch if better gas is available or depending on ppo2 if in OC mode */
+			|| ((stateUsed->diveSettings.diveMode == DIVEMODE_OC) && ((stateUsed->warnings.ppO2Low) || (stateUsed->warnings.ppO2High))))
+	{
+		if(debounce < 10)
+		{
+			debounce++;
+		}
+		else
+		{
+			detectionState = AF_VIEW_ACTIVATED;
+		}
+	}
+	else
+	{
+		if(debounce > 0)
+		{
+			debounce--;
+		}
+		else
+		{
+			detectionState = AF_VIEW_DEACTIVATED;
+		}
+	}
+	if(detectionState)	/* no state change => return 0 */
+	{
+		if((detectionState == lastState))
+		{
+			detectionState = AF_VIEW_NOCHANGE;
+		}
+		else
+		{
+			lastState = detectionState;
+		}
+	}
+
+	return detectionState;
+}
+
 void t3_handleAutofocus(void)
 {
 	static uint8_t returnView = CVIEW_T3_END;
@@ -1981,6 +2026,24 @@ void t3_handleAutofocus(void)
 
 				break;
 			case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == CVIEW_T3_Navigation))
+										{
+											t3_select_customview(returnView);
+											returnView = CVIEW_T3_END;
+										}
+				break;
+			default:
+				break;
+		}
+	}
+	if(stateUsed->diveSettings.activeAFViews & (1 << CVIEW_T3_GasList))
+	{
+		switch(t3_HandleAFGaslist())
+		{
+			case AF_VIEW_ACTIVATED:	returnView = t3_selection_customview;
+									t3_select_customview(CVIEW_T3_GasList);
+
+				break;
+			case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == CVIEW_T3_GasList))
 										{
 											t3_select_customview(returnView);
 											returnView = CVIEW_T3_END;
