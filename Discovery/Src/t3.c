@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "t3.h"
 
@@ -62,10 +63,19 @@ GFX_DrawCfgWindow	t3c2;
 
 uint8_t t3_selection_customview = CVIEW_noneOrDebug;
 
+static uint8_t AF_lastDecoDepth = 0;
+static uint16_t AF_lastTTS = 0;
+
+
 /* TEM HAS TO MOVE TO GLOBAL--------------------------------------------------*/
 
 /* Private types -------------------------------------------------------------*/
 #define TEXTSIZE 16
+
+/* defines for autofocus of compass */
+#define AF_COMPASS_ACTIVATION_ANGLE	(10.0f)	/* angle for pitch and roll. Compass gets activated in case the value is smaller (OSTC4 hold in horitontal position */
+#define AF_COMPASS_DEBOUNCE			(10u)	/* debouncing value to avoid compass activation during normal movement */
+
 
 /* Private function prototypes -----------------------------------------------*/
 void t3_refresh_divemode(void);
@@ -73,6 +83,7 @@ void t3_refresh_divemode(void);
 uint8_t t3_test_customview_warnings(void);
 void t3_refresh_customview(float depth);
 void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t ActualHeading, uint16_t UserSetHeading);
+uint8_t t3_EvaluateAFCondition(uint8_t T3CView);
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -152,6 +163,8 @@ void t3_init(void)
     t3c2.WindowY0 = t3c1.WindowY0;
     t3c2.WindowY1 = t3c1.WindowY1;
     t3c2.WindowTab = 600;
+
+    t3_EvaluateAFCondition(CVIEW_T3_END);		/* reset debounce counters */
 }
 
 void t3_select_customview(uint8_t selectedCustomview)
@@ -1969,47 +1982,111 @@ int printScrubberText(char *text, size_t size, SSettings *settings)
     }
 }
 
-uint8_t t3_HandleAFGaslist()
+void t3_AF_updateBorderConditions()
 {
-	static uint8_t debounce = 0;
-	static uint8_t lastState = AF_VIEW_NOCHANGE;
+	uint16_t 	nextstopLengthSeconds = 0;
+	uint8_t 	nextstopDepthMeter = 0;
+
+	tHome_findNextStop(getDecoInfo()->output_stop_length_seconds, &nextstopDepthMeter, &nextstopLengthSeconds);
+	AF_lastDecoDepth = nextstopDepthMeter;
+	AF_lastTTS = (getDecoInfo()->output_time_to_surface_seconds / 60) / 10;
+}
+
+uint8_t t3_CheckAfCondition(uint8_t T3CView)
+{
+	uint8_t retVal = 0;
+
+	float pitch = stateRealGetPointer()->lifeData.compass_pitch;
+	float roll = stateRealGetPointer()->lifeData.compass_roll;
+
+    uint16_t 	nextstopLengthSeconds = 0;
+    uint8_t 	nextstopDepthMeter = 0;
+
+	switch (T3CView)
+	{
+		case  CVIEW_T3_GasList: retVal = (stateUsed->warnings.betterGas) /* switch if better gas is available or depending on ppo2 if in OC mode */
+										|| ((stateUsed->diveSettings.diveMode == DIVEMODE_OC) && ((stateUsed->warnings.ppO2Low) || (stateUsed->warnings.ppO2High)));
+
+			break;
+		case CVIEW_T3_Navigation: retVal = (pitch > -AF_COMPASS_ACTIVATION_ANGLE) && (pitch < AF_COMPASS_ACTIVATION_ANGLE)
+											&& (roll > -AF_COMPASS_ACTIVATION_ANGLE) && (roll < AF_COMPASS_ACTIVATION_ANGLE);
+
+			break;
+		case CVIEW_T3_DecoTTS:		tHome_findNextStop(getDecoInfo()->output_stop_length_seconds, &nextstopDepthMeter, &nextstopLengthSeconds);
+								/* A new deco step is added to the plan */
+									if(nextstopDepthMeter > AF_lastDecoDepth)
+									{
+										retVal = 1;
+									}
+
+								/* Close to the next deco step or missed deco step */
+									if((abs(stateUsed->lifeData.depth_meter - nextstopDepthMeter) < 2) || (stateUsed->warnings.decoMissed))
+									{
+										retVal = 1;
+									}
+								/* Another 10 minutes to surface */
+									if((getDecoInfo()->output_time_to_surface_seconds) && ((uint16_t)((getDecoInfo()->output_time_to_surface_seconds / 60) / 10) > AF_lastTTS))
+									{
+										retVal = 1;
+									}
+			break;
+		default: break;
+	}
+
+	return retVal;
+}
+
+uint8_t t3_EvaluateAFCondition(uint8_t T3CView)
+{
+	static uint8_t debounce[CVIEW_T3_END];
+	static uint8_t lastState[CVIEW_T3_END];
 	uint8_t detectionState = AF_VIEW_NOCHANGE;
+	uint8_t cnt = 0;
 
-	if((stateUsed->warnings.betterGas) /* switch if better gas is available or depending on ppo2 if in OC mode */
-			|| ((stateUsed->diveSettings.diveMode == DIVEMODE_OC) && ((stateUsed->warnings.ppO2Low) || (stateUsed->warnings.ppO2High))))
+	if(T3CView <= CVIEW_T3_END)
 	{
-		if(debounce < 10)
+		if(T3CView == CVIEW_T3_END)
 		{
-			debounce++;
+			for(cnt = 0; cnt < CVIEW_T3_END; cnt++)
+			{
+				debounce[cnt] = 0;
+				lastState[cnt] = AF_VIEW_NOCHANGE;
+			}
+		}
+		if(t3_CheckAfCondition(T3CView))
+		{
+			if(debounce[T3CView] < 10)
+			{
+				debounce[T3CView]++;
+			}
+			else
+			{
+				detectionState = AF_VIEW_ACTIVATED;
+			}
 		}
 		else
 		{
-			detectionState = AF_VIEW_ACTIVATED;
+			if(debounce[T3CView] > 0)
+			{
+				debounce[T3CView]--;
+			}
+			else
+			{
+				detectionState = AF_VIEW_DEACTIVATED;
+			}
+		}
+		if(detectionState)	/* no state change => return 0 */
+		{
+			if((detectionState == lastState[T3CView]))
+			{
+				detectionState = AF_VIEW_NOCHANGE;
+			}
+			else
+			{
+				lastState[T3CView] = detectionState;
+			}
 		}
 	}
-	else
-	{
-		if(debounce > 0)
-		{
-			debounce--;
-		}
-		else
-		{
-			detectionState = AF_VIEW_DEACTIVATED;
-		}
-	}
-	if(detectionState)	/* no state change => return 0 */
-	{
-		if((detectionState == lastState))
-		{
-			detectionState = AF_VIEW_NOCHANGE;
-		}
-		else
-		{
-			lastState = detectionState;
-		}
-	}
-
 	return detectionState;
 }
 
@@ -2017,40 +2094,30 @@ void t3_handleAutofocus(void)
 {
 	static uint8_t returnView = CVIEW_T3_END;
 
-	if(stateUsed->diveSettings.activeAFViews & (1 << CVIEW_T3_Navigation))
-	{
-		switch(HandleAFCompass())
-		{
-			case AF_VIEW_ACTIVATED:	returnView = t3_selection_customview;
-									t3_select_customview(CVIEW_T3_Navigation);
+	uint8_t runningT3CView = 0;
 
-				break;
-			case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == CVIEW_T3_Navigation))
-										{
-											t3_select_customview(returnView);
-											returnView = CVIEW_T3_END;
-										}
-				break;
-			default:
-				break;
-		}
-	}
-	if(stateUsed->diveSettings.activeAFViews & (1 << CVIEW_T3_GasList))
+	for (runningT3CView = 0; runningT3CView < CVIEW_T3_END; runningT3CView++)
 	{
-		switch(t3_HandleAFGaslist())
+		if(stateUsed->diveSettings.activeAFViews & (1 << runningT3CView))
 		{
-			case AF_VIEW_ACTIVATED:	returnView = t3_selection_customview;
-									t3_select_customview(CVIEW_T3_GasList);
-
-				break;
-			case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == CVIEW_T3_GasList))
-										{
-											t3_select_customview(returnView);
-											returnView = CVIEW_T3_END;
-										}
-				break;
-			default:
-				break;
+			switch(t3_EvaluateAFCondition(runningT3CView))
+			{
+				case AF_VIEW_ACTIVATED:	returnView = t3_selection_customview;
+										t3_select_customview(runningT3CView);
+										t3_AF_updateBorderConditions();
+					break;
+				case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == runningT3CView))
+											{
+												if(runningT3CView != CVIEW_T3_DecoTTS)	/* some view does not switch back */
+												{
+													t3_select_customview(returnView);
+												}
+												returnView = CVIEW_T3_END;
+											}
+							break;
+						default:
+							break;
+			}
 		}
 	}
 }
