@@ -368,18 +368,18 @@ void externalInterface_SwitchUART(uint8_t protocol)
 {
 	switch(protocol)
 	{
-		case 0:
-		case (EXT_INTERFACE_UART_CO2 >> 8):
-		case (EXT_INTERFACE_UART_O2 >> 8):
-		case (EXT_INTERFACE_UART_SENTINEL >> 8):
+		case EXT_INTERFACE_UART_OFF:
+		case EXT_INTERFACE_UART_CO2:
+		case EXT_INTERFACE_UART_O2:
+		case EXT_INTERFACE_UART_SENTINEL:
 				if((externalAutoDetect <= DETECTION_START)
-					|| ((protocol == EXT_INTERFACE_UART_O2 >> 8) && (externalAutoDetect >= DETECTION_UARTMUX) && (externalAutoDetect <= DETECTION_DIGO2_3))
+					|| ((protocol == EXT_INTERFACE_UART_O2) && (externalAutoDetect >= DETECTION_UARTMUX) && (externalAutoDetect <= DETECTION_DIGO2_3))
 
 #ifdef ENABLE_CO2_SUPPORT
 					|| ((externalAutoDetect >= DETECTION_CO2_0) && (externalAutoDetect <= DETECTION_CO2_3))
 #endif
 #ifdef ENABLE_SENTINEL_MODE
-														   || ((protocol == EXT_INTERFACE_UART_SENTINEL >> 8) && (externalAutoDetect == DETECTION_SENTINEL))
+														   || ((protocol == EXT_INTERFACE_UART_SENTINEL) && (externalAutoDetect == DETECTION_SENTINEL))
 #endif
 					)
 				{
@@ -651,7 +651,7 @@ void externalInterface_AutodetectSensor()
 									if(externalInterfacePresent)
 									{
 										externalInterface_SwitchPower33(0);
-										externalInterface_SwitchUART(0);
+										externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 										for(index = 0; index < MAX_ADC_CHANNEL; index++)
 										{
 											externalChannel_mV[index] = 0;
@@ -686,7 +686,7 @@ void externalInterface_AutodetectSensor()
 									}
 									externalInterfaceMuxReqIntervall = 1100;
 									externalAutoDetect = DETECTION_UARTMUX;
-									externalInterface_SwitchUART(EXT_INTERFACE_UART_O2 >> 8);
+									externalInterface_SwitchUART(EXT_INTERFACE_UART_O2);
 									UART_MUX_SelectAddress(MAX_MUX_CHANNEL);
 									uartO2_SetChannel(MAX_MUX_CHANNEL);
 									activeUartChannel = MAX_MUX_CHANNEL;
@@ -707,7 +707,7 @@ void externalInterface_AutodetectSensor()
 										activeUartChannel = 0;
 										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_DIGO2;
 										externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
-										externalInterface_SwitchUART(EXT_INTERFACE_UART_O2 >> 8);
+										externalInterface_SwitchUART(EXT_INTERFACE_UART_O2);
 										if(foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)
 										{
 											UART_MUX_SelectAddress(0);
@@ -724,7 +724,7 @@ void externalInterface_AutodetectSensor()
 									tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_NONE;
 									if(uartMuxChannel)
 									{
-										externalInterface_SwitchUART(EXT_INTERFACE_UART_O2 >> 8);
+										externalInterface_SwitchUART(EXT_INTERFACE_UART_O2);
 										UART_MUX_SelectAddress(uartMuxChannel);
 										externalInterface_SensorState[uartMuxChannel + EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
 										uartO2_SetChannel(uartMuxChannel);
@@ -795,7 +795,7 @@ void externalInterface_AutodetectSensor()
 #ifdef ENABLE_SENTINEL_MODE
 									if(externalAutoDetect == DETECTION_SENTINEL)
 									{
-										externalInterface_SwitchUART(EXT_INTERFACE_UART_SENTINEL >> 8);
+										externalInterface_SwitchUART(EXT_INTERFACE_UART_SENTINEL);
 										UART_StartDMA_Receiption();
 									}
 				break;
@@ -814,7 +814,7 @@ void externalInterface_AutodetectSensor()
 #endif
 				break;
 			case DETECTION_DONE:	externalAutoDetect = DETECTION_OFF;
-									externalInterface_SwitchUART(0);
+									externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 									activeUartChannel = 0xFF;
 									cntSensor = 0;
 									cntUARTSensor = 0;
@@ -1077,7 +1077,7 @@ void externalInterface_HandleUART()
 
 #if 0
 #ifdef ENABLE_SENTINEL_MODE
-		if(externalInterface_GetUARTProtocol() & (EXT_INTERFACE_UART_SENTINEL >> 8))
+		if(externalInterface_GetUARTProtocol() & (EXT_INTERFACE_UART_SENTINEL))
 		{
 			UART_HandleSentinelData();
 		}

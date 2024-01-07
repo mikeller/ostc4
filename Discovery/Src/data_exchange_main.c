@@ -423,13 +423,9 @@ void DateEx_copy_to_dataOut(void)
 	{
 		externalInterface_Cmd |= EXT_INTERFACE_ADC_ON | EXT_INTERFACE_33V_ON;
 	}
-	if(SensorActive[SENSOR_DIGO2])
+	if((SensorActive[SENSOR_DIGO2]) || (SensorActive[SENSOR_CO2]))
 	{
-		externalInterface_Cmd |= EXT_INTERFACE_33V_ON | EXT_INTERFACE_UART_O2;
-	}
-	else if(SensorActive[SENSOR_CO2])		/* TODO: at the moment only one serial sensor is supported => else condition. to be changed once multiplexing is available */
-	{
-		externalInterface_Cmd |= EXT_INTERFACE_33V_ON | EXT_INTERFACE_UART_CO2;		/* CO2 sensor has to be activated via auto detection */
+		externalInterface_Cmd |= EXT_INTERFACE_33V_ON;
 	}
 
 #ifdef ENABLE_SENTINEL_MODE

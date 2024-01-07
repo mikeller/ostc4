@@ -43,6 +43,16 @@
 #define COMMON_SENSOR_STATE_INIT	(0x0u)	/* All individual state definitions shall start with a INIT state = 0 */
 #define COMMON_SENSOR_STATE_INVALID (0xFFu) /* All individual state definitions shall not use 0xFF for operation control */
 
+
+enum									/* Definitions for supported UART protocols */
+{
+	EXT_INTERFACE_UART_OFF	= 0,
+	EXT_INTERFACE_UART_CO2,
+	EXT_INTERFACE_UART_SENTINEL,
+	EXT_INTERFACE_UART_O2
+};
+
+
  typedef enum
  {
     DETECTION_OFF = 0,		/* no detection requested */

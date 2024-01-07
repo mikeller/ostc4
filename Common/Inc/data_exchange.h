@@ -38,10 +38,6 @@
 /* 4th nibble command channel */
 #define EXT_INTERFACE_33V_ON		(0x8000u)	/* Bit set to enable 3.3V power interface */
 #define EXT_INTERFACE_ADC_ON		(0x4000u)	/* Bit set to enable ADC conversion */
-#define EXT_INTERFACE_UART_MASK 	(0x0700u)   /* Reserve 3 bits for UART protocol selection */
-#define EXT_INTERFACE_UART_CO2  	(0x0100u)	/* Activate protocol for CO2 sensor */
-#define EXT_INTERFACE_UART_SENTINEL (0x0200u)	/* Activate Sentinel Backup monitor protocol */
-#define EXT_INTERFACE_UART_O2		(0x0400u)	/* Activate digital o2 sensor protocol (DiveO2) */
 
 /* Command subset */
 #define EXT_INTERFACE_AUTODETECT 	(0x0001u)	/* Start auto detection of connected sensors	*/

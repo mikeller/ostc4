@@ -494,7 +494,7 @@ int main(void) {
 			 */
 
 			EXTI_Test_Button_DeInit();
-			externalInterface_SwitchUART(0);
+			externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 			externalInterface_SwitchPower33(false);
 			if (hasExternalClock())
 				SystemClock_Config_HSI();
