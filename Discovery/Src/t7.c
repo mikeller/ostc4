@@ -3212,6 +3212,14 @@ void t7_change_field(void)
     	selection_custom_field++;
     }
 #endif
+#ifdef ENABLE_CO2_SUPPORT
+    if((selection_custom_field == LCC_CO2) && (settingsGetPointer()->co2_sensor_active == 0))
+    {
+       	selection_custom_field++;
+    }
+
+#endif
+
     if(selection_custom_field >= LLC_END)
     {
         selection_custom_field = LLC_Empty;
