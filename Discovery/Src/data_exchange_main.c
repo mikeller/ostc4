@@ -431,7 +431,7 @@ void DateEx_copy_to_dataOut(void)
 #ifdef ENABLE_SENTINEL_MODE
 	if(SensorActive[SENSOR_SENTINEL])
 	{
-			externalInterface_Cmd |= EXT_INTERFACE_33V_ON | EXT_INTERFACE_UART_SENTINEL;
+			externalInterface_Cmd |= EXT_INTERFACE_33V_ON;
 			externalInterface_Cmd &= (~EXT_INTERFACE_ADC_ON);
 	}
 #endif

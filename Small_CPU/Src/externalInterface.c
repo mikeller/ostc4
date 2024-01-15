@@ -34,6 +34,7 @@
 #include "pressure.h"
 #include "uartProtocol_O2.h"
 #include "uartProtocol_Co2.h"
+#include "uartProtocol_Sentinel.h"
 
 extern SGlobal global;
 extern UART_HandleTypeDef huart1;
@@ -599,6 +600,16 @@ void externalInface_MapUartToLegacyADC(uint8_t* pMap)
 			}
 		}
 	}
+#ifdef ENABLE_SENTINEL_MODE
+	if(pMap[EXT_INTERFACE_MUX_OFFSET] == SENSOR_SENTINEL)
+	{
+		for(index2 = 0; index2 < MAX_ADC_CHANNEL; index2++)
+		{
+				pMap[index2] = SENSOR_SENTINELM;		/* store a mirror instance needed for visualization */
+				Mux2ADCMap[index2] = index2 + EXT_INTERFACE_MUX_OFFSET;
+		}
+	}
+#endif
 }
 
 uint8_t* externalInterface_GetSensorMapPointer(uint8_t finalMap)
@@ -789,26 +800,34 @@ void externalInterface_AutodetectSensor()
 									}
 									else
 									{
+#ifdef ENABLE_SENTINEL_MODE
+										externalAutoDetect = DETECTION_SENTINEL;
+#else
 										externalAutoDetect = DETECTION_DONE;
+#endif
 									}
 #endif
 #ifdef ENABLE_SENTINEL_MODE
 									if(externalAutoDetect == DETECTION_SENTINEL)
 									{
+										externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
+										uartO2_SetChannel(0);
+										activeUartChannel = 0;
+										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_SENTINEL;
 										externalInterface_SwitchUART(EXT_INTERFACE_UART_SENTINEL);
+										externalInterface_CheckBaudrate(SENSOR_SENTINEL);
 										UART_StartDMA_Receiption();
 									}
 				break;
 
 			case DETECTION_SENTINEL:
 			case DETECTION_SENTINEL2:
-									if(UART_isSentinelConnected())
+									if(uartSentinel_isSensorConnected())
 									{
-										for(index = 0; index < 3; index++)	/* Sentinel is occupiing all sensor slots */
+										for(index = EXT_INTERFACE_MUX_OFFSET; index < EXT_INTERFACE_MUX_OFFSET+3; index++)
 										{
-											tmpSensorMap[index] = SENSOR_SENTINEL;
+											foundSensorMap[index] = SENSOR_SENTINEL;
 										}
-										sensorIndex = 3;
 									}
 									externalAutoDetect++;
 #endif
@@ -829,6 +848,14 @@ void externalInterface_AutodetectSensor()
 										{
 											cntUARTSensor++;
 										}
+#ifdef ENABLE_SENTINEL_MODE
+										if(foundSensorMap[index] == SENSOR_SENTINEL)		/* The Sentinel has a fixed setup */
+										{
+											cntSensor = 3;
+											cntUARTSensor = 1;
+											break;
+										}
+#endif
 									}
 									externalInface_MapUartToLegacyADC(foundSensorMap);
 									externalInterfaceMuxReqIntervall = 0xFFFF;
@@ -941,6 +968,7 @@ void externalInterface_CheckBaudrate(uint8_t sensorType)
 
 	switch(sensorType)
 	{
+			case SENSOR_SENTINEL:
 			case SENSOR_CO2:		newBaudrate = 9600;
 				break;
 			case SENSOR_DIGO2:
@@ -976,6 +1004,8 @@ void externalInterface_HandleUART()
 
 			switch(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET])
 			{
+				case SENSOR_SENTINEL: externalInterface_CheckBaudrate(SENSOR_SENTINEL);
+					break;
 				case SENSOR_CO2: externalInterface_CheckBaudrate(SENSOR_CO2);
 					break;
 				default:
@@ -1066,6 +1096,10 @@ void externalInterface_HandleUART()
 #ifdef ENABLE_CO2_SUPPORT
 				case SENSOR_CO2:	uartCo2_Control();
 					break;
+#endif
+#ifdef ENABLE_SENTINEL_MODE
+				case SENSOR_SENTINEL: uartSentinel_Control();
+				break;
 #endif
 				default:
 					break;

@@ -419,7 +419,8 @@ void refresh_O2Sensors(void)
 					case SENSOR_CO2M:	pSettings->co2_sensor_active = 1;
 						break;
 #ifdef ENABLE_SENTINEL_MODE
-					case SENSOR_SENTINEL:	pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_SENTINEL;
+					case SENSOR_SENTINEL:
+					case SENSOR_SENTINELM:	pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_SENTINEL;
 									break;
 #endif
 					default:
@@ -465,7 +466,8 @@ void refresh_O2Sensors(void)
 				case SENSOR_CO2M: strSensorId[3] = 'C';
 								 strSensorId[4] = 'O';
 								break;
-				case SENSOR_SENTINEL: strSensorId[3] = 'S';
+				case SENSOR_SENTINEL:
+				case SENSOR_SENTINELM: strSensorId[3] = 'S';
 				 	 	 	 	 	  strSensorId[4] = 'e';
 				 	 	 	 	break;
 				default:

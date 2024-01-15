@@ -43,24 +43,24 @@
 
   typedef enum
   {
-  	RX_Ready= 0,					/* Initial state */
- 	RX_DetectStart,					/* validate start byte */
- 	RX_SelectData,					/* Data contained in this frame */
-  	RX_Data0,						/* Process incoming data */
- 	RX_Data1,
- 	RX_Data2,
- 	RX_Data3,
- 	RX_Data4,
- 	RX_Data5,
- 	RX_Data6,
- 	RX_Data7,
- 	RX_Data8,
- 	RX_Data9,
- 	RX_Data10,
- 	RX_Data11,
- 	RX_Data12,
- 	RX_DataComplete
-  } receiveState_t;
+  	CO2RX_Ready= 0,					/* Initial state */
+ 	CO2RX_DetectStart,					/* validate start byte */
+ 	CO2RX_SelectData,					/* Data contained in this frame */
+  	CO2RX_Data0,						/* Process incoming data */
+ 	CO2RX_Data1,
+ 	CO2RX_Data2,
+ 	CO2RX_Data3,
+ 	CO2RX_Data4,
+ 	CO2RX_Data5,
+ 	CO2RX_Data6,
+ 	CO2RX_Data7,
+ 	CO2RX_Data8,
+ 	CO2RX_Data9,
+ 	CO2RX_Data10,
+ 	CO2RX_Data11,
+ 	CO2RX_Data12,
+ 	CO2RX_DataComplete
+  } receiveStateCO2_t;
 
 
  typedef enum
