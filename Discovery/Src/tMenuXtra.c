@@ -190,16 +190,33 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
         }
 
 #ifdef ENABLE_PSCR_MODE
-        if(pSettings->dive_mode == DIVEMODE_PSCR)
-        {
-            if((line == 0) || (line == 4))
-             {
-                 textPointer += snprintf(&text[textPointer], 60,\
-                             "%c"
-                             ,TXT_PSClosedCircuit);
-             }
-        }
+        if((line == 0) || (line == 4))
+         {
+			if(pSettings->dive_mode == DIVEMODE_PSCR)
+			{
+				textPointer += snprintf(&text[textPointer], 60, "%c",TXT_PSClosedCircuit);
+				enableLine(StMXTRA_PSCR_O2_Drop);
+			}
+			else
+			{
+				text[textPointer++] = '\031';		/* change text color */
+				textPointer += snprintf(&text[textPointer], 60,"%c",TXT_PSClosedCircuit);
+				text[textPointer++] = '\020';		/* restore text color */
+				disableLine(StMXTRA_PSCR_O2_Drop);
+			}
+            strcpy(&text[textPointer],"\n\r");
+            textPointer += 2;
+         }
 #endif
+        if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
+        {
+        	if((line == 0) || (line == 5))
+        	{
+        	                 textPointer += snprintf(&text[textPointer], 60,\
+        	                             "%c"
+        	                             ,TXT_PreDive);
+        	}
+        }
     }
     return StMXTRA;
 }

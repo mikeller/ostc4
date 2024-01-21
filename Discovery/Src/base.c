@@ -213,6 +213,7 @@
 #include "tInfo.h"
 #include "tInfoLog.h"
 #include "tInfoSensor.h"
+#include "tInfoPreDive.h"
 #include "tMenu.h"
 #include "tMenuEdit.h"
 #include "tMenuEditGasOC.h"
@@ -897,6 +898,8 @@ static void TriggerButtonAction()
 							case InfoPageLogShow: 	sendActionToInfoLogShow(action);
 								break;
 							case InfoPageSensor: 	sendActionToInfoSensor(action);
+								break;
+							case InfoPagePreDive: 	sendActionToInfoPreDive(action);
 								break;
 							default:				sendActionToInfo(action);
 								break;

@@ -470,6 +470,12 @@ static uint8_t text_FR_PSClosedCircuit[] = "PSC circuit";
 static uint8_t text_IT_PSClosedCircuit[] = "PSC circuit";
 static uint8_t text_ES_PSClosedCircuit[] = "PSC circuit";
 
+static uint8_t text_EN_PreDive[] = "PreDive Check";
+static uint8_t text_DE_PreDive[] = "";
+static uint8_t text_FR_PreDive[] = "";
+static uint8_t text_IT_PreDive[] = "";
+static uint8_t text_ES_PreDive[] = "";
+
 static uint8_t text_EN_ChargeHour[] = "Hour(s) till 100%";
 static uint8_t text_DE_ChargeHour[] = "Stunde(n) bis 100%";
 static uint8_t text_FR_ChargeHour[] = "";
@@ -642,6 +648,13 @@ static uint8_t text_IT_SetBatteryCharge[] = "Ricaricare batteria";
 static uint8_t text_ES_SetBatteryCharge[] = "Recalibrar nivel carga";
 
 // Menu SYS2 sub
+static uint8_t text_EN_AdjustAmbPressure[] = "Adjust pressure";
+static uint8_t text_DE_AdjustAmbPressure[] = "Druckanpassung";
+static uint8_t text_FR_AdjustAmbPressure[] = "";
+static uint8_t text_IT_AdjustAmbPressure[] = "";
+static uint8_t text_ES_AdjustAmbPressure[] = "";
+
+// Menu SYS2 sub
 static uint8_t text_EN_SetFactoryDefaults[] = "Store button factory defaults";
 static uint8_t text_DE_SetFactoryDefaults[] = "Taster zurücksetzen";
 static uint8_t text_FR_SetFactoryDefaults[] = "";
@@ -807,6 +820,19 @@ static uint8_t text_DE_Reset[] = "Zurücksetzen";
 static uint8_t text_FR_Reset[] = "Réinitialiser";
 static uint8_t text_IT_Reset[] = "Ripristina";
 static uint8_t text_ES_Reset[] = "Restaurar";
+
+static uint8_t text_EN_CounterLung[] = "Counterlung";
+static uint8_t text_DE_CounterLung[] = "Gegenlunge";
+static uint8_t text_FR_CounterLung[] = "";
+static uint8_t text_IT_CounterLung[] = "";
+static uint8_t text_ES_CounterLung[] = "";
+
+static uint8_t text_EN_Pressure[] = "Pressure";
+static uint8_t text_DE_Pressure[] = "Druck";
+static uint8_t text_FR_Pressure[] = "";
+static uint8_t text_IT_Pressure[] = "";
+static uint8_t text_ES_Pressure[] = "";
+
 
 // Menu SIM
 static uint8_t text_EN_Simulator[] = "Simulator";
@@ -1974,6 +2000,7 @@ const tText text_array[] =
     {(uint8_t)TXT_Apnoe,	 		{text_EN_Apnoe, text_DE_Apnoe, text_FR_Apnoe, text_IT_Apnoe, text_ES_Apnoe}},
     {(uint8_t)TXT_Gauge,	 		{text_EN_Gauge, text_DE_Gauge, text_FR_Gauge, text_IT_Gauge, text_ES_Gauge}},
     {(uint8_t)TXT_PSClosedCircuit,  {text_EN_PSClosedCircuit, text_DE_PSClosedCircuit, text_FR_PSClosedCircuit, text_IT_PSClosedCircuit, text_ES_PSClosedCircuit}},
+	{(uint8_t)TXT_PreDive,  		{text_EN_PreDive, text_DE_PreDive, text_FR_PreDive, text_IT_PreDive, text_ES_PreDive}},
 	{(uint8_t)TXT_Sensor,			{text_EN_Sensor, text_DE_Sensor, text_FR_Sensor, text_IT_Sensor, text_ES_Sensor}},
     {(uint8_t)TXT_FixedSP,			{text_EN_FixedSP, text_DE_FixedSP, text_FR_FixedSP, text_IT_FixedSP, text_ES_FixedSP}},
     {(uint8_t)TXT_Decoparameters,	{text_EN_Decoparameters, text_DE_Decoparameters, text_FR_Decoparameters, text_IT_Decoparameters, text_ES_Decoparameters}},
@@ -2141,6 +2168,7 @@ const tText text_array2[] =
     {(uint8_t)TXT2BYTE_Sensor,			{text_EN_SensorList, text_DE_SensorList, text_FR_SensorList, text_IT_SensorList, text_ES_SensorList}},
     {(uint8_t)TXT2BYTE_Maintenance,		{text_EN_Maintenance, text_DE_Maintenance, text_FR_Maintenance, text_IT_Maintenance, text_ES_Maintenance}},
     {(uint8_t)TXT2BYTE_SetBatteryCharge,{text_EN_SetBatteryCharge, text_DE_SetBatteryCharge, text_FR_SetBatteryCharge, text_IT_SetBatteryCharge, text_ES_SetBatteryCharge}},
+	{(uint8_t)TXT2BYTE_AdjustAmbPressure,{text_EN_AdjustAmbPressure, text_DE_AdjustAmbPressure, text_FR_AdjustAmbPressure, text_IT_AdjustAmbPressure, text_ES_AdjustAmbPressure}},
     {(uint8_t)TXT2BYTE_SetFactoryDefaults,{text_EN_SetFactoryDefaults, text_DE_SetFactoryDefaults, text_FR_SetFactoryDefaults, text_IT_SetFactoryDefaults, text_ES_SetFactoryDefaults}},
 	{(uint8_t)TXT2BYTE_SetSampleIndex,  {text_EN_SetSampleIndex, text_DE_SetSampleIndex, text_FR_SetSampleIndex, text_IT_SetSampleIndex, text_ES_SetSampleIndex}},
 
@@ -2191,6 +2219,9 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Set, 	{text_EN_Set, text_DE_Set, text_FR_Set, text_IT_Set, text_ES_Set}},
 	{(uint8_t)TXT2BYTE_Clear, 	{text_EN_Clear, text_DE_Clear, text_FR_Clear, text_IT_Clear, text_ES_Clear}},
 	{(uint8_t)TXT2BYTE_Reset, 	{text_EN_Reset, text_DE_Reset, text_FR_Reset, text_IT_Reset, text_ES_Reset}},
+
+	{(uint8_t)TXT2BYTE_CounterLung, 	{text_EN_CounterLung, text_DE_CounterLung, text_FR_CounterLung, text_IT_CounterLung, text_ES_CounterLung}},
+	{(uint8_t)TXT2BYTE_Pressure, 	{text_EN_Pressure, text_DE_Pressure, text_FR_Pressure, text_IT_Pressure, text_ES_Pressure}},
 
 	{(uint8_t)TXT2BYTE_Timer, 	{text_EN_Timer, text_DE_Timer, text_FR_Timer, text_IT_Timer, text_ES_Timer}},
 	{(uint8_t)TXT2BYTE_Starting, 	{text_EN_Starting, text_DE_Starting, text_FR_Starting, text_IT_Starting, text_ES_Starting}},

@@ -1,14 +1,14 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// -*- coding: UTF-8 -*-
 ///
-/// \file   Discovery/Inc/tMenuEditXtra.h
-/// \brief  Menu Edit Xtra - Specials in Divemode like Reset Stopwatch
+/// \file   Discovery/Inc/tInfoSensor.h
+/// \brief  Infopage content for connected smart sensors
 /// \author heinrichs weikamp gmbh
-/// \date   02-Mar-2015
+/// \date   17-11-2022
 ///
 /// $Id$
 ///////////////////////////////////////////////////////////////////////////////
-/// \par Copyright (c) 2014-2018 Heinrichs Weikamp gmbh
+/// \par Copyright (c) 2014-2022 Heinrichs Weikamp gmbh
 ///
 ///     This program is free software: you can redistribute it and/or modify
 ///     it under the terms of the GNU General Public License as published by
@@ -25,13 +25,13 @@
 //////////////////////////////////////////////////////////////////////////////
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef TMENU_EDIT_XTRA_H
-#define TMENU_EDIT_XTRA_H
+#ifndef TINFO_PREDIVE_H
+#define TINFO_PREDIVE_H
 
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
+/* Exported functions --------------------------------------------------------*/
+void openInfo_PreDive();
+void refreshInfo_PreDive(GFX_DrawCfgScreen s);
+void sendActionToInfoPreDive(uint8_t sendAction);
 
-void openEdit_Xtra(uint8_t line);
-void refresh_CompassHeading(void);
 
-#endif /* TMENU_EDIT_XTRA_H */
+#endif /* TINFO_COMPASS_H */

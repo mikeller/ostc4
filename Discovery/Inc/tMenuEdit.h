@@ -40,6 +40,7 @@
 #define ME_Y_LINE5					(ME_Y_LINE1 + (4 * ME_Y_LINE_STEP))
 #define ME_Y_LINE6					(ME_Y_LINE1 + (5 * ME_Y_LINE_STEP))
 
+#define EXIT_TO_INFO_PREDIVE 		(245)
 #define EXIT_TO_NEXT_MENU   		(246)
 #define EXIT_TO_INFO_SENSOR 		(247)
 #define EXIT_TO_INFO_COMPASS 		(248)

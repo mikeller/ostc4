@@ -65,6 +65,7 @@
 #define InfoPageLogShow 3
 #define InfoPageCompass 6
 #define InfoPageSensor  8
+#define InfoPagePreDive 9
 
 #define StI 			_MB(0,1,0,0,0)
 #define StILOGLIST		_MB(0,2,0,0,0)
@@ -74,6 +75,7 @@
 #define StICOMPASS		_MB(0,6,0,0,0)
 #define StIDEBUG		_MB(0,7,0,0,0)
 #define StISENINFO		_MB(0,8,0,0,0)
+#define StIPREDIVE		_MB(0,9,0,0,0)
 
 #define StI_GoToLogbook			_MB(0,1,1,0,0)
 #define StI_GoToPlanner			_MB(0,1,2,0,0)
@@ -213,11 +215,10 @@
 #define StMXTRA_ScrubTimer_Max			_MB(2,4,3,2,0)
 #define StMXTRA_ScrubTimer_Reset		_MB(2,4,3,3,0)
 #define StMXTRA_ScrubTimer_OP_Mode		_MB(2,4,3,5,0)
-
 #define StMXTRA_PSCR_O2_Drop			_MB(2,4,4,1,0)
 #define StMXTRA_PSCR_LUNG_RATIO			_MB(2,4,4,2,0)
-#define StMXTRA_CO2_Sensor				_MB(2,4,5,1,0)
-#define StMXTRA_CO2_Sensor_Calib		_MB(2,4,5,2,0)
+#define StMXTRA_Predive_Check			_MB(2,4,5,1,0)
+
 
 
 
@@ -340,6 +341,7 @@
 #define StMSYS5_SetFactoryBC	_MB(2,8,6,11,0)
 #define StMSYS5_ResetBluetooth	_MB(2,8,6,12,0)
 #define StMSYS5_SetSampleIndx   _MB(2,8,6,13,0)
+#define StMSYS5_AdjustSurfPres  _MB(2,8,6,14,0)
 
 #define StMSYS_Custom0			_MB(2,8,1,0,0)
 #define StMSYS_Custom1			_MB(2,8,2,0,0)

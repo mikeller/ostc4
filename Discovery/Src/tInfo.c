@@ -37,6 +37,7 @@
 //#include "tInfoSurface.h"
 #include "tInfoCompass.h"
 #include "tInfoSensor.h"
+#include "tInfoPreDive.h"
 #include "tMenu.h"
 #include "tMenuEdit.h"
 
@@ -222,6 +223,11 @@ void tInfo_refresh(void)
     							infoColor = CLUT_MenuPageHardware;
     							refreshInfo_Sensor(tIscreen);
     				break;
+    		case StIPREDIVE: 	tIscreen.FBStartAdress = getFrame(14);
+    							infoColor = CLUT_MenuPageGasCC;
+    							refreshInfo_PreDive(tIscreen);
+    				break;
+
     		default:
     				break;
     	}
@@ -817,5 +823,35 @@ void tInfo_write_buttonTextline(GFX_DrawCfgScreen *screenPtr, uint8_t left2ByteC
         localtext[2] = right2ByteCode;
         localtext[3] = 0;
         write_content_simple(screenPtr, 0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
+    }
+}
+void tInfo_write_buttonTextline_simple(uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode)
+{
+    char localtext[32];
+
+    if(left2ByteCode)
+    {
+        localtext[0] = TXT_2BYTE;
+        localtext[1] = left2ByteCode;
+        localtext[2] = 0;
+        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
+    }
+
+    if(middle2ByteCode)
+    {
+        localtext[0] = '\001';
+        localtext[1] = TXT_2BYTE;
+        localtext[2] = middle2ByteCode;
+        localtext[3] = 0;
+        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
+    }
+
+    if(right2ByteCode)
+    {
+        localtext[0] = '\002';
+        localtext[1] = TXT_2BYTE;
+        localtext[2] = right2ByteCode;
+        localtext[3] = 0;
+        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
     }
 }

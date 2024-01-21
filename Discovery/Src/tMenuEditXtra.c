@@ -38,6 +38,7 @@
 #include "data_exchange_main.h"
 #include "motion.h"
 #include "configuration.h"
+#include "tInfoPreDive.h"
 
 
 /* Private function prototypes -----------------------------------------------*/
@@ -107,11 +108,6 @@ void openEdit_Xtra(uint8_t line)
     }
     else /* surface mode */
     {
-        if((settingsGetPointer()->dive_mode != DIVEMODE_PSCR) && (line > 3))		/* PSCR items are only optional */
-		{
-			line = 6;
-		}
-
 		switch(line)
 		{
 			case 1: openEdit_CCRModeSensorOrFixedSP();
@@ -124,6 +120,8 @@ void openEdit_Xtra(uint8_t line)
 			case 4: openEdit_PSCR();
 				break;
 #endif
+			case 5:	openInfo_PreDive();
+				break;
 			default:
 				break;
 		}
@@ -394,23 +392,6 @@ void refresh_CompassHeading(void)
     drawCompassHeadingMenu(true);
 }
 
-
-void refresh_CO2Data(void)
-{
-    char text[32];
-
-    snprintf(text,32,"\001%c",TXT_CO2Sensor);
-    write_topline(text);
-
-    snprintf(text,32,"CO2: %ld ppm",stateUsed->lifeData.CO2_data.CO2_ppm);
-    write_label_var(   30, 800, ME_Y_LINE1, &FontT48, text);
-
-    snprintf(text,32,"Signal: %d",stateUsed->lifeData.CO2_data.signalStrength);
-    write_label_var(   30, 800, ME_Y_LINE2, &FontT48, text);
-
-    tMenuEdit_refresh_field(StMXTRA_CO2_Sensor);
-    tMenuEdit_refresh_field(StMXTRA_CO2_Sensor_Calib);
-}
 
 void openEdit_CompassHeading(void)
 {

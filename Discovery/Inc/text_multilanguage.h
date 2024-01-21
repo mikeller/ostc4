@@ -121,6 +121,7 @@ extern const tText text_array2[];
 		TXT_Apnoe,
 		TXT_Gauge,
 		TXT_PSClosedCircuit,
+		TXT_PreDive,
 		TXT_Sensor,
 		TXT_FixedSP,
 		TXT_Decoparameters,
@@ -320,6 +321,7 @@ extern const tText text_array2[];
 		TXT2BYTE_Sensor,
 		TXT2BYTE_Maintenance,
 		TXT2BYTE_SetBatteryCharge,
+		TXT2BYTE_AdjustAmbPressure,
 		TXT2BYTE_SetFactoryDefaults,
 		TXT2BYTE_ResetBluetooth,
 		TXT2BYTE_SetSampleIndex,
@@ -370,6 +372,9 @@ extern const tText text_array2[];
         TXT2BYTE_Set,
         TXT2BYTE_Clear,
         TXT2BYTE_Reset,
+
+		TXT2BYTE_CounterLung,
+		TXT2BYTE_Pressure,
 
         TXT2BYTE_Timer,
         TXT2BYTE_Starting,

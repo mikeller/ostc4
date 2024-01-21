@@ -36,6 +36,7 @@
 #include "tHome.h"
 #include "tInfoCompass.h"
 #include "tInfoSensor.h"
+#include "tInfoPreDive.h"
 #include "tMenuEditHardware.h"
 #include "tMenuEditPlanner.h"
 #include "tMenuEditSystem.h"
@@ -216,20 +217,10 @@ void tMenuEdit_refresh_live_content(void)
 	 	 	 break;
 		 case (StMHARD2_Compass_SetCourse & MaskFieldDigit):
              refreshFct = refresh_CompassEdit;
-
 			 break;
 		 case (StMXTRA_CompassHeading & MaskFieldDigit):
              refreshFct = refresh_CompassHeading;
-
 			 break;
-	 	 case (StMXTRA_PSCR_O2_Drop & MaskFieldDigit):
-            if (settingsGetPointer()->dive_mode != DIVEMODE_PSCR) { /* workaround because PSCR mode is set dynamic */
-                refreshFct = refresh_CO2Data;
-            }
-
-			break;
-	 	 case (StMXTRA_CO2_Sensor & MaskFieldDigit):  refreshFct = refresh_CO2Data;
-	 	 	 break;
 	 	 case (StMSYS4_Info & MaskFieldDigit): refreshFct = &refresh_InformationPage;
 	 	 	 break;
 	 	 case (StMPLAN5_ExitResult & MaskFieldDigit): refreshFct = refresh_PlanResult;
