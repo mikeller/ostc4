@@ -52,6 +52,7 @@ void openEdit_Language(void);
 void openEdit_Design(void);
 void openEdit_Information(void);
 void openEdit_Reset(void);
+void openEdit_Maintenance(void);
 //void openEdit_ShowDebugInfo(void);
 //void openEdit_Salinity(void);
 
@@ -78,6 +79,7 @@ uint8_t OnAction_DebugInfo		(uint32_t editId, uint8_t blockNumber, uint8_t digit
 
 uint8_t OnAction_Exit					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Confirm			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_Maintenance			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_RebootRTE				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ResetDeco		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ResetAll			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -87,6 +89,7 @@ uint8_t OnAction_Nothing			(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 uint8_t OnAction_LogbookOffset(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetFactoryDefaults(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetBatteryCharge(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_AdjustSurfacePressure		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #ifdef ENABLE_ANALYSE_SAMPLES
 uint8_t OnAction_RecoverSampleIdx(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #endif
@@ -1075,7 +1078,7 @@ void openEdit_Reset(void)
     setEvent(StMSYS5_ResetAll, 			(uint32_t)OnAction_Confirm);
     setEvent(StMSYS5_ResetDeco, 		(uint32_t)OnAction_Confirm);
     setEvent(StMSYS5_Reboot, 				(uint32_t)OnAction_Confirm);
-    setEvent(StMSYS5_Maintenance,		(uint32_t)OnAction_Confirm);
+    setEvent(StMSYS5_Maintenance,		(uint32_t)OnAction_Maintenance);
 #ifndef RESETLOGBLOCK
     setEvent(StMSYS5_ResetLogbook,	(uint32_t)OnAction_Confirm);
 #else
@@ -1150,64 +1153,92 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
         setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
         setEvent(editIdOfCaller, (uint32_t)OnAction_ResetLogbook);
         break;
-
-    case StMSYS5_Maintenance:
-    case StMSYS5_SetBattCharge:
-    case StMSYS5_SetSampleIndx:
-        text[0] = TXT_2BYTE;
-        text[1] = TXT2BYTE_SetFactoryDefaults;
-        text[2] = 0;
-        write_field_button(StMSYS5_SetFactoryBC,			30, 800, ME_Y_LINE2,  &FontT48, text);
-
-#ifdef ENABLE_ANALYSE_SAMPLES
-        text[0] = TXT_2BYTE;
-        text[1] = TXT2BYTE_SetSampleIndex;
-        text[2] = 0;
-        write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE3,  &FontT48, text);
-#endif
-
-
-        if(stateRealGetPointer()->lifeData.battery_charge <= 0)
-        {
-            text[0] = TXT_2BYTE;
-            text[1] = TXT2BYTE_SetBatteryCharge;
-            text[2] = 0;
-            snprintf(&text[2],10,": %u%%",settingsGetPointer()->lastKnownBatteryPercentage);
-#ifdef ENABLE_ANALYSE_SAMPLES
-            write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE4,  &FontT48, text);
-#else
-            write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE3,  &FontT48, text);
-#endif
-
-            setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-            setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
-#ifdef ENABLE_ANALYSE_SAMPLES
-            setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
-#endif
-            setEvent(StMSYS5_SetBattCharge, (uint32_t)OnAction_SetBatteryCharge);
-        }
-        else
-        {
-            setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-            setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
-#ifdef ENABLE_ANALYSE_SAMPLES
-            setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
-#endif
-        }
-//		write_field_button(StMSYS5_ScreenTest,			30, 800, ME_Y_LINE3,  &FontT48, "Screen Test");
-//		setEvent(StMSYS5_ScreenTest, (uint32_t)OnAction_ScreenTest);
-
-        text[0] = TXT_2BYTE;
-        text[1] = TXT2BYTE_WarnBatteryLow;
-        text[2] = 0;
-        snprintf(&text[2],10,": %01.2fV",stateRealGetPointer()->lifeData.battery_voltage);
-        write_label_var(  30, 800, ME_Y_LINE5, &FontT42, text);
-        
-        snprintf(&text[0],30,"Code: %X",getLicence());
-        write_label_var(  30, 800, ME_Y_LINE6, &FontT42, text);
-        break;
-
     }
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+void openEdit_Maintenance(void)
+{
+    char text[32];
+    unsigned char index = 0;
+    SSettings *pSettings = settingsGetPointer();
+    SSensorDataDiveO2* pDiveO2Data = NULL;
+
+    resetMenuEdit(CLUT_MenuPageSystem);
+
+    text[0] = '\001';
+    text[1] = TXT_2BYTE;
+    text[2] = TXT2BYTE_Maintenance;
+    text[3] = 0;
+    write_topline(text);
+
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_SetFactoryDefaults;
+    text[2] = 0;
+    write_field_button(StMSYS5_SetFactoryBC,			30, 800, ME_Y_LINE1,  &FontT48, text);
+
+
+    if(stateRealGetPointer()->lifeData.battery_charge <= 0)
+    {
+        text[0] = TXT_2BYTE;
+        text[1] = TXT2BYTE_SetBatteryCharge;
+        text[2] = 0;
+        snprintf(&text[2],10,": %u%%",pSettings->lastKnownBatteryPercentage);
+        write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE2,  &FontT48, text);
+    }
+
+    if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
+    {
+    	for (index = 0; index < 3; index++)
+    	{
+    		if(pSettings->ext_sensor_map[index] == SENSOR_DIGO2M)
+    		{
+    			pDiveO2Data = (SSensorDataDiveO2*)stateRealGetPointer()->lifeData.extIf_sensor_data[index];
+    			if(pDiveO2Data->pressure != 0)
+    			{
+					snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),
+																stateRealGetPointer()->lifeData.pressure_surface_bar);
+
+					write_field_button(StMSYS5_AdjustSurfPres,			30, 800, ME_Y_LINE4,  &FontT48, text);
+    			}
+     			break;
+    		}
+    	}
+    }
+
+#ifdef ENABLE_ANALYSE_SAMPLES
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_SetSampleIndex;
+    text[2] = 0;
+    write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE4,  &FontT48, text);
+#endif
+
+    setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
+    if(stateRealGetPointer()->lifeData.battery_charge <= 0)
+    {
+    	setEvent(StMSYS5_SetBattCharge, (uint32_t)OnAction_SetBatteryCharge);
+    }
+    if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
+    {
+    	if(pDiveO2Data != NULL)
+    	{
+    		setEvent(StMSYS5_AdjustSurfPres, (uint32_t)OnAction_AdjustSurfacePressure);
+    	}
+    }
+#ifdef ENABLE_ANALYSE_SAMPLES
+    setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
+#endif
+
+
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_WarnBatteryLow;
+    text[2] = 0;
+    snprintf(&text[2],10,": %01.2fV",stateRealGetPointer()->lifeData.battery_voltage);
+    write_label_var(  30, 800, ME_Y_LINE5, &FontT42, text);
+
+    snprintf(&text[0],30,"Code: %X",getLicence());
+    write_label_var(  30, 800, ME_Y_LINE6, &FontT42, text);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
@@ -1260,6 +1291,12 @@ uint8_t OnAction_Exit					(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 uint8_t OnAction_Confirm				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     openEdit_ResetConfirmation(editId);
+    return UNSPECIFIC_RETURN;
+}
+
+uint8_t OnAction_Maintenance			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	openEdit_Maintenance();
     return UNSPECIFIC_RETURN;
 }
 
@@ -1334,6 +1371,43 @@ uint8_t OnAction_SetBatteryCharge(uint32_t editId, uint8_t blockNumber, uint8_t 
 //	setBatteryPercentage(100);
     return EXIT_TO_MENU;
 }
+
+uint8_t OnAction_AdjustSurfacePressure		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSensorDataDiveO2* pDiveO2Data;
+    const SDiveState* pDiveState = stateRealGetPointer();
+    SSettings* pSettings = settingsGetPointer();
+    uint8_t index = 0;
+    int8_t newOffset = 0;
+
+    char text[32];
+
+    float orgpressure_surface;
+
+    for (index = 0; index < 3; index++)
+    {
+    	if(settingsGetPointer()->ext_sensor_map[index] == SENSOR_DIGO2M)
+    	{
+    		pDiveO2Data = (SSensorDataDiveO2*)stateRealGetPointer()->lifeData.extIf_sensor_data[index];
+    		orgpressure_surface = pDiveState->lifeData.pressure_surface_bar - (settingsGetPointer()->offsetPressure_mbar / 1000.0);
+    		newOffset = ((pDiveO2Data->pressure/1000) - (orgpressure_surface * 1000));
+
+    		if((pDiveState->lifeData.pressure_surface_bar * 1000 + newOffset) != (pDiveO2Data->pressure/1000)) /* there might be a rounding difference => compensate */
+			{
+    			newOffset += (pDiveO2Data->pressure/1000) - (pDiveState->lifeData.pressure_surface_bar * 1000 + newOffset);
+			}
+
+    		pSettings->offsetPressure_mbar = newOffset;
+    		snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),
+    		        													pDiveState->lifeData.pressure_surface_bar + pSettings->offsetPressure_mbar / 1000.0);
+    		tMenuEdit_newButtonText(StMSYS5_AdjustSurfPres,text);
+    		break;
+    	}
+    }
+
+    return UNSPECIFIC_RETURN;
+}
+
 
 #ifdef SCREENTEST
 uint8_t OnAction_ScreenTest		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
