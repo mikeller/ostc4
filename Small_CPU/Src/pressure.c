@@ -685,7 +685,7 @@ static void pressure_calculation_AN520_004_mod_MS5803_30BA__09_2015(void)
 
 	if(ambient_pressure_mbar < PRESSURE_MINIMUM)
 	{
-		ambient_pressure_mbar = 1000.0;
+		ambient_pressure_mbar = 1000.0 + pressure_offset;
 	}
 }
 
