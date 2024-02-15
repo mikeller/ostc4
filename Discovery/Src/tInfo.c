@@ -312,13 +312,12 @@ void tInfo_write_content_simple(uint16_t XleftGimpStyle, uint16_t XrightGimpStyl
     hgfx.WindowNumberOfTextLines = 1;
     hgfx.WindowLineSpacing = 0;
     hgfx.WindowTab = 400;
-    hgfx.WindowX0 = XleftGimpStyle;
-    hgfx.WindowX1 = XrightGimpStyle;
-    hgfx.WindowY1 = 479 - YtopGimpStyle;
-
 
     if(!settingsGetPointer()->FlipDisplay)
     {
+        hgfx.WindowX0 = XleftGimpStyle;
+        hgfx.WindowX1 = XrightGimpStyle;
+
     	hgfx.WindowY1 = 479 - YtopGimpStyle;
     	if(hgfx.WindowY1 < Font->height)
     	        hgfx.WindowY0 = 0;
@@ -327,6 +326,8 @@ void tInfo_write_content_simple(uint16_t XleftGimpStyle, uint16_t XrightGimpStyl
     }
     else
     {
+		hgfx.WindowX0 = 800 - XrightGimpStyle;
+		hgfx.WindowX1 = 800 - XleftGimpStyle;
     	hgfx.WindowY0 = YtopGimpStyle;
     	hgfx.WindowY1 = YtopGimpStyle + Font->height;
     }
