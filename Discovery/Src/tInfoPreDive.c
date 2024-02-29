@@ -164,15 +164,15 @@ void refreshInfo_PreDive(GFX_DrawCfgScreen s)
 
 	for(index = 0; index < EXT_INTERFACE_MUX_OFFSET; index++)
 	{
-		if(pSettings->ext_sensor_map[index] == SENSOR_DIGO2M)
+		if((pSettings->ext_sensor_map[index] == SENSOR_DIGO2M) || (pSettings->ext_sensor_map[index] == SENSOR_ANALOG))
 		{
 			snprintf(text,32,"%c%c%d: %01.2f", TXT_2BYTE, TXT2BYTE_Sensor, index, pStateReal->lifeData.ppO2Sensor_bar[index]);
-			tInfo_write_content_simple(  30, 200, ME_Y_LINE1 + (index * ME_Y_LINE_STEP), &FontT48, text, CLUT_Font020);
+			tInfo_write_content_simple(  5, 780, ME_Y_LINE1 + (index * ME_Y_LINE_STEP), &FontT48, text, CLUT_Font020);
 		}
 		else if(pSettings->ext_sensor_map[index] == SENSOR_CO2M)
 		{
 			snprintf(text,32,"CO2: %4ld", pStateReal->lifeData.CO2_data.CO2_ppm);
-			tInfo_write_content_simple(  30, 200, ME_Y_LINE5, &FontT48, text, CLUT_Font020);
+			tInfo_write_content_simple(  5, 780, ME_Y_LINE5, &FontT48, text, CLUT_Font020);
 		}
 	}
 
@@ -182,21 +182,10 @@ void refreshInfo_PreDive(GFX_DrawCfgScreen s)
     wintemptemp.left = 350;
     wintemptemp.right = 590;
 
-    if(!pSettings->FlipDisplay)
-    {
-    	wintempppO2.top = ME_Y_LINE3;
-    	wintempppO2.bottom = wintempppO2.top + DELTA_SHIFT * 2;
-    	wintemptemp.top = ME_Y_LINE5;
-    	wintemptemp.bottom = wintemptemp.top + DELTA_SHIFT * 2;
-    }
-    else
-    {
-    	wintempppO2.top = 470;		/* TODO: consider flip display */
-    	wintempppO2.bottom = wintempppO2.top + 100;
-    }
-    GFX_graph_print(&s, &wintempppO2, 1,1,0, DELTA_SHIFT * 2, pressureHistory, HISTORY_BUF_SIZE, CLUT_Font030, NULL);
-
-    GFX_graph_print(&s, &wintemptemp, 1,1, surfaceTemperatureStart - 2000, surfaceTemperatureStart + 10000, temperatureHistory, HISTORY_BUF_SIZE, CLUT_Font030, NULL);
+   	wintempppO2.top = ME_Y_LINE3;
+   	wintempppO2.bottom = wintempppO2.top + DELTA_SHIFT * 2;
+   	wintemptemp.top = ME_Y_LINE5;
+   	wintemptemp.bottom = wintemptemp.top + DELTA_SHIFT * 2;
 
     start.x =  wintempppO2.left - 5;
     start.y =  480 - wintemptemp.bottom - 5;
@@ -207,18 +196,29 @@ void refreshInfo_PreDive(GFX_DrawCfgScreen s)
     start.y =  480 - wintempppO2.bottom - 5;
     GFX_draw_box(&s, start, stop,1, CLUT_Font020);
 
+    if(pSettings->FlipDisplay)
+    {
+        wintempppO2.left = 800 - 590;
+        wintempppO2.right = 800 - 350;
+        wintemptemp.left = 800 - 590;
+        wintemptemp.right = 800 - 350;
+    }
+    GFX_graph_print(&s, &wintempppO2, 1,1,0, DELTA_SHIFT * 2, pressureHistory, HISTORY_BUF_SIZE, CLUT_Font030, NULL);
+
+    GFX_graph_print(&s, &wintemptemp, 1,1, surfaceTemperatureStart - 2000, surfaceTemperatureStart + 10000, temperatureHistory, HISTORY_BUF_SIZE, CLUT_Font030, NULL);
+
 /* Graph labeling */
     snprintf(text,32,"%c%c", TXT_2BYTE, TXT2BYTE_CounterLung);
-   	tInfo_write_content_simple(  350, 780, ME_Y_LINE2, &FontT48, text, CLUT_Font020);
+   	tInfo_write_content_simple(  350, 795, ME_Y_LINE2, &FontT48, text, CLUT_Font020);
 
    	snprintf(text,32,"\002\016\016%c%c", TXT_2BYTE, TXT2BYTE_Pressure);
-   	tInfo_write_content_simple(  600, 780, ME_Y_LINE3, &FontT48, text, CLUT_Font020);
+   	tInfo_write_content_simple(  500, 795, ME_Y_LINE3, &FontT48, text, CLUT_Font020);
     snprintf(text,32,"\002%d",deltaPressure);
-	tInfo_write_content_simple(  600, 780, ME_Y_LINE4, &FontT48, text, CLUT_Font020);
+	tInfo_write_content_simple(  500, 795, ME_Y_LINE4, &FontT48, text, CLUT_Font020);
 	snprintf(text,32,"\002\016\016%c",TXT_Temperature);
-	tInfo_write_content_simple(  600, 780, ME_Y_LINE5, &FontT48, text, CLUT_Font020);
+	tInfo_write_content_simple(  300, 795, ME_Y_LINE5, &FontT48, text, CLUT_Font020);
     snprintf(text,32,"\002%2.2f",(temperature / 1000.0));
-	tInfo_write_content_simple(  600, 780, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
+	tInfo_write_content_simple(  300, 795, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
 }
 
 void sendActionToInfoPreDive(uint8_t sendAction)

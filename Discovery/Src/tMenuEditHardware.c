@@ -427,6 +427,9 @@ void refresh_O2Sensors(void)
 									break;
 				}
 		}
+
+		set_globalState(StMXTRA); /* new map may have impact to top level menu => update */
+		updateMenu();
 		openEdit_O2Sensors();
 	}
 
