@@ -261,6 +261,13 @@ void disableLine(uint32_t lineId)
 	}
 }
 
+uint8_t getLineMask(uint32_t lineId)
+{
+	SStateList idList;
+	get_idSpecificStateList(lineId, &idList);
+	return(menu.disableLineMask[idList.page]);
+}
+
 void resetLineMask(uint32_t lineId)
 {
 	SStateList idList;
@@ -931,6 +938,16 @@ void unblock_diluent_page(void)
     block_diluent_handler(1);
 }
 
+static void checkLineStatus()
+{
+	switch(get_globalState())
+	{
+		case StMXTRA: tMXtra_checkLineStatus();
+			break;
+		default:
+			break;
+	}
+}
 
 static void nextPage(void)
 {
@@ -949,6 +966,8 @@ static void nextPage(void)
     menu.modeFlipPages = 1;
 
     set_globalState_Menu_Page(page);
+
+    checkLineStatus();		/* some lines may be enabled / disabled depending on condition occuring outside the page scope => check if update is necessary */
 
     change_CLUT_entry(CLUT_MenuLineSelectedSides, 		(CLUT_MenuPageGasOC + page - 1));
     change_CLUT_entry(CLUT_MenuLineSelectedSeperator, (CLUT_MenuPageGasOC + page - 1));

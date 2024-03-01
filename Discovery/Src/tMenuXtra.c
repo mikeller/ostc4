@@ -38,6 +38,7 @@
 #include "simulation.h"
 #include "configuration.h"
 
+
 /* Exported functions --------------------------------------------------------*/
 
 uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
@@ -168,10 +169,12 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
            else
                text[textPointer++] = '\006';
 
-           if (!canDoFallback) {
+           if (!canDoFallback)
+           {
                text[textPointer++] = '\020';
                disableLine(StMXTRA_O2_Fallback);
-           } else {
+           } else
+           {
                enableLine(StMXTRA_O2_Fallback);
            }
            strcpy(&text[textPointer],"\n\r");
@@ -208,16 +211,48 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
             textPointer += 2;
          }
 #endif
-        if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
+        if((line == 0) || (line == 5))
         {
-        	if((line == 0) || (line == 5))
+      		if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
         	{
-        	                 textPointer += snprintf(&text[textPointer], 60,\
-        	                             "%c"
-        	                             ,TXT_PreDive);
+        	    textPointer += snprintf(&text[textPointer], 60,"%c",TXT_PreDive);
         	}
+      		else
+      		{
+      			text[textPointer++] = '\031';		/* change text color */
+      			textPointer += snprintf(&text[textPointer], 60,"%c",TXT_PreDive);
+      			text[textPointer++] = '\020';		/* restore text color */
+      			disableLine(StMXTRA_Predive_Check);
+      		}
+      		strcpy(&text[textPointer],"\n\r");
+      		textPointer += 2;
         }
     }
     return StMXTRA;
+}
+
+void tMXtra_checkLineStatus(void)
+{
+	uint8_t localLineMask = 0;
+	uint8_t lineMask = getLineMask(StMXTRA);
+    SSettings *pSettings = settingsGetPointer();
+
+	if(pSettings->CCR_Mode != CCRMODE_Sensors)
+	{
+		localLineMask |= 1 << 2;
+	}
+	if(pSettings->dive_mode != DIVEMODE_PSCR)
+	{
+		localLineMask |= 1 << 4;
+	}
+	if((pSettings->ppo2sensors_source != O2_SENSOR_SOURCE_ANADIG) && (pSettings->ppo2sensors_source != O2_SENSOR_SOURCE_DIGITAL))
+	{
+		localLineMask |= 1 << 5;
+	}
+
+	if(lineMask != localLineMask)
+	{
+			updateMenu();
+	}
 }
 

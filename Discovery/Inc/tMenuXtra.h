@@ -45,7 +45,7 @@
 /* Exported functions --------------------------------------------------------*/
 
 uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);
-
+void tMXtra_checkLineStatus(void);
 	 #ifdef __cplusplus
 }
 #endif
