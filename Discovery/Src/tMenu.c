@@ -942,6 +942,8 @@ static void checkLineStatus()
 {
 	switch(get_globalState())
 	{
+		case StMSYS: tMSystem_checkLineStatus();
+			break;
 		case StMXTRA: tMXtra_checkLineStatus();
 			break;
 		default:

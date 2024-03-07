@@ -30,6 +30,7 @@
 #include "tMenu.h"
 #include "tMenuSystem.h"
 #include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
+#include "t7.h"
 
 static uint8_t customviewsSubpage = 0;
 
@@ -183,9 +184,21 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         textPointer += 2;
     }
 
-    if (line == 0 || line == 2) {
-        textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-    } else {
+    if (line == 0 || line == 2)
+    {
+    	if(t7_customview_disabled(CVIEW_Timer))
+    	{
+    		text[textPointer++] = '\031';		/* change text color */
+    	    textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
+    	    disableLine(StMSYS_Timer);
+            text[textPointer++] = '\020';		/* restore text color */
+    	}
+    	else
+    	{
+    		textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
+    	}
+    } else
+    {
         textPointer += snprintf(&text[textPointer], 3, "\n\r");
     }
 
@@ -303,6 +316,19 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
 
     return StMSYS;
 }
+void tMSystem_checkLineStatus(void)
+{
+	uint8_t localLineMask = 0;
+	uint8_t lineMask = getLineMask(StMSYS);
 
+	if(t7_customview_disabled(CVIEW_Timer))
+    {
+    	localLineMask |= 1 << 2;
+    }
+	if(lineMask != localLineMask)
+	{
+		updateMenu();
+	}
+}
 
 /* Private functions ---------------------------------------------------------*/
