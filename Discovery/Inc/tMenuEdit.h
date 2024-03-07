@@ -60,6 +60,8 @@ typedef union {
 void sendActionToMenuEdit(uint8_t sendAction);
 
 void tMenuEdit_init(void);
+void resetMenuContentStructure();
+void resetMenuStructure(uint8_t color);
 void resetMenuEdit(uint8_t color);
 void tMenuEdit_refresh_live_content(void);
 void tMenuEdit_refresh_field(uint32_t editID);
