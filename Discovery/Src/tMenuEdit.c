@@ -118,6 +118,10 @@ static _Bool EnterPressed = 0;
 static _Bool WriteSettings = 0;
 
 /* Private function prototypes -----------------------------------------------*/
+static void create_newText_for_Id(int8_t localId);
+void clean_content_of_Id(int8_t localId);
+static void write_content_of_Id(int8_t localId);
+
 void draw_tMEdesign(void);
 void set_cursorNew(uint8_t forThisIdentID);
 void startMenuEditFieldSelect(void);
@@ -225,7 +229,7 @@ void tMenuEdit_refresh_live_content(void)
 	 	 case (StMHARD3_Sensor_Detect):
 	 	 case (StMHARD3_Sensor_Info):							refreshFct = refresh_O2Sensors;
 	 	 	 break;
-		 case (StMHARD2_Compass_SetCourse & MaskFieldDigit):
+		 case (StMHARD2_Compass & MaskFieldDigit):
              refreshFct = refresh_CompassEdit;
 			 break;
 		 case (StMXTRA_CompassHeading & MaskFieldDigit):
@@ -457,9 +461,9 @@ uint8_t get_newContent_of_actual_id_block_and_subBlock(uint8_t action)
 
     if((ident[actualId].maintype == FIELD_NUMBERS) && (ident[actualId].subtype == FIELD_3DIGIT))
     {
-        content  = 100 * (	ident[id].newText[ident[actualId].begin[block] + 0] - '0');
-        content +=  10 * (	ident[id].newText[ident[actualId].begin[block] + 1] - '0');
-        content += 				ident[id].newText[ident[actualId].begin[block] + 2];
+        content  = 100 * (	ident[actualId].newText[ident[actualId].begin[block] + 0] - '0');
+        content +=  10 * (	ident[actualId].newText[ident[actualId].begin[block] + 1] - '0');
+        content += 				ident[actualId].newText[ident[actualId].begin[block] + 2];
     }
     else
     if((ident[actualId].maintype == FIELD_NUMBERS) && (ident[actualId].subtype == FIELD_2DIGIT))
@@ -505,7 +509,7 @@ void mark_new_2digit_of_actual_id_block(void)
     if(event[actualevid].callerID != ident[actualId].callerID)
         return;
 
-    if(ident[id].maintype == FIELD_NUMBERS)
+    if(ident[actualId].maintype == FIELD_NUMBERS)
     {
         oneCharText[0] = ident[actualId].newText[ident[actualId].begin[block] + 0];
         oneCharText[1] = ident[actualId].newText[ident[actualId].begin[block] + 1];
@@ -549,7 +553,7 @@ void mark_new_digit_of_actual_id_block_and_subBlock(void)
         oneCharText[0] = ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition];
         oneCharText[1] = 0;
         positionOffset = GFX_return_offset(ident[actualId].fontUsed, ident[actualId].newText, ident[actualId].begin[block] + subBlockPosition);
-        write_content( ident[actualId].coord[0] + positionOffset, ident[actualId].coord[1], ident[id].coord[2], ident[actualId].fontUsed, oneCharText, CLUT_MenuEditDigit);
+        write_content( ident[actualId].coord[0] + positionOffset, ident[actualId].coord[1], ident[actualId].coord[2], ident[actualId].fontUsed, oneCharText, CLUT_MenuEditDigit);
     }
 }
 
@@ -1017,7 +1021,7 @@ uint8_t get_id_of(uint32_t editID)
     uint8_t temp_id;
 
     if(editID == ident[actualId].callerID)
-        return id;
+        return actualId;
     else
     {
         temp_id = 0;
@@ -1044,8 +1048,8 @@ void tMenuEdit_newButtonText(uint32_t editID, char *text)
     strncpy(ident[id].newText, text, 32);
     ident[id].newText[31] = 0;
 
-    clean_content_of_actual_Id();
-    write_content_of_actual_Id();
+    clean_content_of_Id(id);
+    write_content_of_Id(id);
 
     id = backup_id;
 }
@@ -1069,8 +1073,8 @@ void tMenuEdit_set_on_off(uint32_t editID, uint32_t int1)
     else
         ident[id].newText[0] = '\006';
 
-    clean_content_of_actual_Id();
-    write_content_of_actual_Id();
+    clean_content_of_Id(id);
+    write_content_of_Id(id);
 
     id = backup_id;
 }
@@ -1141,10 +1145,10 @@ void tMenuEdit_newInput(uint32_t editID, uint32_t int1,  uint32_t int2,  uint32_
     ident[id].input[2] = int3;
     ident[id].input[3] = int4;
 
-    create_newText_for_actual_Id();
+    create_newText_for_Id(id);
     if(id <= idLast)
         change_CLUT_entry((CLUT_MenuEditField0 + id), CLUT_MenuEditFieldRegular);
-    write_content_of_actual_Id();
+    write_content_of_Id(id);
 
     id = backup_id;
 }

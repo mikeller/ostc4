@@ -285,6 +285,10 @@ void openEdit_Compass(void)
     char text[10];
     uint8_t textIndex = 0;
 
+
+    set_globalState(StMHARD2_Compass);
+    resetMenuEdit(CLUT_MenuPageHardware);
+
     text[textIndex++] = '\001';
     text[textIndex++] = TXT_2BYTE;
     text[textIndex++] = TXT2BYTE_Compass;
@@ -319,6 +323,8 @@ void openEdit_Compass(void)
     setEvent(StMHARD2_Compass_Calibrate,		(uint32_t)OnAction_Compass);
     setEvent(StMHARD2_Compass_Inertia,	(uint32_t)OnAction_InertiaLevel);
     setEvent(StMHARD2_Compass_Declination, (uint32_t)OnAction_CompassDeclination);
+
+    tMenuEdit_select(StMHARD2_Compass_SetCourse);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }

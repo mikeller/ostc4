@@ -838,6 +838,7 @@ void openEdit_Information(void)
     write_field_button(StMSYS4_Info, 30, 800, ME_Y_LINE6,  &FontT48, text);
 
     setEvent(StMSYS4_Info, (uint32_t)OnAction_Information);
+    tMenuEdit_select(StMSYS4_Info);
 }
 
 

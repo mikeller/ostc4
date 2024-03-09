@@ -269,6 +269,7 @@
 
 #define StMHARD1_Bluetooth			_MB(2,7,1,1,0)
 
+#define StMHARD2_Compass				_MB(2,7,2,0,0)
 #define StMHARD2_Compass_SetCourse		_MB(2,7,2,2,0)
 #define StMHARD2_Compass_ResetCourse	_MB(2,7,2,3,0)
 #define StMHARD2_Compass_Calibrate		_MB(2,7,2,4,0)
