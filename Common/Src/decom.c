@@ -37,10 +37,11 @@
 #include "decom.h"
 
 #include <math.h>
+#include <string.h>
 #include "settings.h"
 #include "calc_crush.h"
 
-#	define	FRACTION_N2_AIR			0.7902
+#define	FRACTION_N2_AIR			0.7902
 
 const float helium_time_constant[16] = {
 										3.68695308808482E-001,
@@ -577,99 +578,100 @@ _Bool nextSetpointChange(SDiveSettings* pDiveSettings, uint8_t depth_meter, uint
 }
 
 
+void insertGasIntoList(SGasLine* pGas, SGasLine** pGasList, uint8_t gasInSettings, uint8_t* pGasInSettingsList, uint8_t GasListLength)
+{
+	uint8_t localGasIndex = GasListLength;
+	if(pGas != 0)
+	{
+		while(localGasIndex != 0)	/* first entry */
+		{
+			if(pGasList[localGasIndex-1]->depth_meter > pGas->depth_meter)	/* switch depth of existing gas is deeper then new one => move down */
+			{
+				pGasList[localGasIndex] = pGasList[localGasIndex-1];
+				pGasInSettingsList[localGasIndex] = pGasInSettingsList[localGasIndex - 1];
+				localGasIndex--;
+			}
+			else
+			{
+				break;
+			}
+		}
+		pGasList[localGasIndex] = pGas;
+		pGasInSettingsList[localGasIndex] = gasInSettings;
+	}
+}
 
 void decom_CreateGasChangeList(SDiveSettings* pInput, const SLifeData* pLifeData)
 {
-	int i=0, j = 0;
-	int count = 0;
-	 for(i=0;i< 5;i++)
-				{
-						//FirstGas
+	SGasLine localPSCRFirst;
+	SGasLine *pLocalGasList[5] = {0,0,0,0,0};
+	uint8_t localGasInSettingsList[5] = {0,0,0,0,0};
 
-								pInput->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero = 0;
-								pInput->decogaslist[i].GasIdInSettings = 255;
-								pInput->decogaslist[i].setPoint_cbar = 0;
-								pInput->decogaslist[i].helium_percentage = 0;
-								pInput->decogaslist[i].nitrogen_percentage = 0;
-				}
-	//pInput->liveData.dive_time_seconds = 0;
+	uint8_t gasStart = 1;
+	uint8_t gasIndex = 0;
+	uint8_t gasEntryCnt = 0;
 
-		/* FirstGas
-		 * 0 = special gas, 1 to 5 ist OC gas, 6 to 10 is diluent
-		 */
+	int i=0;
+	for(i=0;i< 5;i++)	/* reset list */
+	{
+		pInput->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero = 0;
+		pInput->decogaslist[i].GasIdInSettings = 255;
+		pInput->decogaslist[i].setPoint_cbar = 0;
+		pInput->decogaslist[i].helium_percentage = 0;
+		pInput->decogaslist[i].nitrogen_percentage = 0;
+	}
+	/* FirstGas
+	 * 0 = special gas, 1 to 5 is OC gas, 6 to 10 is diluent
+	 */
+	pInput->decogaslist[0] = pLifeData->actualGas;
+	/* Add Deco Gases
+	 * special (gasId == 0) is never a deco/travel gas but actual gas only
+	*/
 
+	if(pInput->diveMode != DIVEMODE_OC)
+	{
+		gasStart = 6;	/* CCR or PSCR => CC gaslist */
+	}
 
-
-		pInput->decogaslist[0] = pLifeData->actualGas;
-
-				/* Add Deco Gases
-				 * special (gasId == 0) is never a deco/travel gas but actual gas only
-				 */
-		if(pInput->diveMode == DIVEMODE_OC)
+	if(pInput->diveMode == DIVEMODE_PSCR)				/* Handle first gas as deco gas */
+	{
+		for(gasIndex = gasStart; gasIndex < gasStart + 5; gasIndex++)
 		{
+			if(pInput->gas[gasIndex].note.ub.first)
+			{
+				if (pLifeData->actualGas.GasIdInSettings != gasIndex)
+				{
+					memcpy(&localPSCRFirst, &pInput->gas[gasIndex], sizeof(SGasLine));
+					localPSCRFirst.depth_meter = calc_MOD(gasIndex);
+					insertGasIntoList(&localPSCRFirst, pLocalGasList, gasIndex, localGasInSettingsList, gasEntryCnt);
+					gasEntryCnt++;
+					break;
+				}
+			}
+		}
+	}
 
-				for(i=1;i<= 5;i++)
-				{
-						if(pInput->gas[i].note.ub.active && pInput->gas[i].depth_meter
-							 && (pLifeData->actualGas.GasIdInSettings != i)
-							 &&(pInput->gas[i].depth_meter < pLifeData->depth_meter ) )
-						{
-								count = 1;
-								for(j=1;j<= 5;j++)
-								{
-										if(			(pInput->gas[j].note.ub.active && pInput->gas[j].depth_meter > 0)
-												&&	(pLifeData->actualGas.GasIdInSettings != j) // new hw 160905
-												&&	(pInput->gas[j].depth_meter > pInput->gas[i].depth_meter))
-												count++;
-								}
-								pInput->decogaslist[count].change_during_ascent_depth_meter_otherwise_zero = pInput->gas[i].depth_meter;
-								pInput->decogaslist[count].nitrogen_percentage = 100;
-								pInput->decogaslist[count].nitrogen_percentage -= pInput->gas[i].oxygen_percentage;
-								pInput->decogaslist[count].nitrogen_percentage -= pInput->gas[i].helium_percentage;
-								pInput->decogaslist[count].helium_percentage = pInput->gas[i].helium_percentage;
-								pInput->decogaslist[count].GasIdInSettings = i;
-								pInput->decogaslist[count].AppliedDiveMode = DIVEMODE_OC;
-						}
-				}
-		}
-		else
+
+	for(gasIndex = gasStart; gasIndex < gasStart + 5; gasIndex++)
+	{
+		if(((pInput->gas[gasIndex].note.ub.active) && (pInput->gas[gasIndex].depth_meter))		/* ready for deco calculation */
+			&& (pLifeData->actualGas.GasIdInSettings != gasIndex)							/* not the actual gas */
+			&& (pInput->gas[gasIndex].depth_meter < pLifeData->depth_meter ))				/* a gas which is on the way to surface */
 		{
-			//divmode CCR or PSCR
-				for(i=6; i <= 10; i++)
-				{
-						if((pInput->gas[i].note.ub.active) && (pInput->gas[i].depth_meter)
-							 && (pLifeData->actualGas.GasIdInSettings != i)
-							 && (pInput->gas[i].depth_meter < pLifeData->depth_meter ))
-						{
-								count = 1;
-								for(j=6;j<= 10;j++)
-								{
-//                    if(pInput->gas[j].note.ub.active && pInput->gas[j].depth_meter > 0 &&pInput->gas[j].depth_meter > pInput->gas[i].depth_meter)
-										if(((pInput->gas[j].note.ub.active) && (pInput->gas[j].depth_meter > 0))
-												&&	(pLifeData->actualGas.GasIdInSettings != j) // new hw 160905
-												&&	(pInput->gas[j].depth_meter > pInput->gas[i].depth_meter))
-												count++;
-								}
-								pInput->decogaslist[count].change_during_ascent_depth_meter_otherwise_zero = pInput->gas[i].depth_meter;
-								pInput->decogaslist[count].nitrogen_percentage = 100;
-								if(pInput->diveMode == DIVEMODE_PSCR)
-								{
-									pInput->decogaslist[count].AppliedDiveMode = DIVEMODE_PSCR;
-									pInput->decogaslist[count].setPoint_cbar = decom_calc_SimppO2_O2based((float)(pInput->gas[i].depth_meter / 10.0 + 1.0), pInput->gas[i].oxygen_percentage, pInput->decogaslist[count].pscr_factor ) * 100;
-									pInput->decogaslist[count].nitrogen_percentage -= pInput->gas[i].oxygen_percentage;
-								}
-								else
-								{
-									pInput->decogaslist[count].nitrogen_percentage -= pInput->gas[i].oxygen_percentage;
-									pInput->decogaslist[count].AppliedDiveMode = DIVEMODE_CCR;
-									pInput->decogaslist[count].setPoint_cbar = pInput->decogaslist[0].setPoint_cbar;		/* assume that current setpoint is kept till end of the dive */
-								}
-								pInput->decogaslist[count].nitrogen_percentage -= pInput->gas[i].helium_percentage;
-								pInput->decogaslist[count].helium_percentage = pInput->gas[i].helium_percentage;
-								pInput->decogaslist[count].GasIdInSettings = i;
-						}
-				}
+			insertGasIntoList(&pInput->gas[gasIndex], pLocalGasList, gasIndex, localGasInSettingsList, gasEntryCnt);
+			gasEntryCnt++;
 		}
+	}
+	for(gasIndex = 1; gasIndex < gasEntryCnt+1; gasIndex++)									/* move gasLine Information into deco List */
+	{
+		pInput->decogaslist[gasIndex].change_during_ascent_depth_meter_otherwise_zero = pLocalGasList[gasIndex-1]->depth_meter;
+		pInput->decogaslist[gasIndex].nitrogen_percentage = 100;
+		pInput->decogaslist[gasIndex].nitrogen_percentage -= pLocalGasList[gasIndex-1]->oxygen_percentage;
+		pInput->decogaslist[gasIndex].nitrogen_percentage -= pLocalGasList[gasIndex-1]->helium_percentage;
+		pInput->decogaslist[gasIndex].helium_percentage = pLocalGasList[gasIndex-1]->helium_percentage;
+		pInput->decogaslist[gasIndex].GasIdInSettings = localGasInSettingsList[gasIndex-1];
+		pInput->decogaslist[gasIndex].AppliedDiveMode = pInput->diveMode;
+	}
 }
 void test_decom_CreateGasChangeList(void)
 {
