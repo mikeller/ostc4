@@ -598,7 +598,10 @@ void tM_build_pages(void)
     if((isLoopMode(pSettings->dive_mode)) || (stateUsed->diveSettings.ccrOption == 1))
     {
         tM_add(StMCG);
-        tM_add(StMSP);
+        if((stateUsed->diveSettings.diveMode != DIVEMODE_PSCR) || (actual_menu_content != MENU_SURFACE))
+        {
+        	tM_add(StMSP);
+        }
         if (actual_menu_content == MENU_SURFACE)  /* StMOG is now accessed using StMCG in CCR mode*/
         {
         	tM_add(StMXTRA);
