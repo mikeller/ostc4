@@ -276,6 +276,9 @@ typedef struct
 #ifdef ENABLE_BOTTLE_SENSOR
 	int8_t newPressure;
 #endif
+#ifdef HAVE_DEBUG_WARNINGS
+	int8_t debug;
+#endif
 } SWarnings;
 
 

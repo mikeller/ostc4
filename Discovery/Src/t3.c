@@ -1514,6 +1514,7 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
 {
     char text[256], textMain[256];
     uint8_t textpointer, textpointerMain, lineFree, more;
+    uint8_t index = 0;
 
     snprintf(text,TEXTSIZE,"\025\f%c",TXT_Warning);
     GFX_write_string(&FontT42,&t3c1,text,0);
@@ -1635,7 +1636,19 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
             more++;
         }
     }
-
+#ifdef HAVE_DEBUG_WARNINGS
+    if(lineFree && stateUsed->warnings.debug)
+    {
+	    for(index=0; index<3; index++)
+	    {
+        	if(((stateUsed->lifeData.extIf_sensor_map[index] == SENSOR_DIGO2M) && (((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status & DVO2_FATAL_ERROR)))
+        	{
+        		textpointer += snprintf(&text[textpointer],32,"\001Debug: %lx\n",((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status);
+        	}
+	    }
+        lineFree--;
+    }
+#endif
     text[textpointer] = 0;
     textMain[textpointerMain] = 0;
 

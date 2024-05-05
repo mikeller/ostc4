@@ -72,6 +72,10 @@ static int8_t check_pressureSensor(SDiveState * pDiveState);
 static int8_t check_co2(SDiveState * pDiveState);
 #endif
 static int8_t check_helper_same_oxygen_and_helium_content(SGasLine * gas1, SGasLine * gas2);
+#ifdef HAVE_DEBUG_WARNINGS
+static int8_t check_debug(SDiveState * pDiveState);
+#endif
+
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -100,6 +104,9 @@ void check_warning2(SDiveState * pDiveState)
 #endif
 #ifdef ENABLE_CO2_SUPPORT
 	pDiveState->warnings.numWarnings += check_co2(pDiveState);
+#endif
+#ifdef HAVE_DEBUG_WARNINGS
+	pDiveState->warnings.numWarnings += check_debug(pDiveState);
 #endif
 }
 
@@ -594,6 +601,27 @@ static int8_t check_co2(SDiveState * pDiveState)
 		}
 	}
 	return pDiveState->warnings.co2High;
+}
+#endif
+
+#ifdef HAVE_DEBUG_WARNINGS
+static int8_t check_debug(SDiveState * pDiveState)
+{
+	uint8_t index = 0;
+
+	pDiveState->warnings.debug = 0;
+
+	if((settingsGetPointer()->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL) || (settingsGetPointer()->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG))
+	{
+	    for(index=0; index<3; index++)
+	    {
+        	if(((pDiveState->lifeData.extIf_sensor_map[index] == SENSOR_DIGO2M) && (((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status & DVO2_FATAL_ERROR)))
+        	{
+        		pDiveState->warnings.debug = 1;
+        	}
+	    }
+	}
+	return pDiveState->warnings.debug;
 }
 #endif
 

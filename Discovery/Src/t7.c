@@ -1419,6 +1419,9 @@ uint8_t t7_test_customview_warnings(void)
     	count++;
     }
 #endif
+#ifdef HAVE_DEBUG_WARNINGS
+    count += stateUsed->warnings.debug;
+#endif
     return count;
 }
 
@@ -1490,6 +1493,7 @@ void t7_show_customview_warnings(void)
 {
     char text[256];
     uint8_t textpointer, lineFree;
+    uint8_t index = 0;
 
     text[0] = '\025';
     text[1] = '\f';
@@ -1573,6 +1577,19 @@ void t7_show_customview_warnings(void)
         text[textpointer++] = '\n';
         text[textpointer++] = '\r';
         text[textpointer] = 0;
+        lineFree--;
+    }
+#endif
+#ifdef HAVE_DEBUG_WARNINGS
+    if(lineFree && stateUsed->warnings.debug)
+    {
+	    for(index=0; index<3; index++)
+	    {
+        	if(((stateUsed->lifeData.extIf_sensor_map[index] == SENSOR_DIGO2M) && (((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status & DVO2_FATAL_ERROR)))
+        	{
+        		textpointer += snprintf(&text[textpointer],32,"\001Debug: %lx\n",((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status);
+        	}
+	    }
         lineFree--;
     }
 #endif

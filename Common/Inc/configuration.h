@@ -48,6 +48,9 @@
 /* Enable to have access to the debug view options (turn on / off via menu instead of compile switch) */
 /* #define HAVE_DEBUG_VIEW */
 
+/* Enable to have event based warnings being displayed as warning messages when the occure */
+#define HAVE_DEBUG_WARNINGS
+
 /* Enable to have access to the motion control selection menu */
 /* #define ENABLE_MOTION_CONTROL */
 
