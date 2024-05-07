@@ -72,8 +72,6 @@ void uartSentinel_ProcessData(uint8_t data)
 	static uint32_t dataValue[3];
 	static uint8_t dataValueIdx = 0;
 
-	static uint8_t lastAlive = 0;
-	static uint8_t curAlive = 0;
 	static uint8_t checksum = 0;
 	static char checksum_str[]="00";
 
@@ -85,7 +83,6 @@ void uartSentinel_ProcessData(uint8_t data)
 			case SENTRX_Ready:	if((data >= 'a') && (data <= 'z'))
 							{
 								rxState = SENTRX_DetectStart;
-								curAlive = data;
 								checksum = 0;
 							}
 					break;
@@ -176,7 +173,6 @@ void uartSentinel_ProcessData(uint8_t data)
 										setExternalInterfaceChannel(1,(float)(dataValue[1] / 10.0));
 										setExternalInterfaceChannel(2,(float)(dataValue[2] / 10.0));
 										SentinelConnected = 1;
-										lastAlive = curAlive;
 										localComState = UART_SENTINEL_OPERATING;
 									}
 									rxState = SENTRX_Ready;
