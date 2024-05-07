@@ -130,6 +130,7 @@ void init_surface_ring(uint8_t force)
 		for(int i=0; i<PRESSURE_SURFACE_QUE; i++)
 			surface_ring_mbar[i] = ambient_pressure_mbar;
 		surface_pressure_mbar = ambient_pressure_mbar;
+		surface_pressure_stable_value = surface_pressure_mbar;
 		surface_pressure_writeIndex = 0;			/* index of the oldest value in the ring buffer */
 	}
 }
@@ -236,8 +237,9 @@ void update_surface_pressure(uint8_t call_rhythm_seconds)
 
 			secondCounterSurfaceRing = 0;
 			avgCount = 1;	/* use the current value as starting point but restart the weight decrement of the measurements */
+
+			evaluate_surface_pressure();
 		}
-		evaluate_surface_pressure();
 	}
 }
 
