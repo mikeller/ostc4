@@ -4505,6 +4505,10 @@ uint16_t LogDeltaCharge(float charge)
 	{
 		level = 10;
 	}
+	if(curIndex > 1)
+	{
+		level = (level + ChargerLog[curIndex - 1]) / 2; /* smooth small jumps */
+	}
 	if(curIndex < 59)
 	{
 		ChargerLog[curIndex++] = level;
@@ -4514,7 +4518,7 @@ uint16_t LogDeltaCharge(float charge)
 		memcpy (&ChargerLog[0],&ChargerLog[1],sizeof(ChargerLog) - 1);
 		ChargerLog[curIndex] = level;
 	}
-	if(curIndex > 1)
+	if(curIndex > 1)	/* estimate time til charging is complete */
 	{
 		averageSpeed = ((averageSpeed * (curIndex-1)) + charge) / curIndex;
 		completeSec = (100.0 - stateUsed->lifeData.battery_charge) / averageSpeed;
@@ -4571,30 +4575,28 @@ void t7_ChargerView(void)
 
     if(stateUsed->chargeStatus != CHARGER_off)
     {
-		if(lastCharge != localCharge)
-		{
-			curTick = HAL_GetTick();
-			deltatime = (curTick - lastTick);
-			lastTick = curTick;
-			if(lastCharge < localCharge)
+		curTick = HAL_GetTick();
+		deltatime = (curTick - lastTick);
+
+		if((deltatime > 3000) || (lastCharge != localCharge))	/* Charge value update is expected every 2 second. */
+		{														/* Added timeout to keep graph moving in case charger is temporary idle */
+			if(lastCharge != localCharge)
 			{
-				speed = (localCharge - lastCharge) * 1000.0 / deltatime;
+				if(lastCharge < localCharge)
+				{
+					speed = (localCharge - lastCharge) * 1000.0 / deltatime;
+				}
+
+				if(localCharge > 100.0)
+				{
+					localCharge = 100.0;
+				}
+				lastCharge = localCharge;
 			}
-
-			if(localCharge > 100.0)
-			{
-				localCharge = 100.0;
-			}
-
-			lastCharge = localCharge;
-		}
-
-
-		if(deltatime > 1000)
-		{
 			deltatime = 0;
 			remainingSec = LogDeltaCharge(speed);
 			speed = 0;
+			lastTick = curTick;
 		}
     }
     textpointer += snprintf(&text[textpointer],50,"\n\r");

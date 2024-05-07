@@ -142,7 +142,7 @@ void initGlobals(void)
 
 	global.dataSendToMaster.RTE_VERSION_high = firmwareVersionHigh();//RTE_VERSION_HIGH;;
 	global.dataSendToMaster.RTE_VERSION_low = firmwareVersionLow();//RTE_VERSION_LOW;;
-	global.dataSendToMaster.chargeStatus = 0;
+	global.dataSendToMaster.chargeStatus = CHARGER_off;
 	
 	global.dataSendToMaster.power_on_reset = 0;
 	global.dataSendToMaster.header.checkCode[0] = 0xA1;
@@ -160,7 +160,7 @@ void initGlobals(void)
 
 	global.deviceDataSendToMaster.RTE_VERSION_high = firmwareVersionHigh();//RTE_VERSION_HIGH;
 	global.deviceDataSendToMaster.RTE_VERSION_low = firmwareVersionLow();//RTE_VERSION_LOW;
-	global.deviceDataSendToMaster.chargeStatus = 0;
+	global.deviceDataSendToMaster.chargeStatus = CHARGER_off;
 
 	global.deviceDataSendToMaster.power_on_reset = 0;
 	global.deviceDataSendToMaster.header.checkCode[0] = 0xDF;
