@@ -260,6 +260,17 @@ void UART_FlushRxBuffer(void)
 	}
 }
 
+uint8_t UART_isComActive(uint8_t sensorId)
+{
+	uint8_t active = 1;
 
+	uint8_t ComState = externalInterface_GetSensorState(sensorId + EXT_INTERFACE_MUX_OFFSET);
+
+	if((ComState == UART_COMMON_INIT) || (ComState == UART_COMMON_IDLE) || (ComState == UART_COMMON_ERROR))
+	{
+		active = 0;
+	}
+	return active;
+}
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/

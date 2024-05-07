@@ -48,6 +48,7 @@ void UART_SendCmdString(uint8_t *cmdString);
 void UART_ReadData(uint8_t sensorType);
 void UART_FlushRxBuffer(void);
 void UART_ChangeBaudrate(uint32_t newBaudrate);
+uint8_t UART_isComActive(uint8_t sensorId);
 
 void StringToInt(char *pstr, uint32_t *puInt32);
 void StringToUInt64(char *pstr, uint64_t *puint64);

@@ -68,6 +68,7 @@ static uint8_t activeChannel = 0;			/* channel which is in request */
 static uint8_t recBuf[ADC_ANSWER_LENGTH];
 static uint8_t timeoutCnt = 0;
 static uint8_t externalInterfacePresent = 0;
+static uint8_t delayAdcConversion = 0;
 
 float externalChannel_mV[MAX_ADC_CHANNEL];
 static uint8_t  externalV33_On = 0;
@@ -104,6 +105,7 @@ void externalInterface_Init(void)
 	activeChannel = 0;
 	timeoutCnt = 0;
 	externalInterfacePresent = 0;
+	delayAdcConversion = 0;
 	if(externalInterface_StartConversion(activeChannel) == HAL_OK)
 	{
 		externalInterfacePresent = 1;
@@ -171,7 +173,15 @@ uint8_t externalInterface_ReadAndSwitch()
 
 	if(externalADC_On)
 	{
-		if(I2C_Master_Receive(DEVICE_EXTERNAL_ADC, recBuf, ADC_ANSWER_LENGTH) == HAL_OK)
+		if(delayAdcConversion)
+		{
+			if(UART_isComActive(activeUartChannel) == 0)
+			{
+				externalInterface_StartConversion(activeChannel);
+				delayAdcConversion = 0;
+			}
+		}
+		else if(I2C_Master_Receive(DEVICE_EXTERNAL_ADC, recBuf, ADC_ANSWER_LENGTH) == HAL_OK)
 		{
 			if((recBuf[ANSWER_CONFBYTE_INDEX] & ADC_START_CONVERSION) == 0)		/* !ready set => received data contains new value */
 			{
@@ -195,25 +205,23 @@ uint8_t externalInterface_ReadAndSwitch()
 				}
 
 				activeChannel = nextChannel;
-				externalInterface_StartConversion(activeChannel);
-				timeoutCnt = 0;
-			}
-			else
-			{
-				if(timeoutCnt++ >= ADC_TIMEOUT)
+				if(UART_isComActive(activeUartChannel) == 0)
 				{
 					externalInterface_StartConversion(activeChannel);
-					timeoutCnt = 0;
 				}
-			}
-		}
-		else		/* take also i2c bus disturb into account */
-		{
-			if(timeoutCnt++ >= ADC_TIMEOUT)
-			{
-				externalInterface_StartConversion(activeChannel);
+				else
+				{
+					delayAdcConversion = 1;
+				}
 				timeoutCnt = 0;
 			}
+
+		}
+		if(timeoutCnt++ >= ADC_TIMEOUT)
+		{
+			externalInterface_StartConversion(activeChannel);
+			delayAdcConversion = 0;
+			timeoutCnt = 0;
 		}
 	}
 	return retval;
