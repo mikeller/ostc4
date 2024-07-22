@@ -231,6 +231,14 @@ static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState
         gasIdOffset = 0;
     }
 
+    if (betterGasIdLocal == NO_GAS_ID) {
+        for (unsigned i = gasIdOffset + 1; i <= gasIdOffset + 5; i++) {
+            if (diveSettings.gas[i].note.ub.active && diveSettings.gas[i].note.ub.first) {
+                betterGasIdLocal = i;
+            }
+        }
+    }
+
 	/* life data is float, gas data is uint8 */
     if (actualLeftMaxDepth(diveState)) { /* deco gases */
         for (int i=1+gasIdOffset; i<= 5+gasIdOffset; i++) {
@@ -245,7 +253,7 @@ static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState
         }
     } else { /* travel gases */
         bestGasDepth = 0;
-        //check for travalgas
+        //check for travelgas
         for (int i = 1 + gasIdOffset; i <= 5 + gasIdOffset; i++) {
             if ((diveSettings.gas[i].note.ub.active)
                 && (diveSettings.gas[i].note.ub.travel)
@@ -277,7 +285,7 @@ static int8_t check_BetterGas(SDiveState *diveState)
 
     if (isLoopMode(diveSettings.diveMode)) {
         betterGasId = getBetterGasId(true, lifeData.actualGas.GasIdInSettings, diveState);
-        betterBailoutGasId = getBetterGasId(false, lifeData.lastDiluent_GasIdInSettings, diveState);
+        betterBailoutGasId = getBetterGasId(false, NO_GAS_ID, diveState);
     } else {
         betterGasId = getBetterGasId(false, lifeData.actualGas.GasIdInSettings, diveState);
     }
