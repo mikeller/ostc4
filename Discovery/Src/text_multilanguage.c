@@ -1901,6 +1901,12 @@ static uint8_t text_FR_Finished[] = "Fini";
 static uint8_t text_IT_Finished[] = "Finito";
 static uint8_t text_ES_Finished[] = "Terminado";
 
+static uint8_t text_EN_Page[] = "Page";
+static uint8_t text_DE_Page[] = "Blättern";
+static uint8_t text_FR_Page[] = "Défiler";
+static uint8_t text_IT_Page[] = "Scorrere";
+static uint8_t text_ES_Page[] = "Desplazarse";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2189,4 +2195,6 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Timer, 	{text_EN_Timer, text_DE_Timer, text_FR_Timer, text_IT_Timer, text_ES_Timer}},
 	{(uint8_t)TXT2BYTE_Starting, 	{text_EN_Starting, text_DE_Starting, text_FR_Starting, text_IT_Starting, text_ES_Starting}},
 	{(uint8_t)TXT2BYTE_Finished, 	{text_EN_Finished, text_DE_Finished, text_FR_Finished, text_IT_Finished, text_ES_Finished}},
+
+	{(uint8_t)TXT2BYTE_Page, 	{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},
 };
