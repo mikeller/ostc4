@@ -1960,8 +1960,8 @@ static void t7_CcrSummary(SSettings *settings)
     t7cY0free.WindowNumberOfTextLines = 6;
     t7cY0free.WindowTab = 375;
 
-    t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
     if (!settings->FlipDisplay) {
+	    t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
         t7cY0free.WindowX0 += 10;
         t7cY0free.WindowY0 += 10;
         t7cY0free.WindowY1 = 355;
@@ -1969,6 +1969,7 @@ static void t7_CcrSummary(SSettings *settings)
         t7cY0free.WindowX0 -= 10;
         t7cY0free.WindowY0 -= 10;
     } else {
+	    t7cY0free.WindowY1 = 400;
         t7cY0free.WindowY1 -= 10;
         t7cY0free.WindowX1 -= 10;
         GFX_write_string(&FontT24, &t7cY0free, heading, 1);
@@ -2113,8 +2114,8 @@ static void showTimer(SSettings *settings, int nowS)
     t7cY0free.WindowNumberOfTextLines = 6;
     t7cY0free.WindowTab = 375;
 
-    t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
     if (!settings->FlipDisplay) {
+	    t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
         t7cY0free.WindowX0 += 10;
         t7cY0free.WindowY0 += 10;
         t7cY0free.WindowY1 = 355;
@@ -2122,6 +2123,7 @@ static void showTimer(SSettings *settings, int nowS)
         t7cY0free.WindowX0 -= 10;
         t7cY0free.WindowY0 -= 10;
     } else {
+	    t7cY0free.WindowY1 = 400;
         t7cY0free.WindowY1 -= 10;
         t7cY0free.WindowX1 -= 10;
         GFX_write_string(&FontT24, &t7cY0free, heading, 1);
