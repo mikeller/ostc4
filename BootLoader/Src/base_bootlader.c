@@ -223,6 +223,19 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
+#ifdef BOOTLOADER_STANDALONE
+#include "Fonts/Font_T144_plus.h"
+#include "Fonts/Font_T84.h"
+#include "Fonts/Font_T105.h"
+#include "Fonts/Font_T54.h"
+#include "Fonts/Font_T48_plus.h"
+#include "Fonts/Font_T24.h"
+#include "Fonts/Font_T42.h"
+#include "Fonts/image_battery.h"
+#include "Fonts/image_heinrichs_weikamp.h"
+#include "Fonts/image_ostc.h"
+#endif
+
 // From Discovery/Inc (shall be shared...)
 #include "data_exchange_main.h"
 #include "display.h"
@@ -269,7 +282,7 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 	.magic[3] = FIRMWARE_MAGIC_END
 };
 
-
+#if 0
 const SHardwareData HardwareData __attribute__((at(HARDWAREDATA_ADDRESS))) = {
 
 	// first 52 bytes
@@ -297,7 +310,7 @@ const SHardwareData HardwareData __attribute__((at(HARDWAREDATA_ADDRESS))) = {
 	.secondary_bluetooth_name_set = 0xFF,
 	.secondary_info = {0xFF,0xFF,0xFF,0xFF}
 };
-
+#endif
 
 RTC_HandleTypeDef	RtcHandle;
 TIM_HandleTypeDef   TimHandle; /* used in stm32f4xx_it.c too */
@@ -418,10 +431,15 @@ GPIO_test_I2C_lines();
 	uint8_t ptr;
 	uint32_t pOffset;
 
+	const SHardwareData* HardwareData = hardwareDataGetPointer();
+
 	set_globalState(StBoot0);
 
 	HAL_Init();
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_2);
+	SystemClock_Config();
+
+	MX_GPIO_Init();
 
 	/* feedback for the user
 	 * aber sehr unschï¿½n beim Warmstart
@@ -442,8 +460,8 @@ GPIO_test_I2C_lines();
 	}
 	else
 	if(			(firmware_MainCodeIsProgammed() == 0)
-			||	(hardwareDataGetPointer()->primarySerial == 0xFFFF)
-			||	(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF))
+			||	(HardwareData->primarySerial == 0xFFFF)
+			||	(HardwareData->production_bluetooth_name_set == 0xFF))
 	{
 		i = 1;
 	}
@@ -495,9 +513,8 @@ GPIO_test_I2C_lines();
 	if((i == 0) && (callForUpdate == 0))
 		firmware_JumpTo_Application();
 
-	SystemClock_Config();
 
-	MX_GPIO_Init();
+
 	MX_Bluetooth_PowerOn();
 	MX_SPI_Init();
 	SDRAM_Config();
@@ -663,7 +680,7 @@ GPIO_test_I2C_lines();
 	textVersion[ptr++] = 'a';
 	textVersion[ptr++] = 'l';
 	textVersion[ptr++] = ' ';
-	if(HardwareData.primarySerial == 0xFFFF)
+	if(HardwareData->primarySerial == 0xFFFF)
 	{
 		textVersion[ptr++] = 'n';
 		textVersion[ptr++] = 'o';
@@ -673,25 +690,25 @@ GPIO_test_I2C_lines();
 		textVersion[ptr++] = 'e';
 		textVersion[ptr++] = 't';
 	}
-	else if(HardwareData.secondarySerial == 0xFFFF)
+	else if(HardwareData->secondarySerial == 0xFFFF)
 	{
 		textVersion[ptr++] = '#';
-		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData.primarySerial);
+		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData->primarySerial);
 	}
 	else
 	{
 		textVersion[ptr++] = '#';
-		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData.secondarySerial);
+		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData->secondarySerial);
 		textVersion[ptr++] = ' ';
 		textVersion[ptr++] = '(';
-		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData.primarySerial);
+		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData->primarySerial);
 		textVersion[ptr++] = ')';
 	}
 	textVersion[ptr++] = '\020';
 	textVersion[ptr] = 0;
 
 	tInfo_button_text("Exit","","Sleep");
-	tInfo_newpage("Bootloader 160602");
+	tInfo_newpage("Bootloader 240812");
 	tInfo_write("start bluetooth");
 	tInfo_write("");
 	tInfo_write(textVersion);
@@ -701,8 +718,9 @@ GPIO_test_I2C_lines();
 	MX_UART_Init();
 	MX_Bluetooth_PowerOn();
 	tComm_Set_Bluetooth_Name(0);
-
 	tComm_init();
+	tComm_StartBlueModConfig();
+
 	set_globalState_Base();
 
 	GFX_start_VSYNC_IRQ();
@@ -1153,54 +1171,65 @@ static void EXTILine_Buttons_Config(void)
 	*/
 static void SystemClock_Config(void)
 {
-	RCC_ClkInitTypeDef RCC_ClkInitStruct;
-	RCC_OscInitTypeDef RCC_OscInitStruct;
-	RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct;
+    /* Enable Power Control clock */
+    __PWR_CLK_ENABLE();
 
-	/* Enable Power Control clock */
-	__PWR_CLK_ENABLE();
+    /* The voltage scaling allows optimizing the power consumption when the device is
+     clocked below the maximum system frequency, to update the voltage scaling value
+     regarding system frequency refer to product datasheet.  */
+    __HAL_PWR_VOLTAGESCALING_CONFIG( PWR_REGULATOR_VOLTAGE_SCALE1 );
 
-	/* The voltage scaling allows optimizing the power consumption when the device is
-		 clocked below the maximum system frequency, to update the voltage scaling value
-		 regarding system frequency refer to product datasheet.  */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
-	/*##-1- System Clock Configuration #########################################*/
-	/* Enable HSE Oscillator and activate PLL with HSE as source */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLM = 8;
-	RCC_OscInitStruct.PLL.PLLN = 336;//360;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-	RCC_OscInitStruct.PLL.PLLQ = 7;
-	HAL_RCC_OscConfig(&RCC_OscInitStruct);
+    /*##-1- System Clock Configuration #########################################*/
+    /* Enable HighSpeed Oscillator and activate PLL with HSE/HSI as source */
+    RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+#ifdef DISC1_BOARD
+    // Use High Speed Internal (HSI) oscillator, running at 16MHz.
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState       = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = 0x10;
+    RCC_OscInitStruct.PLL.PLLSource  = RCC_PLLSOURCE_HSI;
+    RCC_OscInitStruct.PLL.PLLM       = 16;				// HSI/16 is 1Mhz.
+#else
+    // Use High Speed External oscillator, running at 8MHz
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState       = RCC_HSE_ON;
+    RCC_OscInitStruct.PLL.PLLSource  = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM       = 8;               // HSE/8 is 1Mhz.
+#endif
+    // System clock = PLL (1MHz) * N/p = 180 MHz.
+    RCC_OscInitStruct.PLL.PLLN = 360;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+    RCC_OscInitStruct.PLL.PLLQ = 7;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    HAL_RCC_OscConfig( &RCC_OscInitStruct );
 
 //  HAL_PWREx_ActivateOverDrive();
-HAL_PWREx_DeactivateOverDrive();
-	/* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
-		 clocks dividers */
-	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
-	HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_8);//FLASH_LATENCY_5);
+    HAL_PWREx_DeactivateOverDrive();
 
-	/*##-2- LTDC Clock Configuration ###########################################*/
-	/* LCD clock configuration */
-	/* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
-	/* PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz */
-	/* PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/4 = 48 Mhz */
-	/* LTDC clock frequency = PLLLCDCLK / RCC_PLLSAIDIVR_8 = 48/8 = 6 Mhz */
+    /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+                                                            | RCC_CLOCKTYPE_PCLK1  | RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+    HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_8 );	//FLASH_LATENCY_5);
 
-	/* neu: 8MHz/8*300/5/8 = 7,5 MHz = 19,5 Hz bei 800 x 480 */
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-	PeriphClkInitStruct.PLLSAI.PLLSAIN = 300;//192;
-	PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;//4;
-	PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_8;//RCC_PLLSAIDIVR_4;// RCC_PLLSAIDIVR_2; // RCC_PLLSAIDIVR_8
-	HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+    /*##-2- LTDC Clock Configuration ###########################################*/
+    /* LCD clock configuration */
+    /* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
+    /* PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz */
+    /* PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/4 = 48 Mhz */
+    /* LTDC clock frequency = PLLLCDCLK / RCC_PLLSAIDIVR_8 = 48/8 = 6 Mhz */
+
+    /* neu: 8MHz/8*300/5/8 = 7,5 MHz = 19,5 Hz bei 800 x 480 */
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+    PeriphClkInitStruct.PLLSAI.PLLSAIN = 300;				//192;
+    PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;				//4;
+    PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_8;//RCC_PLLSAIDIVR_4;// RCC_PLLSAIDIVR_2; // RCC_PLLSAIDIVR_8
+    HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
 }
 
 
@@ -1503,7 +1532,7 @@ void reset_to_firmware_using_Watchdog(void)
 	WwdgHandle.Init.Counter   = 127;
 
 	HAL_WWDG_Init(&WwdgHandle);
-	HAL_WWDG_Start(&WwdgHandle);
+/*	HAL_WWDG_Start(&WwdgHandle);	has been removed from HAL library starting_V120 */
 	while(1);
 }
 

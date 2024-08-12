@@ -59,9 +59,6 @@
 #define BASE_BOOTLOADER_H
 
 /* Includes ------------------------------------------------------------------*/
-
-#define STM32F429xx
-
 #include "stm32f4xx_hal.h"
 
 #include "tStructure.h"

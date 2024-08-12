@@ -44,6 +44,9 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
 
+
+extern __IO const uint8_t AHBPrescTable[16];
+
 /** @addtogroup STM32F4xx_LL_Driver
   * @{
   */
