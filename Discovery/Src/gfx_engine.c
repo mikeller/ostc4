@@ -36,7 +36,8 @@
 
 /* Private types -------------------------------------------------------------*/
 
-#define RING_BUF_SIZE	(5u)
+#define RING_BUF_SIZE			(5u)
+#define MAX_COLOR_STRING_LENGTH	(100u)
 
 typedef struct
 {
@@ -248,7 +249,6 @@ void GFX_hwBackgroundOff(void)
 	backgroundHwStatus = LOGOSTOP;
 }
 
-
 void GFX_build_hw_background_frame(void)
 {
 	GFX_DrawCfgScreen	tLogoTemp;
@@ -316,7 +316,6 @@ void GFX_build_logo_frame(void)
 */	
 }
 
-
 void GFX_init(uint32_t  * pDestinationOut)
 {
 	frame[0].StartAddress = FBGlobalStart;
@@ -338,6 +337,57 @@ void GFX_init(uint32_t  * pDestinationOut)
 	GFX_build_logo_frame();
 	GFX_build_hw_background_frame();
 	
+  /* Register to memory mode with ARGB8888 as color Mode */
+  Dma2dHandle.Init.Mode         = DMA2D_R2M;
+  Dma2dHandle.Init.ColorMode    = DMA2D_ARGB4444;//to fake AL88,  before: DMA2D_ARGB8888;
+  Dma2dHandle.Init.OutputOffset = 0;
+
+  /* DMA2D Callbacks Configuration */
+  Dma2dHandle.XferCpltCallback  = GFX_Dma2d_TransferComplete;
+  Dma2dHandle.XferErrorCallback = GFX_Dma2d_TransferError;
+
+  Dma2dHandle.Instance  = DMA2D;
+
+  /* DMA2D Initialisation */
+	if(HAL_DMA2D_Init(&Dma2dHandle) != HAL_OK)
+		GFX_Error_Handler();
+
+  if(HAL_DMA2D_ConfigLayer(&Dma2dHandle, 1) != HAL_OK)
+		GFX_Error_Handler();
+
+	DMA2D_at_work = 255;
+}
+void GFX_init1_no_DMA(uint32_t  * pDestinationOut, uint8_t blockFrames)
+{
+	frame[0].StartAddress = FBGlobalStart;
+	GFX_clear_frame_immediately(frame[0].StartAddress);
+	frame[0].status = CLEAR;
+	frame[0].caller = 0;
+
+	for(int i=1;i<MAXFRAMES;i++)
+	{
+		frame[i].StartAddress = frame[i-1].StartAddress + FBOffsetEachIndex;
+		GFX_clear_frame_immediately(frame[i].StartAddress);
+		frame[i].status = CLEAR;
+		frame[i].caller = 0;
+	}
+
+	for(int i=0;i<blockFrames;i++)
+	{
+		frame[i].status = BLOCKED;
+		frame[i].caller = 1;
+	}
+	
+	pInvisibleFrame = getFrame(2);
+	*pDestinationOut = pInvisibleFrame;
+
+	GFX_build_logo_frame();
+	GFX_build_hw_background_frame();
+}
+
+
+void GFX_init2_DMA(void)
+{
   /* Register to memory mode with ARGB8888 as color Mode */
   Dma2dHandle.Init.Mode         = DMA2D_R2M;
   Dma2dHandle.Init.ColorMode    = DMA2D_ARGB4444;//to fake AL88,  before: DMA2D_ARGB8888;
@@ -530,6 +580,7 @@ void GFX_change_LTDC(void)
 	}
 	else if (backgroundHwStatus != LOGOOFF)
 	{
+
 		switch(backgroundHwStatus)
 			{
 			case LOGOSTART:
@@ -564,6 +615,7 @@ void GFX_change_LTDC(void)
 				FrameHandler.NextBottomRead = nextBottomBackup;
 				break;
 			}
+
 		return;
 	}
 	else
@@ -973,7 +1025,6 @@ void GFX_draw_image_monochrome(GFX_DrawCfgScreen *hgfx, SWindowGimpStyle window,
 	}
 }
 	
-
 static void GFX_draw_image_color(GFX_DrawCfgScreen *hgfx, SWindowGimpStyle window, const tImage *image)
 {
 	uint16_t* pDestination;
@@ -1763,7 +1814,8 @@ uint32_t GFX_write_label(const tFont *Font, GFX_DrawCfgWindow* hgfx, const char 
 
 /**
   ******************************************************************************
-  * @brief   GFX writeGfx_write_label_varstring. /  Write string with all parameters and font color options	heinrichs weikamp gmbh
+  * @brief   GFX writeGfx_write_label_varstring. /  Write string with all parameters and font color options
+	heinrichs weikamp gmbh
   * @version V0.0.1
   * @date    22-April-2014
   ******************************************************************************
@@ -2099,6 +2151,7 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 				settings.actualFont = (tFont *)settings.font;
 			}
 			else
+#ifndef BOOTLOADER_STANDALONE
 			if((*pText == '\005') && !minimal)
 			{
 				newXdelta = GFX_write_char(hgfx, &settings, 'a', (tFont *)&Awe48);
@@ -2111,6 +2164,7 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 				settings.Xdelta = newXdelta;
 			}
 			else
+#endif
 			if((*pText >= '\020') && (*pText <= '\032') && !minimal)
 				settings.color = *pText - '\020';
 			else
@@ -2187,15 +2241,13 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 	uint32_t found;
 	uint32_t pText;
 	uint16_t decodeUTF8;
-	uint8_t gfx_selected_language;
 #ifndef BOOTLOADER_STANDALONE
+	uint8_t gfx_selected_language = 0;
 	SSettings *pSettings;
 	pSettings = settingsGetPointer();
 	gfx_selected_language = pSettings->selected_language;
-	if(gfx_selected_language >= LANGUAGE_END)
+	if(gfx_selected_language >= LANGUAGE_END) gfx_selected_language = 0;
 #endif		
-		gfx_selected_language = 0;
-
 
 // -----------------------------
  	if(textId != (uint8_t)TXT_2BYTE)
@@ -2204,23 +2256,27 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 		j = 0;
 		for(i=(uint8_t)TXT_Language;i<(uint8_t)TXT_END;i++)
 		{
+#ifndef BOOTLOADER_STANDALONE
 			if(text_array[j].code == textId)
 			{
 				found = 1;
 				break;
 			}
+#endif
 			j++;
 		}
 		if(!found)
 			return cfg->Xdelta;
 
 // -----------------------------
+#ifndef BOOTLOADER_STANDALONE
 		pText = (uint32_t)text_array[j].text[gfx_selected_language];
 		if(!pText)
 			pText = (uint32_t)text_array[j].text[0];
 		else
 		if(*(char*)pText == 0)
 			pText = (uint32_t)text_array[j].text[0];
+#endif
 	}
 // -----------------------------
 	else
@@ -2231,14 +2287,17 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 		found = 0;
 		for(j=0;j<(uint8_t)TXT2BYTE_END-(uint8_t)TXT2BYTE_START;j++)
 		{
+#ifndef BOOTLOADER_STANDALONE
 			if((uint8_t)text_array2[j].code == (uint8_t)nextCharFor2Byte)
 			{
 				found = 1;
 				break;
 			}
+#endif
 		}
 		if(!found)
 			return cfg->Xdelta;
+#ifndef BOOTLOADER_STANDALONE
 // -----------------------------
 		pText = (uint32_t)text_array2[j].text[gfx_selected_language];
 		if(!pText)
@@ -2246,6 +2305,7 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 		else
 		if(*(char*)pText == 0)
 			pText = (uint32_t)text_array2[j].text[0];
+#endif
 	}
 // -----------------------------
 	
@@ -2684,7 +2744,10 @@ static uint32_t GFX_write_char_doubleSize(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteS
 
 static uint32_t GFX_write_char(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteString* cfg, uint8_t character, tFont *Font)
 {
+
+#ifndef BOOTLOADER_STANDALONE
 	Font = GFX_Check_Extra_Font(character, Font);
+#endif
 	if(cfg->doubleSize)
 	{
 		return GFX_write_char_doubleSize(hgfx, cfg, character, Font);
@@ -3005,6 +3068,7 @@ static uint32_t GFX_write_char(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteString* cfg,
 		return cfg->Xdelta + width;
 }
 
+#ifndef BOOTLOADER_STANDALONE
 
 /**
   ******************************************************************************
@@ -3104,7 +3168,7 @@ static int8_t GFX_write__Modify_helper(char *cText, const char *pTextInput, uint
 	return counter;
 }
 
-
+#endif
 /**
   ******************************************************************************
   * @brief   GFX write Modify Ydelta for align. /  calc Ydelta for start
@@ -3125,23 +3189,22 @@ static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_
 	uint32_t result;
 	uint32_t Xsum;
 	uint32_t j;
-	uint8_t gfx_selected_language;
 	uint32_t pText;
 	uint16_t decodeUTF8;
 	uint8_t tinyState = 0;		/* used to identify the usage of tiny font */
 	tFont* ptargetFont;
 
 #ifndef BOOTLOADER_STANDALONE
+	uint8_t gfx_selected_language = 0;
 	SSettings *pSettings;
 	pSettings = settingsGetPointer();
 	gfx_selected_language = pSettings->selected_language;
 	if(gfx_selected_language >= LANGUAGE_END)
 #endif
-		gfx_selected_language = 0;
 // -----------------------------
-
+#ifndef BOOTLOADER_STANDALONE
 	GFX_write__Modify_helper(cText,pTextInput,gfx_selected_language);
-
+#endif
 	pText = (uint32_t)&cText[0];
 	Xsum = 0;
 	j = 0;
@@ -3218,28 +3281,29 @@ static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_
 
 static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* hgfx, const char *pTextInput)
 {
-	char cText[101];
 	uint32_t result;
 	uint32_t Xsum;
 	uint32_t j;
 	tFont *font;
-	uint8_t gfx_selected_language;
+	char cText[101];
 	uint32_t pText;
 	uint16_t decodeUTF8;
 	uint8_t tinyState = 0;		/* used to identify the usage of tiny font */
 
 #ifndef BOOTLOADER_STANDALONE
+	uint8_t gfx_selected_language = 0;
 	SSettings *pSettings;
 	pSettings = settingsGetPointer();
 	gfx_selected_language = pSettings->selected_language;
 	if(gfx_selected_language >= LANGUAGE_END)
+#else
+	cText[0] = 0;
 #endif
-		gfx_selected_language = 0;
 // -----------------------------
-
+#ifndef BOOTLOADER_STANDALONE
 	GFX_write__Modify_helper(cText,pTextInput,gfx_selected_language);
+#endif
 	pText = (uint32_t)&cText[0];
-
 // -----------------------------
 
 	font = (tFont *)cfg->font;
@@ -3917,6 +3981,7 @@ void GFX_screenshot(void)
 */	
 }
 
+#ifndef BOOTLOADER_STANDALONE
 tFont* GFX_Check_Extra_Font(uint8_t character, tFont *Font)
 {
 	uint32_t i;
@@ -3946,11 +4011,13 @@ tFont* GFX_Check_Extra_Font(uint8_t character, tFont *Font)
 
 	return Font;
 }
-
+#endif
 uint32_t GFX_Character_Width(uint8_t character, tFont *Font)
 {
 	uint32_t i;
+#ifndef BOOTLOADER_STANDALONE
 	uint32_t found;
+#endif
 
 	for(i=0;i<Font->length;i++)
 	{
@@ -3960,6 +4027,7 @@ uint32_t GFX_Character_Width(uint8_t character, tFont *Font)
 		}
 	}
 
+#ifndef BOOTLOADER_STANDALONE
 	found = 0;
 	if (Font == &FontT54)
 	{
@@ -3987,6 +4055,30 @@ uint32_t GFX_Character_Width(uint8_t character, tFont *Font)
 			}
 		}
 	}
-
+#endif
 	return 0;
 }
+
+void Gfx_colorsscheme_mod(char *text, uint8_t alternativeColor)
+{
+	char *p = text;
+	uint8_t index = 0;
+
+	while ((*p) && (index < MAX_COLOR_STRING_LENGTH))
+	{
+		if (*p == '\020')
+		{
+			if(!GFX_is_colorschemeDiveStandard())
+			{
+				*p = '\027';
+			}
+			else if(alternativeColor != 0)
+			{
+				*p += alternativeColor;
+			}
+		}
+		p++;
+		index++;
+	}
+}
+

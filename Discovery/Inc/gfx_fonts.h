@@ -52,6 +52,7 @@ enum { indexHWcolorSIZE = 256 };
 //    Actual data is stored between __upper_font_data and __upper_font_data_end,
 //    and uses 0x081b9a3a - 0x08132040 = 879FA = 542 KB.
 //
+
 extern const tFont Awe48;
 extern const tFont FontT24;
 extern const tFont FontT42;

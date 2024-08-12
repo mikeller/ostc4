@@ -113,6 +113,7 @@ typedef struct
 /* Exported functions --------------------------------------------------------*/
 
 void GFX_init(uint32_t * pDestinationOut);
+void GFX_init1_no_DMA(uint32_t  * pDestinationOut, uint8_t blockFrames);
 
 void GFX_helper_font_memory_list(const tFont *Font);
 
@@ -199,4 +200,5 @@ void GFX_screenshot(void);
 
 tFont* GFX_Check_Extra_Font(uint8_t character, tFont *Font);
 uint32_t GFX_Character_Width(uint8_t character, tFont *Font);
+void Gfx_colorsscheme_mod(char *text, uint8_t alternativeColor);
 #endif // GFX_ENGINE_H

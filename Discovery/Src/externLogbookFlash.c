@@ -115,16 +115,19 @@ uint8_t uw;
 /* Exported variables --------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+
+#ifndef BOOTLOADER_STANDALONE
+static uint32_t	entryPoint = 0;
+static uint32_t	LengthLeftSampleRead = 0;
+static uint32_t	actualPointerDevicedata_Read = DDSTART;
+#endif
+
 static uint32_t	actualAddress = 0;
 static uint32_t	preparedPageAddress = 0;
 static uint32_t closeSectorAddress = 0;
-static uint32_t	entryPoint = 0;
-
 static uint32_t	actualPointerHeader = 0;
 static uint32_t	actualPointerSample = 0;
-static uint32_t	LengthLeftSampleRead = 0;
 static uint32_t	actualPointerDevicedata = DDSTART;
-static uint32_t	actualPointerDevicedata_Read = DDSTART;
 static uint32_t	actualPointerVPM = 0;
 static uint32_t	actualPointerSettings = SETTINGSSTART;
 static uint32_t	actualPointerFirmware = 0;
@@ -133,9 +136,14 @@ static uint32_t	actualPointerFirmware2 = 0;
 /* Private function prototypes -----------------------------------------------*/
 static void chip_unselect(void);
 static void chip_select(void);
+#ifndef BOOTLOADER_STANDALONE
 static void error_led_on(void);
 static void error_led_off(void);
-
+static void ext_flash_decf_address_ring(uint8_t type);
+static void ext_flash_disable_protection(void);
+static _Bool ext_flash_test_remaining_space_of_page_empty(uint32_t pointer, uint16_t length);
+static void ext_flash_set_to_begin_of_next_page(uint32_t *pointer, uint8_t type);
+#endif
 static void write_spi(uint8_t data, uint8_t unselect_CS_afterwards);
 static uint8_t read_spi(uint8_t unselect_CS_afterwards);
 static void write_address(uint8_t unselect_CS_afterwards);
@@ -143,7 +151,6 @@ static void Error_Handler_extflash(void);
 static void wait_chip_not_busy(void);
 static void ext_flash_incf_address(uint8_t type);
 //void ext_flash_incf_address_ring(void);
-static void ext_flash_decf_address_ring(uint8_t type);
 
 static void ext_flash_erase4kB(void);
 static void ext_flash_erase32kB(void);
@@ -159,13 +166,11 @@ static void ext_flash_read_block_stop(void);
 static void ef_hw_rough_delay_us(uint32_t delayUs);
 static void ef_erase_64K(uint32_t blocks);
 
+#ifndef BOOTLOADER_STANDALONE
 static void ext_flash_overwrite_sample_without_erase(uint8_t *pSample, uint16_t length);
-
-static void ext_flash_disable_protection(void);
-
-static _Bool ext_flash_test_remaining_space_of_page_empty(uint32_t pointer, uint16_t length);
-static void ext_flash_set_to_begin_of_next_page(uint32_t *pointer, uint8_t type);
 static void ext_flash_find_start(void);
+#endif
+
 
 
 /* Exported functions --------------------------------------------------------*/
@@ -1581,7 +1586,7 @@ static void ext_flash_find_start(void)
 }
 
 
-#endif
+
 
 static void ext_flash_disable_protection(void)
 {
@@ -1596,7 +1601,7 @@ static void ext_flash_disable_protection(void)
 	write_spi(status.uw,RELEASE);	// new status
 */
 }
-
+#endif
 
 void ext_flash_disable_protection_for_logbook(void)
 {
@@ -1932,7 +1937,7 @@ static void ef_write_block(uint8_t * sendByte, uint32_t length, uint8_t type, ui
 	}
 }
 
-
+#ifndef BOOTLOADER_STANDALONE
 static _Bool ext_flash_test_remaining_space_of_page_empty(uint32_t pointer, uint16_t length)
 {
 	if((pointer & 0xFFF) == 0)
@@ -2002,7 +2007,7 @@ static void ext_flash_set_to_begin_of_next_page(uint32_t *pointer, uint8_t type)
 	if((*pointer < ringStart) || (*pointer >= ringStop))
 		*pointer = ringStart;
 }
-
+#endif
 
 static void ef_erase_64K(uint32_t blocks)
 {
@@ -2027,7 +2032,7 @@ static void chip_select(void)
 {
 	HAL_GPIO_WritePin(EXTFLASH_CSB_GPIO_PORT,EXTFLASH_CSB_PIN,GPIO_PIN_RESET); // chip select
 }
-
+#ifndef BOOTLOADER_STANDALONE
 static void error_led_on(void)
 {
 		HAL_GPIO_WritePin(OSCILLOSCOPE_GPIO_PORT,OSCILLOSCOPE_PIN,GPIO_PIN_SET);
@@ -2037,7 +2042,7 @@ static void error_led_off(void)
 {
 		HAL_GPIO_WritePin(OSCILLOSCOPE_GPIO_PORT,OSCILLOSCOPE_PIN,GPIO_PIN_RESET);
 }
-
+#endif
 
 static uint8_t read_spi(uint8_t unselect_CS_afterwards)
 {
@@ -2150,7 +2155,7 @@ static void ext_flash_incf_address(uint8_t type)
 		actualAddress = ringStart;
 }
 
-
+#ifndef BOOTLOADER_STANDALONE
 static void ext_flash_decf_address_ring(uint8_t type)
 {
 	uint32_t ringStart, ringStop;
@@ -2196,7 +2201,7 @@ static void ext_flash_decf_address_ring(uint8_t type)
 	else
 		actualAddress -= 1;
 }
-
+#endif
 
 static void ef_hw_rough_delay_us(uint32_t delayUs)
 {
@@ -2380,7 +2385,7 @@ uint32_t ext_flash_read_profilelength_small_header(uint32_t smallHeaderAddr)
 }
 
 
-/*
+
 uint8_t ext_flash_erase_firmware_if_not_empty(void)
 {
 	const uint8_t TESTSIZE_FW = 4;
@@ -2431,4 +2436,4 @@ uint8_t ext_flash_erase_firmware2_if_not_empty(void)
 	}
 	else
 		return 0;
-}*/
+}

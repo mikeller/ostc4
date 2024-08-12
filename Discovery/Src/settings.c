@@ -1858,7 +1858,7 @@ uint8_t check_and_correct_settings(void)
     return (uint8_t)corrections;
 }
 
-
+#ifndef BOOTLOADER_STANDALONE
 /* always at 0x8080000, do not move -> bootloader access */
 const SFirmwareData* firmwareDataGetPointer(void)
 {
@@ -1872,7 +1872,7 @@ const SHardwareData* hardwareDataGetPointer(void)
     return (SHardwareData *)HARDWAREDATA_ADDRESS;
 }
 #endif
-
+#endif
 const SSettings* settingsGetPointerStandard(void)
 {
     return &SettingsStandard;
@@ -3011,7 +3011,7 @@ void setActualRTEversion(uint8_t high, uint8_t low)
     RTEactualLow = low;
 }
 
-
+#ifndef BOOTLOADER_STANDALONE
 void getActualRTEandFONTversion(uint8_t *RTEhigh, uint8_t *RTElow, uint8_t *FONThigh, uint8_t *FONTlow)
 {
     if(RTEhigh && RTElow)
@@ -3031,7 +3031,7 @@ uint8_t getLicence(void)
 {
     return hardwareDataGetPointer()->primaryLicence;
 }
-
+#endif
 
 void firmwareGetDate(RTC_DateTypeDef *SdateOutput)
 {

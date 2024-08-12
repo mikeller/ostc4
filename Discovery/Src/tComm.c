@@ -79,6 +79,7 @@
 #else
 #	include "base_bootloader.h"
 #	include "firmwareEraseProgram.h"
+#	include "text_multilanguage.h"
 #endif
 
 #ifdef SPECIALPROGRAMM
@@ -119,9 +120,11 @@ const uint8_t id_FONT_OLD = 0x00;
 
 static BlueModTmpConfig_t BmTmpConfig = BM_CONFIG_OFF;	/* Config BlueMod without storing the changes */
 static uint8_t EvaluateBluetoothSignalStrength = 0;
+#ifndef BOOTLOADER_STANDALONE
 static uint8_t RequestDisconnection = 0; 				/* Disconnection from remote device requested */
-/* Private function prototypes -----------------------------------------------*/
 static void tComm_Disconnect(void);
+#endif
+/* Private function prototypes -----------------------------------------------*/
 static void tComm_Error_Handler(void);
 static uint8_t select_mode(uint8_t aRxByte);
 static uint8_t tComm_CheckAnswerOK(void);
@@ -436,7 +439,7 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     answer = HAL_OK;
     return answer;
 }
-
+#ifndef BOOTLOADER_STANDALONE
 void tComm_Disconnect()
 {
 	uint8_t answer;
@@ -482,7 +485,7 @@ void tComm_Disconnect()
 		MX_Bluetooth_PowerOff();
 	}
 }
-
+#endif
 
 uint8_t openComm(uint8_t aRxByte)
 {
@@ -586,6 +589,8 @@ uint8_t select_mode(uint8_t type)
     SSettings* pSettings = settingsGetPointer();
     RTC_DateTypeDef sdatestructure;
     RTC_TimeTypeDef stimestructure;
+    uint16_t index;
+    uint32_t header_profileLength, OSTC3_profileLength;
 #else
     uint8_t dummyForBootloader[256] = {0};
 #endif
@@ -593,8 +598,6 @@ uint8_t select_mode(uint8_t type)
     uint8_t aTxBuffer[128];
     uint8_t aRxBuffer[68];
     uint8_t answer;
-    uint16_t index;
-    uint32_t header_profileLength, OSTC3_profileLength;
     aTxBuffer[0] = type;
     aTxBuffer[1] = prompt4D4C(receiveStartByteUart);
     uint8_t tempHigh, tempLow;
@@ -1451,9 +1454,9 @@ uint8_t receive_update_data_cpu2_sub(uint8_t* pBuffer)
     {
         return 0;
     }
-    uint32_t checksum = 256  * 256 * 256 *(uint32_t)sBuffer[0] + 256 * 256 *  (uint32_t)sBuffer[1] + 256 *  (uint32_t)sBuffer[2] + sBuffer[3];
+    checksum = 256  * 256 * 256 *(uint32_t)sBuffer[0] + 256 * 256 *  (uint32_t)sBuffer[1] + 256 *  (uint32_t)sBuffer[2] + sBuffer[3];
 //  uint32_t checksumCalc = crc32c_checksum(pBuffer, length,0,0);
-    uint32_t checksumCalc = CRC_CalcBlockCRC((uint32_t*)pBuffer, length/4);
+    checksumCalc = CRC_CalcBlockCRC((uint32_t*)pBuffer, length/4);
 
     if(checksum !=  checksumCalc)
     {
