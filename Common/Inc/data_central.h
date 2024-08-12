@@ -531,4 +531,7 @@ void setCompassHeading(uint16_t heading);
 const SDecoinfo *getDecoInfo(void);
 
 void disableTimer(void);
+
+uint8_t drawingColor_from_ascentspeed(float speed);
+
 #endif // DATA_CENTRAL_H

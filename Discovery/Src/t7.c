@@ -33,6 +33,7 @@
 #include "t3.h"
 #include "settings.h"
 #include "data_exchange_main.h"
+#include "data_central.h"
 #include "decom.h"
 #include "gfx_fonts.h"
 #include "logbook_miniLive.h"
@@ -69,7 +70,6 @@ void t7_debug(void);
 void t7_miniLiveLogProfile(void);
 void t7_logo_OSTC(void);
 void t7_ChargerView(void);
-static void t7_colorscheme_mod(char *text);
 
 uint8_t t7_test_customview_warnings(void);
 void t7_show_customview_warnings(void);
@@ -1979,7 +1979,7 @@ static void t7_CcrSummary(SSettings *settings)
         t7cY0free.WindowX1 += 10;
     }
 
-    t7_colorscheme_mod(data);
+    Gfx_colorsscheme_mod(data, 0);
 
     GFX_write_string(&FontT42, &t7cY0free, data, 1);
 }
@@ -2133,11 +2133,11 @@ static void showTimer(SSettings *settings, int nowS)
         t7cY0free.WindowX1 += 10;
     }
 
-    t7_colorscheme_mod(data);
+    Gfx_colorsscheme_mod(data, 0);
 
     GFX_write_string(&FontT42, &t7cY0free, data, 1);
 
-    t7_colorscheme_mod(timer);
+    Gfx_colorsscheme_mod(timer, 0);
 
     GFX_write_string(&FontT105, &t7cY0free, timer, 4);
 }
@@ -2762,6 +2762,10 @@ void t7_refresh_divemode(void)
         snprintf(TextL1,TEXTSIZE,"\032\f[feet]");
     else
         snprintf(TextL1,TEXTSIZE,"\032\f%c",TXT_Depth);
+
+    color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
+
+
     GFX_write_string(&FontT24,&t7l1,TextL1,0);
 
     if((stateUsed->lifeData.ascent_rate_meter_per_min > 8) || (stateUsed->lifeData.ascent_rate_meter_per_min < -10))
@@ -2779,8 +2783,11 @@ void t7_refresh_divemode(void)
     else
         snprintf(TextL1,TEXTSIZE,"\020%01.0f",depth);
 
-    t7_colorscheme_mod(TextL1);
-    GFX_write_string(&FontT144,&t7l1,TextL1,1);
+    Gfx_colorsscheme_mod(TextL1, color);
+
+
+
+    GFX_write_string(&FontT144,&t7l1,TextL1,0);
 
     /* max depth */
     snprintf(TextL2,TEXTSIZE,"\032\f%c",TXT_MaxDepth);
@@ -2791,7 +2798,7 @@ void t7_refresh_divemode(void)
     else
         snprintf(TextL2,TEXTSIZE,"\020%01.0f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
 
-    t7_colorscheme_mod(TextL2);
+    Gfx_colorsscheme_mod(TextL2, 0);
     GFX_write_string(&FontT105,&t7l2,TextL2,1);
 
     /* ascent rate graph */
@@ -2833,13 +2840,10 @@ void t7_refresh_divemode(void)
         if(stop.y >= 470)
             stop.y = 470;
         start.y += 7; // starte etwas weiter oben
-        if(stateUsed->lifeData.ascent_rate_meter_per_min <= 10)
-            color = CLUT_EverythingOkayGreen;
-        else
-        if(stateUsed->lifeData.ascent_rate_meter_per_min <= 15)
-            color = CLUT_WarningYellow;
-        else
-            color = CLUT_WarningRed;
+        if(color == 0)
+        {
+        	color = CLUT_EverythingOkayGreen; /* do not use white color for drawing graph */
+        }
 
         GFX_draw_thick_line(12,&t7screen, start, stop, color);
     }
@@ -2861,7 +2865,7 @@ void t7_refresh_divemode(void)
         snprintf(TextR1,TEXTSIZE,"\020\002\016%u:%02u",Divetime.Minutes, Divetime.Seconds);
     else
         snprintf(TextR1,TEXTSIZE,"\020\002\016%u'",Divetime.Minutes);
-    t7_colorscheme_mod(TextR1);
+    Gfx_colorsscheme_mod(TextR1, 0);
     GFX_write_string(&FontT105,&t7r1,TextR1,1);
 
     /* next deco stop */
@@ -2874,7 +2878,7 @@ void t7_refresh_divemode(void)
             , unit_depth_char1_T105()
             , unit_depth_char2_T105()
             , (nextstopLengthSeconds+59)/60);
-        t7_colorscheme_mod(TextR2);
+        Gfx_colorsscheme_mod(TextR2, 0);
         if(time_elapsed_ms(pDecoinfo->tickstamp, HAL_GetTick()) > MAX_AGE_DECOINFO_MS)
             TextR2[0] = '\031';
         if(textlength <= 9)
@@ -2889,7 +2893,7 @@ void t7_refresh_divemode(void)
         snprintf(TextR2,TEXTSIZE,"\032\f\002%c%c",TXT_2BYTE,TXT2BYTE_SafetyStop2);
         GFX_write_string(&FontT42,&t7r2,TextR2,0);
         snprintf(TextR2,TEXTSIZE,"\020\002\016%u:%02u",SafetyStopTime.Minutes,SafetyStopTime.Seconds);
-        t7_colorscheme_mod(TextR2);
+        Gfx_colorsscheme_mod(TextR2, 0);
         GFX_write_string(&FontT105,&t7r2,TextR2,1);
     }
 
@@ -2904,7 +2908,7 @@ void t7_refresh_divemode(void)
             snprintf(TextR3,TEXTSIZE,"\020\002%i'",(pDecoinfo->output_time_to_surface_seconds + 59)/ 60);
         else
             snprintf(TextR3,TEXTSIZE,"\020\002%ih",(pDecoinfo->output_time_to_surface_seconds + 59)/ 3600);
-        t7_colorscheme_mod(TextR3);
+        Gfx_colorsscheme_mod(TextR3, 0);
         if(time_elapsed_ms(pDecoinfo->tickstamp, HAL_GetTick()) > MAX_AGE_DECOINFO_MS)
             TextR2[0] = '\031';
         GFX_write_string(&FontT105,&t7r3,TextR3,1);
@@ -2917,7 +2921,7 @@ void t7_refresh_divemode(void)
             snprintf(TextR3,TEXTSIZE,"\020\002%i'",pDecoinfo->output_ndl_seconds/60);
         else
             snprintf(TextR3,TEXTSIZE,"\020\002%ih",pDecoinfo->output_ndl_seconds/3600);
-        t7_colorscheme_mod(TextR3);
+        Gfx_colorsscheme_mod(TextR3, 0);
         if(time_elapsed_ms(pDecoinfo->tickstamp, HAL_GetTick()) > MAX_AGE_DECOINFO_MS)
             TextR2[0] = '\031';
         GFX_write_string(&FontT105,&t7r3,TextR3,1);
@@ -3063,7 +3067,7 @@ void t7_refresh_divemode(void)
         }
         else
         {
-            t7_colorscheme_mod(TextC2);
+            Gfx_colorsscheme_mod(TextC2, 0);
             GFX_write_string(&FontT48,&t7c2,TextC2,0); // T54 has only numbers
         }
 
@@ -3080,7 +3084,7 @@ void t7_refresh_divemode(void)
                 }
                 else
                 {
-                    t7_colorscheme_mod(TextC2);
+                    Gfx_colorsscheme_mod(TextC2, 0);
                     GFX_write_string(&FontT48,&t7c2,TextC2,0);
                 }
             }
@@ -3088,7 +3092,7 @@ void t7_refresh_divemode(void)
         else if(settingsGetPointer()->alwaysShowPPO2)
         {
             snprintf(TextC2,TEXTSIZE,"\020%01.2f",stateUsed->lifeData.ppO2);
-            t7_colorscheme_mod(TextC2);
+            Gfx_colorsscheme_mod(TextC2, 0);
             GFX_write_string(&FontT48,&t7c2,TextC2,0);
         }
     }
@@ -3175,13 +3179,13 @@ void t7_refresh_divemode(void)
     }
     else
     {
-        t7_colorscheme_mod(TextC1);
+        Gfx_colorsscheme_mod(TextC1, 0);
         GFX_write_string(&Batt24,&t7batt,TextC1,0);
 
         if((stateUsed->lifeData.battery_charge > 0) && (stateUsed->lifeData.battery_charge < 140))
         {
             snprintf(TextC1,16,"\020\f\002%u%%",(uint8_t)stateUsed->lifeData.battery_charge);
-            t7_colorscheme_mod(TextC1);
+            Gfx_colorsscheme_mod(TextC1, 0);
             GFX_write_string(&FontT24,&t7voltage,TextC1,0); // t7batt
         }
     }
@@ -3493,7 +3497,7 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     else
         GFX_write_string(&FontT42,&t7l3,headerText,0);
 
-    t7_colorscheme_mod(text);
+    Gfx_colorsscheme_mod(text, 0);
 #ifndef ENABLE_BOTTLE_SENSOR
 #ifdef ENABLE_CO2_SUPPORT
     if(selection_custom_field != LCC_CO2)
@@ -3614,15 +3618,6 @@ uint8_t t7_customtextPrepare(char * text)
 
     text[textptr] = 0;
     return lineCount;
-}
-
-static void t7_colorscheme_mod(char *text) {
-	char *p = text;
-	while (*p) {
-		if ((*p == '\020') && !GFX_is_colorschemeDiveStandard())
-			*p = '\027';
-		p++;
-	}
 }
 
 void draw_frame(_Bool PluginBoxHeader, _Bool LinesOnTheSides, uint8_t colorBox, uint8_t colorLinesOnTheSide)
@@ -4123,7 +4118,7 @@ void t7_SummaryOfLeftCorner(void)
         textpointer += printScrubberText(&text[textpointer], 10, pSettings);
     }
     text[textpointer++] = 0;
-    t7_colorscheme_mod(text);
+    Gfx_colorsscheme_mod(text, 0);
     GFX_write_string(&FontT42, &t7cY0free, text, 1);
 }
 

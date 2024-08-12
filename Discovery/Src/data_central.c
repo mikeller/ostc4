@@ -911,3 +911,28 @@ void disableTimer(void)
 {
     stateUsedWrite->timerState = TIMER_STATE_OFF;
 }
+
+#define SPEED_SLOW		(5.0f)
+#define SPEED_MEDIUM	(10.0f)
+#define SPEED_HIGH		(15.0f)
+
+uint8_t drawingColor_from_ascentspeed(float speed)
+{
+	uint8_t color = CLUT_Font020;
+
+    if(speed >= SPEED_HIGH)
+    {
+    	color = CLUT_WarningRed;
+    }
+    else if(speed >= SPEED_MEDIUM)
+    {
+    	color = CLUT_WarningYellow;
+    }
+    else if(speed >= SPEED_SLOW)
+    {
+    	color = CLUT_NiceGreen;
+    }
+    return color;
+}
+
+

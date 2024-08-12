@@ -42,6 +42,7 @@
 #include "motion.h"
 #include "logbook_miniLive.h"
 #include "tMenuEditCustom.h"
+#include "gfx_engine.h"
 
 
 #define CV_PROFILE_WIDTH		(600U)
@@ -410,7 +411,6 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     	GFX_draw_line(tXscreen, start, stop, CLUT_Font020);
     }
 
-
     start.y = BigFontSeperationTopBottom;
     stop.y = 479;
 
@@ -425,6 +425,7 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     }
 
     /* depth */
+    color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
     float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
 
     if(depth <= 0.3f)
@@ -453,7 +454,7 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     else
         snprintf(text,TEXTSIZE,"\020\003\016%01.0f",depth);
 
-    t3_basics_colorscheme_mod(text);
+    Gfx_colorsscheme_mod(text,color);
     GFX_write_string(&FontT105,tXl1,text,1);
 
 
@@ -648,7 +649,7 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
             else
                 snprintf(text,TEXTSIZE,"\020\003\002\016%u'",Divetime.Minutes);
         }
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXr1,text,1);
     }
     else
@@ -719,7 +720,7 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
 							else
 								snprintf(text,TEXTSIZE,"\020\003\002\016%u'",Divetime.Minutes);
 
-						    t3_basics_colorscheme_mod(text);
+						    Gfx_colorsscheme_mod(text,0);
 						    GFX_write_string(&FontT105,tXr1,text,1);
 				break;
     	}
@@ -824,7 +825,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
         else
             text[textpointer++] = 'F';
         text[textpointer++] = 0;
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,1);
         break;
 
@@ -851,7 +852,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
         }
 
         snprintf(text,TEXTSIZE,"\020\016%u:%02u",LastDivetime.Minutes, LastDivetime.Seconds);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,0);
 
         if(pSettings->FlipDisplay)
@@ -873,7 +874,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
         }
 
         snprintf(text,TEXTSIZE,"\020\016%u:%02u",TotalDivetime.Minutes, TotalDivetime.Seconds);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,0);
 
         snprintf(text,TEXTSIZE,"\032\002%c%c",TXT_2BYTE, TXT2BYTE_ApneaTotal);
@@ -990,7 +991,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         }
 
         snprintf(text,TEXTSIZE,"\020\016%01.1f",unit_depth_float(stateUsed->lifeData.apnea_last_max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         
         if(!pSettings->FlipDisplay)
         {
@@ -1005,7 +1006,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 
 
         snprintf(text,TEXTSIZE,"\020\016%01.1f",unit_depth_float(stateUsed->lifeData.apnea_total_max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         if(!pSettings->FlipDisplay)
         {
 		    GFX_write_string(&FontT105,tXc1,text,0);
@@ -1195,7 +1196,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 			, unit_depth_char1_T105()
 			, unit_depth_char2_T105()
 			, (nextstopLengthSeconds+59)/60);
-			t3_basics_colorscheme_mod(text);
+			Gfx_colorsscheme_mod(text,0);
 			GFX_write_string(&FontT105,tXc1,text,0);
         }
         else if(SafetyStopTime.Total && (depth > timer_Safetystop_GetDepthUpperLimit()))
@@ -1206,7 +1207,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 
             textpointer = 0;
             snprintf(&text[textpointer],TEXTSIZE,"\020\003\016%u:%02u",SafetyStopTime.Minutes,SafetyStopTime.Seconds);
-            t3_basics_colorscheme_mod(text);
+            Gfx_colorsscheme_mod(text,0);
             GFX_write_string(&FontT105,tXc1,text,0);
         }
         else if(pDecoinfo->output_ndl_seconds) // NDL
@@ -1217,7 +1218,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
                 snprintf(text,TEXTSIZE,"\020\003%i'",pDecoinfo->output_ndl_seconds/60);
             else
                 snprintf(text,TEXTSIZE,"\020\003%ih",pDecoinfo->output_ndl_seconds/3600);
-            t3_basics_colorscheme_mod(text);
+            Gfx_colorsscheme_mod(text,0);
             GFX_write_string(&FontT105,tXc1,text,0);
         }
 
@@ -1233,7 +1234,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 						snprintf(text,TEXTSIZE,"\020\003\002%i'",(pDecoinfo->output_time_to_surface_seconds + 59)/ 60);
 					else
 						snprintf(text,TEXTSIZE,"\020\003\002%ih",(pDecoinfo->output_time_to_surface_seconds + 59)/ 3600);
-					t3_basics_colorscheme_mod(text);
+					Gfx_colorsscheme_mod(text,0);
 					GFX_write_string(&FontT105,tXc1,text,0);
 				}
             }
@@ -1242,7 +1243,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
             	snprintf(text,TEXTSIZE,"\002\032\f%c",TXT_ActualGradient);
 				GFX_write_string(&FontT42,tXc1,text,0);
                 snprintf(text,TEXTSIZE,"\020\003\002%.0f\016\016%%\017",100 * pDecoinfo->super_saturation);
-                t3_basics_colorscheme_mod(text);
+                Gfx_colorsscheme_mod(text,0);
                 GFX_write_string(&FontT105,tXc1,text,0);
             }
         }
@@ -1340,7 +1341,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         	GFX_write_string(&FontT42,tXc1,text,0);
         }
         snprintf(text,TEXTSIZE,"\020\003\016%01.1f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         if(pSettings->FlipDisplay)
         {
         	if(mode == DIVEMODE_Apnea)
@@ -1367,7 +1368,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
                 snprintf(text,TEXTSIZE,"\020\003\002%i'",(pDecoinfo->output_time_to_surface_seconds + 59)/ 60);
             else
                 snprintf(text,TEXTSIZE,"\020\003\002%ih",(pDecoinfo->output_time_to_surface_seconds + 59)/ 3600);
-            t3_basics_colorscheme_mod(text);
+            Gfx_colorsscheme_mod(text,0);
             GFX_write_string(&FontT105,tXc1,text,0);
         }
         break;
@@ -1376,7 +1377,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         snprintf(text,TEXTSIZE,"\032\f%c",TXT_ppO2);
         GFX_write_string(&FontT42,tXc1,text,0);
         snprintf(text,TEXTSIZE,"\020\003%01.2f",stateUsed->lifeData.ppO2);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,0);
 
         textpointer = 0;
@@ -1388,7 +1389,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         text[textpointer++] = '\002';
         tHome_gas_writer(oxygen_percentage,stateUsed->lifeData.actualGas.helium_percentage,&text[textpointer]);
         //textpointer = snprintf(&text[textpointer],TEXTSIZE,"\020\002%02u/%02u",oxygen_percentage, stateUsed->lifeData.actualGas.helium_percentage);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT48,tXc1,text,0);
         break;
 
@@ -1454,7 +1455,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         	GFX_write_string(&FontT42,tXc1,text,0);
         }
         snprintf(text,TEXTSIZE,"\020\003\016%01.1f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         if(pSettings->FlipDisplay)
         {
         	if(mode == DIVEMODE_Apnea)
@@ -1814,16 +1815,6 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     	*tX_selection_customview = tX_customviews[index];
     }
 }
-
-
-void t3_basics_colorscheme_mod(char *text)
-{
-    if((text[0] == '\020') && !GFX_is_colorschemeDiveStandard())
-    {
-        text[0] = '\027';
-    }
-}
-
 
 point_t t3_compass_circle(uint8_t id, uint16_t degree, point_t center)
 {

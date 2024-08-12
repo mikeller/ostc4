@@ -36,6 +36,7 @@
 #include "tHome.h"
 #include "timer.h"
 #include "unit.h"
+#include "gfx_engine.h"
 
 /* Exported variables --------------------------------------------------------*/
 
@@ -152,7 +153,7 @@ void t4_refresh_divemode(void)
     else
         snprintf(text,TEXTSIZE,"\020%01.0f",depth);
 
-    t3_basics_colorscheme_mod(text);
+    Gfx_colorsscheme_mod(text,0);
     GFX_write_string(&FontT144,&t4l1,text,1);
 
     // divetime
@@ -186,7 +187,7 @@ void t4_refresh_divemode(void)
         snprintf(text,TEXTSIZE,"\020\016%u:%02u",Divetime.Minutes, Divetime.Seconds);
     else
         snprintf(text,TEXTSIZE,"\020\016%u'",Divetime.Minutes);
-    t3_basics_colorscheme_mod(text);
+    Gfx_colorsscheme_mod(text,0);
     GFX_write_string(&FontT105,&t4l2,text,1);
 }
 
