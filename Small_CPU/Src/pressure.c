@@ -531,12 +531,17 @@ HAL_StatusTypeDef  pressure_sensor_get_temperature_raw(void)
 
 
 #ifdef SIMULATE_PRESSURE
+
+#define SECDIV		10		/* update every 100ms */
+
 void pressure_simulation()
 {
 	static uint32_t tickstart = 0;
 	static float pressure_sim_mbar = 0;
 	static uint32_t passedSecond = 0;
 	static uint32_t secondtick = 0;
+	static uint32_t lastsecondtick = 0;
+	static float delta_mbar = 0.0;
 
 	uint32_t lasttick = 0;
 
@@ -550,11 +555,16 @@ void pressure_simulation()
 	}
 
 	lasttick = HAL_GetTick();
-	if(time_elapsed_ms(secondtick,lasttick) > 1000) /* one second passed since last tick */
+	if(time_elapsed_ms(secondtick,lasttick) >= (1000 / SECDIV)) /* one second passed since last tick */
 	{
+		if(time_elapsed_ms(lastsecondtick,lasttick) > 1000)
+		{
+			passedSecond++;
+			lastsecondtick = lasttick;
+		}
 		secondtick = lasttick;
-		passedSecond++;
 
+#define DIVE_AT_SPEED 1
 #ifdef DIVE_AFTER_LANDING
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	 /* stay stable for 10 seconds */
 		else if(passedSecond < 300) pressure_sim_mbar -= 1.0; /* decrease pressure in 5 minutes target 770mbar => delta 330 */
@@ -565,6 +575,26 @@ void pressure_simulation()
 		else if(passedSecond < 2300) pressure_sim_mbar += 0.0;  /* stay on depth */
 		else if(passedSecond < 2500) pressure_sim_mbar -= 10.0; /* return to surface */
 		else pressure_sim_mbar = 1000.0;					/* final state */
+#endif
+#ifdef DIVE_AT_SPEED
+		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	   /* stay stable for 10 seconds */
+		else if(passedSecond < 20) delta_mbar = 200.0 / SECDIV; /* Start dive */
+		else if(passedSecond < 30) delta_mbar = 0.0;	/*stay on depth*/
+		else if(passedSecond < 45) delta_mbar -= 0.2 / SECDIV;	/* return to surface */
+		else if(passedSecond < 40) delta_mbar -= 0.4 / SECDIV;   /* stay */
+		else if(passedSecond < 50) delta_mbar += 0.3 / SECDIV; /* get ready for second dive */
+		else if(passedSecond < 60) delta_mbar -= 0.4;	/*stay on depth*/
+		else if(passedSecond < 70) delta_mbar = 0.2;
+		else if(passedSecond < 1060) pressure_sim_mbar -= 10.0/ SECDIV;	/* return to surface */
+		else if(passedSecond < 1200) pressure_sim_mbar += 0.0;   /* stay */
+		else { pressure_sim_mbar = 1000.0;	delta_mbar = 0.0;}				/* final state */
+
+		pressure_sim_mbar += delta_mbar;
+		if(pressure_sim_mbar < surface_pressure_mbar)
+		{
+			pressure_sim_mbar = surface_pressure_mbar;
+		}
+
 #else	/* short dive */
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	   /* stay stable for 10 seconds */
 		else if(passedSecond < 180) pressure_sim_mbar += 10.0; /* Start dive */

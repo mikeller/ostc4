@@ -480,6 +480,8 @@ void scheduleDiveMode(void)
 {
 	uint32_t ticksdiff = 0; 
 	uint32_t lasttick = 0;
+	uint32_t lastPressureTick = 0;
+	uint32_t tickPressureDiff = 0;
 	uint8_t extAdcChannel = 0;
 	uint8_t counterAscentRate = 0;
 	float lastPressure_bar = 0.0f;
@@ -552,18 +554,21 @@ void scheduleDiveMode(void)
 						global.lifeData.counterSecondsShallowDepth = (global.settings.timeoutDiveReachedZeroDepth - 10);
 				}
 #endif
-				
-				//Calc ascentrate every two second (20 * 100 ms)
+
 				counterAscentRate++;
-				if(counterAscentRate == 20)
+				if(counterAscentRate == 4)
 				{
-					global.lifeData.pressure_ambient_bar = get_pressure_mbar() / 1000.0f;
-					if(lastPressure_bar >= 0)
+					tickPressureDiff = time_elapsed_ms(lastPressureTick,lasttick); /* Calculate ascent rate every 400ms use timer to take care for small time shifts */
+					if(tickPressureDiff != 0)
 					{
-							//2 seconds * 30 == 1 minute, bar * 10 = meter
-							global.lifeData.ascent_rate_meter_per_min = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * 30 * 10;
+						global.lifeData.pressure_ambient_bar = get_pressure_mbar() / 1000.0f;
+						if(lastPressure_bar >= 0)
+						{
+							global.lifeData.ascent_rate_meter_per_min = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * (60000.0 / tickPressureDiff) * 10; /* bar * 10 = meter */
+						}
 					}
 					lastPressure_bar = global.lifeData.pressure_ambient_bar;
+					lastPressureTick = lasttick;
 					counterAscentRate = 0;
 				}
 				copyPressureData();
