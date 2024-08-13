@@ -184,6 +184,9 @@ static void  GFX_clear_frame_dma2d(uint8_t frameId);
 static uint32_t GFX_doubleBufferOne(void);
 static uint32_t GFX_doubleBufferTwo(void);
 
+static void GFX_LTDC_Init_display0(void);
+static void GFX_LTDC_Init_display1(void);
+
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -3322,35 +3325,48 @@ static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GF
 
 void GFX_LTDC_Init(void)
 {
-	/*
-		HSYNC=10 (9+1)
-		HBP=10 (19-10+1)
-		ActiveW=480 (499-10-10+1)
-		HFP=8 (507-480-10-10+1)
+	if (hardwareDisplay == 1)
+		{
+		GFX_LTDC_Init_display1();
+		}
+		else
+		{
+		GFX_LTDC_Init_display0();
+		}
+}
 
-		VSYNC=2 (1+1)
-		VBP=2 (3-2+1)
-		ActiveH=800 (803-2-2+1)
-		VFP=2 (805-800-2-2+1)
-	*/
+void GFX_LTDC_Init_display0(void)
+{
+	  /* Timing configuration */
 
-  /* Timing configuration */
+#define		ActiveH 800
+#define		ActiveW	480
+
+#define		Hsync 	10
+#define		HFP		8
+#define		HBP		10
+
+#define		Vsync	2
+#define		VFP		2
+#define		VBP		2
+
+
   /* Horizontal synchronization width = Hsync - 1 */
-  LtdcHandle.Init.HorizontalSync = 9;
+  LtdcHandle.Init.HorizontalSync = Hsync - 1;
   /* Vertical synchronization height = Vsync - 1 */
-  LtdcHandle.Init.VerticalSync = 1;
+  LtdcHandle.Init.VerticalSync = Vsync -1;
   /* Accumulated horizontal back porch = Hsync + HBP - 1 */
-  LtdcHandle.Init.AccumulatedHBP = 19;
+  LtdcHandle.Init.AccumulatedHBP = Hsync + HBP - 1;
   /* Accumulated vertical back porch = Vsync + VBP - 1 */
-  LtdcHandle.Init.AccumulatedVBP = 3;
+  LtdcHandle.Init.AccumulatedVBP = Vsync + VBP - 1;
   /* Accumulated active width = Hsync + HBP + Active Width - 1 */
-  LtdcHandle.Init.AccumulatedActiveW = 499;//500;//499;
+  LtdcHandle.Init.AccumulatedActiveW = Hsync + HBP + ActiveW- 1;
   /* Accumulated active height = Vsync + VBP + Active Heigh - 1 */
-  LtdcHandle.Init.AccumulatedActiveH = 803;
+  LtdcHandle.Init.AccumulatedActiveH = Vsync + VBP + ActiveH - 1;
   /* Total width = Hsync + HBP + Active Width + HFP - 1 */
-  LtdcHandle.Init.TotalWidth = 507;//508;//507;
+  LtdcHandle.Init.TotalWidth = Hsync + HBP + ActiveW + HFP - 1;
   /* Total height = Vsync + VBP + Active Heigh + VFP - 1 */
-  LtdcHandle.Init.TotalHeigh = 805;
+  LtdcHandle.Init.TotalHeigh = Vsync + VBP + ActiveH + VFP - 1;
 
 	/* Configure R,G,B component values for LCD background color */
 	LtdcHandle.Init.Backcolor.Red= 0;
@@ -3363,7 +3379,7 @@ void GFX_LTDC_Init(void)
 	/* PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/4 = 48 Mhz */
 	/* LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_8 = 48/4 = 6Mhz */
 
-/* done in main.c SystemClockConfig
+/* done in base.c SystemClockConfig
 
 	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
 	PeriphClkInitStruct.PLLSAI.PLLSAIN = 192;
@@ -3380,7 +3396,74 @@ void GFX_LTDC_Init(void)
 	LtdcHandle.Instance = LTDC;
 
   /* Configure the LTDC */
-  if(HAL_LTDC_Init(&LtdcHandle) != HAL_OK) // auch init der GPIO Pins
+  if(HAL_LTDC_Init(&LtdcHandle) != HAL_OK) // initialize GPIO Pins, too
+  {
+    /* Initialization Error */
+    GFX_Error_Handler();
+  }
+}
+
+
+void GFX_LTDC_Init_display1(void)
+{
+	  /* Timing configuration */
+#define		ActiveH_d1 800
+#define		ActiveW_d1	480
+
+#define		Hsync_d1 	2
+#define		HFP_d1		8
+#define		HBP_d1		8
+
+#define		Vsync_d1	2
+#define		VFP_d1		4	// make sure this value * VSYNC is also set in display.c for OLED_VFP_SET
+#define		VBP_d1		4	// make sure this value * VSYNC is also set in display.c for OLED_VBP_SET
+
+  /* Horizontal synchronization width = Hsync - 1 */
+  LtdcHandle.Init.HorizontalSync = Hsync_d1 - 1;
+  /* Vertical synchronization height = Vsync - 1 */
+  LtdcHandle.Init.VerticalSync = Vsync_d1 -1;
+  /* Accumulated horizontal back porch = Hsync + HBP - 1 */
+  LtdcHandle.Init.AccumulatedHBP = Hsync_d1 + HBP_d1 - 1;
+  /* Accumulated vertical back porch = Vsync + VBP - 1 */
+  LtdcHandle.Init.AccumulatedVBP = Vsync_d1 + VBP_d1 - 1;
+  /* Accumulated active width = Hsync + HBP + Active Width - 1 */
+  LtdcHandle.Init.AccumulatedActiveW = Hsync_d1 + HBP_d1 + ActiveW_d1 - 1;
+  /* Accumulated active height = Vsync + VBP + Active Heigh - 1 */
+  LtdcHandle.Init.AccumulatedActiveH = Vsync_d1 + VBP_d1 + ActiveH_d1 - 1;
+  /* Total width = Hsync + HBP + Active Width + HFP - 1 */
+  LtdcHandle.Init.TotalWidth = Hsync_d1 + HBP_d1 + ActiveW_d1 + HFP_d1 - 1;
+  /* Total height = Vsync + VBP + Active Heigh + VFP - 1 */
+  LtdcHandle.Init.TotalHeigh = Vsync_d1 + VBP_d1 + ActiveH_d1 + VFP_d1 - 1;
+
+	/* Configure R,G,B component values for LCD background color */
+	LtdcHandle.Init.Backcolor.Red= 0;
+	LtdcHandle.Init.Backcolor.Blue= 0;
+	LtdcHandle.Init.Backcolor.Green= 0;
+
+	/* LCD clock configuration */
+	/* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
+	/* PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz */
+	/* PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/4 = 48 Mhz */
+	/* LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_8 = 48/4 = 6Mhz */
+
+/* done in base.c SystemClockConfig
+
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+	PeriphClkInitStruct.PLLSAI.PLLSAIN = 192;
+	PeriphClkInitStruct.PLLSAI.PLLSAIR = 4;
+	PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_8;
+	HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+*/
+	/* Polarity */
+	LtdcHandle.Init.HSPolarity = LTDC_HSPOLARITY_AL;
+	LtdcHandle.Init.VSPolarity = LTDC_VSPOLARITY_AL;
+	LtdcHandle.Init.DEPolarity = LTDC_DEPOLARITY_AL;
+	LtdcHandle.Init.PCPolarity = LTDC_PCPOLARITY_IIPC;//LTDC_PCPOLARITY_IPC;
+
+	LtdcHandle.Instance = LTDC;
+
+  /* Configure the LTDC */
+  if(HAL_LTDC_Init(&LtdcHandle) != HAL_OK) // initialize GPIO Pins, too
   {
     /* Initialization Error */
     GFX_Error_Handler();
