@@ -2154,7 +2154,7 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 				settings.actualFont = (tFont *)settings.font;
 			}
 			else
-//#ifndef BOOTLOADER_STANDALONE
+#ifndef BOOTLOADER_STANDALONE
 			if((*pText == '\005') && !minimal)
 			{
 				newXdelta = GFX_write_char(hgfx, &settings, 'a', (tFont *)&Awe48);
@@ -2167,7 +2167,7 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 				settings.Xdelta = newXdelta;
 			}
 			else
-//#endif
+#endif
 			if((*pText >= '\020') && (*pText <= '\032') && !minimal)
 				settings.color = *pText - '\020';
 			else
