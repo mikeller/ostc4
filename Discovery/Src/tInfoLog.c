@@ -233,6 +233,8 @@ void stepBackInfo(void)
         infolog.line = 0;
         infolog.modeFlipPages = 1;
 
+        tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+
         if(!settingsGetPointer()->FlipDisplay)
         {
         	GFX_SetFrameBottom(pMenuCursorDesignSolo->FBStartAdress, 0, 25, 800, 390);
@@ -420,12 +422,11 @@ void tInfoLog_BuildAndShowNextPage(void)
     }
     GFX_write_string(&FontT48, &INFOLOGwindow, text,1);
 
-    if(infolog.linesAvailableForPage > 1)
-        tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
-    else if(infolog.page == 255)
+    if(infolog.page == 255) {
         tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_ButtonBack,0,0);
-    else
-        tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,0);
+    } else {
+        tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+    }
 
     GFX_SetFrameTop(INFOLOGscreen.FBStartAdress);
     set_globalState_Log_Page(infolog.page);
@@ -442,6 +443,12 @@ void tInfoLog_nextLine(void)
         infolog.line = 1;
 
     infolog.modeFlipPages = 0;
+
+    if (infolog.linesAvailableForPage > 1) {
+        tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_Page, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonNext);
+    } else {
+        tInfo_write_buttonTextline(&INFOLOGscreen, TXT2BYTE_Page, TXT2BYTE_ButtonEnter, 0);
+    }
 
     if(!settingsGetPointer()->FlipDisplay)
     {

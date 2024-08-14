@@ -46,6 +46,7 @@
 #define NUM_GASES 5
 #define NUM_OFFSET_DILUENT 5
 #define SPECIAL_GAS_ID 0
+#define NO_GAS_ID 255
 
 #define ERROR_ 0xFF
 

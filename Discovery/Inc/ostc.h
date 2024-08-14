@@ -98,5 +98,6 @@ GPIO_PinState MX_GPIO_Read_The_One_Button(void);
 void MX_TestPin_High(void);
 void MX_TestPin_Low(void);
 
+uint8_t	hardwareDisplay;		//< either OSTC4 LCD (=0) or new Screen (=1)
 
 #endif // OSTC_H

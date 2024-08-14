@@ -380,7 +380,9 @@ extern const tText text_array2[];
         TXT2BYTE_Starting,
         TXT2BYTE_Finished,
 
-		TXT2BYTE_END
+        TXT2BYTE_Page,
+
+		TXT2BYTE_END,
 };
 
 #endif /* TEXT_MULTILINGUAGE_H */

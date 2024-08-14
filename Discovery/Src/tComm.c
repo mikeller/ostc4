@@ -2148,10 +2148,13 @@ void tComm_EvaluateBluetoothStrength(void)
     }
 }
 
+#ifdef BOOTLOADER_STANDALONE
 void tComm_StartBlueModBaseInit()
 {
 	BmTmpConfig = BM_INIT_TRIGGER_ON;
 }
+#endif
+
 void tComm_StartBlueModConfig()
 {
 	uint8_t answer = HAL_OK;
