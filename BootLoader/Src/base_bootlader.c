@@ -513,9 +513,6 @@ GPIO_test_I2C_lines();
 	if((i == 0) && (callForUpdate == 0))
 		firmware_JumpTo_Application();
 
-
-
-	MX_Bluetooth_PowerOn();
 	MX_SPI_Init();
 	SDRAM_Config();
 	HAL_Delay(100);
@@ -707,19 +704,26 @@ GPIO_test_I2C_lines();
 	textVersion[ptr++] = '\020';
 	textVersion[ptr] = 0;
 
+	TIM_init();
+	MX_UART_Init();
+	MX_Bluetooth_PowerOn();
+	tComm_init();
+
 	tInfo_button_text("Exit","","Sleep");
 	tInfo_newpage("Bootloader 240812");
 	tInfo_write("start bluetooth");
 	tInfo_write("");
 	tInfo_write(textVersion);
-	tInfo_write("");
-
-	TIM_init();
-	MX_UART_Init();
-	MX_Bluetooth_PowerOn();
-	tComm_Set_Bluetooth_Name(0);
-	tComm_init();
-	tComm_StartBlueModConfig();
+	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
+	{
+		tInfo_write("Init bluetooth");
+		tComm_StartBlueModBaseInit();
+	}
+	else
+	{
+		tInfo_write("");
+		tComm_StartBlueModConfig();
+	}
 
 	set_globalState_Base();
 

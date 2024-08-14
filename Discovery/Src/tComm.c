@@ -111,7 +111,7 @@ uint8_t updateSettingsAndMenuOnExit = 0;
 #define UART_TIMEOUT_SECONDS		(120u)		/* Timeout for keeping connection open and waiting for data */
 #define UART_TIMEOUT_LARGE_BLOCK 	(6000u)		/* Timeout (ms) for reception of an 16K data block (typical RX time ~4,5seconds) */
 
-#define UART_CMD_BUF_SIZE			(20u)		/* size of buffer for command exchange */
+#define UART_CMD_BUF_SIZE			(30u)		/* size of buffer for command exchange */
 
 const uint8_t id_Region1_firmware = 0xFF;
 const uint8_t id_RTE = 0xFE;
@@ -368,6 +368,13 @@ uint8_t tComm_Set_Bluetooth_Name(uint8_t force)
 #ifdef BOOTLOADER_STANDALONE
             if(answer == HAL_OK)
                 hardware_programmPrimaryBluetoothNameSet();
+#endif
+    }
+    else	/* no serial set at all => do default configuration of the module */
+    {
+#define NINAB22103B00
+#ifdef NINAB22103B00
+    	answer = 0xFF;
 #endif
     }
     return answer;
@@ -2141,6 +2148,10 @@ void tComm_EvaluateBluetoothStrength(void)
     }
 }
 
+void tComm_StartBlueModBaseInit()
+{
+	BmTmpConfig = BM_INIT_TRIGGER_ON;
+}
 void tComm_StartBlueModConfig()
 {
 	uint8_t answer = HAL_OK;
@@ -2192,6 +2203,39 @@ uint8_t tComm_HandleBlueModConfig()
 			ConfigRetryCnt = 0;
 			RestartModule = 1;
 			break;
+#ifdef BOOTLOADER_STANDALONE
+		case BM_INIT_TRIGGER_ON:	HAL_Delay(2000);
+									HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
+									BmTmpConfig++;
+								break;
+		case BM_INIT_TRIGGER_OFF:	HAL_Delay(1);
+									HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
+									HAL_Delay(2000);
+									BmTmpConfig++;
+								break;
+		case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");      /*Set to factory defined configuration */
+								break;
+		case BM_INIT_MODE:			sprintf(TxBuffer,"AT+UMSM=1\r");        /* start in Data mode */
+								break;
+		case BM_INIT_BLE:			sprintf(TxBuffer,"AT+UBTLE=2\r"); 		/* Bluetooth low energy Peripheral */
+								break;
+		case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC4-12345\r"); /* Bluetooth name */
+								break;
+		case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");    /* Disable SPP Server on ID0 */
+								break;
+		case BM_INIT_SSP_IDO_ON:	sprintf(TxBuffer,"AT+UDSC=0,3\r"); 	  /* SPP Server on ID0 */
+								break;
+		case BM_INIT_SSP_ID1_OFF:	sprintf(TxBuffer,"AT+UDSC=1,0\r");    /* Disable SPS Server on ID1 */
+								break;
+		case BM_INIT_SSP_ID1_ON:	sprintf(TxBuffer,"AT+UDSC=1,6\r");	  /* SPS Server on ID1 */
+								break;
+		case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W\r");	          /* write settings into eeprom */
+								break;
+		case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+CPWROFF\r");	  /* reboot module */
+								break;
+		case BM_INIT_DONE:			BmTmpConfig = BM_CONFIG_ECHO;
+								break;
+#endif
 		default:
 			break;
 	}

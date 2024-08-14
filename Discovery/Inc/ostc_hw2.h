@@ -197,4 +197,11 @@
 #define RESET_LOGIC_ALLES_OK_GPIO_PORT				GPIOB
 #define RESET_LOGIC_ALLES_OK_GPIO_ENABLE()          __GPIOB_CLK_ENABLE()
 
+/* new OSTC5 */
+#define BLE_UBLOX_DSR_PIN                             GPIO_PIN_12
+#define BLE_UBLOX_DSR_GPIO_PORT                       GPIOC
+#define BLE_UBLOX_DSR_GPIO_ENABLE()                   __GPIOC_CLK_ENABLE()
+
+
+
 #endif // OSTC_HW2_H
