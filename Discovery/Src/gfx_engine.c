@@ -3202,7 +3202,7 @@ static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_
 	SSettings *pSettings;
 	pSettings = settingsGetPointer();
 	gfx_selected_language = pSettings->selected_language;
-	if(gfx_selected_language >= LANGUAGE_END)
+	if(gfx_selected_language >= LANGUAGE_END) gfx_selected_language = 0;
 #endif
 // -----------------------------
 #ifndef BOOTLOADER_STANDALONE
@@ -3298,7 +3298,7 @@ static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GF
 	SSettings *pSettings;
 	pSettings = settingsGetPointer();
 	gfx_selected_language = pSettings->selected_language;
-	if(gfx_selected_language >= LANGUAGE_END)
+	if(gfx_selected_language >= LANGUAGE_END) gfx_selected_language = 0;
 #else
 	cText[0] = 0;
 #endif
