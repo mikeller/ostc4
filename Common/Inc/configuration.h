@@ -34,7 +34,7 @@
 /* #define ENABLE_BOTTLE_SENSOR */
 
 /* Enable this to show voltage in parallel to charge state */
-/* #define ALWAYS_SHOW_VOLTAGE */
+#define ALWAYS_SHOW_VOLTAGE
 
 /* Enable this to skip coplete scan of dive log during startup */
 #define TRUST_LOG_CONSISTENCY
@@ -67,7 +67,7 @@
 #define ENABLE_PSCR_MODE
 
 /* Enable to have CO2 sensor functionality available */
-/* #define ENABLE_CO2_SUPPORT */
+#define ENABLE_CO2_SUPPORT
 
 /* Enable to have Sentinel rebreather interface available */
 /* #define ENABLE_SENTINEL_MODE */
