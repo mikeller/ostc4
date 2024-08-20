@@ -704,7 +704,7 @@ static int vpm_calc_critcal_volume(_Bool begin,
     /*     ASSIGN VARIABLES FOR ASCENT FROM START OF DECO ZONE TO FIRST STOP.  SAVE */
     /*     FIRST STOP DEPTH FOR LATER USE WHEN COMPUTING THE FINAL ASCENT PROFILE */
     /* =============================================================================== */
-        deco_stop_depth = fmaxf(deco_stop_depth,(float)pDiveSettings->last_stop_depth_bar * 10.0);
+        deco_stop_depth = fmaxf(deco_stop_depth,(float)pDiveSettings->last_stop_depth_bar * 10);
         starting_depth = depth_start_of_deco_calc;
         first_stop_depth = deco_stop_depth;
         first_stop = true;
@@ -755,12 +755,12 @@ static int vpm_calc_critcal_volume(_Bool begin,
         decompression_stop(&deco_stop_depth, &step_size, false);
         starting_depth = deco_stop_depth;
 
-        if(deco_stop_depth == (float)pDiveSettings->last_stop_depth_bar * 10.0)
+        if(deco_stop_depth == (float)pDiveSettings->last_stop_depth_bar * 10)
             deco_stop_depth = 0;
         else
         {
             deco_stop_depth = deco_stop_depth - step_size;
-            deco_stop_depth = fmaxf(deco_stop_depth,(float)pDiveSettings->last_stop_depth_bar * 10.0);
+            deco_stop_depth = fmaxf(deco_stop_depth,(float)pDiveSettings->last_stop_depth_bar * 10);
         }
 
         count++;
@@ -897,7 +897,7 @@ static void vpm_calc_deco_ceiling(void)
     // _Bool first_stop = false;
     float tissue_He_saturation[16];
     float tissue_N2_saturation[16];
-    float vpm_buehlmann_safety_gradient = 1.0f - (((float)pDiveSettings->vpm_conservatism) / 40.0);
+    float vpm_buehlmann_safety_gradient = 1.0f - (((float)pDiveSettings->vpm_conservatism) / 40);
     //max_first_stop_depth = fmaxf(first_stop_depth,max_first_stop_depth);
 
     /** CALC DECO Ceiling ******************************************************************/
@@ -1106,7 +1106,7 @@ static int vpm_calc_final_deco(_Bool begin)
             }
             else
             {
-                dp = 1 + (unsigned short)((deco_stop_depth - (pDiveSettings->input_second_to_last_stop_depth_bar * 10.0)) / step_size);
+                dp = 1 + (short)((deco_stop_depth - (pDiveSettings->input_second_to_last_stop_depth_bar * 10.0)) / step_size);
             }
 
             //dp_max = (int)fmaxf(dp_max,dp);
@@ -1139,12 +1139,12 @@ static int vpm_calc_final_deco(_Bool begin)
         /* =============================================================================== */
 
         starting_depth = deco_stop_depth;
-        if(deco_stop_depth == (float)pDiveSettings->last_stop_depth_bar * 10.0)
-            deco_stop_depth = 0.0;
+        if(deco_stop_depth == (float)pDiveSettings->last_stop_depth_bar * 10)
+            deco_stop_depth = 0;
         else
         {
             deco_stop_depth = deco_stop_depth - step_size;
-            deco_stop_depth = fmaxf(deco_stop_depth,(float)pDiveSettings->last_stop_depth_bar * 10.0);
+            deco_stop_depth = fmaxf(deco_stop_depth,(float)pDiveSettings->last_stop_depth_bar * 10);
         }
 
         last_run_time = run_time;
@@ -1991,7 +1991,7 @@ static void decompression_stop(float *deco_stop_depth,
     _Bool buehlmann_wait = false;
     float tissue_He_saturation[16];
     float tissue_N2_saturation[16];
-    float vpm_buehlmann_safety_gradient = 1.0f - (((float)pDiveSettings->vpm_conservatism) / 40.0);
+    float vpm_buehlmann_safety_gradient = 1.0f - (((float)pDiveSettings->vpm_conservatism) / 40);
     /* loop */
     /* =============================================================================== */
     /*     CALCULATIONS */
@@ -2003,12 +2003,12 @@ static void decompression_stop(float *deco_stop_depth,
     //ending_ambient_pressure = ambient_pressure;
     decom_get_inert_gases(ambient_pressure / 10, (&pDiveSettings->decogaslist[mix_number]), &fraction_nitrogen_begin, &fraction_helium_begin );
 
-    if(*deco_stop_depth == (pDiveSettings->last_stop_depth_bar * 10.0))
+    if(*deco_stop_depth == (float)(pDiveSettings->last_stop_depth_bar * 10))
         next_stop = 0;
     else
     {
         next_stop = *deco_stop_depth - *step_size;
-        next_stop = fmaxf(next_stop, pDiveSettings->last_stop_depth_bar * 10.0);
+        next_stop = fmaxf(next_stop,(float)pDiveSettings->last_stop_depth_bar * 10);
     }
 
     inspired_helium_pressure =
@@ -2106,7 +2106,7 @@ static void decompression_stop(float *deco_stop_depth,
                 }
                 //goto L700;
                 initial_CNS = gCNS_VPM;
-                decom_oxygen_calculate_cns_exposure(60*1,&pDiveSettings->decogaslist[mix_number],ambient_pressure/10.0, &gCNS_VPM);
+                decom_oxygen_calculate_cns_exposure(60*1,&pDiveSettings->decogaslist[mix_number],ambient_pressure/10,&gCNS_VPM);
                 for (i = 0; i < 16; i++)
                 {
                     initial_helium_pressure[i] = helium_pressure[i];
@@ -2314,8 +2314,8 @@ static int vpm_calc_ndl(void)
         temp_segment_time = 0;
 
         mix_number = 0;
-        ambient_pressure = pInput->pressure_ambient_bar  * 10.0;
-        decom_get_inert_gases( ambient_pressure / 10.0,  (&pDiveSettings->decogaslist[mix_number]) , &fraction_nitrogen_begin, &fraction_helium_begin );
+        ambient_pressure = pInput->pressure_ambient_bar  * 10;
+        decom_get_inert_gases( ambient_pressure / 10,  (&pDiveSettings->decogaslist[mix_number]) , &fraction_nitrogen_begin, &fraction_helium_begin );
         inspired_helium_pressure =(ambient_pressure - WATER_VAPOR_PRESSURE) * fraction_helium_begin;
         inspired_nitrogen_pressure =(ambient_pressure - WATER_VAPOR_PRESSURE) *fraction_nitrogen_begin;
 
