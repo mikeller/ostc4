@@ -1002,7 +1002,8 @@ static void gotoSleep(void)
 {
     /* not at the moment of testing */
 //	ext_flash_erase_firmware_if_not_empty();
-    GFX_logoAutoOff();
+	GFX_logoAutoOff();
+	display_power_off();
     ext_flash_write_devicedata(true);	/* write data at default position */
     ext_flash_write_settings(true);		/* write data at default position */
     set_globalState(StStop);
@@ -1257,10 +1258,12 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
         case 0: /* Cave */
             levelMax = 3000;/* max 25 % (x2) */
             levelMin = 1500;
+            if (hardwareDisplay == 1) display_1_brightness_cave();
             break;
         case 1: /* Eco */
             levelMax = 6000;/* max 50 % (x2) */
             levelMin = 3000;
+            if (hardwareDisplay == 1) display_1_brightness_eco();
             break;
         case 2: /* Std */
             levelAmbient += 1000;
@@ -1268,6 +1271,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 4500;
             levelUpStep_100ms += levelUpStep_100ms/2; // 4500 instead of 3000
             levelDnStep_100ms += levelDnStep_100ms/2;
+            if (hardwareDisplay == 1) display_1_brightness_std();
             break;
         case 3: /* High */
         default:
@@ -1276,6 +1280,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 6000;
             levelUpStep_100ms += levelUpStep_100ms; // 6000 instead of 3000
             levelDnStep_100ms += levelDnStep_100ms;
+            if (hardwareDisplay == 1) display_1_brightness_high();
             break;
         case 4: /* New Max */
             levelAmbient = 12000;
@@ -1283,6 +1288,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 12000;
             levelUpStep_100ms += 12000;
             levelDnStep_100ms += 0;
+            if (hardwareDisplay == 1) display_1_brightness_max();
             break;
         }
 
@@ -1345,7 +1351,7 @@ static void TIM_BACKLIGHT_init(void)
     sConfig.OCMode     = TIM_OCMODE_PWM1;
     sConfig.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfig.OCFastMode = TIM_OCFAST_DISABLE;
-    sConfig.Pulse = 100; /* Initial brigthness of display */
+    sConfig.Pulse = 100; /* Initial brightness of display */
 
     HAL_TIM_PWM_ConfigChannel(&TimBacklightHandle, &sConfig, TIM_BACKLIGHT_CHANNEL);
     HAL_TIM_PWM_Start(&TimBacklightHandle, TIM_BACKLIGHT_CHANNEL);
