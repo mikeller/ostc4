@@ -212,27 +212,9 @@ uint8_t firmwareVersionLow(void) {
 #define BUTTON_OSTC_HAL_RCC_GPIO_CLK_ENABLE()					__HAL_RCC_GPIOA_CLK_ENABLE()
 #define BUTTON_OSTC_IRQn              EXTI0_IRQn
 
-#define BUTTON_TEST_GPIO_PIN          GPIO_PIN_3
-#define BUTTON_TEST_GPIO_PORT        	GPIOA
-#define BUTTON_TEST_GPIO_CLK_ENABLE()	__GPIOA_CLK_ENABLE()
-#define BUTTON_TEST_IRQn              EXTI3_IRQn
-
-#define WIRELSS_RISING_GPIO_PIN       GPIO_PIN_1
-#define WIRELSS_RISING_GPIO_PORT      GPIOA
-#define WIRELSS_RISING_HAL_RCC_GPIO_CLK_ENABLE()		 __HAL_RCC_GPIOA_CLK_ENABLE()
-#define WIRELSS_RISING_IRQn						EXTI1_IRQn
-
-#define WIRELSS_FALLING_GPIO_PIN      GPIO_PIN_2
-#define WIRELSS_FALLING_GPIO_PORT     GPIOA
-#define WIRELSS_FALLING_HAL_RCC_GPIO_CLK_ENABLE()		 __HAL_RCC_GPIOA_CLK_ENABLE()
-#define WIRELSS_FALLING_IRQn					EXTI2_IRQn
-
-#define WIRELSS_POWER_GPIO_PIN      	GPIO_PIN_12
-#define WIRELSS_POWER_GPIO_PORT     	GPIOB
-#define WIRELSS_POWER_HAL_RCC_GPIO_CLK_ENABLE()		 __HAL_RCC_GPIOB_CLK_ENABLE()
-
-
-#define LED_CONTROL_PIN          		GPIO_PIN_3		/* PortC */
+#define VIBRATION_CONTROL_PIN			GPIO_PIN_3		/* PortA */
+#define LED_CONTROL_PIN_RED        		GPIO_PIN_2		/* PortA */
+#define LED_CONTROL_PIN_GREEN      		GPIO_PIN_1		/* PortA */
 #define MAINCPU_CONTROL_PIN				GPIO_PIN_0		/* PortC */
 
 /* Private macro -------------------------------------------------------------*/
@@ -245,13 +227,16 @@ SBackup backup;
 static void EXTI_Wakeup_Button_Init(void);
 static void EXTI_Wakeup_Button_DeInit(void);
 
-static void EXTI_Test_Button_Init(void);
-static void EXTI_Test_Button_DeInit(void);
-
-static void GPIO_LED_Init(void);
+static void GPIO_LEDs_VIBRATION_Init(void);
 static void GPIO_Power_MainCPU_Init(void);
 static void GPIO_Power_MainCPU_ON(void);
 static void GPIO_Power_MainCPU_OFF(void);
+static void GPIO_LED_RED_OFF(void);
+static void GPIO_LED_RED_ON(void);
+static void GPIO_LED_GREEN_OFF(void);
+static void GPIO_LED_GREEN_ON(void);
+static void GPIO_VIBRATION_OFF(void);
+static void GPIO_VIBRATION_ON(void);
 
 #ifdef DEBUG_I2C_LINES
 void GPIO_test_I2C_lines(void);
@@ -306,7 +291,7 @@ int main(void) {
 	HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
 	MX_RTC_init();
-	GPIO_LED_Init();
+	GPIO_LEDs_VIBRATION_Init();
 	GPIO_new_DEBUG_Init(); // added 170322 hw
 	initGlobals();
 
@@ -416,15 +401,24 @@ int main(void) {
 
 			if (global.mode == MODE_BOOT) {
 				GPIO_Power_MainCPU_OFF();
+
+				GPIO_LED_GREEN_ON();
 				HAL_Delay(100); // for GPIO_Power_MainCPU_ON();
 				GPIO_Power_MainCPU_ON();
+
+				GPIO_LED_GREEN_OFF();
+
+				GPIO_LED_RED_ON();
+				GPIO_VIBRATION_ON();
+				HAL_Delay(100);
+				GPIO_LED_RED_OFF();
+				GPIO_VIBRATION_OFF();
 			}
 			SPI_synchronize_with_Master();
 			MX_DMA_Init();
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master(); /* be prepared for the first data exchange */
 			Scheduler_Request_sync_with_SPI(SPI_SYNC_METHOD_HARD);
-			EXTI_Test_Button_Init();
 			global.mode = MODE_SURFACE;
 			break;
 
@@ -493,19 +487,17 @@ int main(void) {
 			 NOT_USED_AT_THE_MOMENT_scheduleSleepMode();
 			 */
 
-			EXTI_Test_Button_DeInit();
 			externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 			externalInterface_SwitchPower33(false);
 			if (hasExternalClock())
 				SystemClock_Config_HSI();
 			sleep_prepare();
 
-			GPIO_LED_Init();
+			GPIO_LEDs_VIBRATION_Init();
 
 			scheduleSleepMode();
 			if (hasExternalClock())
 				SystemClock_Config_HSE();
-			GPIO_LED_Init();
 			EXTI_Wakeup_Button_DeInit();
 			ADCx_Init();
 			GPIO_Power_MainCPU_Init();
@@ -561,16 +553,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 	else
-	if (GPIO_Pin == BUTTON_TEST_GPIO_PIN) {
-		if (!global.demo_mode && (global.mode == MODE_SURFACE)) {
-			global.demo_mode = 1;
-			global.mode = MODE_DIVE;
-		} else if (global.demo_mode && (global.mode == MODE_DIVE)
-				&& (global.lifeData.dive_time_seconds > 10)) {
-			global.demo_mode = 0;
-			global.dataSendToMaster.mode = MODE_ENDDIVE;
-			global.deviceDataSendToMaster.mode = MODE_ENDDIVE;
-		}
+	{
+
 	}
 }
 
@@ -811,15 +795,27 @@ void HAL_SYSTICK_Callback(void) {
  }
  */
 
-static void GPIO_LED_Init(void) {
+static void GPIO_LEDs_VIBRATION_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	__GPIOC_CLK_ENABLE();
-	GPIO_InitStructure.Pin = LED_CONTROL_PIN;
+	__GPIOA_CLK_ENABLE();
+	GPIO_InitStructure.Pin = LED_CONTROL_PIN_RED;
 	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init( GPIOC, &GPIO_InitStructure);
+	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
+
+	GPIO_InitStructure.Pin = LED_CONTROL_PIN_GREEN;
+	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStructure.Pull = GPIO_PULLUP;
+	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
+
+	GPIO_InitStructure.Pin = VIBRATION_CONTROL_PIN;
+	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
+	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
 }
 
 void GPIO_new_DEBUG_Init(void) {
@@ -866,6 +862,31 @@ static void GPIO_Power_MainCPU_OFF(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_SET);
 }
 
+static void GPIO_LED_GREEN_ON(void) {
+	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_RESET);
+}
+
+static void GPIO_LED_GREEN_OFF(void) {
+	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_SET);
+}
+
+static void GPIO_LED_RED_ON(void) {
+	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_RED, GPIO_PIN_RESET);
+}
+
+static void GPIO_LED_RED_OFF(void) {
+	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_RED, GPIO_PIN_SET);
+}
+
+static void GPIO_VIBRATION_ON(void) {
+	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_SET);
+}
+
+static void GPIO_VIBRATION_OFF(void) {
+	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_RESET);
+}
+
+
 /**
  * @brief  Configures EXTI Line0 (connected to PA0 + PA1 pin) in interrupt mode
  * @param  None
@@ -897,40 +918,6 @@ static void EXTI_Wakeup_Button_DeInit(void) {
 	HAL_GPIO_Init( BUTTON_OSTC_GPIO_PORT, &GPIO_InitStructure);
 	HAL_NVIC_DisableIRQ( BUTTON_OSTC_IRQn);
 }
-
-static void EXTI_Test_Button_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	BUTTON_TEST_GPIO_CLK_ENABLE();
-	GPIO_InitStructure.Pin = BUTTON_TEST_GPIO_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init( BUTTON_TEST_GPIO_PORT, &GPIO_InitStructure);
-	HAL_NVIC_SetPriority( BUTTON_TEST_IRQn, 0x0F, 0);
-	HAL_NVIC_EnableIRQ( BUTTON_TEST_IRQn);
-}
-
-static void EXTI_Test_Button_DeInit(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-
-	GPIO_InitStructure.Pin = BUTTON_TEST_GPIO_PIN;
-	HAL_GPIO_Init( BUTTON_TEST_GPIO_PORT, &GPIO_InitStructure);
-	HAL_NVIC_DisableIRQ( BUTTON_TEST_IRQn);
-}
-
-/* NUCLEO C 13
- KEY_BUTTON_GPIO_CLK_ENABLE();
- GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
- GPIO_InitStructure.Pull = GPIO_NOPULL;
- GPIO_InitStructure.Pin = KEY_BUTTON_PIN;
- HAL_GPIO_Init(KEY_BUTTON_GPIO_PORT, &GPIO_InitStructure);
- HAL_NVIC_SetPriority(KEY_BUTTON_EXTI_IRQn, 2, 0);
- HAL_NVIC_EnableIRQ(KEY_BUTTON_EXTI_IRQn);
- */
 
 /**
  * @brief  Wake Up Timer callback
@@ -990,7 +977,7 @@ void sleep_prepare(void) {
 
 	GPIO_InitStruct.Pin =
 			GPIO_PIN_All
-					^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | CHARGE_IN_PIN | EXT33V_CONTROL_PIN | LED_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
+					^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | CHARGE_IN_PIN | EXT33V_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN); /* power off & charger in & charge out & OSC32 & ext33Volt */
 
 	HAL_GPIO_Init( GPIOC, &GPIO_InitStruct);
 
@@ -1004,6 +991,9 @@ void sleep_prepare(void) {
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
 
 	GPIO_Power_MainCPU_OFF();
+	GPIO_LED_GREEN_OFF();
+	GPIO_LED_RED_OFF();
+
 
 #ifndef DEBUGMODE
 	__HAL_RCC_GPIOB_CLK_DISABLE();

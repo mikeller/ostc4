@@ -669,7 +669,7 @@ GPIO_test_I2C_lines();
 	}
 
 	ptr = 0;
-	textVersion[ptr++] = '\021';
+	textVersion[ptr++] = '\020';
 	textVersion[ptr++] = 's';
 	textVersion[ptr++] = 'e';
 	textVersion[ptr++] = 'r';
@@ -721,7 +721,7 @@ GPIO_test_I2C_lines();
 	}
 	else
 	{
-		tInfo_write("");
+		tInfo_write("Bluetooth set");
 		tComm_StartBlueModConfig();
 	}
 
