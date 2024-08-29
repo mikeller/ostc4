@@ -2216,6 +2216,8 @@ uint8_t tComm_HandleBlueModConfig()
 									HAL_Delay(2000);
 									BmTmpConfig++;
 								break;
+		case BM_INIT_ECHO: 			sprintf(TxBuffer,"ATE0\r");
+			break;
 		case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");      /*Set to factory defined configuration */
 								break;
 		case BM_INIT_MODE:			sprintf(TxBuffer,"AT+UMSM=1\r");        /* start in Data mode */
@@ -2273,8 +2275,9 @@ uint8_t tComm_HandleBlueModConfig()
 			{
 				BmTmpConfig++;
 			}
-			if(BmTmpConfig == BM_CONFIG_DONE)
+			if(BmTmpConfig == BM_CONFIG_ECHO)
 			{
+				BmTmpConfig = BM_CONFIG_DONE;
 				ConfigRetryCnt = 0;
 				RestartModule = 1;
 			}
