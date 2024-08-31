@@ -43,6 +43,7 @@
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "math.h"
 
 /* uncomment to enable restoting of last known date in case of a power loss (RTC looses timing data) */
 /* #define RESTORE_LAST_KNOWN_DATE */
@@ -50,6 +51,14 @@
 #define INVALID_PREASURE_VALUE 			(0.0f)
 #define START_DIVE_MOUNTAIN_MODE_BAR	(0.88f)
 #define START_DIVE_IMMEDIATLY_BAR		(1.16f)
+
+/* Ascent rate calculation */
+typedef enum
+{
+	ASCENT_NONE = 0,
+	ASCENT_RISING,
+	ASCENT_FALLING,
+} AscentStates_t;
 
 /* Private types -------------------------------------------------------------*/
 const SGas Air = {79,0,0,0,0};
@@ -93,6 +102,7 @@ void copyPICdata(void);
 void copyExtADCdata();
 void copyExtCO2data();
 static void schedule_update_timer_helper(int8_t thisSeconds);
+static void evaluateAscentSpeed(void);
 uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow);
 
 void scheduleSetDate(SDeviceLine *line);
@@ -480,11 +490,8 @@ void scheduleDiveMode(void)
 {
 	uint32_t ticksdiff = 0; 
 	uint32_t lasttick = 0;
-	uint32_t lastPressureTick = 0;
-	uint32_t tickPressureDiff = 0;
 	uint8_t extAdcChannel = 0;
 	uint8_t counterAscentRate = 0;
-	float lastPressure_bar = 0.0f;
 	global.dataSendToMaster.mode = MODE_DIVE;
 	global.deviceDataSendToMaster.mode = MODE_DIVE;
 	uint8_t counter_exit = 0;
@@ -558,17 +565,8 @@ void scheduleDiveMode(void)
 				counterAscentRate++;
 				if(counterAscentRate == 4)
 				{
-					tickPressureDiff = time_elapsed_ms(lastPressureTick,lasttick); /* Calculate ascent rate every 400ms use timer to take care for small time shifts */
-					if(tickPressureDiff != 0)
-					{
-						global.lifeData.pressure_ambient_bar = get_pressure_mbar() / 1000.0f;
-						if(lastPressure_bar >= 0)
-						{
-							global.lifeData.ascent_rate_meter_per_min = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * (60000.0 / tickPressureDiff) * 10; /* bar * 10 = meter */
-						}
-					}
-					lastPressure_bar = global.lifeData.pressure_ambient_bar;
-					lastPressureTick = lasttick;
+					global.lifeData.pressure_ambient_bar = get_pressure_mbar() / 1000.0f;
+					evaluateAscentSpeed();
 					counterAscentRate = 0;
 				}
 				copyPressureData();
@@ -606,7 +604,7 @@ void scheduleDiveMode(void)
 
 
 				/** counter_exit allows safe exit via button for testing
-					* and demo_mode is exited too if aplicable.
+					* and demo_mode is exited too if applicable.
 					*/
 				if(global.dataSendToMaster.mode == MODE_ENDDIVE)
 				{
@@ -620,6 +618,7 @@ void scheduleDiveMode(void)
 
 				if(is_ambient_pressure_close_to_surface(&global.lifeData))
 				{
+
 					global.lifeData.counterSecondsShallowDepth++;
 					if((global.lifeData.counterSecondsShallowDepth >= global.settings.timeoutDiveReachedZeroDepth) || ((global.lifeData.dive_time_seconds < 60) && (global.demo_mode == 0))
 							|| (ManualExitDiveCounter))
@@ -657,6 +656,7 @@ void scheduleDiveMode(void)
 				// surface break
 				if(is_ambient_pressure_close_to_surface(&global.lifeData))
 				{
+					global.lifeData.ascent_rate_meter_per_min = 0;
 					global.lifeData.counterSecondsShallowDepth++;
 					if(global.lifeData.counterSecondsShallowDepth > 3) // time for main cpu to copy to apnea_last_dive_time_seconds
 					{
@@ -1814,6 +1814,78 @@ _Bool is_ambient_pressure_close_to_surface(SLifeData *lifeData)
 	return retval;
 }
 
+void evaluateAscentSpeed()
+{
+	static uint32_t lastPressureTick = 0;
+	static float lastPressure_bar = 0.0f;
+	static AscentStates_t ascentState = ASCENT_NONE;
+	static uint8_t ascentStableCnt = 0;
+	uint32_t tickPressureDiff = 0;
+	uint32_t lasttick = HAL_GetTick();
+	float localAscentRate = 0.0;
+
+	tickPressureDiff = time_elapsed_ms(lastPressureTick,lasttick); /* Calculate ascent rate every 400ms use timer to take care for small time shifts */
+	if(tickPressureDiff != 0)
+	{
+		if(lastPressure_bar >= 0)
+		{
+			localAscentRate = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * (60000.0 / tickPressureDiff) * 10; /* bar * 10 = meter */
+			if(fabs(localAscentRate) < 1.0)
+			{
+				ascentState = ASCENT_NONE;
+				ascentStableCnt = 0;
+			}
+			else if(localAscentRate > 0.0)
+			{
+				if(ascentState != ASCENT_FALLING)
+				{
+					if(ascentStableCnt < 5)
+					{
+						ascentStableCnt++;
+					}
+					else
+					{
+						ascentState = ASCENT_RISING;
+					}
+				}
+				else
+				{
+					ascentState = ASCENT_NONE;
+					ascentStableCnt = 0;
+				}
+			}
+			else	/* must be falling */
+			{
+				if(ascentState != ASCENT_RISING)
+				{
+					if(ascentStableCnt < 5)
+					{
+						ascentStableCnt++;
+					}
+					else
+					{
+							ascentState = ASCENT_FALLING;
+					}
+				}
+				else
+				{
+					ascentState = ASCENT_NONE;
+					ascentStableCnt = 0;
+				}
+			}
+			if(ascentState != ASCENT_NONE)
+			{
+				global.lifeData.ascent_rate_meter_per_min = localAscentRate;
+			}
+			else
+			{
+				global.lifeData.ascent_rate_meter_per_min = 0;
+			}
+		}
+	}
+	lastPressure_bar = global.lifeData.pressure_ambient_bar;
+	lastPressureTick = lasttick;
+}
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/
 
