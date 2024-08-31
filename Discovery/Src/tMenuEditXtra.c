@@ -120,8 +120,10 @@ void openEdit_Xtra(uint8_t line)
 			case 4: openEdit_PSCR();
 				break;
 #endif
+#ifdef ENABLE_PREDIVE_CHECK
 			case 5:	openInfo_PreDive();
 				break;
+#endif
 			default:
 				break;
 		}

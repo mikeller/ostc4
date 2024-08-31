@@ -78,4 +78,7 @@
 /* Enable if an external pressure sensor is connected at ADC channel3 (used for sensor verification) */
 /* #define ENABLE_EXTERNAL_PRESSURE */
 
+/* Enable if the menu item predive check shall be available */
+/* #define ENABLE_PREDIVE_CHECK */
+
 #endif

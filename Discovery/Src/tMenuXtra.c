@@ -213,6 +213,7 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
             textPointer += 2;
          }
 #endif
+#ifdef ENABLE_PREDIVE_CHECK
         if((line == 0) || (line == 5))
         {
       		if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
@@ -229,6 +230,7 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
       		strcpy(&text[textPointer],"\n\r");
       		textPointer += 2;
         }
+#endif
     }
     return StMXTRA;
 }
