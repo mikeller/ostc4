@@ -1776,6 +1776,12 @@ static uint8_t text_FR_DecoTTS[] = "";
 static uint8_t text_IT_DecoTTS[] = "";
 static uint8_t text_ES_DecoTTS[] = "";
 
+static uint8_t text_EN_SlowExit[] = "Slow exit";
+static uint8_t text_DE_SlowExit[] = "Ausstieg";
+static uint8_t text_FR_SlowExit[] = "";
+static uint8_t text_IT_SlowExit[] = "";
+static uint8_t text_ES_SlowExit[] = "";
+
 static uint8_t text_EN_ScrubTime[] = "Scrubber time";
 static uint8_t text_DE_ScrubTime[] = "Kalkstandzeit";
 static uint8_t text_FR_ScrubTime[] = "Scrubber time";
@@ -2199,6 +2205,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Navigation, 		{text_EN_Navigation, text_DE_Navigation, text_FR_Navigation, text_IT_Navigation, text_ES_Navigation}},
 	{(uint8_t)TXT2BYTE_DepthData, 		{text_EN_DepthData, text_DE_DepthData, text_FR_DepthData, text_IT_DepthData, text_ES_DepthData}},
 	{(uint8_t)TXT2BYTE_DecoTTS, 		{text_EN_DecoTTS, text_DE_DecoTTS, text_FR_DecoTTS, text_IT_DecoTTS, text_ES_DecoTTS}},
+	{(uint8_t)TXT2BYTE_SlowExit, 		{text_EN_SlowExit, text_DE_SlowExit, text_FR_SlowExit, text_IT_SlowExit, text_ES_SlowExit}},
 
 	{(uint8_t)TXT2BYTE_Minimum, 		{text_EN_Minimum, text_DE_Minimum, text_FR_Minimum, text_IT_Minimum, text_ES_Minimum}},
 	{(uint8_t)TXT2BYTE_Normal, 			{text_EN_Normal, text_DE_Normal, text_FR_Normal, text_IT_Normal, text_ES_Normal}},

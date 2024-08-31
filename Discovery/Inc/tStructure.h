@@ -245,8 +245,9 @@
 
 #define StMDECO3_PPO2Max			_MB(2,5,2,1,0)
 #define StMDECO4_SafetyStop			_MB(2,5,3,1,0)
-#define StMDECO5_FUTURE				_MB(2,5,4,1,0)
-#define StMDECO6_SALINITY			_MB(2,5,5,1,0)
+#define StMDECO_SlowExit			_MB(2,5,4,1,0)
+#define StMDECO5_FUTURE				_MB(2,5,5,1,0)
+#define StMDECO6_SALINITY			_MB(2,5,6,1,0)
 
 /* PAGE 6 */
 #define StMDECOP	_MB(2,6,0,0,0)

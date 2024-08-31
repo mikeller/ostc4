@@ -42,6 +42,7 @@ static uint8_t lineSelected = 0;
 static void openEdit_DiveMode(void);
 static void openEdit_ppO2max(void);
 static void openEdit_SafetyStop(void);
+static void openEdit_ExitTime(void);
 static void openEdit_FutureTTS(void);
 static void openEdit_Salinity(void);
 
@@ -50,6 +51,7 @@ static uint8_t OnAction_setMode (uint32_t editId, uint8_t blockNumber, uint8_t d
 static uint8_t OnAction_FutureTTS	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_ppO2Max	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_SafetyStop (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_SlowExitTime		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_Salinity	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 /* Exported functions --------------------------------------------------------*/
 
@@ -73,9 +75,12 @@ void openEdit_Deco(uint8_t line)
         openEdit_SafetyStop();
         break;
     case 4:
+         openEdit_ExitTime();
+         break;
+    case 5:
         openEdit_FutureTTS();
         break;
-    case 5:
+    case 6:
         openEdit_Salinity();
         break;
     }
@@ -259,6 +264,44 @@ static void openEdit_SafetyStop(void)
 }
 
 
+static void openEdit_ExitTime(void)
+{
+    uint32_t SlowExitTime;
+    char text[64];
+    uint16_t y_line;
+
+    SlowExitTime = settingsGetPointer()->safetystopDuration;
+
+    y_line = ME_Y_LINE_BASE + (lineSelected * ME_Y_LINE_STEP);
+
+    text[0] = '\001';
+    text[1] = TXT_2BYTE;
+    text[2] = TXT2BYTE_SlowExit;
+    text[3] = 0;
+    write_topline(text);
+
+    write_label_var(   20, 800, y_line, &FontT48, &text[1]);
+
+    strcpy(text,"\016\016");
+    text[2] = TXT_Minutes;
+    if(settingsGetPointer()->nonMetricalSystem)
+    {
+        sprintf(&text[3], "\017  ^      %u\016\016 ft\017", settingsGetPointer()->slowExitTime);
+    }
+    else
+    {
+        sprintf(&text[3],  "\017  ^      %u\016\016 m\017", settingsGetPointer()->slowExitTime);
+    }
+    write_label_var(  410, 800, y_line, &FontT48, text);
+
+    write_field_udigit(StMDECO_SlowExit,	 		370, 800, y_line, &FontT48, "#", SlowExitTime, 0, 0, 0);
+    write_buttonTextline(TXT2BYTE_ButtonMinus,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonPlus);
+
+    setEvent(StMDECO_SlowExit, 		(uint32_t)OnAction_SlowExitTime);
+    startEdit();
+}
+
+
 static uint8_t OnAction_SafetyStop		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     uint8_t digitContentNew;
@@ -346,6 +389,48 @@ static uint8_t OnAction_SafetyStop		(uint32_t editId, uint8_t blockNumber, uint8
     return EXIT_TO_MENU;
 }
 
+static uint8_t OnAction_SlowExitTime		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    uint8_t digitContentNew;
+    uint32_t newExitTime;
+
+    if(action == ACTION_BUTTON_ENTER)
+    {
+        return digitContent;
+    }
+    if(action == ACTION_BUTTON_ENTER_FINAL)
+    {
+        evaluateNewString(editId, &newExitTime, 0, 0, 0);
+
+        settingsGetPointer()->slowExitTime = newExitTime;
+
+        tMenuEdit_newInput(editId, newExitTime, 0, 0, 0);
+        return UPDATE_AND_EXIT_TO_MENU;
+    }
+    if(action == ACTION_BUTTON_NEXT)
+    {
+        digitContentNew = digitContent + 1;
+        if(blockNumber == 0)
+        {
+            if(digitContentNew > '9')
+                digitContentNew = '0';
+        }
+
+        return digitContentNew;
+    }
+    if(action == ACTION_BUTTON_BACK)
+    {
+        digitContentNew = digitContent - 1;
+        if(blockNumber == 0)
+        {
+            if(digitContentNew < '0')
+                digitContentNew = '9';
+        }
+
+        return digitContentNew;
+    }
+    return EXIT_TO_MENU;
+}
 
 static void openEdit_Salinity(void)
 {

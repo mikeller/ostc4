@@ -313,6 +313,7 @@ typedef struct
 	uint8_t scrubTimerMode;
 	uint8_t ext_sensor_map[8];		/* redefined in 0xFFFF0027 */
 	uint8_t cvAutofocus;
+	uint8_t slowExitTime;
 } SSettings;
 
 typedef struct

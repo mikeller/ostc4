@@ -134,6 +134,33 @@ uint32_t tMDeco_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 
     if((line == 0) || (line == 4))
     {
+    	if(settingsGetPointer()->slowExitTime !=  0)
+    	{
+			textPointer += snprintf(&text[textPointer], 60,\
+				"%c%c\t%u\016\016 %c\017  ^      %u\016\016 %c%c\017"
+				, TXT_2BYTE
+				, TXT2BYTE_SlowExit
+				, settingsGetPointer()->slowExitTime
+				,TXT_Minutes
+				, unit_depth_integer(settingsGetPointer()->last_stop_depth_meter)
+				, unit_depth_char1()
+				, unit_depth_char2()
+			);
+    	}
+    	else
+    	{
+			textPointer += snprintf(&text[textPointer], 60, "%c%c\t%c%c"
+				, TXT_2BYTE
+				, TXT2BYTE_SlowExit
+				, TXT_2BYTE
+				, TXT2BYTE_MoCtrlNone
+				);
+    	}
+    }
+    strcpy(&text[textPointer],"\n\r");
+    textPointer += 2;
+    if((line == 0) || (line == 5))
+    {
         textPointer += snprintf(&text[textPointer], 60,\
             "%c"
             "\t"
@@ -149,7 +176,7 @@ uint32_t tMDeco_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
     strcpy(&text[textPointer],"\n\r");
     textPointer += 2;
 
-    if((line == 0) || (line == 5))
+    if((line == 0) || (line == 6))
     {
         textPointer += snprintf(&text[textPointer], 60,\
             "%c"

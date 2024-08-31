@@ -79,6 +79,9 @@ void t7_show_customview_warnings_surface_mode(void);
 
 uint8_t t7_customtextPrepare(char * text);
 
+static void t7_drawAcentGraph(uint8_t color);
+static uint8_t t7_drawSlowExitGraph(void);
+
 /* Imported function prototypes ---------------------------------------------*/
 extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
 
@@ -120,6 +123,13 @@ SBackground background =
 
 
 /* Private types -------------------------------------------------------------*/
+
+typedef enum
+{
+	SE_INIT = 0,
+	SE_ACTIVE,
+	SE_END
+} SSlowExitState;
 
 const uint8_t customviewsSurfaceStandard[] =
 {
@@ -2733,8 +2743,8 @@ void t7_refresh_divemode(void)
     SafetyStopTime.Minutes = SafetyStopTime.Total / 60;
     SafetyStopTime.Seconds = SafetyStopTime.Total - (SafetyStopTime.Minutes * 60);
 
-    TimeoutTime.Total = settingsGetPointer()->timeoutDiveReachedZeroDepth - stateUsed->lifeData.counterSecondsShallowDepth;
-    if(TimeoutTime.Total > settingsGetPointer()->timeoutDiveReachedZeroDepth)
+    TimeoutTime.Total = pSettings->timeoutDiveReachedZeroDepth - stateUsed->lifeData.counterSecondsShallowDepth;
+    if(TimeoutTime.Total > pSettings->timeoutDiveReachedZeroDepth)
     {
         TimeoutTime.Total = 0;
     }
@@ -2752,6 +2762,32 @@ void t7_refresh_divemode(void)
         nextstopLengthSeconds = 0;
     }
 
+
+    /* max depth */
+    snprintf(TextL2,TEXTSIZE,"\032\f%c",TXT_MaxDepth);
+    GFX_write_string(&FontT42,&t7l2,TextL2,0);
+
+    if(unit_depth_float(stateUsed->lifeData.max_depth_meter) < 100)
+        snprintf(TextL2,TEXTSIZE,"\020%01.1f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
+    else
+        snprintf(TextL2,TEXTSIZE,"\020%01.0f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
+
+    Gfx_colorsscheme_mod(TextL2, 0);
+    GFX_write_string(&FontT105,&t7l2,TextL2,1);
+
+/* ascent rate graph */
+
+    if((pSettings->slowExitTime != 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
+    {
+    	color = t7_drawSlowExitGraph();
+    }
+    else if(stateUsed->lifeData.ascent_rate_meter_per_min > 1)	/* a value < 1 would cause a bar in negative direction brush rectangle of 12 and step width of 6 */
+    {
+        color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
+    	t7_drawAcentGraph(color);
+    }
+
+
     /* depth */
     float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
 
@@ -2762,9 +2798,6 @@ void t7_refresh_divemode(void)
         snprintf(TextL1,TEXTSIZE,"\032\f[feet]");
     else
         snprintf(TextL1,TEXTSIZE,"\032\f%c",TXT_Depth);
-
-    color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
-
 
     GFX_write_string(&FontT24,&t7l1,TextL1,0);
 
@@ -2785,71 +2818,11 @@ void t7_refresh_divemode(void)
 
     Gfx_colorsscheme_mod(TextL1, color);
 
-
-
     GFX_write_string(&FontT144,&t7l1,TextL1,0);
 
-    /* max depth */
-    snprintf(TextL2,TEXTSIZE,"\032\f%c",TXT_MaxDepth);
-    GFX_write_string(&FontT42,&t7l2,TextL2,0);
 
-    if(unit_depth_float(stateUsed->lifeData.max_depth_meter) < 100)
-        snprintf(TextL2,TEXTSIZE,"\020%01.1f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
-    else
-        snprintf(TextL2,TEXTSIZE,"\020%01.0f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
 
-    Gfx_colorsscheme_mod(TextL2, 0);
-    GFX_write_string(&FontT105,&t7l2,TextL2,1);
-
-    /* ascent rate graph */
-    if(stateUsed->lifeData.ascent_rate_meter_per_min > 1)	/* a value < 1 would cause a bar in negative direction brush rectangle of 12 and step width of 6 */
-    {
-    	if(!pSettings->FlipDisplay)
-    	{
-    		start.y = t7l1.WindowY0 - 1;
-    	}
-    	else
-    	{
-    		start.y = t7l3.WindowY0 - 25;
-    	}
-
-        for(int i = 0; i<4;i++)
-        {
-            start.y += 5*6;
-            stop.y = start.y;
-            start.x = CUSTOMBOX_LINE_LEFT - 1;
-            stop.x = start.x - 17;
-            GFX_draw_line(&t7screen, start, stop, 0);
-//			start.x = CUSTOMBOX_LINE_RIGHT + 2; old right too
-//			stop.x = start.x + 17;
-//			GFX_draw_line(&t7screen, start, stop, 0);
-        }
-        // new thick bar design Sept. 2015
-        start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 3 - 5;
-        stop.x = start.x;
-    	if(!pSettings->FlipDisplay)
-    	{
-    		start.y = t7l1.WindowY0 - 1;
-    	}
-    	else
-    	{
-    		start.y = t7l3.WindowY0 - 25;
-    	}
-        stop.y = start.y + (uint16_t)(stateUsed->lifeData.ascent_rate_meter_per_min * 6);
-        stop.y -= 3; // wegen der Liniendicke von 12 anstelle von 9
-        if(stop.y >= 470)
-            stop.y = 470;
-        start.y += 7; // starte etwas weiter oben
-        if(color == 0)
-        {
-        	color = CLUT_EverythingOkayGreen; /* do not use white color for drawing graph */
-        }
-
-        GFX_draw_thick_line(12,&t7screen, start, stop, color);
-    }
-    //snprintf(TextL2,TEXTSIZE,"\f%.1f m/min",stateUsed->lifeData.ascent_rate_meter_per_min);
-
-    /* divetime */
+/* divetime */
     if(stateUsed->lifeData.counterSecondsShallowDepth)
     {
         snprintf(TextR1,TEXTSIZE,"\f\002\136 %u:%02u",TimeoutTime.Minutes, TimeoutTime.Seconds);
@@ -4671,7 +4644,175 @@ bool t7_isCompassShowing(void)
     return selection_customview == CVIEW_Compass || selection_custom_field == LLC_Compass;
 }
 
+void t7_drawAcentGraph(uint8_t color)
+{
+	point_t start, stop;
 
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+
+	if(!pSettings->FlipDisplay)
+	{
+		start.y = t7l1.WindowY0 - 1;
+	}
+	else
+	{
+		start.y = t7l3.WindowY0 - 25;
+	}
+
+    for(int i = 0; i<4;i++)
+    {
+        start.y += 5*6;
+        stop.y = start.y;
+        start.x = CUSTOMBOX_LINE_LEFT - 1;
+        stop.x = start.x - 17;
+        GFX_draw_line(&t7screen, start, stop, 0);
+//			start.x = CUSTOMBOX_LINE_RIGHT + 2; old right too
+//			stop.x = start.x + 17;
+//			GFX_draw_line(&t7screen, start, stop, 0);
+    }
+    // new thick bar design Sept. 2015
+    start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 3 - 5;
+    stop.x = start.x;
+	if(!pSettings->FlipDisplay)
+	{
+		start.y = t7l1.WindowY0 - 1;
+	}
+	else
+	{
+		start.y = t7l3.WindowY0 - 25;
+	}
+    stop.y = start.y + (uint16_t)(stateUsed->lifeData.ascent_rate_meter_per_min * 6);
+    stop.y -= 3; // wegen der Liniendicke von 12 anstelle von 9
+    if(stop.y >= 470)
+        stop.y = 470;
+    start.y += 7; // starte etwas weiter oben
+    if(color == 0)
+    {
+    	color = CLUT_EverythingOkayGreen; /* do not use white color for drawing graph */
+    }
+
+    GFX_draw_thick_line(12,&t7screen, start, stop, color);
+}
+
+#define ASCENT_GRAPH_YPIXEL 120
+
+uint8_t t7_drawSlowExitGraph()
+{
+	static SSlowExitState slowExitState = SE_END;
+	static uint16_t countDownSec = 0;
+	static uint8_t drawingMeterStep;
+	static float exitDepthMeter = 0.0;
+	static uint32_t exitSecTick = 0;
+
+	uint8_t index = 0;
+	static uint8_t color = 0;
+	point_t start, stop;
+
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+	if(stateUsed->lifeData.max_depth_meter < pSettings->last_stop_depth_meter)	/* start of dive => reinit timer */
+	{
+		if(slowExitState != SE_INIT)
+		{
+			//stepPerSecond = pSettings->last_stop_depth_meter / pSettings->slowExitTime;
+			countDownSec = pSettings->slowExitTime * 60;
+			drawingMeterStep = ASCENT_GRAPH_YPIXEL / pSettings->last_stop_depth_meter;		/* based on 120 / 4 = 30 of standard ascent graph */
+			slowExitState = SE_INIT;
+			exitDepthMeter =  pSettings->last_stop_depth_meter;
+			color = 0;
+		}
+	}
+	else
+	{
+		if(slowExitState != SE_END)
+		{
+			if(slowExitState == SE_INIT)
+			{
+				slowExitState = SE_ACTIVE;
+				exitSecTick = HAL_GetTick();
+			}
+			if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
+			{
+				exitSecTick = HAL_GetTick();
+
+				/* select depth digit color */
+				if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) < 0.5 )
+				{
+					color = CLUT_NiceGreen;
+				}
+				else if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.5)
+				{
+					color = CLUT_WarningYellow;
+				}
+				else if(stateUsed->lifeData.depth_meter - exitDepthMeter < -1.5 )
+				{
+					color = CLUT_WarningRed;
+				}
+				else
+				{
+					color = 0;
+				}
+
+				if((fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.6 ) /* only decrease counter if diver is close to target depth */
+						|| (color == CLUT_WarningRed))								 /* or if diver is far ahead */
+				{
+					countDownSec--;
+					if(countDownSec == 0)
+					{
+						slowExitState = SE_END;
+						color = 0;
+					}
+					exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+				}
+			}
+			if(!pSettings->FlipDisplay)
+			{
+				start.y = t7l1.WindowY0 - 1;
+			}
+			else
+			{
+				start.y = t7l3.WindowY0 - 25;
+			}
+
+			for(index = 0; index < pSettings->last_stop_depth_meter; index++)	/* draw meter indicators */
+			{
+				start.y += drawingMeterStep;
+				stop.y = start.y;
+				start.x = CUSTOMBOX_LINE_LEFT - 1;
+				stop.x = start.x - 40;
+				GFX_draw_line(&t7screen, start, stop, 0);
+			}
+
+			start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 20;
+			stop.x = start.x;
+			if(!pSettings->FlipDisplay)
+			{
+				start.y = t7l1.WindowY0 + ASCENT_GRAPH_YPIXEL;
+			}
+			else
+			{
+				start.y = t7l3.WindowY0 - 25;
+			}
+			stop.y = start.y - countDownSec * (ASCENT_GRAPH_YPIXEL / (float)(pSettings->slowExitTime * 60.0));
+			if(stop.y >= 470)
+				stop.y = 470;
+
+			GFX_draw_thick_line(15,&t7screen, start, stop, 3);
+			/* mark diver depth */
+			start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 25;
+			stop.x = start.x + 15;
+
+			start.y = start.y - (stateUsed->lifeData.depth_meter *120 / pSettings->last_stop_depth_meter);
+			stop.y = start.y;
+			GFX_draw_thick_line(10,&t7screen, start, stop, 9);
+			//GFX_draw_line(&t7screen, start, stop, 2);
+		}
+	}
+	return color;
+}
 void t7_tick(void)
 {
     SSettings *settings = settingsGetPointer();

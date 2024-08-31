@@ -89,7 +89,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF002A,
+    .header = 0xFFFF002B,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -340,6 +340,7 @@ const SSettings SettingsStandard = {
     .delaySetpointLow = false,
     .timerDurationS = 180,
 	.cvAutofocus = 0,
+	.slowExitTime = 0
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -598,6 +599,9 @@ void set_new_settings_missing_in_ext_flash(void)
     	// no break;
     case 0xFFFF0029:
     	Settings.cvAutofocus = 0;
+    	// no break;
+    case 0xFFFF002A:
+    	Settings.slowExitTime = 0;
     	// no break;
     default:
         pSettings->header = pStandard->header;
@@ -1296,6 +1300,13 @@ uint8_t check_and_correct_settings(void)
     if(Settings.divetimeToCreateLogbook != 60)
     {
         Settings.divetimeToCreateLogbook = 60;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++;
+    if(Settings.slowExitTime > 9)
+    {
+        Settings.divetimeToCreateLogbook = 0;
         corrections++;
         setFirstCorrection(parameterId);
     }
