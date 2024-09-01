@@ -68,13 +68,13 @@ void display_power_on__1_of_2__pre_RGB(void)
 	HAL_Delay(10);
 	HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_SET);
 	HAL_Delay(25);
+
 	// check for new screen
-	hardwareDisplay=0;		// default is old screen
 	aTxBuffer[0] = 0x71;	// Read internal register
 	if (receive_screen((uint8_t*)aTxBuffer) == 0x27)		// chip Index (=0x27 for new screen)
-		{
-		hardwareDisplay=1;
-		}
+	{
+		SetDisplayVersion(DISPLAY_VERSION_NEW);
+	}
 	else
 	{	// re-reset the screen to be sure the 0x71 command did nothing
 		HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_RESET);
@@ -82,6 +82,7 @@ void display_power_on__1_of_2__pre_RGB(void)
 		HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_SET);
 		HAL_Delay(25);
 
+		SetDisplayVersion(DISPLAY_VERSION_LCD);
 	}
 
 	/* RGB signals should be now for 2 frames or more (datasheet) */
@@ -167,7 +168,7 @@ static uint16_t convert8to9to8(uint8_t *pInput, uint8_t *pOutput,uint16_t inputl
 
 void display_power_off(void)
 {
-	if (hardwareDisplay == 1)
+	if (isNewDisplay())
 		{
 		uint8_t aTxBuffer[3];
 
@@ -196,7 +197,7 @@ void display_power_off(void)
 
 void display_power_on__2_of_2__post_RGB(void)
 {
-	if (hardwareDisplay == 1)
+	if (isNewDisplay())
 		{
 		display_power_on__2_of_2__post_RGB_display1();
 		}

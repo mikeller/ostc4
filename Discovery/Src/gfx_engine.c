@@ -3392,14 +3392,14 @@ static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GF
 
 void GFX_LTDC_Init(void)
 {
-	if (hardwareDisplay == 1)
-		{
+	if (isNewDisplay())
+	{
 		GFX_LTDC_Init_display1();
-		}
-		else
-		{
+	}
+	else
+	{
 		GFX_LTDC_Init_display0();
-		}
+	}
 }
 
 void GFX_LTDC_Init_display0(void)

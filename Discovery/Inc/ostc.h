@@ -57,6 +57,9 @@
 #define SDRAM_MODEREG_WRITEBURST_MODE_PROGRAMMED ((uint16_t)0x0000)
 #define SDRAM_MODEREG_WRITEBURST_MODE_SINGLE     ((uint16_t)0x0200)
 
+#define DISPLAY_VERSION_LCD						(0u)
+#define DISPLAY_VERSION_NEW						(1u)
+
 /* Exported variables --------------------------------------------------------*/
 
 extern SPI_HandleTypeDef hspiDisplay;
@@ -98,6 +101,8 @@ GPIO_PinState MX_GPIO_Read_The_One_Button(void);
 void MX_TestPin_High(void);
 void MX_TestPin_Low(void);
 
-uint8_t	hardwareDisplay;		//< either OSTC4 LCD (=0) or new Screen (=1)
+void SetDisplayVersion(uint8_t version);
+uint8_t isNewDisplay(void);
+
 
 #endif // OSTC_H

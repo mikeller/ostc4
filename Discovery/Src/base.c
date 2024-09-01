@@ -1258,12 +1258,12 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
         case 0: /* Cave */
             levelMax = 3000;/* max 25 % (x2) */
             levelMin = 1500;
-            if (hardwareDisplay == 1) display_1_brightness_cave();
+            if( isNewDisplay()) display_1_brightness_cave();
             break;
         case 1: /* Eco */
             levelMax = 6000;/* max 50 % (x2) */
             levelMin = 3000;
-            if (hardwareDisplay == 1) display_1_brightness_eco();
+            if ( isNewDisplay()) display_1_brightness_eco();
             break;
         case 2: /* Std */
             levelAmbient += 1000;
@@ -1271,7 +1271,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 4500;
             levelUpStep_100ms += levelUpStep_100ms/2; // 4500 instead of 3000
             levelDnStep_100ms += levelDnStep_100ms/2;
-            if (hardwareDisplay == 1) display_1_brightness_std();
+            if ( isNewDisplay()) display_1_brightness_std();
             break;
         case 3: /* High */
         default:
@@ -1280,7 +1280,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 6000;
             levelUpStep_100ms += levelUpStep_100ms; // 6000 instead of 3000
             levelDnStep_100ms += levelDnStep_100ms;
-            if (hardwareDisplay == 1) display_1_brightness_high();
+            if ( isNewDisplay()) display_1_brightness_high();
             break;
         case 4: /* New Max */
             levelAmbient = 12000;
@@ -1288,7 +1288,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 12000;
             levelUpStep_100ms += 12000;
             levelDnStep_100ms += 0;
-            if (hardwareDisplay == 1) display_1_brightness_max();
+            if ( isNewDisplay()) display_1_brightness_max();
             break;
         }
 
