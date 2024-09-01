@@ -2038,9 +2038,11 @@ uint8_t tComm_CheckAnswerOK()
 		{
 			do
 			{
-				answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&aRxBuffer[indexBuf], 1, 10);
+				answer = HAL_ERROR;
 				if (indexBuf < UART_CMD_BUF_SIZE)
 				{
+					answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&aRxBuffer[indexBuf], 1, 10);
+
 					if(answerOkay[indexRef] == aRxBuffer[indexBuf])
 					{
 						indexRef++;
@@ -2054,7 +2056,7 @@ uint8_t tComm_CheckAnswerOK()
 					}
 					indexBuf++;
 				}
-			}while(answer == HAL_OK);
+			}while((answer == HAL_OK) && (indexRef != sizeAnswer));
 			if(indexRef != sizeAnswer)
 			{
 				result = HAL_ERROR;
