@@ -2058,7 +2058,10 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 		minimal = 0;
 
 	if(Font == &FontT144)
+	{
 		settings.TinyFont = (uint32_t)&FontT84;
+		settings.Ydelta = 12;
+	}
 	else
 	if(Font == &FontT105)
 		settings.TinyFont = (uint32_t)&FontT54;

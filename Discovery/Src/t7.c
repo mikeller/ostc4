@@ -209,7 +209,7 @@ void t7_init(void)
 
 		t7l2.Image = &t7screen;
 		t7l2.WindowNumberOfTextLines = 2;
-		t7l2.WindowLineSpacing = 22; // Abstand von Y0
+		t7l2.WindowLineSpacing = 12; // Abstand von Y0
 		t7l2.WindowTab = 100; // vermtl. ohne Verwendung in diesem Fenster
 		t7l2.WindowX0 = 0;
 		t7l2.WindowX1 = t7l1.WindowX1;
@@ -376,7 +376,7 @@ void t7_init(void)
 
     t7l2.Image = &t7screen;
     t7l2.WindowNumberOfTextLines = 2;
-    t7l2.WindowLineSpacing = 22; // Abstand von Y0
+    t7l2.WindowLineSpacing = 12; // Abstand von Y0
     t7l2.WindowTab = 100; // vermtl. ohne Verwendung in diesem Fenster
     t7l2.WindowX0 = t7l1.WindowX0;
     t7l2.WindowX1 = t7l1.WindowX1;
@@ -2720,8 +2720,7 @@ void t7_refresh_divemode(void)
     char TextC2[TEXTSIZE];
     uint8_t textPointer;
 
-    point_t start, stop;
-    uint8_t color;
+    uint8_t color = 0;
     int textlength;
 
     uint16_t 	nextstopLengthSeconds = 0;
@@ -2819,8 +2818,6 @@ void t7_refresh_divemode(void)
     Gfx_colorsscheme_mod(TextL1, color);
 
     GFX_write_string(&FontT144,&t7l1,TextL1,0);
-
-
 
 /* divetime */
     if(stateUsed->lifeData.counterSecondsShallowDepth)

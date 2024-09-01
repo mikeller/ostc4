@@ -906,7 +906,7 @@ void openEdit_ButtonSens(void)
     }
 
     snprintf(text,32,"%c",TXT_ButtonLock);
-    write_field_on_off(StMHARD5_ButtonLock,	 30, 95, ME_Y_LINE5,  &FontT48, text, settingsGetPointer()->buttonLockActive);
+    write_field_on_off(StMHARD5_ButtonLock,	 30, 700, ME_Y_LINE5,  &FontT48, text, settingsGetPointer()->buttonLockActive);
 
     setEvent(StMHARD5_Button1, (uint32_t)OnAction_Button);
 
@@ -945,7 +945,7 @@ void refresh_ButtonValuesFromPIC(void)
         sens[i] = settingsHelperButtonSens_translate_hwOS_values_to_percentage(stateRealGetPointer()->lifeData.buttonPICdata[i]);
     }
     snprintf(text,64,"\020\016\016%c%c \017 (%03u  %03u  %03u)",TXT_2BYTE,TXT2BYTE_LowerIsLess,sens[2],sens[1],sens[0]);
-    write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+    write_label_var(  20, 700, ME_Y_LINE6, &FontT42, text);
 
     tMenuEdit_refresh_field(StMHARD5_Button1);
     tMenuEdit_refresh_field(StMHARD5_ButtonBalance1);

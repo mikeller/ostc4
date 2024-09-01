@@ -737,7 +737,7 @@ void refresh_Design(void)
     write_content( 30, 700, ME_Y_LINE4 + 30 + 70, &FontT48, "___________", CLUT_DIVE_FieldSeperatorLines);
     write_content(280, 700, ME_Y_LINE4 + 30 + 70 - 3, &FontT48, "|", CLUT_DIVE_pluginbox);
     write_content(290, 700, ME_Y_LINE4 + 30 + 70 - 37, &FontT48, "_______________", CLUT_DIVE_pluginbox);
-    write_content( 30, 700, ME_Y_LINE4 + 30, &FontT144, "24.7", CLUT_Font027);
+    write_content( 30, 700, ME_Y_LINE4 + 42, &FontT144, "24.7", CLUT_Font027);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
