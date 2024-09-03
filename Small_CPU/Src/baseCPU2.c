@@ -216,6 +216,8 @@ uint8_t firmwareVersionLow(void) {
 #define LED_CONTROL_PIN_RED        		GPIO_PIN_2		/* PortA */
 #define LED_CONTROL_PIN_GREEN      		GPIO_PIN_1		/* PortA */
 #define MAINCPU_CONTROL_PIN				GPIO_PIN_0		/* PortC */
+#define	GPS_POWER_CONTROL_PIN			GPIO_PIN_15		/* PortB */
+#define	GPS_BCKP_CONTROL_PIN			GPIO_PIN_14		/* PortB */
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -237,6 +239,10 @@ static void GPIO_LED_GREEN_OFF(void);
 static void GPIO_LED_GREEN_ON(void);
 static void GPIO_VIBRATION_OFF(void);
 static void GPIO_VIBRATION_ON(void);
+static void GPIO_GPS_OFF(void);
+static void GPIO_GPS_ON(void);
+static void GPIO_GPS_BCKP_OFF(void);
+static void GPIO_GPS_BCKP_ON(void);
 
 #ifdef DEBUG_I2C_LINES
 void GPIO_test_I2C_lines(void);
@@ -413,6 +419,8 @@ int main(void) {
 				HAL_Delay(100);
 				GPIO_LED_RED_OFF();
 				GPIO_VIBRATION_OFF();
+				GPIO_GPS_ON();
+				GPIO_GPS_BCKP_ON();
 			}
 			SPI_synchronize_with_Master();
 			MX_DMA_Init();
@@ -476,24 +484,12 @@ int main(void) {
 			break;
 
 		case MODE_SLEEP:
-			/*
-			 sleep_prepare();
-			 scheduleSleepMode_test();
-			 */
-			/*
-			 GPIO_Power_MainCPU_OFF();
-			 EXTI_Test_Button_DeInit();
-			 EXTI_Wakeup_Button_Init();
-			 NOT_USED_AT_THE_MOMENT_scheduleSleepMode();
-			 */
-
 			externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 			externalInterface_SwitchPower33(false);
 			if (hasExternalClock())
 				SystemClock_Config_HSI();
-			sleep_prepare();
-
 			GPIO_LEDs_VIBRATION_Init();
+			sleep_prepare();
 
 			scheduleSleepMode();
 			if (hasExternalClock())
@@ -597,7 +593,7 @@ void SystemClock_Config_HSE(void) {
 
 	__PWR_CLK_ENABLE(); // is identical to __HAL_RCC_PWR_CLK_ENABLE();
 
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
 	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE; //|RCC_OSCILLATORTYPE_LSE;
 	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -640,7 +636,7 @@ void SystemClock_Config_HSI(void) {
 	/* The voltage scaling allows optimizing the power consumption when the device is
 	 clocked below the maximum system frequency, to update the voltage scaling value
 	 regarding system frequency refer to product datasheet.  */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
 	/* Enable HSI Oscillator and activate PLL with HSI as source */
 	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
@@ -664,44 +660,7 @@ void SystemClock_Config_HSI(void) {
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 	HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 }
-/*	
- RCC_OscInitTypeDef RCC_OscInitStruct;
- RCC_ClkInitTypeDef RCC_ClkInitStruct;
- 
- __HAL_RCC_PWR_CLK_ENABLE();
 
- //__PWR_CLK_ENABLE();
-
- __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
-
- RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSE;
- RCC_OscInitStruct.LSEState = RCC_LSE_ON;
- RCC_OscInitStruct.HSIState = RCC_HSI_ON;
- RCC_OscInitStruct.HSICalibrationValue = 16;
- RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
- RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
- RCC_OscInitStruct.PLL.PLLM = 16;
- RCC_OscInitStruct.PLL.PLLN = 320;
- RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
- RCC_OscInitStruct.PLL.PLLQ = 4;
- HAL_RCC_OscConfig(&RCC_OscInitStruct);
-
- RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_PCLK1;
- RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
- RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
- RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
- RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
- HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
- }
-
- static void RtcClock_Config(void)
- {
- RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
- PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
- PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
- HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
- }
- */
 
 /**
  * @brief  Configures system clock after wake-up from STOP: enable HSI, PLL
@@ -816,6 +775,20 @@ static void GPIO_LEDs_VIBRATION_Init(void) {
 	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
+
+	__GPIOB_CLK_ENABLE();
+	GPIO_InitStructure.Pin = GPS_POWER_CONTROL_PIN;
+	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStructure.Pull = GPIO_PULLUP;
+	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
+
+	GPIO_InitStructure.Pin = GPS_BCKP_CONTROL_PIN;
+	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
+	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
+
 }
 
 void GPIO_new_DEBUG_Init(void) {
@@ -884,6 +857,22 @@ static void GPIO_VIBRATION_ON(void) {
 
 static void GPIO_VIBRATION_OFF(void) {
 	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_RESET);
+}
+
+static void GPIO_GPS_ON(void) {
+	HAL_GPIO_WritePin( GPIOB, GPS_POWER_CONTROL_PIN, GPIO_PIN_RESET);
+}
+
+static void GPIO_GPS_OFF(void) {
+	HAL_GPIO_WritePin( GPIOB, GPS_POWER_CONTROL_PIN, GPIO_PIN_SET);
+}
+
+static void GPIO_GPS_BCKP_ON(void) {
+	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_SET);
+}
+
+static void GPIO_GPS_BCKP_OFF(void) {
+	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
 }
 
 
@@ -966,22 +955,22 @@ void sleep_prepare(void) {
 	__HAL_RCC_GPIOH_CLK_ENABLE();
 
 	GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Pin = GPIO_PIN_All;
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
 #ifdef DEBUGMODE
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_3 | GPIO_PIN_8 | GPIO_PIN_9); /* debug */
 #endif
+
+	GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin =
-			GPIO_PIN_All
-					^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | CHARGE_IN_PIN | EXT33V_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN); /* power off & charger in & charge out & OSC32 & ext33Volt */
+	GPIO_InitStruct.Pin =  GPIO_PIN_All ^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | EXT33V_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
 
 	HAL_GPIO_Init( GPIOC, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0);
+	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | VIBRATION_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN);
 #ifdef DEBUGMODE
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | GPIO_PIN_13 | GPIO_PIN_14); /* wake up button & debug */
 #endif
@@ -993,6 +982,9 @@ void sleep_prepare(void) {
 	GPIO_Power_MainCPU_OFF();
 	GPIO_LED_GREEN_OFF();
 	GPIO_LED_RED_OFF();
+	GPIO_VIBRATION_OFF();
+	GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
+	GPIO_GPS_OFF();
 
 
 #ifndef DEBUGMODE
