@@ -407,6 +407,7 @@ void openEdit_PlanResult(void)
     text[2] = 0;
     write_field_button(StMPLAN5_ExitResult, 30, 800, ME_Y_LINE6,  &FontT48, text);
     setEvent(StMPLAN5_ExitResult, (uint32_t)OnAction_PlanResultExit);
+    tMenuEdit_select(StMPLAN5_ExitResult);
 }
 
 
