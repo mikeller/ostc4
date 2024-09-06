@@ -28,9 +28,17 @@
 #define BUFFER_NODATA			(7u)		/* The read function needs a byte which indicated that no data for processing is available.*/
 											/* This byte shall never appear in a normal data steam */
 
+
+UART_HandleTypeDef huart1, huart6;
+
 void MX_USART1_UART_Init(void);
 void MX_USART1_UART_DeInit(void);
 void MX_USART1_DMA_Init(void);
+
+void MX_USART6_UART_Init(void);
+void MX_USART6_DMA_Init(void);
+void GNSS_IO_init(void);
+
 uint8_t UART_ButtonAdjust(uint8_t *array);
 void UART_StartDMA_Receiption(void);
 #ifdef ENABLE_CO2_SUPPORT

@@ -143,6 +143,8 @@
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "GNSS.h"
+
 
 // From Common/Inc:
 #include "calc_crush.h"
@@ -150,8 +152,8 @@
 #include "FirmwareData.h"
 
 // From Common/Drivers/
-#include "stm32f4xx_hal.h"
 #include <stdio.h>
+
 
 uint8_t coldstart __attribute__((section (".noinit")));
 
@@ -415,7 +417,7 @@ int main(void) {
 				GPIO_LED_GREEN_OFF();
 
 				GPIO_LED_RED_ON();
-				GPIO_VIBRATION_ON();
+				//GPIO_VIBRATION_ON();
 				HAL_Delay(100);
 				GPIO_LED_RED_OFF();
 				GPIO_VIBRATION_OFF();
@@ -427,6 +429,21 @@ int main(void) {
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master(); /* be prepared for the first data exchange */
 			Scheduler_Request_sync_with_SPI(SPI_SYNC_METHOD_HARD);
+
+			// GNSS tests
+			GNSS_IO_init();
+			MX_USART6_UART_Init();
+			GNSS_Init(&GNSS_Handle, &huart6);
+			HAL_Delay(1000);
+			GNSS_LoadConfig(&GNSS_Handle);
+			HAL_Delay(10);
+			GNSS_GetUniqID(&GNSS_Handle);
+			GNSS_ParseBuffer(&GNSS_Handle);
+			HAL_Delay(10);
+			GNSS_GetPVTData(&GNSS_Handle);
+			GNSS_ParseBuffer(&GNSS_Handle);
+
+
 			global.mode = MODE_SURFACE;
 			break;
 

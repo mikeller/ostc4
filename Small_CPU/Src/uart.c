@@ -27,6 +27,7 @@
 #include "data_exchange.h"
 #include <string.h>	/* memset */
 
+
 /* Private variables ---------------------------------------------------------*/
 
 
@@ -34,15 +35,20 @@
 #define CHUNK_SIZE				(25u)		/* the DMA will handle chunk size transfers */
 #define CHUNKS_PER_BUFFER		(5u)
 
-UART_HandleTypeDef huart1;
 
-DMA_HandleTypeDef  hdma_usart1_rx;
+
+DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart6_rx, hdma_usart6_tx;
 
 uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
+uint8_t rxBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
+uint8_t txBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
+
 static uint8_t rxWriteIndex;							/* Index of the data item which is analysed */
 static uint8_t rxReadIndex;								/* Index at which new data is stared */
 static uint8_t lastCmdIndex;							/* Index of last command which has not been completly received */
 static uint8_t dmaActive;								/* Indicator if DMA reception needs to be started */
+
+
 
 
 /* Exported functions --------------------------------------------------------*/
@@ -71,6 +77,8 @@ void MX_USART1_UART_Init(void)
   rxWriteIndex = 0;
   dmaActive = 0;
 }
+
+
 
 void MX_USART1_UART_DeInit(void)
 {
@@ -103,6 +111,108 @@ void  MX_USART1_DMA_Init()
   /* DMA interrupt init */
   HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
+}
+
+void GNSS_IO_init() {
+
+	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+	/* Peripheral clock enable */
+	__HAL_RCC_USART6_CLK_ENABLE();
+
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	/**USART6 GPIO Configuration
+	 PA11     ------> USART6_TX
+	 PA12     ------> USART6_RX
+	 */
+	GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/* USART6 DMA Init */
+	/* USART6_RX Init */
+	hdma_usart6_rx.Instance = DMA2_Stream2;
+	hdma_usart6_rx.Init.Channel = DMA_CHANNEL_5;
+	hdma_usart6_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+	hdma_usart6_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma_usart6_rx.Init.MemInc = DMA_MINC_ENABLE;
+	hdma_usart6_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma_usart6_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma_usart6_rx.Init.Mode = DMA_NORMAL;
+	hdma_usart6_rx.Init.Priority = DMA_PRIORITY_LOW;
+	hdma_usart6_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	HAL_DMA_Init(&hdma_usart6_rx);
+
+	__HAL_LINKDMA(&huart6, hdmarx, hdma_usart6_rx);
+
+	/* USART6_TX Init */
+	hdma_usart6_tx.Instance = DMA2_Stream6;
+	hdma_usart6_tx.Init.Channel = DMA_CHANNEL_5;
+	hdma_usart6_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+	hdma_usart6_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma_usart6_tx.Init.MemInc = DMA_MINC_ENABLE;
+	hdma_usart6_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma_usart6_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma_usart6_tx.Init.Mode = DMA_NORMAL;
+	hdma_usart6_tx.Init.Priority = DMA_PRIORITY_LOW;
+	hdma_usart6_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	HAL_DMA_Init(&hdma_usart6_tx);
+
+	__HAL_LINKDMA(&huart6, hdmatx, hdma_usart6_tx);
+
+	/* USART6 interrupt Init */
+	HAL_NVIC_SetPriority(USART6_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(USART6_IRQn);
+	/* USER CODE BEGIN USART6_MspInit 1 */
+
+	/* USER CODE END USART6_MspInit 1 */
+
+	MX_USART6_DMA_Init();
+
+}
+
+void MX_USART6_DMA_Init() {
+	  /* DMA controller clock enable */
+	  __HAL_RCC_DMA2_CLK_ENABLE();
+
+	  /* DMA interrupt init */
+	  /* DMA2_Stream2_IRQn interrupt configuration */
+	  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+	  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+	  /* DMA2_Stream6_IRQn interrupt configuration */
+	  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+	  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+}
+
+/**
+  * @brief USART6 Initialization Function
+  * @param None
+  * @retval None
+  */
+void MX_USART6_UART_Init(void)
+{
+  /* USER CODE BEGIN USART6_Init 0 */
+
+  /* USER CODE END USART6_Init 0 */
+
+  /* USER CODE BEGIN USART6_Init 1 */
+
+  /* USER CODE END USART6_Init 1 */
+  huart6.Instance = USART6;
+  huart6.Init.BaudRate = 9600;
+  huart6.Init.WordLength = UART_WORDLENGTH_8B;
+  huart6.Init.StopBits = UART_STOPBITS_1;
+  huart6.Init.Parity = UART_PARITY_NONE;
+  huart6.Init.Mode = UART_MODE_TX_RX;
+  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart6);
+
+  /* USER CODE BEGIN USART6_Init 2 */
+
+  /* USER CODE END USART6_Init 2 */
 }
 
 void  UART_MUX_SelectAddress(uint8_t muxAddress)
