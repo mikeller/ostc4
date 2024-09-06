@@ -436,13 +436,39 @@ int main(void) {
 			GNSS_Init(&GNSS_Handle, &huart6);
 			HAL_Delay(1000);
 			GNSS_LoadConfig(&GNSS_Handle);
-			HAL_Delay(10);
+			HAL_Delay(250);
 			GNSS_GetUniqID(&GNSS_Handle);
 			GNSS_ParseBuffer(&GNSS_Handle);
-			HAL_Delay(10);
+			HAL_Delay(250);
 			GNSS_GetPVTData(&GNSS_Handle);
 			GNSS_ParseBuffer(&GNSS_Handle);
 
+/*
+ * Demo code from SimpleMethod
+ * called 1/second
+			while (1) {
+
+				if ((HAL_GetTick() - Timer) > 1000) {
+					GNSS_GetUniqID(&GNSS_Handle);
+					GNSS_ParseBuffer(&GNSS_Handle);
+					HAL_Delay(250);
+					GNSS_GetPVTData(&GNSS_Handle);
+					GNSS_ParseBuffer(&GNSS_Handle);
+					printf("Day: %d-%d-%d \r\n", GNSS_Handle.day, GNSS_Handle.month,GNSS_Handle.year);
+					printf("Time: %d:%d:%d \r\n", GNSS_Handle.hour, GNSS_Handle.min,GNSS_Handle.sec);
+					printf("Status of fix: %d \r\n", GNSS_Handle.fixType);
+					printf("Latitude: %f \r\n", GNSS_Handle.fLat);
+					printf("Longitude: %f \r\n",(float) GNSS_Handle.lon / 10000000.0);
+					printf("Height above ellipsoid: %d \r\n", GNSS_Handle.height);
+					printf("Height above mean sea level: %d \r\n", GNSS_Handle.hMSL);
+					printf("Ground Speed (2-D): %d \r\n", GNSS_Handle.gSpeed);
+					printf("Unique ID: %04X %04X %04X %04X %04X \n\r",
+							GNSS_Handle.uniqueID[0], GNSS_Handle.uniqueID[1],
+							GNSS_Handle.uniqueID[2], GNSS_Handle.uniqueID[3],
+							GNSS_Handle.uniqueID[4], GNSS_Handle.uniqueID[5]);
+					Timer = HAL_GetTick();
+				}
+*/
 
 			global.mode = MODE_SURFACE;
 			break;
@@ -1003,6 +1029,7 @@ void sleep_prepare(void) {
 	GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
 	GPIO_GPS_OFF();
 
+	MX_USART6_UART_DeInit();
 
 #ifndef DEBUGMODE
 	__HAL_RCC_GPIOB_CLK_DISABLE();

@@ -37,6 +37,7 @@ void MX_USART1_DMA_Init(void);
 
 void MX_USART6_UART_Init(void);
 void MX_USART6_DMA_Init(void);
+void MX_USART6_UART_DeInit(void);
 void GNSS_IO_init(void);
 
 uint8_t UART_ButtonAdjust(uint8_t *array);

@@ -39,13 +39,13 @@
 
 DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart6_rx, hdma_usart6_tx;
 
-uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
-uint8_t rxBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
-uint8_t txBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
+uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
+uint8_t rxBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
+uint8_t txBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
 
 static uint8_t rxWriteIndex;							/* Index of the data item which is analysed */
 static uint8_t rxReadIndex;								/* Index at which new data is stared */
-static uint8_t lastCmdIndex;							/* Index of last command which has not been completly received */
+static uint8_t lastCmdIndex;							/* Index of last command which has not been completely received */
 static uint8_t dmaActive;								/* Indicator if DMA reception needs to be started */
 
 
@@ -113,13 +113,16 @@ void  MX_USART1_DMA_Init()
   HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
 }
 
+
 void GNSS_IO_init() {
 
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 	/* Peripheral clock enable */
-	__HAL_RCC_USART6_CLK_ENABLE();
+	__HAL_RCC_USART6_CLK_ENABLE()
+	;
 
-	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE()
+	;
 	/**USART6 GPIO Configuration
 	 PA11     ------> USART6_TX
 	 PA12     ------> USART6_RX
@@ -165,9 +168,6 @@ void GNSS_IO_init() {
 	/* USART6 interrupt Init */
 	HAL_NVIC_SetPriority(USART6_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(USART6_IRQn);
-	/* USER CODE BEGIN USART6_MspInit 1 */
-
-	/* USER CODE END USART6_MspInit 1 */
 
 	MX_USART6_DMA_Init();
 
@@ -186,33 +186,27 @@ void MX_USART6_DMA_Init() {
 	  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 }
 
-/**
-  * @brief USART6 Initialization Function
-  * @param None
-  * @retval None
-  */
-void MX_USART6_UART_Init(void)
+
+void MX_USART6_UART_DeInit(void)
 {
-  /* USER CODE BEGIN USART6_Init 0 */
+	HAL_DMA_Abort(&hdma_usart6_rx);
+	HAL_DMA_DeInit(&hdma_usart6_rx);
+	HAL_DMA_Abort(&hdma_usart6_tx);
+	HAL_DMA_DeInit(&hdma_usart6_tx);
+	HAL_UART_DeInit(&huart6);
+	HAL_UART_DeInit(&huart6);
+}
 
-  /* USER CODE END USART6_Init 0 */
-
-  /* USER CODE BEGIN USART6_Init 1 */
-
-  /* USER CODE END USART6_Init 1 */
-  huart6.Instance = USART6;
-  huart6.Init.BaudRate = 9600;
-  huart6.Init.WordLength = UART_WORDLENGTH_8B;
-  huart6.Init.StopBits = UART_STOPBITS_1;
-  huart6.Init.Parity = UART_PARITY_NONE;
-  huart6.Init.Mode = UART_MODE_TX_RX;
-  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
-  HAL_UART_Init(&huart6);
-
-  /* USER CODE BEGIN USART6_Init 2 */
-
-  /* USER CODE END USART6_Init 2 */
+void MX_USART6_UART_Init(void) {
+	huart6.Instance = USART6;
+	huart6.Init.BaudRate = 9600;
+	huart6.Init.WordLength = UART_WORDLENGTH_8B;
+	huart6.Init.StopBits = UART_STOPBITS_1;
+	huart6.Init.Parity = UART_PARITY_NONE;
+	huart6.Init.Mode = UART_MODE_TX_RX;
+	huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+	HAL_UART_Init(&huart6);
 }
 
 void  UART_MUX_SelectAddress(uint8_t muxAddress)
