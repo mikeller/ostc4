@@ -81,4 +81,7 @@
 /* Enable if the menu item predive check shall be available */
 /* #define ENABLE_PREDIVE_CHECK */
 
+/* Enable to have a faster transfer speed between bluetooth module and CPU */
+#define ENABLE_FAST_COMM
+
 #endif

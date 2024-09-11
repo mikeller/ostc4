@@ -2193,7 +2193,12 @@ uint8_t tComm_HandleBlueModConfig()
 			break;
 		case BM_CONFIG_SIGNAL_POLL:		sprintf(TxBuffer,"AT+BSTPOLL=100\r");
 			break;
-		case BM_CONFIG_BAUD:			sprintf(TxBuffer,"AT%%B22\r");
+		case BM_CONFIG_BAUD:
+#ifdef ENABLE_FAST_COMM
+										sprintf(TxBuffer,"AT%%B22\r");
+#else
+										BmTmpConfig++;
+#endif
 			break;
 		case BM_CONFIG_RETRY:			ConfigRetryCnt--;
 										HAL_Delay(1);
@@ -2260,7 +2265,7 @@ uint8_t tComm_HandleBlueModConfig()
 				UartHandle.Init.BaudRate   = 460800;
 				HAL_UART_Init(&UartHandle);
 			}
-			if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate == 460800)) /* This shut not happen because default speed is 115200 => update module configuration */
+			else if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate == 460800)) /* This shut not happen because default speed is 115200 => update module configuration */
 			{
 				sprintf(TxBuffer,"AT%%B8\r");	/* set default baudrate */
 				CmdSize = strlen(TxBuffer);
