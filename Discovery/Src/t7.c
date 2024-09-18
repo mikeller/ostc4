@@ -2776,7 +2776,7 @@ void t7_refresh_divemode(void)
 
 /* ascent rate graph */
 
-    if((pSettings->slowExitTime != 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
+    if((pSettings->slowExitTime != 0) && (pDecoinfo->output_time_to_surface_seconds == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
     {
     	color = t7_drawSlowExitGraph();
     }
@@ -4726,86 +4726,88 @@ uint8_t t7_drawSlowExitGraph()
 	{
 		if(slowExitState != SE_END)
 		{
-			if(slowExitState == SE_INIT)
+			if((slowExitState == SE_INIT) && (stateUsed->lifeData.dive_time_seconds > 900)) /* min 15min divetime */
 			{
 				slowExitState = SE_ACTIVE;
 				exitSecTick = HAL_GetTick();
 			}
-			if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
+			else if(slowExitState == SE_ACTIVE)
 			{
-				exitSecTick = HAL_GetTick();
+				if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
+				{
+					exitSecTick = HAL_GetTick();
 
-				/* select depth digit color */
-				if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) < 0.5 )
-				{
-					color = CLUT_NiceGreen;
+					/* select depth digit color */
+					if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) < 0.5 )
+					{
+						color = CLUT_NiceGreen;
+					}
+					else if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.5)
+					{
+						color = CLUT_WarningYellow;
+					}
+					else if(stateUsed->lifeData.depth_meter - exitDepthMeter < -1.5 )
+					{
+						color = CLUT_WarningRed;
+					}
+					else
+					{
+						color = 0;
+					}
+
+					if((fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.6 ) /* only decrease counter if diver is close to target depth */
+							|| (color == CLUT_WarningRed))								 /* or if diver is far ahead */
+					{
+						countDownSec--;
+						if(countDownSec == 0)
+						{
+							slowExitState = SE_END;
+							color = 0;
+						}
+						exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+					}
 				}
-				else if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.5)
+				if(!pSettings->FlipDisplay)
 				{
-					color = CLUT_WarningYellow;
-				}
-				else if(stateUsed->lifeData.depth_meter - exitDepthMeter < -1.5 )
-				{
-					color = CLUT_WarningRed;
+					start.y = t7l1.WindowY0 - 1;
 				}
 				else
 				{
-					color = 0;
+					start.y = t7l3.WindowY0 - 25;
 				}
 
-				if((fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.6 ) /* only decrease counter if diver is close to target depth */
-						|| (color == CLUT_WarningRed))								 /* or if diver is far ahead */
+				for(index = 0; index < pSettings->last_stop_depth_meter; index++)	/* draw meter indicators */
 				{
-					countDownSec--;
-					if(countDownSec == 0)
-					{
-						slowExitState = SE_END;
-						color = 0;
-					}
-					exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+					start.y += drawingMeterStep;
+					stop.y = start.y;
+					start.x = CUSTOMBOX_LINE_LEFT - 1;
+					stop.x = start.x - 40;
+					GFX_draw_line(&t7screen, start, stop, 0);
 				}
-			}
-			if(!pSettings->FlipDisplay)
-			{
-				start.y = t7l1.WindowY0 - 1;
-			}
-			else
-			{
-				start.y = t7l3.WindowY0 - 25;
-			}
 
-			for(index = 0; index < pSettings->last_stop_depth_meter; index++)	/* draw meter indicators */
-			{
-				start.y += drawingMeterStep;
+				start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 20;
+				stop.x = start.x;
+				if(!pSettings->FlipDisplay)
+				{
+					start.y = t7l1.WindowY0 + ASCENT_GRAPH_YPIXEL;
+				}
+				else
+				{
+					start.y = t7l3.WindowY0 - 25;
+				}
+				stop.y = start.y - countDownSec * (ASCENT_GRAPH_YPIXEL / (float)(pSettings->slowExitTime * 60.0));
+				if(stop.y >= 470)
+					stop.y = 470;
+
+				GFX_draw_thick_line(15,&t7screen, start, stop, 3);
+				/* mark diver depth */
+				start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 25;
+				stop.x = start.x + 15;
+
+				start.y = start.y - (stateUsed->lifeData.depth_meter *120 / pSettings->last_stop_depth_meter);
 				stop.y = start.y;
-				start.x = CUSTOMBOX_LINE_LEFT - 1;
-				stop.x = start.x - 40;
-				GFX_draw_line(&t7screen, start, stop, 0);
+				GFX_draw_thick_line(10,&t7screen, start, stop, 9);
 			}
-
-			start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 20;
-			stop.x = start.x;
-			if(!pSettings->FlipDisplay)
-			{
-				start.y = t7l1.WindowY0 + ASCENT_GRAPH_YPIXEL;
-			}
-			else
-			{
-				start.y = t7l3.WindowY0 - 25;
-			}
-			stop.y = start.y - countDownSec * (ASCENT_GRAPH_YPIXEL / (float)(pSettings->slowExitTime * 60.0));
-			if(stop.y >= 470)
-				stop.y = 470;
-
-			GFX_draw_thick_line(15,&t7screen, start, stop, 3);
-			/* mark diver depth */
-			start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 25;
-			stop.x = start.x + 15;
-
-			start.y = start.y - (stateUsed->lifeData.depth_meter *120 / pSettings->last_stop_depth_meter);
-			stop.y = start.y;
-			GFX_draw_thick_line(10,&t7screen, start, stop, 9);
-			//GFX_draw_line(&t7screen, start, stop, 2);
 		}
 	}
 	return color;

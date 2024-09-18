@@ -922,23 +922,27 @@ void disableTimer(void)
 #define SPEED_SLOW		(5.0f)
 #define SPEED_MEDIUM	(10.0f)
 #define SPEED_HIGH		(15.0f)
+#define SPEED_HYSTERESE (1.0f)
 
 uint8_t drawingColor_from_ascentspeed(float speed)
 {
+	static uint8_t lastColor = 0;
+
 	uint8_t color = CLUT_Font020;
 
-    if(speed >= SPEED_HIGH)
+    if((speed >= SPEED_HIGH) || ((lastColor == CLUT_WarningRed) && (speed >= SPEED_HIGH - SPEED_HYSTERESE)))
     {
     	color = CLUT_WarningRed;
     }
-    else if(speed >= SPEED_MEDIUM)
+    else if((speed >= SPEED_MEDIUM) || ((lastColor == CLUT_WarningYellow) && (speed >= SPEED_MEDIUM - SPEED_HYSTERESE)))
     {
     	color = CLUT_WarningYellow;
     }
-    else if(speed >= SPEED_SLOW)
+    else if((speed >= SPEED_SLOW) || ((lastColor == CLUT_NiceGreen) && (speed >= SPEED_SLOW - SPEED_HYSTERESE)))
     {
     	color = CLUT_NiceGreen;
     }
+    lastColor = color;
     return color;
 }
 
