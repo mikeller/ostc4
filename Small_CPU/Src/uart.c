@@ -130,7 +130,7 @@ void GNSS_IO_init() {
 	GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
 	GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -141,7 +141,7 @@ void GNSS_IO_init() {
 	hdma_usart6_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
 	hdma_usart6_rx.Init.PeriphInc = DMA_PINC_DISABLE;
 	hdma_usart6_rx.Init.MemInc = DMA_MINC_ENABLE;
-	hdma_usart6_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma_usart6_rx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
 	hdma_usart6_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
 	hdma_usart6_rx.Init.Mode = DMA_NORMAL;
 	hdma_usart6_rx.Init.Priority = DMA_PRIORITY_LOW;
@@ -156,7 +156,7 @@ void GNSS_IO_init() {
 	hdma_usart6_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
 	hdma_usart6_tx.Init.PeriphInc = DMA_PINC_DISABLE;
 	hdma_usart6_tx.Init.MemInc = DMA_MINC_ENABLE;
-	hdma_usart6_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma_usart6_tx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
 	hdma_usart6_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
 	hdma_usart6_tx.Init.Mode = DMA_NORMAL;
 	hdma_usart6_tx.Init.Priority = DMA_PRIORITY_LOW;
