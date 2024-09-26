@@ -46,9 +46,12 @@
 /* #define ENABLE_ANALYSE_SAMPLES */
 
 /* Enable to have access to the debug view options (turn on / off via menu instead of compile switch) */
-/* #define HAVE_DEBUG_VIEW */
+#define HAVE_DEBUG_VIEW
 
-/* Enable to have event based warnings being displayed as warning messages when the occure */
+/* Enable to have runtime information displayed in t7 debug view */
+#define T7_DEBUG_RUNTIME
+
+/* Enable to have event based warnings being displayed as warning messages when they occur */
 #define HAVE_DEBUG_WARNINGS
 
 /* Enable to have access to the motion control selection menu */

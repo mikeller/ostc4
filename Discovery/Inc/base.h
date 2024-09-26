@@ -123,6 +123,12 @@ void set_Backlight_Boost(uint8_t level);
 void StoreButtonAction(uint8_t action);
 SButtonLock get_ButtonLock(void);
 
+#ifdef T7_DEBUG_RUNTIME
+uint32_t getMainLoopTime();
+uint32_t getDecoLoopTime();
+uint32_t getGfxLoopTime();
+#endif
+
 #endif /* BASE_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

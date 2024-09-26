@@ -298,6 +298,14 @@ static uint8_t DoDisplayRefresh = 0;			/* trigger to refresh display data */
 static uint8_t DoHousekeeping = 0;				/* trigger to cleanup the frame buffers */
 static SButtonLock ButtonLockState = LOCK_OFF;  /* Used for button unlock sequence */
 
+#ifdef T7_DEBUG_RUNTIME
+static uint32_t startTimeMainLoop = 0;
+static uint32_t startTimeDecoLoop = 0;
+static uint32_t startTimeGfxLoop = 0;
+static uint32_t timeMainLoop = 0;
+static uint32_t timeDecoLoop = 0;
+static uint32_t timeGfxLoop = 0;
+#endif
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
@@ -487,6 +495,9 @@ int main(void)
      */
     while( 1 )
     {
+#ifdef T7_DEBUG_RUNTIME
+    	startTimeMainLoop = HAL_GetTick();
+#endif
         if( bootToBootloader )
             resetToFirmwareUpdate();
 
@@ -531,8 +542,13 @@ int main(void)
             }
             check_warning();
             updateMiniLiveLogbook(1);
-
+#ifdef T7_DEBUG_RUNTIME
+            startTimeGfxLoop = HAL_GetTick();
+#endif
         	RefreshDisplay();
+#ifdef T7_DEBUG_RUNTIME
+        	timeGfxLoop = time_elapsed_ms(startTimeGfxLoop, HAL_GetTick());
+#endif
         	TimeoutControl();							/* exit menus if needed */
 
 #ifdef ENABLE_MOTION_CONTROL
@@ -557,6 +573,9 @@ int main(void)
         	if(stateUsed == stateRealGetPointer())	/* Handle log entries while in dive mode*/
                 logbook_InitAndWrite(stateUsed);
         }
+#ifdef T7_DEBUG_RUNTIME
+    	timeMainLoop = time_elapsed_ms(startTimeMainLoop, HAL_GetTick());
+#endif
     }
 }
 
@@ -1722,7 +1741,13 @@ static void deco_loop(void)
     switch(what)
     {
 		case CALC_VPM:
+#ifdef T7_DEBUG_RUNTIME
+            startTimeDecoLoop = HAL_GetTick();
+#endif
 				vpm_calc(&stateDeco.lifeData,&stateDeco.diveSettings,&stateDeco.vpm,&stateDeco.decolistVPM, DECOSTOPS);
+#ifdef T7_DEBUG_RUNTIME
+				timeDecoLoop = time_elapsed_ms(startTimeDecoLoop, HAL_GetTick());
+#endif
 				decoLock = DECO_CALC_FINSHED_vpm;
 				return;
 		 case CALC_VPM_FUTURE:
@@ -1916,6 +1941,21 @@ static void TimeoutControl(void)
 	}
 	RequestModeChange = 0;
 }
+
+#ifdef T7_DEBUG_RUNTIME
+uint32_t getMainLoopTime()
+{
+	return timeMainLoop;
+}
+uint32_t getDecoLoopTime()
+{
+	return timeDecoLoop;
+}
+uint32_t getGfxLoopTime()
+{
+	return timeGfxLoop;
+}
+#endif
 // debugging by https://blog.feabhas.com/2013/02/developing-a-generic-hard-fault-handler-for-arm-cortex-m3cortex-m4/
 
 /*

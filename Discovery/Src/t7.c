@@ -3955,6 +3955,12 @@ void t7_debug(void)
     t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
     t7cY0free.WindowNumberOfTextLines = 3;
 
+#ifdef T7_DEBUG_RUNTIME
+    textpointer += snprintf(&text[textpointer],50,"Main loop %ld\n\r",getMainLoopTime());
+    textpointer += snprintf(&text[textpointer],50,"Grafic loop %ld\n\r",getGfxLoopTime());
+    textpointer += snprintf(&text[textpointer],50,"Decoloop %ld\n\r",getDecoLoopTime());
+    GFX_write_string(&FontT24, &t7cY0free, text, 1);
+#else
     textpointer += snprintf(&text[textpointer],50,"Ambient [bar]\n\r");
     textpointer += snprintf(&text[textpointer],50,"Surface [bar] + salt\n\r");
 //	textpointer += snprintf(&text[textpointer],50,"Difference [mbar]\n\r");
@@ -3972,6 +3978,7 @@ void t7_debug(void)
         ,settingsGetPointer()->salinity
         ,stateUsed->lifeData.counterSecondsShallowDepth);
     GFX_write_string(&FontT42, &t7cY0free, text, 1);
+#endif
 }
 
 
