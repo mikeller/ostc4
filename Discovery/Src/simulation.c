@@ -51,7 +51,10 @@ static float sim_aim_depth_meter;
 static float sim_aim_time_minutes;
 static _Bool sim_heed_decostops = 1;
 
-static const float sim_descent_rate_meter_per_min = 20;
+static float sim_descent_rate_meter_per_min = 20;
+
+static uint16_t* pReplayData; /* pointer to source dive data */
+static uint8_t simReplayActive = 0;
 
 
 //Private functions
@@ -83,6 +86,11 @@ void simulation_set_heed_decostops(_Bool heed_decostops_while_ascending)
   */
 void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 {
+    uint16_t replayDataLength = 0;
+    uint8_t* pReplayMarker;
+    uint16_t max_depth = 10;
+    uint16_t diveMinutes = 0;
+
 	copyDiveSettingsToSim();
     copyVpmRepetetiveDataToSim();
   //vpm_init(&stateSimGetPointerWrite()->vpm,  stateSimGetPointerWrite()->diveSettings.vpm_conservatism, 0, 0);
@@ -90,6 +98,7 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
     stateSimGetPointerWrite()->mode = MODE_DIVE;
     if(aim_depth <= 0)
         aim_depth = 20;
+    sim_descent_rate_meter_per_min = 20;
     simulation_set_aim_depth(aim_depth);
     sim_aim_time_minutes = aim_time_minutes;
     timer_init();
@@ -99,6 +108,11 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 
     stateSim.lifeData.apnea_total_max_depth_meter = 0;
     memset(simSensmVOffset,0,sizeof(simSensmVOffset));
+   	if(getReplayOffset() != 0xFFFF)
+   	{
+   		simReplayActive = 1;
+		getReplayInfo(&pReplayData, &pReplayMarker, &replayDataLength, &max_depth, &diveMinutes);
+   	}
 }
 
 /**
@@ -137,7 +151,9 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     static _Bool two_second = 0;
     static float lastPressure_bar = 0;
 
-    if (sim_aim_time_minutes && sim_aim_time_minutes * 60 <= pDiveState->lifeData.dive_time_seconds) {
+    if ((sim_aim_time_minutes && sim_aim_time_minutes * 60 <= pDiveState->lifeData.dive_time_seconds)
+    		&& (!simReplayActive))
+    {
         simulation_set_aim_depth(0);
     }
 
@@ -193,19 +209,25 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
         else
         {
             two_second = 0;
-            if(lastPressure_bar >= 0)
-            {
-                //2 seconds * 30 == 1 minute, bar * 10 = meter
-                pDiveState->lifeData.ascent_rate_meter_per_min = (lastPressure_bar - pDiveState->lifeData.pressure_ambient_bar)  * 30 * 10;
-            }
-            lastPressure_bar = pDiveState->lifeData.pressure_ambient_bar;
         }
     }
     else if(pDiveState->lifeData.depth_meter <= (float)(decom_get_actual_deco_stop(pDiveState) + 0.001))
       sim_reduce_deco_time_one_second(pDiveState);
 
+
     pDiveState->lifeData.dive_time_seconds += 1;
     pDiveState->lifeData.pressure_ambient_bar = sim_get_ambient_pressure(pDiveState);
+    if(pDiveState->lifeData.pressure_ambient_bar < 1.5)
+    {
+    	lastPressure_bar = 0;
+    	pDiveState->lifeData.ascent_rate_meter_per_min = 0;
+    }
+    if(lastPressure_bar > 0)
+     {
+         //1 second * 60 == 1 minute, bar * 10 = meter
+         pDiveState->lifeData.ascent_rate_meter_per_min = (lastPressure_bar - pDiveState->lifeData.pressure_ambient_bar)  * 600.0;
+     }
+     lastPressure_bar = pDiveState->lifeData.pressure_ambient_bar;
 
     pDiveState->lifeData.sensorVoltage_mV[0] = pRealState->lifeData.sensorVoltage_mV[0] + simSensmVOffset[0];
     if(pDiveState->lifeData.sensorVoltage_mV[0] < 0.0) { pDiveState->lifeData.sensorVoltage_mV[0] = 0.0; }
@@ -349,6 +371,22 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     uint8_t actual_deco_stop = decom_get_actual_deco_stop(pDiveState);
     float depth_meter = pDiveState->lifeData.depth_meter;
     float surface_pressure_bar = pDiveState->lifeData.pressure_surface_bar;
+    static uint8_t sampleToggle = 0;
+
+    if(simReplayActive) /* precondition: function is called once per second, sample rate is 2 seconds */
+    {
+    	if(sampleToggle == 0)
+    	{
+    		sampleToggle = 1;
+    		sim_aim_depth_meter = (float)(*pReplayData++/100.0);
+    		sim_descent_rate_meter_per_min = (sim_aim_depth_meter - depth_meter) * 30;
+    	}
+    	else
+    	{
+    		sampleToggle = 0;
+    	}
+    }
+
     if(depth_meter < sim_aim_depth_meter)
     {
         depth_meter = depth_meter + sim_descent_rate_meter_per_min / 60;
