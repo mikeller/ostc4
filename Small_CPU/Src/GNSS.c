@@ -61,11 +61,14 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
  * Searching for a header in data buffer and matching class and message ID to buffer data.
  * @param GNSS Pointer to main GNSS structure.
  */
-void GNSS_ParseBuffer(GNSS_StateHandle *GNSS) {
+uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS) {
+
+	uint8_t DataReceived = 0;
 
 	for (int var = 0; var <= 100; ++var) {
 		if (GNSS->uartWorkingBuffer[var] == 0xB5
 				&& GNSS->uartWorkingBuffer[var + 1] == 0x62) {
+			DataReceived = 1;
 			if (GNSS->uartWorkingBuffer[var + 2] == 0x27
 					&& GNSS->uartWorkingBuffer[var + 3] == 0x03) { //Look at: 32.19.1.1 u-blox 8 Receiver description
 				GNSS_ParseUniqID(GNSS);
@@ -81,6 +84,7 @@ void GNSS_ParseBuffer(GNSS_StateHandle *GNSS) {
 			}
 		}
 	}
+	return DataReceived;
 }
 
 /*!

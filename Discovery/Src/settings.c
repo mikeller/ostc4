@@ -43,7 +43,7 @@ static SSettingsStatus SettingsStatus;  /* Structure containing number of correc
 SSettings Settings;
 
 const uint8_t RTErequiredHigh = 3;
-const uint8_t RTErequiredLow = 3;
+const uint8_t RTErequiredLow = 4;
 
 const uint8_t FONTrequiredHigh = 1;
 const uint8_t FONTrequiredLow =	0;

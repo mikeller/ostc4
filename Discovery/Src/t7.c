@@ -81,6 +81,7 @@ uint8_t t7_customtextPrepare(char * text);
 
 static void t7_drawAcentGraph(uint8_t color);
 static uint8_t t7_drawSlowExitGraph(void);
+static void t7_showPosition(void);
 
 /* Imported function prototypes ---------------------------------------------*/
 extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
@@ -143,6 +144,9 @@ const uint8_t customviewsSurfaceStandard[] =
 	CVIEW_Charger,
     CVIEW_CcrSummary,
     CVIEW_Timer,
+#ifdef ENABLE_GNSS
+	CVIEW_Position,
+#endif
     CVIEW_END
 };
 
@@ -2684,9 +2688,7 @@ void t7_refresh_customview(void)
     case CVIEW_CcrSummary:
         snprintf(text, 100, "\032\f\001%c%c", TXT_2BYTE, TXT2BYTE_CcrSummary);
         GFX_write_string(&FontT42, &t7cH, text, 0);
-
         t7_CcrSummary(pSettings);
-
         break;
     case CVIEW_Timer:
         snprintf(text, 100, "\032\f\001%c%c", TXT_2BYTE, TXT2BYTE_Timer);
@@ -2699,6 +2701,11 @@ void t7_refresh_customview(void)
         showTimer(pSettings, nowS);
 
         break;
+
+    case CVIEW_Position:
+        snprintf(text, 100, "\032\f\001%c%c", TXT_2BYTE, TXT2BYTE_Position);
+        GFX_write_string(&FontT42, &t7cH, text, 0);
+        t7_showPosition();
     }
 
     last_customview = selection_customview;
@@ -3981,7 +3988,28 @@ void t7_debug(void)
 #endif
 }
 
+void t7_showPosition(void)
+{
+    char text[256+50];
+    uint8_t textpointer = 0;
 
+    t7cY0free.WindowLineSpacing = 28 + 48 + 14;
+    t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
+    t7cY0free.WindowNumberOfTextLines = 3;
+
+    textpointer += snprintf(&text[textpointer],50,"\001Longitude\n\r");
+    textpointer += snprintf(&text[textpointer],50,"\001Latitude\n\r");
+    GFX_write_string(&FontT24, &t7cY0free, text, 1);
+
+    t7cY0free.WindowY0 -= 52;
+    snprintf(text,60,
+        "\001%0.5f\n\r"
+        "\001%0.5f\n\r"
+        ,stateUsed->lifeData.gnssPosition.Longitude
+		,stateUsed->lifeData.gnssPosition.Latitude );
+
+    GFX_write_string(&FontT42, &t7cY0free, text, 1);
+}
 void t7_SummaryOfLeftCorner(void)
 {
     char text[256+60];

@@ -133,7 +133,7 @@ static const uint8_t setBikeMode[]={0xB5,0x62,0x06,0x24,0x24,0x00,0xFF,0xFF,0x0A
 static const uint8_t setPortableType[]={};
 void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
-void GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
+uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 
 void GNSS_GetUniqID(GNSS_StateHandle *GNSS);
 void GNSS_ParseUniqID(GNSS_StateHandle *GNSS);

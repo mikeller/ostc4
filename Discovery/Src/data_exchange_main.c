@@ -479,16 +479,16 @@ void DataEX_copy_to_deco(void)
 	if(decoLock == DECO_CALC_running)
         return;
 
-		if(decoLock == DECO_CALC_init_as_is_start_of_dive)
-		{
+	if(decoLock == DECO_CALC_init_as_is_start_of_dive)
+	{
 	    vpm_init(&stateUsedWrite->vpm,  stateUsedWrite->diveSettings.vpm_conservatism, 0, 0);
 	    buehlmann_init();
 	    timer_init();
 	    resetEvents(stateUsedWrite);
 	    stateUsedWrite->diveSettings.internal__pressure_first_stop_ambient_bar_as_upper_limit_for_gf_low_otherwise_zero = 0;
-		}
+	}
 
-		if(decoLock == DECO_CALC_FINSHED_Buehlmann)
+	if(decoLock == DECO_CALC_FINSHED_Buehlmann)
     {
 
     }
@@ -530,6 +530,7 @@ void DataEX_copy_to_deco(void)
     //Copy Inputdata from stateReal to stateDeco
     memcpy(&stateDeco.lifeData,&stateUsedWrite->lifeData,sizeof(SLifeData));
     memcpy(&stateDeco.diveSettings,&stateUsedWrite->diveSettings,sizeof(SDiveSettings));
+    memcpy(&stateDeco.decolistVPM,&stateUsedWrite->decolistVPM,sizeof(SDecoinfo));
 
     stateDeco.vpm.deco_zone_reached = stateUsedWrite->vpm.deco_zone_reached;
     // memcpy(&stateDeco.vpm,&pStateUsed->vpm,sizeof(SVpm));
@@ -540,7 +541,7 @@ void DataEX_copy_to_deco(void)
         stateDeco.vpm.adjusted_critical_radius_he[i] = stateUsedWrite->vpm.adjusted_critical_radius_he[i];
         stateDeco.vpm.adjusted_critical_radius_n2[i] = stateUsedWrite->vpm.adjusted_critical_radius_n2[i];
     }
-		decoLock = DECO_CALC_ready;
+	decoLock = DECO_CALC_ready;
 }
 
 
@@ -1006,6 +1007,9 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 	
 		pStateReal->lifeData.dateBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_dr;
 		pStateReal->lifeData.timeBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_tr;
+
+		pStateReal->lifeData.gnssPosition.Latitude = dataIn.data[0].fLat;
+		pStateReal->lifeData.gnssPosition.Longitude = dataIn.data[0].fLon;
 	}
 
 	if(pStateReal->data_old__lost_connection_to_slave == 0)

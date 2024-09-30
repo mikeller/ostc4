@@ -165,6 +165,13 @@ typedef struct
 }		SDeviceState;
 */
 
+typedef struct
+{
+	float Longitude;
+	float Latitude;
+} 	SPositionData;
+
+
 /* struct SLifeData
  * contains data all actual data (pressure, stuturation, etc. as received from second ship
  * and has actualGas to be send to Small CPU (second chip)
@@ -245,6 +252,9 @@ typedef struct
 
 /* for PSCR Mode */
 	 float ppo2Simulated_bar;
+/* GNSS data */
+	 SPositionData gnssPosition;
+
 } 	SLifeData;
 
 

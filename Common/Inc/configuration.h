@@ -87,4 +87,7 @@
 /* Enable to have a faster transfer speed between bluetooth module and CPU */
 #define ENABLE_FAST_COMM
 
+/* Enable to have position sensor support active */
+#define ENABLE_GNSS
+
 #endif

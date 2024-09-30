@@ -381,6 +381,7 @@ extern const tText text_array2[];
         TXT2BYTE_Starting,
         TXT2BYTE_Finished,
 
+		TXT2BYTE_Position,
         TXT2BYTE_Page,
 
 		TXT2BYTE_END,

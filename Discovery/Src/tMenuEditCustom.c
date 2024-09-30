@@ -503,6 +503,9 @@ char customview_TXT2BYTE_helper(uint8_t customViewId)
     case CVIEW_Timer:
         text = TXT2BYTE_Timer;
         break;
+    case CVIEW_Position:
+        text = TXT2BYTE_Position;
+        break;
     case CVIEW_noneOrDebug:
     	text = TXT2BYTE_DispNoneDbg;
     	break;

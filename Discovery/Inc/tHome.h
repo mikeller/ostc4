@@ -80,6 +80,7 @@ enum CUSTOMVIEWS
 		CVIEW_Charger,
 		CVIEW_CcrSummary,
         CVIEW_Timer,
+		CVIEW_Position,
 		CVIEW_END			/* The ID is used in shift operation => 31 is the max number of supported views */
 };
 

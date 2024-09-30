@@ -43,7 +43,10 @@
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "GNSS.h"
+#include "uartProtocol_GNSS.h"
 #include "math.h"
+#include "configuration.h"
 
 /* uncomment to enable restoting of last known date in case of a power loss (RTC looses timing data) */
 /* #define RESTORE_LAST_KNOWN_DATE */
@@ -101,6 +104,7 @@ void copyDeviceData(void);
 void copyPICdata(void);
 void copyExtADCdata();
 void copyExtCO2data();
+void copyGNSSdata(void);
 static void schedule_update_timer_helper(int8_t thisSeconds);
 static void evaluateAscentSpeed(void);
 uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow);
@@ -874,6 +878,11 @@ void scheduleSurfaceMode(void)
 		{
 			adc_ambient_light_sensor_get_data();
 			copyAmbientLightData();
+#ifdef ENABLE_GNSS
+			uartGnss_ProcessData();
+			uartGnss_Control();
+#endif
+			copyGNSSdata();
 			Scheduler.counterAmbientLight100msec++;
 		}
 
@@ -1733,6 +1742,24 @@ void copyExtCO2data()
 	}
 	global.dataSendToMaster.boolADCO2Data |= boolCO2Buffer;
 }
+
+void copyGNSSdata(void)
+{
+#ifdef ENABLE_GNSS
+	global.dataSendToMaster.data[0].fLat = GNSS_Handle.fLat;
+	global.dataSendToMaster.data[0].fLon = GNSS_Handle.fLon;
+#else
+	static float tmpLon = 0.0;
+	static float tmpLat= 100.0;
+	global.dataSendToMaster.data[0].fLat = tmpLat;
+	global.dataSendToMaster.data[0].fLon = tmpLon;
+	tmpLon += 0.15;
+	if(tmpLon > 360.0) tmpLon = 0.0;
+	tmpLat += 0.33;
+	if(tmpLat > 360.0) tmpLat = 0.0;
+#endif
+}
+
 
 typedef enum 
 {

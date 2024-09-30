@@ -198,6 +198,8 @@ typedef struct
 		//debug
 		uint32_t pressure_uTick;
 		uint32_t compass_uTick;
+		float fLat;
+		float fLon;
 
 } 	SExchangeData;
 

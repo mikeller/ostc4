@@ -168,7 +168,7 @@ uint8_t hasExternalClock(void) {
 // See CPU2-RTE.ld
 const SFirmwareData cpu2_FirmwareData __attribute__(( section(".firmware_data") ))= {
 		.versionFirst = 3,
-		.versionSecond = 3,
+		.versionSecond = 4,
 		.versionThird = 0,
 		.versionBeta = 1,
 
@@ -434,6 +434,8 @@ int main(void) {
 			GNSS_IO_init();
 			MX_USART6_UART_Init();
 			GNSS_Init(&GNSS_Handle, &huart6);
+
+#if 0
 			HAL_Delay(1000);
 			GNSS_LoadConfig(&GNSS_Handle);
 			HAL_Delay(250);
@@ -442,7 +444,7 @@ int main(void) {
 			HAL_Delay(250);
 			GNSS_GetPVTData(&GNSS_Handle);
 			GNSS_ParseBuffer(&GNSS_Handle);
-
+#endif
 /*
  * Demo code from SimpleMethod
  * called 1/second
