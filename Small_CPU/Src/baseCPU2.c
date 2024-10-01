@@ -417,23 +417,28 @@ int main(void) {
 				GPIO_LED_GREEN_OFF();
 
 				GPIO_LED_RED_ON();
-				//GPIO_VIBRATION_ON();
+				GPIO_VIBRATION_ON();
 				HAL_Delay(100);
 				GPIO_LED_RED_OFF();
 				GPIO_VIBRATION_OFF();
-				GPIO_GPS_ON();
-				GPIO_GPS_BCKP_ON();
 			}
+			GPIO_LED_RED_OFF();
+			GPIO_LED_GREEN_OFF();
+			GPIO_VIBRATION_OFF();
 			SPI_synchronize_with_Master();
 			MX_DMA_Init();
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master(); /* be prepared for the first data exchange */
 			Scheduler_Request_sync_with_SPI(SPI_SYNC_METHOD_HARD);
 
+#ifdef ENABLE_GNSS
 			// GNSS tests
 			GNSS_IO_init();
+			GPIO_GPS_ON();
+			GPIO_GPS_BCKP_ON();
 			MX_USART6_UART_Init();
 			GNSS_Init(&GNSS_Handle, &huart6);
+#endif
 
 #if 0
 			HAL_Delay(1000);
