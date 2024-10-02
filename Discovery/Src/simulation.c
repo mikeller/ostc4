@@ -93,6 +93,8 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 
 	copyDiveSettingsToSim();
     copyVpmRepetetiveDataToSim();
+    vpm_table_init();
+
   //vpm_init(&stateSimGetPointerWrite()->vpm,  stateSimGetPointerWrite()->diveSettings.vpm_conservatism, 0, 0);
     stateSimGetPointerWrite()->lifeData.counterSecondsShallowDepth = 0;
     stateSimGetPointerWrite()->mode = MODE_DIVE;
@@ -162,7 +164,17 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
 
     if(checkOncePerSecond)
     {
+        int now =  current_second();
+        if( last_second == now)
+                return;
+        last_second = now;
 
+        if(!two_second)
+            two_second = 1;
+        else
+        {
+            two_second = 0;
+        }
         pSettings = settingsGetPointer();
         for(index = 0; index < 3; index++)
         {
@@ -199,21 +211,18 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
         pDiveState->lifeData.bottle_bar[pDiveState->lifeData.actualGas.GasIdInSettings] = pRealState->lifeData.bottle_bar[pRealState->lifeData.actualGas.GasIdInSettings];
         pDiveState->lifeData.bottle_bar_age_MilliSeconds[pDiveState->lifeData.actualGas.GasIdInSettings] = pRealState->lifeData.bottle_bar_age_MilliSeconds[pRealState->lifeData.actualGas.GasIdInSettings];
 #endif
-        int now =  current_second();
-        if( last_second == now)
-                return;
-        last_second = now;
-
-        if(!two_second)
-            two_second = 1;
-        else
-        {
-            two_second = 0;
-        }
     }
     else if(pDiveState->lifeData.depth_meter <= (float)(decom_get_actual_deco_stop(pDiveState) + 0.001))
-      sim_reduce_deco_time_one_second(pDiveState);
-
+    {
+    	if(decoLock == DECO_CALC_FINSHED_vpm)
+    	{
+    		sim_reduce_deco_time_one_second(&stateDeco);
+    	}
+    	else
+    	{
+    		sim_reduce_deco_time_one_second(pDiveState);
+    	}
+    }
 
     pDiveState->lifeData.dive_time_seconds += 1;
     pDiveState->lifeData.pressure_ambient_bar = sim_get_ambient_pressure(pDiveState);
@@ -425,19 +434,27 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
 static void sim_reduce_deco_time_one_second(SDiveState* pDiveState)
 {
     SDecoinfo* pDecoinfo;
+    int8_t index = 0;
+
+
     if(pDiveState->diveSettings.deco_type.ub.standard == GF_MODE)
         pDecoinfo = &pDiveState->decolistBuehlmann;
     else
         pDecoinfo = &pDiveState->decolistVPM;
 
     //Reduce deco time of deepest stop by one second
-    for(int i = DECOINFO_STRUCT_MAX_STOPS -1 ;i >= 0; i--)
+    for(index = DECOINFO_STRUCT_MAX_STOPS -1 ;index >= 0; index--)
     {
-        if(pDecoinfo->output_stop_length_seconds[i] > 0)
+        if(pDecoinfo->output_stop_length_seconds[index] > 0)
         {
-            pDecoinfo->output_stop_length_seconds[i]--;
+            pDecoinfo->output_stop_length_seconds[index]--;
             break;
         }
+    }
+    /* update TTS */
+    if(pDecoinfo->output_time_to_surface_seconds)
+    {
+    	pDecoinfo->output_time_to_surface_seconds--;
     }
 }
 
@@ -688,24 +705,14 @@ void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t de
     outputSummary->timeToFirstStop = (uint16_t)timeSummary;
     outputSummary->depthMeterFirstStop = actualDepthPoint;
 
-    //ascent
-    nextDepthPoint = 0;
-    timeThis = 0;
-    if(actualDepthPoint > nextDepthPoint) // only if deco
+    if(decoInfoInput->output_time_to_surface_seconds)
     {
-        // ascent time
-        timeThis = ((float)(actualDepthPoint - nextDepthPoint)) / sim_ascent_rate_meter_per_min_local;
-
-        // deco stop time
-        for(ptrDecoInfo=0;ptrDecoInfo < DECOINFO_STRUCT_MAX_STOPS; ptrDecoInfo++)
-        {
-            timeThis += decoInfoInput->output_stop_length_seconds[ptrDecoInfo] / 60;
-            if(!decoInfoInput->output_stop_length_seconds[ptrDecoInfo]) break;
-        }
+    	outputSummary->timeToSurface = outputSummary->timeAtBottom + (decoInfoInput->output_time_to_surface_seconds / 60);
     }
-    timeSummary += timeThis;
-    outputSummary->timeToSurface = (uint16_t)timeSummary;
-
+    else
+    {
+    	outputSummary->timeToSurface = outputSummary->timeToFirstStop;
+    }
 }
 
 
