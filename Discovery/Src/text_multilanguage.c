@@ -1944,6 +1944,12 @@ static uint8_t text_FR_Position[] = "";
 static uint8_t text_IT_Position[] = "";
 static uint8_t text_ES_Position[] = "";
 
+static uint8_t text_EN_VpmTable[] = "VPM table mode";
+static uint8_t text_DE_VpmTable[] = "VPM Tabellenmodus";
+static uint8_t text_FR_VpmTable[] = "";
+static uint8_t text_IT_VpmTable[] = "";
+static uint8_t text_ES_VpmTable[] = "";
+
 static uint8_t text_EN_Page[] = "Page";
 static uint8_t text_DE_Page[] = "Blättern";
 static uint8_t text_FR_Page[] = "Défiler";
@@ -2247,6 +2253,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Finished, 	{text_EN_Finished, text_DE_Finished, text_FR_Finished, text_IT_Finished, text_ES_Finished}},
 
 	{(uint8_t)TXT2BYTE_Position, 	{text_EN_Position, text_DE_Position, text_FR_Position, text_IT_Position, text_ES_Position}},
+	{(uint8_t)TXT2BYTE_VpmTable, 	{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
 
 	{(uint8_t)TXT2BYTE_Page, 	{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},
 };

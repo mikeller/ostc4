@@ -347,6 +347,7 @@ void createDiveSettings(void)
 	stateReal.diveSettings.input_next_stop_increment_depth_bar = ((float)pSettings->stop_increment_depth_meter) / 10.0f;
 	stateReal.diveSettings.last_stop_depth_bar = ((float)pSettings->last_stop_depth_meter) / 10.0f;
 	stateReal.diveSettings.vpm_conservatism = pSettings->VPM_conservatism.ub.standard;
+	stateReal.diveSettings.vpm_tableMode = pSettings->VPM_conservatism.ub.alternative;
 	stateReal.diveSettings.deco_type.uw = pSettings->deco_type.uw;
 	stateReal.diveSettings.fallbackOption = pSettings->fallbackToFixedSetpoint;
 	stateReal.diveSettings.ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;

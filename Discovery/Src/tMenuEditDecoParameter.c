@@ -33,7 +33,7 @@
 #include "tMenuEdit.h"
 #include "unit.h" // last stop in meter and feet
 
-#define MEDP_TAB (380)
+#define MEDP_TAB (525)
 
 /* Private function prototypes -----------------------------------------------*/
 static void openEdit_DecoAlgorithm(void);
@@ -41,6 +41,7 @@ static void openEdit_DecoGF(void);
 static void openEdit_DecoAltGF(void);
 static void openEdit_DecoVPM(void);
 static void openEdit_DecoLastStop(void);
+static void openEdit_DecoVpmTable(void);
 static void openEdit_DM_SwitchAlgorithm(uint8_t line);
 
 //void openEdit_DecoGasUsage(void);
@@ -81,6 +82,7 @@ void openEdit_DecoParameter(uint8_t line)
             openEdit_DecoLastStop();
             break;
         case 6:
+        	openEdit_DecoVpmTable();
             break;
         }
     }
@@ -229,6 +231,21 @@ static void openEdit_DecoLastStop(void)
 
     setEvent(StMDECOP5_LASTSTOP, 	(uint32_t)OnAction_LastStop);
     startEdit();
+}
+
+static void openEdit_DecoVpmTable(void)
+{
+	SSettings *pSettings = settingsGetPointer();
+
+	if(pSettings->VPM_conservatism.ub.alternative == 0)
+	{
+	   pSettings->VPM_conservatism.ub.alternative = 1;
+	}
+    else
+    {
+    	pSettings->VPM_conservatism.ub.alternative = 0;
+    }
+	exitEditWithUpdate();
 }
 
 uint8_t OnAction_VPM(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)

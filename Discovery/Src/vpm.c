@@ -132,6 +132,8 @@ static short mix_change[11];
 
 static const _Bool vpm_b = true;
 
+static SDecoinfo vpmTable;
+
 extern const float float_buehlmann_N2_factor_expositon_20_seconds[];
 extern const float float_buehlmann_He_factor_expositon_20_seconds[];
 extern const float float_buehlmann_N2_factor_expositon_one_minute[];
@@ -219,6 +221,44 @@ float vpm_get_CNS(void)
     return gCNS_VPM;
 }
 
+
+void vpm_maintainTable(SLifeData* pLifeData,SDecoinfo* pDecoInfo)
+{
+	static uint32_t lastDiveSecond = 0;
+	uint8_t actual_deco_stop = 0;
+	int8_t index = 0;
+	uint8_t decreaseStopTime = 1;
+
+	if(lastDiveSecond < pLifeData->dive_time_seconds)
+	{
+		lastDiveSecond = pLifeData->dive_time_seconds;
+		actual_deco_stop = decom_get_actual_deco_stop((SDiveState*)stateUsed);
+
+		pDecoInfo->output_time_to_surface_seconds = 0;
+		for(index = DECOINFO_STRUCT_MAX_STOPS -1 ;index >= 0; index--)
+		{
+			if(pDecoInfo->output_stop_length_seconds[index] > 0)
+			{
+				if(decreaseStopTime)
+				{
+					if((pLifeData->depth_meter > (float)(actual_deco_stop - 0.5))
+						&& (pLifeData->depth_meter < (float)actual_deco_stop + 1.5))
+					{
+						pDecoInfo->output_stop_length_seconds[index]--;
+						decreaseStopTime = 0;
+					}
+				}
+				pDecoInfo->output_time_to_surface_seconds += pDecoInfo->output_stop_length_seconds[index];
+			}
+		}
+		pDecoInfo->output_time_to_surface_seconds += pLifeData->depth_meter / 10.0 * 60.0;
+	}
+	else if(lastDiveSecond > pLifeData->dive_time_seconds)
+	{
+		lastDiveSecond = pLifeData->dive_time_seconds;
+	}
+}
+
 int  vpm_calc(SLifeData* pINPUT,
               SDiveSettings* pSettings,
               SVpm* pVPM,
@@ -226,10 +266,17 @@ int  vpm_calc(SLifeData* pINPUT,
               pDECOINFO,
               int calc_what)
 {
+	static uint8_t vpmTableActive = 0;
+
     vpm_init_1();
     //decom_CreateGasChangeList(pSettings, pINPUT);
     vpm_calc_what = calc_what;
     /**clear decoInfo*/
+
+    if((vpmTableActive) && (vpm_calc_what == DECOSTOPS))
+    {
+    	memcpy(&vpmTable, pDECOINFO, sizeof(SDecoinfo));	/* save changes done by e.g. the simulator */
+    }
     pDECOINFO->output_time_to_surface_seconds = 0;
     pDECOINFO->output_ndl_seconds = 0;
     pDECOINFO->output_ceiling_meter = 0;
@@ -280,7 +327,26 @@ int  vpm_calc(SLifeData* pINPUT,
 
     //Only Decostops not futute stops
     if(vpm_calc_what == DECOSTOPS)
+    {
         vpm_calc_status = tmp_calc_status;
+        if(pSettings->vpm_tableMode)		/* store the most conservative deco plan and stick to it. */
+        {
+			if((int16_t)(pDECOINFO->output_time_to_surface_seconds - vpmTable.output_time_to_surface_seconds) > 60)
+			{
+				memcpy(&vpmTable, pDECOINFO, sizeof(SDecoinfo));
+				vpmTableActive = 1;
+			}
+			else
+			{
+				if(vpmTable.output_time_to_surface_seconds > 0)
+				{
+					vpm_maintainTable(pINPUT, &vpmTable);
+					vpmTable.output_ceiling_meter = pDECOINFO->output_ceiling_meter;
+					memcpy(pDECOINFO, &vpmTable, sizeof(SDecoinfo));
+				}
+			}
+        }
+    }
     return vpm_calc_status;
 }
 
@@ -1005,8 +1071,9 @@ static int vpm_calc_final_deco(_Bool begin)
     static int dp_max;
     static float surfacetime;
     _Bool first_stop = false;
+    float roundingValue = 0.0;
 
-    short stop_time_seconds;
+    uint16_t stop_time_seconds;
 
     max_first_stop_depth = fmaxf(first_stop_depth,max_first_stop_depth);
     if(begin)
@@ -1106,7 +1173,8 @@ static int vpm_calc_final_deco(_Bool begin)
             }
             else
             {
-                dp = 1 + (short)((deco_stop_depth - (pDiveSettings->input_second_to_last_stop_depth_bar * 10.0)) / step_size);
+            	roundingValue = (deco_stop_depth - (pDiveSettings->input_second_to_last_stop_depth_bar * 10.0)) / step_size;
+            	dp = 1 + r_nint(&roundingValue);
             }
 
             //dp_max = (int)fmaxf(dp_max,dp);
@@ -1116,7 +1184,7 @@ static int vpm_calc_final_deco(_Bool begin)
             }
             if(dp < DECOINFO_STRUCT_MAX_STOPS)
             {
-                stop_time_seconds = (short) fminf((999.9 * 60.0), (stop_time *60.0));
+                stop_time_seconds = (uint16_t)(fminf((999.9 * 60.0), (stop_time *60.0)));
                 //
 
                 //if(vpm_calc_what == DECOSTOPS)
@@ -2417,3 +2485,9 @@ static int vpm_calc_ndl(void)
     else
         return CALC_BEGIN;
 }
+
+void vpm_table_init()
+{
+	vpmTable.output_time_to_surface_seconds = 0;
+}
+

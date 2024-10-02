@@ -253,10 +253,11 @@
 #define StMDECOP	_MB(2,6,0,0,0)
 
 #define StMDECOP1_Algorithm		_MB(2,6,1,1,0)
-#define StMDECOP2_VPM					_MB(2,6,2,1,0)
-#define StMDECOP3_GF					_MB(2,6,3,1,0)
-#define StMDECOP4_AltGF				_MB(2,6,4,1,0)
+#define StMDECOP2_VPM			_MB(2,6,2,1,0)
+#define StMDECOP3_GF			_MB(2,6,3,1,0)
+#define StMDECOP4_AltGF			_MB(2,6,4,1,0)
 #define StMDECOP5_LASTSTOP		_MB(2,6,5,1,0)
+#define StMDECOP6_VPMTable		_MB(2,6,6,1,0)
 
 #define StMDECOP7_ActiveGF		_MB(2,6,7,1,0)
 #define StMDECOP8_ActiveVPM		_MB(2,6,8,1,0)

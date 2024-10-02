@@ -337,6 +337,10 @@ typedef struct
 	 */
 	uint8_t vpm_conservatism;
 
+	/* VPM table mode, do not change during dive!!!
+	 */
+	uint8_t vpm_tableMode;
+
 	/* Bï¿½hlmann GF
 	 * and a variable that is used by Buehlmann during the dive
 	 * to remember the position of GF low during ascend

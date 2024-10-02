@@ -43,5 +43,7 @@ extern  const float nitrogen_time_constant[16];
 
 float vpm_get_CNS(void);
 
+void vpm_table_init(void);
+
 
 #endif /* VPM_H */
