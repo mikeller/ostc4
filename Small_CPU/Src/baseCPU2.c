@@ -235,6 +235,7 @@ static void GPIO_LEDs_VIBRATION_Init(void);
 static void GPIO_Power_MainCPU_Init(void);
 static void GPIO_Power_MainCPU_ON(void);
 static void GPIO_Power_MainCPU_OFF(void);
+#ifdef ENABLE_GNSS
 static void GPIO_LED_RED_OFF(void);
 static void GPIO_LED_RED_ON(void);
 static void GPIO_LED_GREEN_OFF(void);
@@ -245,7 +246,7 @@ static void GPIO_GPS_OFF(void);
 static void GPIO_GPS_ON(void);
 static void GPIO_GPS_BCKP_OFF(void);
 static void GPIO_GPS_BCKP_ON(void);
-
+#endif
 #ifdef DEBUG_I2C_LINES
 void GPIO_test_I2C_lines(void);
 #endif
@@ -409,22 +410,28 @@ int main(void) {
 
 			if (global.mode == MODE_BOOT) {
 				GPIO_Power_MainCPU_OFF();
-
+#ifdef ENABLE_GNSS
 				GPIO_LED_GREEN_ON();
+#endif
 				HAL_Delay(100); // for GPIO_Power_MainCPU_ON();
 				GPIO_Power_MainCPU_ON();
-
+#ifdef ENABLE_GNSS
 				GPIO_LED_GREEN_OFF();
 
 				GPIO_LED_RED_ON();
 				GPIO_VIBRATION_ON();
+#endif
 				HAL_Delay(100);
+#ifdef ENABLE_GNSS
 				GPIO_LED_RED_OFF();
 				GPIO_VIBRATION_OFF();
+#endif
 			}
+#ifdef ENABLE_GNSS
 			GPIO_LED_RED_OFF();
 			GPIO_LED_GREEN_OFF();
 			GPIO_VIBRATION_OFF();
+#endif
 			SPI_synchronize_with_Master();
 			MX_DMA_Init();
 			MX_SPI1_Init();
@@ -885,6 +892,7 @@ static void GPIO_Power_MainCPU_OFF(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_SET);
 }
 
+#ifdef ENABLE_GNSS
 static void GPIO_LED_GREEN_ON(void) {
 	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_RESET);
 }
@@ -924,7 +932,7 @@ static void GPIO_GPS_BCKP_ON(void) {
 static void GPIO_GPS_BCKP_OFF(void) {
 	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
 }
-
+#endif
 
 /**
  * @brief  Configures EXTI Line0 (connected to PA0 + PA1 pin) in interrupt mode
@@ -1030,6 +1038,7 @@ void sleep_prepare(void) {
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
 
 	GPIO_Power_MainCPU_OFF();
+#ifdef ENABLE_GNSS
 	GPIO_LED_GREEN_OFF();
 	GPIO_LED_RED_OFF();
 	GPIO_VIBRATION_OFF();
@@ -1037,7 +1046,7 @@ void sleep_prepare(void) {
 	GPIO_GPS_OFF();
 
 	MX_USART6_UART_DeInit();
-
+#endif
 #ifndef DEBUGMODE
 	__HAL_RCC_GPIOB_CLK_DISABLE();
 #endif
