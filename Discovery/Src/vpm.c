@@ -132,6 +132,7 @@ static short mix_change[11];
 
 static const _Bool vpm_b = true;
 
+static SvpmTableState vpmTableState = VPM_TABLE_INIT;
 static SDecoinfo vpmTable;
 
 extern const float float_buehlmann_N2_factor_expositon_20_seconds[];
@@ -193,6 +194,8 @@ static int vpm_calc_ndl(void);
 static void  vpm_init_1(void);
 static void vpm_calc_deco_ceiling(void);
 
+uint8_t vpm_get_decozone(void);
+
 static void vpm_init_1(void)
 {
      units_equal_msw = true;
@@ -241,10 +244,16 @@ void vpm_maintainTable(SLifeData* pLifeData,SDecoinfo* pDecoInfo)
 			{
 				if(decreaseStopTime)
 				{
-					if((pLifeData->depth_meter > (float)(actual_deco_stop - 0.5))
+					if((pLifeData->depth_meter > (float)(actual_deco_stop - 1.5))
 						&& (pLifeData->depth_meter < (float)actual_deco_stop + 1.5))
 					{
 						pDecoInfo->output_stop_length_seconds[index]--;
+						decreaseStopTime = 0;
+					}
+					else if (pLifeData->depth_meter < (float)(actual_deco_stop - 1.5)) /* missed deco stop */
+					{
+						vpmTableState = VPM_TABLE_MISSED;
+						pDecoInfo->output_stop_length_seconds[index] = 0;
 						decreaseStopTime = 0;
 					}
 				}
@@ -335,6 +344,13 @@ int  vpm_calc(SLifeData* pINPUT,
 			{
 				memcpy(&vpmTable, pDECOINFO, sizeof(SDecoinfo));
 				vpmTableActive = 1;
+				if(pVpm->deco_zone_reached) /* table should not change after deco zone was entered */
+				{
+					if(vpmTableState != VPM_TABLE_MISSED)
+					{
+						vpmTableState = VPM_TABLE_WARNING;
+					}
+				}
 			}
 			else
 			{
@@ -2489,5 +2505,14 @@ static int vpm_calc_ndl(void)
 void vpm_table_init()
 {
 	vpmTable.output_time_to_surface_seconds = 0;
+	vpmTableState = VPM_TABLE_INIT;
+}
+uint8_t vpm_get_decozone(void)
+{
+	return((uint8_t)pVpm->depth_start_of_deco_zone_save);
+}
+SvpmTableState vpm_get_TableState(void)
+{
+	return vpmTableState;
 }
 

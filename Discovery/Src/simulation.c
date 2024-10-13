@@ -93,7 +93,6 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 
 	copyDiveSettingsToSim();
     copyVpmRepetetiveDataToSim();
-    vpm_table_init();
 
   //vpm_init(&stateSimGetPointerWrite()->vpm,  stateSimGetPointerWrite()->diveSettings.vpm_conservatism, 0, 0);
     stateSimGetPointerWrite()->lifeData.counterSecondsShallowDepth = 0;

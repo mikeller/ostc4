@@ -481,6 +481,7 @@ void DataEX_copy_to_deco(void)
 
 	if(decoLock == DECO_CALC_init_as_is_start_of_dive)
 	{
+		vpm_table_init();
 	    vpm_init(&stateUsedWrite->vpm,  stateUsedWrite->diveSettings.vpm_conservatism, 0, 0);
 	    buehlmann_init();
 	    timer_init();

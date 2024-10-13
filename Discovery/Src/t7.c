@@ -47,6 +47,7 @@
 #include "configuration.h"
 #include "base.h"
 #include "tMenuEditSetpoint.h"
+#include "vpm.h"
 
 #define TIMER_ACTION_DELAY_S 10
 
@@ -128,6 +129,7 @@ SBackground background =
 typedef enum
 {
 	SE_INIT = 0,
+	SE_REINIT,
 	SE_ACTIVE,
 	SE_END
 } SSlowExitState;
@@ -2181,6 +2183,8 @@ void t7_refresh_customview(void)
     SSettingsStatus SettingsStatus;
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
+	uint8_t decoPlanEntries = 6;
+	uint8_t color = 0;
 
 	uint8_t local_ppo2sensors_deactivated = 0;
 
@@ -2190,7 +2194,7 @@ void t7_refresh_customview(void)
 	}
 	else
 	{
-			local_ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;
+		local_ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;
 	}
 
 	if(last_customview != selection_customview)		/* check if current selection is disabled and should be skipped */
@@ -2636,8 +2640,26 @@ void t7_refresh_customview(void)
 
     case CVIEW_Decolist:
         snprintf(text,100,"\032\f\001 %c%c", TXT_2BYTE, TXT2BYTE_Decolist);
-        GFX_write_string(&FontT42,&t7cH,text,0);
 
+        if(settingsGetPointer()->VPM_conservatism.ub.alternative == 0)
+        {
+        	GFX_write_string(&FontT42,&t7cH,text,0);
+        }
+        else
+        {
+        	switch(vpm_get_TableState())
+        	{
+        		case VPM_TABLE_MISSED: color = CLUT_WarningRed;
+        			break;
+        		case VPM_TABLE_WARNING: color = CLUT_WarningYellow;
+        			break;
+        		case VPM_TABLE_ACTIVE:
+        		case VPM_TABLE_INIT:
+        		default:	color = 0;
+        			break;
+        	}
+			GFX_write_string_color(&FontT42,&t7cH,text,0,color);
+        }
         uint8_t depthNext, depthLast, depthSecond, depthInc;
 
         depthLast 		= (uint8_t)(stateUsed->diveSettings.last_stop_depth_bar * 10);
@@ -2650,15 +2672,19 @@ void t7_refresh_customview(void)
             depthSecond	= (uint8_t)unit_depth_integer(depthSecond);
             depthInc 		= (uint8_t)unit_depth_integer(depthInc);
         }
+        if(stateUsed->diveSettings.deco_type.ub.standard == VPM_MODE) /* show additional VPM data in last slot */
+        {
+        	decoPlanEntries = 5;
+        }
 
         const SDecoinfo * pDecoinfo = getDecoInfo();
         for(start=DECOINFO_STRUCT_MAX_STOPS-1; start>0; start--)
             if(pDecoinfo->output_stop_length_seconds[start]) break;
-        start -= 6;
+        start -= decoPlanEntries;
         if(start < 0) start = 0;
 
         textpointer = 0;
-        for(int i=start;i<6+start;i++)
+        for(int i=start;i<decoPlanEntries+start;i++)
         {
             if(i == 0)
                 depthNext = depthLast;
@@ -2670,6 +2696,10 @@ void t7_refresh_customview(void)
             else
                 textpointer += snprintf(&text[textpointer],20,"\031\034   %2u\016\016%c%c\017\n\r",depthNext, unit_depth_char1(), unit_depth_char2());
             if(textpointer > 200) break;
+        }
+        if(decoPlanEntries == 5) /* add VPM deco zone */
+        {
+        	textpointer += snprintf(&text[textpointer],20,"\031\034   Zone %2u\016\016%c%c\017\n\r",vpm_get_decozone(), unit_depth_char1(), unit_depth_char2());
         }
         if(!pSettings->FlipDisplay)
         {
@@ -4730,13 +4760,14 @@ void t7_drawAcentGraph(uint8_t color)
 
 #define ASCENT_GRAPH_YPIXEL 120
 
-uint8_t t7_drawSlowExitGraph()
+uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is below last last stop depth */
 {
 	static SSlowExitState slowExitState = SE_END;
 	static uint16_t countDownSec = 0;
 	static uint8_t drawingMeterStep;
 	static float exitDepthMeter = 0.0;
 	static uint32_t exitSecTick = 0;
+	static uint32_t lastSecTick = 0;
 
 	uint8_t index = 0;
 	static uint8_t color = 0;
@@ -4745,11 +4776,11 @@ uint8_t t7_drawSlowExitGraph()
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
 
-	if(stateUsed->lifeData.max_depth_meter < pSettings->last_stop_depth_meter)	/* start of dive => reinit timer */
+	if((stateUsed->lifeData.max_depth_meter < pSettings->last_stop_depth_meter)	/* start of dive => reinit timer */
+			|| (slowExitState == SE_REINIT))
 	{
 		if(slowExitState != SE_INIT)
 		{
-			//stepPerSecond = pSettings->last_stop_depth_meter / pSettings->slowExitTime;
 			countDownSec = pSettings->slowExitTime * 60;
 			drawingMeterStep = ASCENT_GRAPH_YPIXEL / pSettings->last_stop_depth_meter;		/* based on 120 / 4 = 30 of standard ascent graph */
 			slowExitState = SE_INIT;
@@ -4765,13 +4796,18 @@ uint8_t t7_drawSlowExitGraph()
 			{
 				slowExitState = SE_ACTIVE;
 				exitSecTick = HAL_GetTick();
+				lastSecTick = exitSecTick;
 			}
 			else if(slowExitState == SE_ACTIVE)
 			{
-				if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
+				if(time_elapsed_ms(lastSecTick, HAL_GetTick()) > 60000) /* restart timer if diver go below exit zone */
+				{
+					slowExitState = SE_REINIT;
+				}
+				else if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
 				{
 					exitSecTick = HAL_GetTick();
-
+					lastSecTick = exitSecTick;
 					/* select depth digit color */
 					if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) < 0.5 )
 					{
@@ -4798,8 +4834,12 @@ uint8_t t7_drawSlowExitGraph()
 						{
 							slowExitState = SE_END;
 							color = 0;
+							exitDepthMeter = 0;
 						}
-						exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+						else
+						{
+							exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+						}
 					}
 				}
 				if(!pSettings->FlipDisplay)
