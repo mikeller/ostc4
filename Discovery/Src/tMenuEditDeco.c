@@ -270,7 +270,7 @@ static void openEdit_ExitTime(void)
     char text[64];
     uint16_t y_line;
 
-    SlowExitTime = settingsGetPointer()->safetystopDuration;
+    SlowExitTime = settingsGetPointer()->slowExitTime;
 
     y_line = ME_Y_LINE_BASE + (lineSelected * ME_Y_LINE_STEP);
 
