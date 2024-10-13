@@ -1857,7 +1857,7 @@ void evaluateAscentSpeed()
 		if(lastPressure_bar >= 0)
 		{
 			localAscentRate = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * (60000.0 / tickPressureDiff) * 10; /* bar * 10 = meter */
-			if(fabs(localAscentRate) < 1.0)
+			if((fabs(localAscentRate) < 1.0) || (global.lifeData.pressure_ambient_bar < START_DIVE_IMMEDIATLY_BAR))
 			{
 				ascentState = ASCENT_NONE;
 				ascentStableCnt = 0;
