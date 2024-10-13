@@ -91,10 +91,14 @@ void openEdit_Xtra(uint8_t line)
 			case 3:
 				openEdit_SetManualMarker();
 				break;
+#ifdef ENABLE_MOTION_CONTROL
 			case 4:
 				openEdit_CalibViewport();
 				break;
 			case 5:
+#else
+			case 4:
+#endif
 				if(is_stateUsedSetToSim())
 				{
 					 openEdit_SimFollowDecostops();
