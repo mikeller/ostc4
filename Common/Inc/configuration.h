@@ -88,6 +88,6 @@
 #define ENABLE_FAST_COMM
 
 /* Enable to have position sensor support active */
-#define ENABLE_GNSS
+/* #define ENABLE_GNSS */
 
 #endif
