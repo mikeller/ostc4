@@ -72,6 +72,7 @@
 #include "timer.h"
 #include "buehlmann.h"
 #include "externLogbookFlash.h"
+#include "vpm.h"
 
 /* #define TESTBENCH */
 

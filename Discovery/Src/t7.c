@@ -2184,7 +2184,6 @@ void t7_refresh_customview(void)
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
 	uint8_t decoPlanEntries = 6;
-	uint8_t color = 0;
 
 	uint8_t local_ppo2sensors_deactivated = 0;
 
@@ -2639,27 +2638,29 @@ void t7_refresh_customview(void)
         break;
 
     case CVIEW_Decolist:
-        snprintf(text,100,"\032\f\001 %c%c", TXT_2BYTE, TXT2BYTE_Decolist);
+
 
         if(settingsGetPointer()->VPM_conservatism.ub.alternative == 0)
         {
-        	GFX_write_string(&FontT42,&t7cH,text,0);
+        	text[0] = '\032';
         }
         else
         {
         	switch(vpm_get_TableState())
         	{
-        		case VPM_TABLE_MISSED: color = CLUT_WarningRed;
+        		case VPM_TABLE_MISSED: text[0] = '\025';
         			break;
-        		case VPM_TABLE_WARNING: color = CLUT_WarningYellow;
+        		case VPM_TABLE_WARNING: text[0] = '\024';
         			break;
         		case VPM_TABLE_ACTIVE:
         		case VPM_TABLE_INIT:
-        		default:	color = 0;
+        		default:	text[0] = '\032';
         			break;
         	}
-			GFX_write_string_color(&FontT42,&t7cH,text,0,color);
         }
+        snprintf(&text[1],100,"\f\001 %c%c", TXT_2BYTE, TXT2BYTE_Decolist);
+        GFX_write_string(&FontT42,&t7cH,text,0);
+
         uint8_t depthNext, depthLast, depthSecond, depthInc;
 
         depthLast 		= (uint8_t)(stateUsed->diveSettings.last_stop_depth_bar * 10);
@@ -2699,7 +2700,7 @@ void t7_refresh_customview(void)
         }
         if(decoPlanEntries == 5) /* add VPM deco zone */
         {
-        	textpointer += snprintf(&text[textpointer],20,"\031\034   Zone %2u\016\016%c%c\017\n\r",vpm_get_decozone(), unit_depth_char1(), unit_depth_char2());
+        	textpointer += snprintf(&text[textpointer],30,"\031\034   Zone %2u\016\016%c%c\017\n\r",vpm_get_decozone(), unit_depth_char1(), unit_depth_char2());
         }
         if(!pSettings->FlipDisplay)
         {
@@ -2878,9 +2879,21 @@ void t7_refresh_divemode(void)
     /* next deco stop */
     if(nextstopDepthMeter)
     {
-        snprintf(TextR2,TEXTSIZE,"\032\f\002%c",TXT_Decostop);
-        GFX_write_string(&FontT42,&t7r2,TextR2,0);
-        textlength = snprintf(TextR2,TEXTSIZE,"\020\002%u%c%c %u'"
+    	snprintf(TextR2,TEXTSIZE,"\032\f\002%c",TXT_Decostop);
+    	GFX_write_string(&FontT42,&t7r2,TextR2,0);
+
+    	if((pSettings->VPM_conservatism.ub.alternative) && (fabs(stateUsed->lifeData.depth_meter - nextstopDepthMeter)) < 1.5)
+    	{
+    		TextR2[0] = '\026';
+    		textlength = 1;
+    	}
+    	else
+    	{
+       		TextR2[0] = '\020';
+       		textlength = 1;
+    	}
+
+        textlength += snprintf(&TextR2[textlength],TEXTSIZE,"\002%u%c%c %u'"
             , unit_depth_integer(nextstopDepthMeter)
             , unit_depth_char1_T105()
             , unit_depth_char2_T105()
