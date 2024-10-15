@@ -820,18 +820,21 @@ static void GPIO_LEDs_VIBRATION_Init(void) {
 	GPIO_InitStructure.Pull = GPIO_PULLUP;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
+	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_RED, GPIO_PIN_SET);
 
 	GPIO_InitStructure.Pin = LED_CONTROL_PIN_GREEN;
 	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStructure.Pull = GPIO_PULLUP;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
+	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_SET);
 
 	GPIO_InitStructure.Pin = VIBRATION_CONTROL_PIN;
 	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
+	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_RESET);
 
 	__GPIOB_CLK_ENABLE();
 	GPIO_InitStructure.Pin = GPS_POWER_CONTROL_PIN;
@@ -839,13 +842,14 @@ static void GPIO_LEDs_VIBRATION_Init(void) {
 	GPIO_InitStructure.Pull = GPIO_PULLUP;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
+	HAL_GPIO_WritePin( GPIOB, GPS_POWER_CONTROL_PIN, GPIO_PIN_SET);
 
 	GPIO_InitStructure.Pin = GPS_BCKP_CONTROL_PIN;
 	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
-
+	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
 }
 
 void GPIO_new_DEBUG_Init(void) {
