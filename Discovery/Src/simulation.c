@@ -380,19 +380,32 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     float depth_meter = pDiveState->lifeData.depth_meter;
     float surface_pressure_bar = pDiveState->lifeData.pressure_surface_bar;
     static uint8_t sampleToggle = 0;
+	static float sim_ascent_rate_meter_per_min_local = 0;
+	uint8_t sampleTime = getReplayDataResolution();
 
-    if(simReplayActive) /* precondition: function is called once per second, sample rate is 2 seconds */
+    if(simReplayActive) /* precondition: function is called once per second, sample rate is a multiple of second */
     {
     	if(sampleToggle == 0)
     	{
-    		sampleToggle = 1;
+    		sampleToggle = sampleTime - 1;
     		sim_aim_depth_meter = (float)(*pReplayData++/100.0);
-    		sim_descent_rate_meter_per_min = (sim_aim_depth_meter - depth_meter) * 30;
+    		if(sim_aim_depth_meter > depth_meter)
+    		{
+    			sim_descent_rate_meter_per_min = (sim_aim_depth_meter - depth_meter) * (60 / sampleTime);
+    		}
+    		else
+    		{
+    			sim_ascent_rate_meter_per_min_local = (depth_meter - sim_aim_depth_meter) * (60 / sampleTime);
+    		}
     	}
     	else
     	{
-    		sampleToggle = 0;
+    		sampleToggle--;
     	}
+    }
+    else
+    {
+    	sim_ascent_rate_meter_per_min_local = pDiveState->diveSettings.ascentRate_meterperminute;
     }
 
     if(depth_meter < sim_aim_depth_meter)
@@ -404,16 +417,16 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     else if(depth_meter > sim_aim_depth_meter)
     {
 
-        depth_meter -=  pDiveState->diveSettings.ascentRate_meterperminute / 60;
+        depth_meter -=  sim_ascent_rate_meter_per_min_local / 60;
         if(depth_meter < sim_aim_depth_meter)
             depth_meter = sim_aim_depth_meter;
 
         if(sim_heed_decostops && depth_meter < actual_deco_stop)
         {
-            if(actual_deco_stop < (depth_meter +  pDiveState->diveSettings.ascentRate_meterperminute / 60))
+            if(actual_deco_stop < (depth_meter +  sim_ascent_rate_meter_per_min_local / 60))
                  depth_meter = actual_deco_stop;
             else
-                depth_meter +=  pDiveState->diveSettings.ascentRate_meterperminute / 60;
+                depth_meter += sim_ascent_rate_meter_per_min_local / 60;
         }
 
    }
@@ -552,6 +565,11 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
         /* this does modify the cns now 11.06.2015 */
         vpm_calc(&pDiveState->lifeData,&pDiveState->diveSettings,&pDiveState->vpm,&pDiveState->decolistVPM, DECOSTOPS);
         pDiveState->lifeData.cns += vpm_get_CNS();
+
+        while(decoLock == DECO_CALC_FINSHED_vpm)
+        {
+        	HAL_Delay(2);	/* The deco data is copied during the timer ISR => wait till this has happened */
+        }
         return &pDiveState->decolistVPM;
     }
 }

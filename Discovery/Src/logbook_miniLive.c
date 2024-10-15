@@ -383,14 +383,7 @@ uint8_t prepareReplayLog(uint8_t StepBackwards)
 			ReplayMarkerData[0] = 0xFF;
 		}
 
-		if( dataLength == DEPTH_DATA_LENGTH)		/* log data has been compressed to fit into buffer */
-		{
-			ReplayDataResolution = (logbookHeader.diveTimeMinutes * 60 + logbookHeader.diveTimeSeconds) / dataLength;
-		}
-		else
-		{
-			ReplayDataResolution = logbookHeader.samplingRate;
-		}
+		ReplayDataResolution = logbookHeader.total_diveTime_seconds / dataLength;
 		ReplayDataLength = dataLength;
 		ReplayDataMaxDepth = logbookHeader.maxDepth;
 		ReplayDataMinutes =  logbookHeader.diveTimeMinutes;
