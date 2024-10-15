@@ -920,9 +920,9 @@ void disableTimer(void)
     stateUsedWrite->timerState = TIMER_STATE_OFF;
 }
 
-#define SPEED_SLOW		(5.0f)
-#define SPEED_MEDIUM	(10.0f)
-#define SPEED_HIGH		(15.0f)
+#define SPEED_SLOW		(5.1f)
+#define SPEED_MEDIUM	(10.1f)
+#define SPEED_HIGH		(15.1f)
 #define SPEED_HYSTERESE (1.0f)
 
 uint8_t drawingColor_from_ascentspeed(float speed)
