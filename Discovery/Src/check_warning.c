@@ -252,7 +252,7 @@ static uint8_t getBetterGasId(bool getDiluent, uint8_t startingGasId, SDiveState
             if ((localGas.note.ub.active)
                 && (localGas.note.ub.deco)
                 && (localGas.depth_meter)
-                && (localGas.depth_meter >= (diveState->lifeData.depth_meter - 0.01f ))
+                && (localGas.depth_meter >= (diveState->lifeData.depth_meter - 0.9f ))
                 && (localGas.depth_meter <= bestGasDepth)) {
                 betterGasIdLocal = i;
                 bestGasDepth = diveSettings.gas[i].depth_meter;
