@@ -286,11 +286,11 @@ static void openEdit_ExitTime(void)
     text[2] = TXT_Minutes;
     if(settingsGetPointer()->nonMetricalSystem)
     {
-        sprintf(&text[3], "\017  ^      %u\016\016 ft\017", settingsGetPointer()->slowExitTime);
+        sprintf(&text[3], "\017  ^      %u\016\016 ft\017", unit_depth_integer(settingsGetPointer()->last_stop_depth_meter));
     }
     else
     {
-        sprintf(&text[3],  "\017  ^      %u\016\016 m\017", settingsGetPointer()->slowExitTime);
+        sprintf(&text[3],  "\017  ^      %u\016\016 m\017", settingsGetPointer()->last_stop_depth_meter);
     }
     write_label_var(  410, 800, y_line, &FontT48, text);
 
