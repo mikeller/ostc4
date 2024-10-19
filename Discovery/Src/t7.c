@@ -2814,7 +2814,7 @@ void t7_refresh_divemode(void)
 
 /* ascent rate graph */
 
-    if((pSettings->slowExitTime != 0) && (pDecoinfo->output_time_to_surface_seconds == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
+    if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
     {
     	color = t7_drawSlowExitGraph();
     }
@@ -4771,7 +4771,8 @@ void t7_drawAcentGraph(uint8_t color)
     GFX_draw_thick_line(12,&t7screen, start, stop, color);
 }
 
-#define ASCENT_GRAPH_YPIXEL 120
+#define ASCENT_GRAPH_YPIXEL 110
+
 
 uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is below last last stop depth */
 {
@@ -4869,7 +4870,7 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 					start.y += drawingMeterStep;
 					stop.y = start.y;
 					start.x = CUSTOMBOX_LINE_LEFT - 1;
-					stop.x = start.x - 40;
+					stop.x = start.x - 38;
 					GFX_draw_line(&t7screen, start, stop, 0);
 				}
 
@@ -4877,22 +4878,26 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 				stop.x = start.x;
 				if(!pSettings->FlipDisplay)
 				{
-					start.y = t7l1.WindowY0 + ASCENT_GRAPH_YPIXEL;
+					start.y = t7l1.WindowY0 + ASCENT_GRAPH_YPIXEL + 5;
 				}
 				else
 				{
-					start.y = t7l3.WindowY0 - 25;
+					start.y = t7l3.WindowY0 - 25 + ASCENT_GRAPH_YPIXEL + 5;
 				}
 				stop.y = start.y - countDownSec * (ASCENT_GRAPH_YPIXEL / (float)(pSettings->slowExitTime * 60.0));
 				if(stop.y >= 470)
 					stop.y = 470;
 
+				if(!pSettings->FlipDisplay)
+				{
+					stop.y += 5;
+				}
 				GFX_draw_thick_line(15,&t7screen, start, stop, 3);
 				/* mark diver depth */
-				start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 25;
-				stop.x = start.x + 15;
+				start.x = CUSTOMBOX_LINE_LEFT - CUSTOMBOX_OUTSIDE_OFFSET - 30;
+				stop.x = start.x + 24;
 
-				start.y = start.y - (stateUsed->lifeData.depth_meter *120 / pSettings->last_stop_depth_meter);
+				start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
 				stop.y = start.y;
 				GFX_draw_thick_line(10,&t7screen, start, stop, 9);
 			}
