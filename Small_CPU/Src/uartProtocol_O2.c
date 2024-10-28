@@ -107,12 +107,10 @@ void uartO2_Control(void)
 		localComState = UART_O2_CHECK;
 		lastComState = UART_O2_CHECK;
 		uartO2_SetupCmd(localComState,cmdString,&cmdLength);
-
+		UART_SendCmdString(cmdString);
 		rxState = O2RX_CONFIRM;
 		respondErrorDetected = 0;
 		digO2Connected = 0;
-
-		UART_StartDMA_Receiption();
 	}
 	else
 	{

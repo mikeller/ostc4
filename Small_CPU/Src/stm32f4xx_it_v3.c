@@ -60,6 +60,7 @@ extern ADC_HandleTypeDef    AdcHandle;
 
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef  hdma_usart1_rx;
+extern DMA_HandleTypeDef  hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -241,6 +242,10 @@ void DMA2_Stream5_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
 }
 
+void DMA2_Stream7_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart1_tx);
+}
 
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */

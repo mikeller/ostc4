@@ -174,7 +174,7 @@ void uartCo2_ProcessData(uint8_t data)
 			}
 		}
 	}
-	if((data == ' ') || (data == '\n'))	/* Abort data detection */
+	else if((data == ' ') || (data == '\n'))	/* Abort data detection */
 	{
 		if(rxState == CO2RX_DataComplete)
 		{
@@ -211,6 +211,13 @@ void uartCo2_ProcessData(uint8_t data)
 		if(rxState != CO2RX_Data0)	/* reset state machine because message in wrong format */
 		{
 			rxState = CO2RX_Ready;
+		}
+	}
+	else
+	{
+		if((rxState >= CO2RX_Data0) && (rxState <= CO2RX_Data4))
+		{
+			rxState = CO2RX_Ready; /* numerical data expected => abort */
 		}
 	}
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);

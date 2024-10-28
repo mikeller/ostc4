@@ -25,8 +25,8 @@
 #include "stm32f4xx_hal.h"
 
 
-#define BUFFER_NODATA			(7u)		/* The read function needs a byte which indicated that no data for processing is available.*/
-											/* This byte shall never appear in a normal data steam */
+#define BUFFER_NODATA_LOW	('~')		/* The read function needs a signiture which indicates that no data for processing is available.*/
+#define BUFFER_NODATA_HIGH  (0xA5)
 
 
 UART_HandleTypeDef huart1, huart6;
@@ -46,6 +46,10 @@ void UART_StartDMA_Receiption(void);
 void UART_HandleCO2Data(void);
 void DigitalCO2_SendCmd(uint8_t CO2Cmd, uint8_t *cmdString, uint8_t *cmdLength);
 #endif
+
+#ifdef ENABLE_GNSS_SUPPORT
+void UART_HandleGnssData(void);
+#endif
 #ifdef ENABLE_SENTINEL_MODE
 void UART_HandleSentinelData(void);
 #endif
@@ -54,7 +58,9 @@ uint8_t UART_isSentinelConnected();
 void UART_setTargetChannel(uint8_t channel);
 void  UART_MUX_SelectAddress(uint8_t muxAddress);
 void UART_SendCmdString(uint8_t *cmdString);
+void UART_SendCmdUbx(uint8_t *cmd, uint8_t len);
 void UART_ReadData(uint8_t sensorType);
+void UART_WriteData(void);
 void UART_FlushRxBuffer(void);
 void UART_ChangeBaudrate(uint32_t newBaudrate);
 uint8_t UART_isComActive(uint8_t sensorId);
