@@ -171,6 +171,9 @@ void GNSS_SetMode(GNSS_StateHandle *GNSS, short gnssMode) {
  * @param GNSS Pointer to main GNSS structure.
  */
 void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
+
+	static float searchCnt = 1.0;
+
 	uShort.bytes[0] = GNSS_Handle.uartWorkingBuffer[10];
 	GNSS->yearBytes[0]=GNSS_Handle.uartWorkingBuffer[10];
 	uShort.bytes[1] = GNSS_Handle.uartWorkingBuffer[11];
@@ -226,6 +229,11 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 		iLong.bytes[var] = GNSS_Handle.uartWorkingBuffer[var + 70];
 	}
 	GNSS->headMot = iLong.iLong * 1e-5; // todo I'm not sure this good options.
+
+	if((GNSS->fLat == 0.0) && (GNSS->fLon == 0.0))
+	{
+		GNSS->fLat = searchCnt++;
+	}
 }
 
 /*!

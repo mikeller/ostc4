@@ -882,7 +882,9 @@ void scheduleSurfaceMode(void)
 			uartGnss_ProcessData();
 			uartGnss_Control();
 #endif
+#ifdef ENABLE_GNSS_SUPPORT
 			copyGNSSdata();
+#endif
 			Scheduler.counterAmbientLight100msec++;
 		}
 
@@ -1745,19 +1747,8 @@ void copyExtCO2data()
 
 void copyGNSSdata(void)
 {
-#ifdef ENABLE_GNSS
 	global.dataSendToMaster.data[0].fLat = GNSS_Handle.fLat;
 	global.dataSendToMaster.data[0].fLon = GNSS_Handle.fLon;
-#else
-	static float tmpLon = 0.0;
-	static float tmpLat= 100.0;
-	global.dataSendToMaster.data[0].fLat = tmpLat;
-	global.dataSendToMaster.data[0].fLon = tmpLon;
-	tmpLon += 0.15;
-	if(tmpLon > 360.0) tmpLon = 0.0;
-	tmpLat += 0.33;
-	if(tmpLat > 360.0) tmpLat = 0.0;
-#endif
 }
 
 

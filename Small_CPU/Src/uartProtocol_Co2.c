@@ -84,6 +84,7 @@ void uartCo2_Control(void)
 	{
 		CO2Connected = 0;
 		externalInterface_SetCO2Scale(0.0);
+		UART_clearRxBuffer();
 		UART_StartDMA_Receiption();
 		localComState = UART_CO2_SETUP;
 	}
