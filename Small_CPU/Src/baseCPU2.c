@@ -292,6 +292,8 @@ int main(void) {
     uint8_t lastsecond = 0xFF;
 #endif
 
+    uint8_t extInterfaceActive = 0;
+
 	HAL_Init();
 	SystemClock_Config();
 
@@ -541,6 +543,7 @@ int main(void) {
 			break;
 
 		case MODE_SLEEP:
+			extInterfaceActive = externalInterface_isEnabledPower33();
 			externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 			externalInterface_SwitchPower33(false);
 			if (hasExternalClock())
@@ -562,7 +565,7 @@ int main(void) {
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master();
 
-			if(externalInterface_isEnabledPower33())
+			if(extInterfaceActive)
 			{
 				externalInterface_SwitchPower33(true);
 			}
