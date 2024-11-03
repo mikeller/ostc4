@@ -49,7 +49,8 @@ enum									/* Definitions for supported UART protocols */
 	EXT_INTERFACE_UART_OFF	= 0,
 	EXT_INTERFACE_UART_CO2,
 	EXT_INTERFACE_UART_SENTINEL,
-	EXT_INTERFACE_UART_O2
+	EXT_INTERFACE_UART_O2,
+	EXT_INTERFACE_UART_GNSS
 };
 
 
@@ -70,6 +71,12 @@ enum									/* Definitions for supported UART protocols */
 	DETECTION_CO2_1,
 	DETECTION_CO2_2,
 	DETECTION_CO2_3,
+#endif
+#ifdef ENABLE_GNSS_SUPPORT
+	DETECTION_GNSS_0,			/* check UART channel for connected gnss sensor */
+	DETECTION_GNSS_1,
+	DETECTION_GNSS_2,
+	DETECTION_GNSS_3,
 #endif
 #ifdef ENABLE_SENTINEL_MODE
 	DETECTION_SENTINEL,		/* check UART channel for connected Sentinel */

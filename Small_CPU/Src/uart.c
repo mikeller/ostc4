@@ -23,6 +23,7 @@
 #include "uartProtocol_O2.h"
 #include "uartProtocol_Co2.h"
 #include "uartProtocol_Sentinel.h"
+#include "uartProtocol_GNSS.h"
 #include "externalInterface.h"
 #include "data_exchange.h"
 #include <string.h>	/* memset */
@@ -31,9 +32,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 
-
+#define TX_BUF_SIZE				(40u)		/* max length for commands */
 #define CHUNK_SIZE				(25u)		/* the DMA will handle chunk size transfers */
-#define CHUNKS_PER_BUFFER		(5u)
+#define CHUNKS_PER_BUFFER		(6u)
 
 
 
@@ -41,7 +42,7 @@ DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart1_tx, hdma_usart6_rx, hdma_usart6_t
 
 uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
 uint8_t txBuffer[CHUNK_SIZE];							/* tx uses less bytes */
-uint8_t txBufferQue[CHUNK_SIZE];						/* In MUX mode command may be send shortly after each other => allow q 1 entry que */
+uint8_t txBufferQue[TX_BUF_SIZE];						/* In MUX mode command may be send shortly after each other => allow q 1 entry que */
 uint8_t txBufferQueLen;
 
 uint8_t rxBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
@@ -54,11 +55,11 @@ static uint8_t dmaRxActive;								/* Indicator if DMA reception needs to be sta
 static uint8_t dmaTxActive;								/* Indicator if DMA reception needs to be started */
 
 
-
+static uint8_t isEndIndication(uint8_t index);
 
 /* Exported functions --------------------------------------------------------*/
 
-void clearRxBuffer(void)
+void UART_clearRxBuffer(void)
 {
 	uint16_t index = 0;
 	do
@@ -66,6 +67,9 @@ void clearRxBuffer(void)
 		rxBuffer[index++] = BUFFER_NODATA_LOW;
 		rxBuffer[index++] = BUFFER_NODATA_HIGH;
 	} while (index < sizeof(rxBuffer));
+
+	rxReadIndex = 0;
+	rxWriteIndex = 0;
 }
 
 void MX_USART1_UART_Init(void)
@@ -84,10 +88,7 @@ void MX_USART1_UART_Init(void)
 
   MX_USART1_DMA_Init();
 
-  HAL_NVIC_SetPriority(USART1_IRQn, 1, 3);
-  HAL_NVIC_EnableIRQ(USART1_IRQn);
-
-  clearRxBuffer();
+  UART_clearRxBuffer();
   rxReadIndex = 0;
   lastCmdIndex = 0;
   rxWriteIndex = 0;
@@ -286,7 +287,7 @@ void UART_SendCmdString(uint8_t *cmdString)
 
 	if(dmaTxActive == 0)
 	{
-		if(cmdLength < CHUNK_SIZE)		/* A longer string is an indication for a missing 0 termination */
+		if(cmdLength < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 		{
 			if(dmaRxActive == 0)
 			{
@@ -308,14 +309,17 @@ void UART_SendCmdString(uint8_t *cmdString)
 
 void UART_SendCmdUbx(uint8_t *cmd, uint8_t len)
 {
-	if(len < CHUNK_SIZE)		/* A longer string is an indication for a missing 0 termination */
+	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 	{
 		if(dmaRxActive == 0)
 		{
 			UART_StartDMA_Receiption();
 		}
 		memcpy(txBuffer, cmd, len);
-		HAL_UART_Transmit_DMA(&huart1,txBuffer,len);
+		if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,len))
+		{
+			dmaTxActive = 1;
+		}
 	}
 }
 
@@ -350,38 +354,30 @@ void UART_StartDMA_Receiption()
 {
 	if(dmaRxActive == 0)
 	{
-		if(HAL_OK == HAL_UART_Receive_DMA (&huart1, &rxBuffer[rxWriteIndex], CHUNK_SIZE))
-		{
-			dmaRxActive = 1;
-		}
+    	if(((rxWriteIndex / CHUNK_SIZE) != (rxReadIndex / CHUNK_SIZE)) || ((isEndIndication(rxWriteIndex)) && (isEndIndication(rxWriteIndex + 1))))	/* start next transfer if we did not catch up with read index */
+    	{
+			if(HAL_OK == HAL_UART_Receive_DMA (&huart1, &rxBuffer[rxWriteIndex], CHUNK_SIZE))
+			{
+				dmaRxActive = 1;
+			}
+    	}
 	}
 }
 
 void UART_ChangeBaudrate(uint32_t newBaudrate)
 {
-	uint8_t dmaWasActive = dmaRxActive;
-//	HAL_DMA_Abort(&hdma_usart1_rx);
-		MX_USART1_UART_DeInit();
-		//HAL_UART_Abort(&huart1);
-		//HAL_DMA_DeInit(&hdma_usart1_rx);
-
-
-//	huart1.Instance->BRR = UART_BRR_SAMPLING8(HAL_RCC_GetPCLK2Freq()/2, newBaudrate);
+	MX_USART1_UART_DeInit();
 	huart1.Init.BaudRate = newBaudrate;
 	HAL_UART_Init(&huart1);
 	MX_USART1_DMA_Init();
 	HAL_NVIC_SetPriority(USART1_IRQn, 1, 3);
 	HAL_NVIC_EnableIRQ(USART1_IRQn);
 
-	if(dmaWasActive)
-	{
-		clearRxBuffer();
-		rxReadIndex = 0;
-		rxWriteIndex = 0;
-		dmaRxActive = 0;
-		txBufferQueLen = 0;
-		UART_StartDMA_Receiption();
-	}
+	UART_clearRxBuffer();
+	rxReadIndex = 0;
+	rxWriteIndex = 0;
+	dmaRxActive = 0;
+	txBufferQueLen = 0;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -394,10 +390,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     	{
     		rxWriteIndex = 0;
     	}
-    	if((rxWriteIndex / CHUNK_SIZE) != (rxReadIndex / CHUNK_SIZE) || (rxWriteIndex == rxReadIndex))	/* start next transfer if we did not catch up with read index */
-    	{
-			UART_StartDMA_Receiption();
-    	}
+		UART_StartDMA_Receiption();
     }
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
@@ -507,6 +500,11 @@ void UART_WriteData(void)
 	{
 		huart1.gState = HAL_UART_STATE_READY;
 		dmaTxActive = 0;
+	}
+	if(huart1.hdmarx->State == HAL_DMA_STATE_READY)
+	{
+		huart1.RxState = HAL_UART_STATE_READY;
+		dmaRxActive = 0;
 	}
 }
 

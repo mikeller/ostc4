@@ -25,7 +25,7 @@
 #include "stm32f4xx_hal.h"
 
 
-#define BUFFER_NODATA_LOW	('~')		/* The read function needs a signiture which indicates that no data for processing is available.*/
+#define BUFFER_NODATA_LOW	(0x15)		/* The read function needs a signiture which indicates that no data for processing is available.*/
 #define BUFFER_NODATA_HIGH  (0xA5)
 
 
@@ -53,6 +53,7 @@ void UART_HandleGnssData(void);
 #ifdef ENABLE_SENTINEL_MODE
 void UART_HandleSentinelData(void);
 #endif
+void UART_clearRxBuffer(void);
 uint8_t UART_isCO2Connected();
 uint8_t UART_isSentinelConnected();
 void UART_setTargetChannel(uint8_t channel);
