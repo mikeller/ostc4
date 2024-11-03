@@ -29,7 +29,7 @@
 #define BUFFER_NODATA_HIGH  (0xA5)
 
 
-UART_HandleTypeDef huart1, huart6;
+UART_HandleTypeDef huart1;
 
 void MX_USART1_UART_Init(void);
 void MX_USART1_UART_DeInit(void);
@@ -59,7 +59,7 @@ uint8_t UART_isSentinelConnected();
 void UART_setTargetChannel(uint8_t channel);
 void  UART_MUX_SelectAddress(uint8_t muxAddress);
 void UART_SendCmdString(uint8_t *cmdString);
-void UART_SendCmdUbx(uint8_t *cmd, uint8_t len);
+void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len);
 void UART_ReadData(uint8_t sensorType);
 void UART_WriteData(void);
 void UART_FlushRxBuffer(void);

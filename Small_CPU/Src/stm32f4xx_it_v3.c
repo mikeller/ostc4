@@ -61,7 +61,9 @@ extern ADC_HandleTypeDef    AdcHandle;
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef  hdma_usart1_rx;
 extern DMA_HandleTypeDef  hdma_usart1_tx;
-
+extern UART_HandleTypeDef huart6;
+extern DMA_HandleTypeDef  hdma_usart6_rx;
+extern DMA_HandleTypeDef  hdma_usart6_tx;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -247,6 +249,17 @@ void DMA2_Stream7_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
 }
 
+#ifdef ENABLE_GPIO_V2
+void DMA2_Stream1_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart6_rx);
+}
+
+void DMA2_Stream6_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart6_tx);
+}
+#endif
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
@@ -313,6 +326,13 @@ void USART1_IRQHandler(void)
 {
   HAL_UART_IRQHandler(&huart1);
 }
+
+#ifdef ENABLE_GPIO_V2
+void USART6_IRQHandler(void)
+{
+  HAL_UART_IRQHandler(&huart6);
+}
+#endif
 
 /**
   * @brief  This function handles PPP interrupt request.

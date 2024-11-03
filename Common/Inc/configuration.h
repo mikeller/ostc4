@@ -73,7 +73,7 @@
 #define ENABLE_CO2_SUPPORT
 
 /* Enable to have GPS sensor functionality available */
-/* #define ENABLE_GNSS_SUPPORT */
+#define ENABLE_GNSS_SUPPORT
 
 /* Enable to have Sentinel rebreather interface available */
 /* #define ENABLE_SENTINEL_MODE */
@@ -91,6 +91,6 @@
 #define ENABLE_FAST_COMM
 
 /* Enable to have position sensor support active */
-/* #define ENABLE_GNSS */
+#define ENABLE_GPIO_V2
 
 #endif

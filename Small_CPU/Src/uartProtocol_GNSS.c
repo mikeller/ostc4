@@ -62,7 +62,7 @@ void ConvertByteToHexString(uint8_t byte, char* str)
 
 void uartGnss_SendCmd(uint8_t GnssCmd)
 {
-	uint8_t* pData;
+	const uint8_t* pData;
 	uint8_t txLength = 0;
 
 	switch (GnssCmd)

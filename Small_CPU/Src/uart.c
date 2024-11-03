@@ -28,6 +28,11 @@
 #include "data_exchange.h"
 #include <string.h>	/* memset */
 
+#ifdef ENABLE_GPIO_V2
+extern UART_HandleTypeDef huart6;
+extern void UART6_RxCpltCallback(UART_HandleTypeDef *huart);
+extern void UART6_TxCpltCallback(UART_HandleTypeDef *huart);
+#endif
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -38,15 +43,12 @@
 
 
 
-DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart1_tx, hdma_usart6_rx, hdma_usart6_tx;
+DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart1_tx;
 
 uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
 uint8_t txBuffer[CHUNK_SIZE];							/* tx uses less bytes */
 uint8_t txBufferQue[TX_BUF_SIZE];						/* In MUX mode command may be send shortly after each other => allow q 1 entry que */
 uint8_t txBufferQueLen;
-
-uint8_t rxBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
-uint8_t txBufferUart6[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
 
 static uint8_t rxWriteIndex;							/* Index of the data item which is analysed */
 static uint8_t rxReadIndex;								/* Index at which new data is stared */
@@ -154,102 +156,6 @@ void  MX_USART1_DMA_Init()
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 }
 
-
-void GNSS_IO_init() {
-
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-	/* Peripheral clock enable */
-	__HAL_RCC_USART6_CLK_ENABLE()
-	;
-
-	__HAL_RCC_GPIOA_CLK_ENABLE()
-	;
-	/**USART6 GPIO Configuration
-	 PA11     ------> USART6_TX
-	 PA12     ------> USART6_RX
-	 */
-	GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
-	GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	/* USART6 DMA Init */
-	/* USART6_RX Init */
-	hdma_usart6_rx.Instance = DMA2_Stream1;
-	hdma_usart6_rx.Init.Channel = DMA_CHANNEL_5;
-	hdma_usart6_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-	hdma_usart6_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-	hdma_usart6_rx.Init.MemInc = DMA_MINC_ENABLE;
-	hdma_usart6_rx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
-	hdma_usart6_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-	hdma_usart6_rx.Init.Mode = DMA_NORMAL;
-	hdma_usart6_rx.Init.Priority = DMA_PRIORITY_LOW;
-	hdma_usart6_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-	HAL_DMA_Init(&hdma_usart6_rx);
-
-	__HAL_LINKDMA(&huart6, hdmarx, hdma_usart6_rx);
-
-	/* USART6_TX Init */
-	hdma_usart6_tx.Instance = DMA2_Stream6;
-	hdma_usart6_tx.Init.Channel = DMA_CHANNEL_6;
-	hdma_usart6_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-	hdma_usart6_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-	hdma_usart6_tx.Init.MemInc = DMA_MINC_ENABLE;
-	hdma_usart6_tx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
-	hdma_usart6_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-	hdma_usart6_tx.Init.Mode = DMA_NORMAL;
-	hdma_usart6_tx.Init.Priority = DMA_PRIORITY_LOW;
-	hdma_usart6_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-	HAL_DMA_Init(&hdma_usart6_tx);
-
-	__HAL_LINKDMA(&huart6, hdmatx, hdma_usart6_tx);
-
-	/* USART6 interrupt Init */
-	HAL_NVIC_SetPriority(USART6_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(USART6_IRQn);
-
-	MX_USART6_DMA_Init();
-
-}
-
-void MX_USART6_DMA_Init() {
-	  /* DMA controller clock enable */
-	  __HAL_RCC_DMA2_CLK_ENABLE();
-
-	  /* DMA interrupt init */
-	  /* DMA2_Stream2_IRQn interrupt configuration */
-	  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-	  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
-	  /* DMA2_Stream6_IRQn interrupt configuration */
-	  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
-	  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-}
-
-
-void MX_USART6_UART_DeInit(void)
-{
-	HAL_DMA_Abort(&hdma_usart6_rx);
-	HAL_DMA_DeInit(&hdma_usart6_rx);
-	HAL_DMA_Abort(&hdma_usart6_tx);
-	HAL_DMA_DeInit(&hdma_usart6_tx);
-	HAL_UART_DeInit(&huart6);
-	HAL_UART_DeInit(&huart6);
-}
-
-void MX_USART6_UART_Init(void) {
-	huart6.Instance = USART6;
-	huart6.Init.BaudRate = 9600;
-	huart6.Init.WordLength = UART_WORDLENGTH_8B;
-	huart6.Init.StopBits = UART_STOPBITS_1;
-	huart6.Init.Parity = UART_PARITY_NONE;
-	huart6.Init.Mode = UART_MODE_TX_RX;
-	huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart6.Init.OverSampling = UART_OVERSAMPLING_16;
-	HAL_UART_Init(&huart6);
-}
-
 void  UART_MUX_SelectAddress(uint8_t muxAddress)
 {
 	uint8_t indexstr[4];
@@ -309,7 +215,7 @@ void UART_SendCmdString(uint8_t *cmdString)
 	}
 }
 
-void UART_SendCmdUbx(uint8_t *cmd, uint8_t len)
+void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
 {
 	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 	{
@@ -395,6 +301,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     	}
 		UART_StartDMA_Receiption();
     }
+#ifdef ENABLE_GPIO_V2
+    if(huart == &huart6)
+    {
+    	UART6_RxCpltCallback(huart);
+    }
+#endif
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -410,6 +322,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 			txBufferQueLen = 0;
 		}
 	}
+#ifdef ENABLE_GPIO_V2
+	if(huart == &huart6)
+	{
+		UART6_TxCpltCallback(huart);
+	}
+#endif
 }
 
 uint8_t isEndIndication(uint8_t index)
@@ -544,8 +462,6 @@ void UART_FlushRxBuffer(void)
 uint8_t UART_isComActive(uint8_t sensorId)
 {
 	uint8_t active = 1;
-
-	uint8_t ComState = externalInterface_GetSensorState(sensorId + EXT_INTERFACE_MUX_OFFSET);
 
 	if(time_elapsed_ms(LastCmdRequestTick, HAL_GetTick()) > 300) /* UART activity should be inactive 300ms after last command */
 	{

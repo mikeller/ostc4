@@ -827,6 +827,9 @@ void scheduleSurfaceMode(void)
 		}
 
 		externalInterface_HandleUART();
+#ifdef ENABLE_GPIO_V2
+		UART6_HandleUART();
+#endif
 
 		/* Evaluate received data at 10 ms, 110 ms, 210 ms,... duration ~<1ms */
 		if(ticksdiff >= Scheduler.counterSPIdata100msec * 100 + 10)

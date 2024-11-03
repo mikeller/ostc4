@@ -143,6 +143,7 @@
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "uart_Internal.h"
 #include "GNSS.h"
 
 
@@ -235,7 +236,7 @@ static void GPIO_LEDs_VIBRATION_Init(void);
 static void GPIO_Power_MainCPU_Init(void);
 static void GPIO_Power_MainCPU_ON(void);
 static void GPIO_Power_MainCPU_OFF(void);
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 static void GPIO_LED_RED_OFF(void);
 static void GPIO_LED_RED_ON(void);
 static void GPIO_LED_GREEN_OFF(void);
@@ -412,24 +413,24 @@ int main(void) {
 
 			if (global.mode == MODE_BOOT) {
 				GPIO_Power_MainCPU_OFF();
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 				GPIO_LED_GREEN_ON();
 #endif
 				HAL_Delay(100); // for GPIO_Power_MainCPU_ON();
 				GPIO_Power_MainCPU_ON();
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 				GPIO_LED_GREEN_OFF();
 
 				GPIO_LED_RED_ON();
 				GPIO_VIBRATION_ON();
 #endif
 				HAL_Delay(100);
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 				GPIO_LED_RED_OFF();
 				GPIO_VIBRATION_OFF();
 #endif
 			}
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 			GPIO_LED_RED_OFF();
 			GPIO_LED_GREEN_OFF();
 			GPIO_VIBRATION_OFF();
@@ -440,7 +441,7 @@ int main(void) {
 			SPI_Start_single_TxRx_with_Master(); /* be prepared for the first data exchange */
 			Scheduler_Request_sync_with_SPI(SPI_SYNC_METHOD_HARD);
 
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 			// GNSS tests
 			GNSS_IO_init();
 			GPIO_GPS_ON();
@@ -449,16 +450,6 @@ int main(void) {
 			GNSS_Init(&GNSS_Handle, &huart6);
 #endif
 
-#if 0
-			HAL_Delay(1000);
-			GNSS_LoadConfig(&GNSS_Handle);
-			HAL_Delay(250);
-			GNSS_GetUniqID(&GNSS_Handle);
-			GNSS_ParseBuffer(&GNSS_Handle);
-			HAL_Delay(250);
-			GNSS_GetPVTData(&GNSS_Handle);
-			GNSS_ParseBuffer(&GNSS_Handle);
-#endif
 /*
  * Demo code from SimpleMethod
  * called 1/second
@@ -899,7 +890,7 @@ static void GPIO_Power_MainCPU_OFF(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_SET);
 }
 
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 static void GPIO_LED_GREEN_ON(void) {
 	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_RESET);
 }
@@ -1045,7 +1036,7 @@ void sleep_prepare(void) {
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
 
 	GPIO_Power_MainCPU_OFF();
-#ifdef ENABLE_GNSS
+#ifdef ENABLE_GPIO_V2
 	GPIO_LED_GREEN_OFF();
 	GPIO_LED_RED_OFF();
 	GPIO_VIBRATION_OFF();
