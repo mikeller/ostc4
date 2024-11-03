@@ -411,6 +411,10 @@ void DateEx_copy_to_dataOut(void)
 				break;
 			case SENSOR_CO2:	SensorActive[SENSOR_CO2] = 1;
 				break;
+#ifdef ENABLE_GNSS_SUPPORT
+			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;
+				break;
+#endif
 #ifdef ENABLE_SENTINEL_MODE
 			case SENSOR_SENTINEL:	SensorActive[SENSOR_SENTINEL] = 1;
 				break;
@@ -424,7 +428,7 @@ void DateEx_copy_to_dataOut(void)
 	{
 		externalInterface_Cmd |= EXT_INTERFACE_ADC_ON | EXT_INTERFACE_33V_ON;
 	}
-	if((SensorActive[SENSOR_DIGO2]) || (SensorActive[SENSOR_CO2]))
+	if((SensorActive[SENSOR_DIGO2]) || (SensorActive[SENSOR_CO2])|| (SensorActive[SENSOR_GNSS]))
 	{
 		externalInterface_Cmd |= EXT_INTERFACE_33V_ON;
 	}

@@ -474,8 +474,12 @@ void refresh_O2Sensors(void)
 								break;
 				case SENSOR_SENTINEL:
 				case SENSOR_SENTINELM: strSensorId[3] = 'S';
-				 	 	 	 	 	  strSensorId[4] = 'e';
+				 	 	 	 	 	   strSensorId[4] = 'e';
 				 	 	 	 	break;
+				case SENSOR_GNSS:
+				case SENSOR_GNSSM:		strSensorId[3] = 'G';
+	 	 	 	   	   	   	   	   	    strSensorId[4] = 'N';
+					break;
 				default:
 									  strSensorId[5] = 0;
 					break;

@@ -72,6 +72,9 @@
 /* Enable to have CO2 sensor functionality available */
 #define ENABLE_CO2_SUPPORT
 
+/* Enable to have GPS sensor functionality available */
+/* #define ENABLE_GNSS_SUPPORT */
+
 /* Enable to have Sentinel rebreather interface available */
 /* #define ENABLE_SENTINEL_MODE */
 
