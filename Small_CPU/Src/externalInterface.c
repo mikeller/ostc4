@@ -40,9 +40,10 @@
 extern SGlobal global;
 extern UART_HandleTypeDef huart1;
 
-#define ADC_ANSWER_LENGTH	(5u)		/* 3424 will provide addr + 4 data bytes */
-#define ADC_TIMEOUT			(10u)		/* conversion stuck for unknown reason => restart */
-#define ADC_REF_VOLTAGE_MV	(2048.0f)	/* reference voltage of MPC3424*/
+#define ADC_ANSWER_LENGTH		(5u)		/* 3424 will provide addr + 4 data bytes */
+#define ADC_TIMEOUT				(10u)		/* conversion stuck for unknown reason => restart */
+#define ADC_REF_VOLTAGE_MV		(2048.0f)	/* reference voltage of MPC3424*/
+#define ADC_CYCLE_INTERVAL_MS	(1000u)		/* start adc read out once per second*/
 
 #define ADC_START_CONVERSION		(0x80)
 #define ADC_GAIN_4					(0x02)
@@ -70,6 +71,7 @@ static uint8_t recBuf[ADC_ANSWER_LENGTH];
 static uint8_t timeoutCnt = 0;
 static uint8_t externalInterfacePresent = 0;
 static uint8_t delayAdcConversion = 0;
+static uint32_t startTickADC = 0;
 
 float externalChannel_mV[MAX_ADC_CHANNEL];
 static uint8_t  externalV33_On = 0;
@@ -171,54 +173,66 @@ uint8_t externalInterface_ReadAndSwitch()
 
 	if(externalADC_On)
 	{
-		if(delayAdcConversion)
+		if(time_elapsed_ms(startTickADC, HAL_GetTick()) >  ADC_CYCLE_INTERVAL_MS)
 		{
-			if(UART_isComActive(activeUartChannel) == 0)
+			if(delayAdcConversion)
 			{
-				externalInterface_StartConversion(activeChannel);
-				delayAdcConversion = 0;
-			}
-		}
-		else if(I2C_Master_Receive(DEVICE_EXTERNAL_ADC, recBuf, ADC_ANSWER_LENGTH) == HAL_OK)
-		{
-			if((recBuf[ANSWER_CONFBYTE_INDEX] & ADC_START_CONVERSION) == 0)		/* !ready set => received data contains new value */
-			{
-				retval = activeChannel;										/* return channel number providing new data */
-				nextChannel = activeChannel + 1;
-				if(nextChannel == MAX_ADC_CHANNEL)
+				if(UART_isComActive(activeUartChannel) == 0)
 				{
-					nextChannel = 0;
+					externalInterface_StartConversion(activeChannel);
+					delayAdcConversion = 0;
 				}
-
-				while((psensorMap[nextChannel] != SENSOR_ANALOG) && (nextChannel != activeChannel))
+			}
+			else if(I2C_Master_Receive(DEVICE_EXTERNAL_ADC, recBuf, ADC_ANSWER_LENGTH) == HAL_OK)
+			{
+				if((recBuf[ANSWER_CONFBYTE_INDEX] & ADC_START_CONVERSION) == 0)		/* !ready set => received data contains new value */
 				{
+					retval = activeChannel;										/* return channel number providing new data */
+					nextChannel = activeChannel + 1;
 					if(nextChannel == MAX_ADC_CHANNEL)
 					{
 						nextChannel = 0;
 					}
+
+					while((psensorMap[nextChannel] != SENSOR_ANALOG) && (nextChannel != activeChannel))
+					{
+						if(nextChannel == MAX_ADC_CHANNEL)
+						{
+							nextChannel = 0;
+							startTickADC = HAL_GetTick();
+						}
+						else
+						{
+							nextChannel++;
+						}
+					}
+
+					activeChannel = nextChannel;
+					if(activeChannel == 0)
+					{
+						delayAdcConversion = 1;		/* wait for next cycle interval */
+					}
 					else
 					{
-						nextChannel++;
+						if(UART_isComActive(activeUartChannel) == 0)
+						{
+							externalInterface_StartConversion(activeChannel);
+						}
+						else
+						{
+							delayAdcConversion = 1;
+						}
 					}
+					timeoutCnt = 0;
 				}
-
-				activeChannel = nextChannel;
-				if(UART_isComActive(activeUartChannel) == 0)
-				{
-					externalInterface_StartConversion(activeChannel);
-				}
-				else
-				{
-					delayAdcConversion = 1;
-				}
-				timeoutCnt = 0;
 			}
-		}
+
 		if(timeoutCnt++ >= ADC_TIMEOUT)
 		{
 			externalInterface_StartConversion(activeChannel);
 			delayAdcConversion = 0;
 			timeoutCnt = 0;
+		}
 		}
 	}
 	return retval;
@@ -352,6 +366,7 @@ void externalInterface_SwitchADC(uint8_t state)
 	{
 		if(externalADC_On == 0)
 		{
+			startTickADC = HAL_GetTick();
 			activeChannel = 0;
 			externalInterface_StartConversion(activeChannel);
 			externalADC_On = 1;
@@ -1227,9 +1242,17 @@ void externalInterface_HandleUART()
 					break;
 			}
 		}
+#if 0
+		else
+		{
+			if(((time_elapsed_ms(lastRequestTick,tick) > (externalInterfaceMuxReqIntervall - 100))
+				 && externalInterface_SensorState[activeSensorId] = UART_COMMON_IDLE))
+			{
+				externalInterface_ReadAndSwitch();
+			}
+		}
+#endif
 	}
-
-
 
 #if 0
 #ifdef ENABLE_SENTINEL_MODE
@@ -1239,6 +1262,4 @@ void externalInterface_HandleUART()
 		}
 #endif
 #endif
-
-
 }

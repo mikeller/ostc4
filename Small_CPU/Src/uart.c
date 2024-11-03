@@ -54,6 +54,7 @@ static uint8_t lastCmdIndex;							/* Index of last command which has not been c
 static uint8_t dmaRxActive;								/* Indicator if DMA reception needs to be started */
 static uint8_t dmaTxActive;								/* Indicator if DMA reception needs to be started */
 
+static uint32_t LastCmdRequestTick = 0;					/* Used by ADC handler to avoid interferance with UART communication */
 
 static uint8_t isEndIndication(uint8_t index);
 
@@ -297,6 +298,7 @@ void UART_SendCmdString(uint8_t *cmdString)
 			if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,cmdLength))
 			{
 				dmaTxActive = 1;
+				LastCmdRequestTick = HAL_GetTick();
 			}
 		}
 	}
@@ -319,6 +321,7 @@ void UART_SendCmdUbx(uint8_t *cmd, uint8_t len)
 		if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,len))
 		{
 			dmaTxActive = 1;
+			LastCmdRequestTick = HAL_GetTick();
 		}
 	}
 }
@@ -544,11 +547,12 @@ uint8_t UART_isComActive(uint8_t sensorId)
 
 	uint8_t ComState = externalInterface_GetSensorState(sensorId + EXT_INTERFACE_MUX_OFFSET);
 
-	if((ComState == UART_COMMON_INIT) || (ComState == UART_COMMON_IDLE) || (ComState == UART_COMMON_ERROR) || (ComState == COMMON_SENSOR_STATE_INVALID))
+	if(time_elapsed_ms(LastCmdRequestTick, HAL_GetTick()) > 300) /* UART activity should be inactive 300ms after last command */
 	{
 		active = 0;
 	}
 	return active;
 }
+
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/
