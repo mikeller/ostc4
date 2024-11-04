@@ -103,7 +103,7 @@ void GNSS_IO_init() {
 
 	/* USART6 DMA Init */
 	/* USART6_RX Init */
-	hdma_usart6_rx.Instance = DMA2_Stream1;
+	hdma_usart6_rx.Instance = DMA2_Stream2;
 	hdma_usart6_rx.Init.Channel = DMA_CHANNEL_5;
 	hdma_usart6_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
 	hdma_usart6_rx.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -174,6 +174,11 @@ void MX_USART6_UART_Init(void) {
 	huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
 	huart6.Init.OverSampling = UART_OVERSAMPLING_16;
 	HAL_UART_Init(&huart6);
+
+	UART_clearRx6Buffer();
+	dmaRx6Active = 0;
+	dmaTx6Active = 0;
+	tx6BufferQueLen = 0;
 }
 
 

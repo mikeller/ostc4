@@ -250,7 +250,7 @@ void DMA2_Stream7_IRQHandler(void)
 }
 
 #ifdef ENABLE_GPIO_V2
-void DMA2_Stream1_IRQHandler(void)
+void DMA2_Stream2_IRQHandler(void)
 {
   HAL_DMA_IRQHandler(&hdma_usart6_rx);
 }
