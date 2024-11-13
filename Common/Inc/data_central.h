@@ -420,6 +420,8 @@ typedef struct
 
     timerState_e timerState;
     int timerStartedS;
+
+    SScrubberData scrubberDataDive[2];
 } 	SDiveState;
 
 
