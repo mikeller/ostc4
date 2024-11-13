@@ -1039,6 +1039,8 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			//Init dive Mode
 			decoLock = DECO_CALC_init_as_is_start_of_dive;
 			pStateReal->lifeData.boolResetAverageDepth = 1;
+
+			memcpy(pStateReal->scrubberDataDive, pSettings->scrubberData, sizeof(pStateReal->scrubberDataDive));
 		}
 
 		pStateReal->lifeData.cns = dataIn.data[dataIn.boolToxicData].cns;
@@ -1066,6 +1068,8 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			}
 			if(pStateReal->warnings.decoMissed)
 				dataOut.setAccidentFlag += ACCIDENT_DECOSTOP;
+
+			memcpy(pSettings->scrubberData, pStateReal->scrubberDataDive, sizeof(pStateReal->scrubberDataDive)); /* Store value of current usage */
 		}
 		pStateReal->mode = dataIn.mode;
 		pStateReal->chargeStatus = dataIn.chargeStatus;

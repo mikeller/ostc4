@@ -1971,7 +1971,7 @@ uint8_t t3_getCustomView(void)
 
 int printScrubberText(char *text, size_t size, SSettings *settings)
 {
-    int16_t currentTimerMinutes = settings->scrubberData[settings->scubberActiveId].TimerCur;
+    int16_t currentTimerMinutes = stateUsed->scrubberDataDive[settings->scubberActiveId].TimerCur;
     char colour = '\020';
     if (currentTimerMinutes <= 0) {
         colour = '\025';

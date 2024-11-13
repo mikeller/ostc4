@@ -56,6 +56,8 @@ static float sim_descent_rate_meter_per_min = 20;
 static uint16_t* pReplayData; /* pointer to source dive data */
 static uint8_t simReplayActive = 0;
 
+static uint16_t simScrubberTimeoutCount = 0;
+
 
 //Private functions
 static float sim_get_ambient_pressure(SDiveState * pDiveState);
@@ -108,6 +110,8 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
     decoLock = DECO_CALC_init_as_is_start_of_dive;
 
     stateSim.lifeData.apnea_total_max_depth_meter = 0;
+
+    memcpy(stateSim.scrubberDataDive, settingsGetPointer()->scrubberData, sizeof(stateSim.scrubberDataDive));
     memset(simSensmVOffset,0,sizeof(simSensmVOffset));
    	if(getReplayOffset() != 0xFFFF)
    	{
@@ -152,6 +156,8 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     static _Bool two_second = 0;
     static float lastPressure_bar = 0;
 
+    pSettings = settingsGetPointer();
+
     if ((sim_aim_time_minutes && sim_aim_time_minutes * 60 <= pDiveState->lifeData.dive_time_seconds)
     		&& (!simReplayActive))
     {
@@ -174,7 +180,7 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
         {
             two_second = 0;
         }
-        pSettings = settingsGetPointer();
+
         for(index = 0; index < 3; index++)
         {
         	localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index];
@@ -230,6 +236,22 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     	lastPressure_bar = 0;
     	pDiveState->lifeData.ascent_rate_meter_per_min = 0;
     }
+
+    if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && (isLoopMode(pSettings->dive_mode)) && (pDiveState->mode == MODE_DIVE) && isLoopMode(pDiveState->diveSettings.diveMode))
+    {
+    	simScrubberTimeoutCount++;
+    	if(simScrubberTimeoutCount >= 60)		/* resolution is minutes */
+    	{
+    		simScrubberTimeoutCount = 0;
+    		if(pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur > MIN_SCRUBBER_TIME)
+    		{
+    			pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur--;
+    		}
+    		translateDate(stateUsed->lifeData.dateBinaryFormat, &stateUsedWrite->scrubberDataDive[pSettings->scubberActiveId].lastDive);
+    	}
+    }
+
+
     if(lastPressure_bar > 0)
      {
          //1 second * 60 == 1 minute, bar * 10 = meter
