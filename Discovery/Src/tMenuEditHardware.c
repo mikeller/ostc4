@@ -569,6 +569,7 @@ void openEdit_O2Sensors(void)
     uint8_t sensorActive[3];
     uint8_t index = 0;
     char text[3];
+    uint32_t firstSensorId = 0;
 
     set_globalState(StMHARD3_Sensors);
 	resetMenuEdit(CLUT_MenuPageHardware);
@@ -585,29 +586,41 @@ void openEdit_O2Sensors(void)
 		}
 	}
 
-	if(((pSettings->ext_sensor_map[0] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[0] >= SENSOR_MUX)))
+	if(((pSettings->ext_sensor_map[0] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[0] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 1;
 	}
 	else
 	{
 		write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", sensorActive[0]);
+		if(firstSensorId == 0)
+		{
+			firstSensorId = StMHARD3_O2_Sensor1;
+		}
 	}
-	if(((pSettings->ext_sensor_map[1] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[1] >= SENSOR_MUX)))
+	if(((pSettings->ext_sensor_map[1] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[1] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 2;
 	}
 	else
 	{
 		 write_field_on_off(StMHARD3_O2_Sensor2,	 30, 95, ME_Y_LINE2,  &FontT48, "", sensorActive[1]);
+		 if(firstSensorId == 0)
+		 {
+		 	firstSensorId = StMHARD3_O2_Sensor2;
+		 }
 	}
-	if(((pSettings->ext_sensor_map[2] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[2] >= SENSOR_MUX)))
+	if(((pSettings->ext_sensor_map[2] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[2] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 4;
 	}
 	else
 	{
 		write_field_on_off(StMHARD3_O2_Sensor3,	 30, 95, ME_Y_LINE3,  &FontT48, "", sensorActive[2]);
+		if(firstSensorId == 0)
+		{
+			firstSensorId = StMHARD3_O2_Sensor3;
+		}
 	}
 
 	stateRealGetPointerWrite()->diveSettings.ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;
@@ -669,6 +682,15 @@ void openEdit_O2Sensors(void)
    		setEvent(StMHARD3_Sensor_Detect, (uint32_t)OnAction_Sensor_Detect);
    	}
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+
+    switch(firstSensorId)
+    {
+    	case StMHARD3_O2_Sensor2: tMenuEdit_select(StMHARD3_O2_Sensor2);
+    		break;
+    	case StMHARD3_O2_Sensor3: tMenuEdit_select(StMHARD3_O2_Sensor3);
+    		break;
+    	default: break;
+    }
 }
 
 
