@@ -411,7 +411,7 @@ void DateEx_copy_to_dataOut(void)
 				break;
 			case SENSOR_CO2:	SensorActive[SENSOR_CO2] = 1;
 				break;
-#ifdef ENABLE_GNSS_SUPPORT
+#if defined ENABLE_GPIO_V2 || defined ENABLE_GNSS_SUPPORT
 			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;
 				break;
 #endif

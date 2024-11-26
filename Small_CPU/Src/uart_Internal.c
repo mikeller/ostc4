@@ -189,7 +189,7 @@ void UART6_SendCmdUbx(const uint8_t *cmd, uint8_t len)
 	{
 		if(dmaRx6Active == 0)
 		{
-			UART_StartDMA_Receiption();
+			UART6_StartDMA_Receiption();
 		}
 		memcpy(tx6Buffer, cmd, len);
 		if(HAL_OK == HAL_UART_Transmit_DMA(&huart6,tx6Buffer,len))
