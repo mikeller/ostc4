@@ -881,11 +881,8 @@ void scheduleSurfaceMode(void)
 		{
 			adc_ambient_light_sensor_get_data();
 			copyAmbientLightData();
-#ifdef ENABLE_GNSS
-			uartGnss_ProcessData();
-			uartGnss_Control();
-#endif
-#ifdef ENABLE_GNSS_SUPPORT
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
 			copyGNSSdata();
 #endif
 			Scheduler.counterAmbientLight100msec++;
