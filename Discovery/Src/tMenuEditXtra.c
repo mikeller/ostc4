@@ -427,6 +427,11 @@ static void drawCompassHeadingMenu(bool isRefresh)
         write_label_var(20, 800, ME_Y_LINE4, &FontT48, text);
     }
 
+    if (headingIsSet) {
+        snprintf(text, 32, "%s%c%c (%03u`)", makeGrey(true), TXT_2BYTE, TXT2BYTE_Current, stateUsed->diveSettings.compassHeading);
+        write_label_var(20, 800, ME_Y_LINE5, &FontT48, text);
+    }
+
     if (!isRefresh) {
         setEvent(StMXTRA_CompassHeading, (uint32_t)OnAction_CompassHeading);
         setEvent(StMXTRA_CompassHeadingClear, (uint32_t)OnAction_CompassHeadingClear);
