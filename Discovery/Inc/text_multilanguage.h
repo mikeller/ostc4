@@ -376,6 +376,8 @@ extern const tText text_array2[];
 
         TXT2BYTE_Page,
 
+        TXT2BYTE_Current,
+
 		TXT2BYTE_END,
 };
 
