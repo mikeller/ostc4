@@ -1914,6 +1914,12 @@ static uint8_t text_FR_Current[] = "Actuel";
 static uint8_t text_IT_Current[] = "Attuale";
 static uint8_t text_ES_Current[] = "Actual";
 
+static uint8_t text_EN_Log[] = "Log";
+static uint8_t text_DE_Log[] = "Aufzeichnen";
+static uint8_t text_FR_Log[] = "Enregistrer";
+static uint8_t text_IT_Log[] = "Registrare";
+static uint8_t text_ES_Log[] = "Registrar";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2206,4 +2212,5 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Page, 	{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},
 
 	{(uint8_t)TXT2BYTE_Current, 	{text_EN_Current, text_DE_Current, text_FR_Current, text_IT_Current, text_ES_Current}},
+	{(uint8_t)TXT2BYTE_Log, 	{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
 };

@@ -293,7 +293,9 @@ typedef struct
 	int16_t bailout;
 	int16_t info_bailoutHe;
 	int16_t info_bailoutO2;
-} 	SEvents;
+    int16_t compassHeadingUpdate;
+    uint16_t info_compassHeadingUpdate;
+} SEvents;
 
 
 
@@ -520,6 +522,8 @@ _Bool is_ambient_pressure_close_to_surface(SLifeData *lifeData);
 uint8_t isLoopMode(uint8_t Mode);
 
 bool isCompassCalibrated(void);
+void logCompassHeading(uint16_t heading);
+void clearCompassHeading(void);
 void setCompassHeading(uint16_t heading);
 
 const SDecoinfo *getDecoInfo(void);
