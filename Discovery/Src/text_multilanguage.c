@@ -1562,6 +1562,7 @@ static uint8_t text_DE_FocusSpotSize[] = "Fokus Reaktion:";
 static uint8_t text_FR_FocusSpotSize[] = "";
 static uint8_t text_IT_FocusSpotSize[] = "";
 static uint8_t text_ES_FocusSpotSize[] = "";
+
 /*
 static uint8_t text_EN_ApneaCount[] = "";
 static uint8_t text_DE_ApneaCount[] = "";
@@ -1956,6 +1957,18 @@ static uint8_t text_FR_Page[] = "Défiler";
 static uint8_t text_IT_Page[] = "Scorrere";
 static uint8_t text_ES_Page[] = "Desplazarse";
 
+static uint8_t text_EN_Current[] = "Current";
+static uint8_t text_DE_Current[] = "Aktuell";
+static uint8_t text_FR_Current[] = "Actuel";
+static uint8_t text_IT_Current[] = "Attuale";
+static uint8_t text_ES_Current[] = "Actual";
+
+static uint8_t text_EN_Log[] = "Log";
+static uint8_t text_DE_Log[] = "Aufzeichnen";
+static uint8_t text_FR_Log[] = "Enregistrer";
+static uint8_t text_IT_Log[] = "Registrare";
+static uint8_t text_ES_Log[] = "Registrar";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2070,7 +2083,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_SetMarkerShort,	{text_EN_SetMarkerShort, text_DE_SetMarkerShort, text_FR_SetMarkerShort, text_IT_SetMarkerShort, text_ES_SetMarkerShort}},
 	{(uint8_t)TXT2BYTE_CheckMarker,		{text_EN_CheckMarker, text_DE_CheckMarker, text_FR_CheckMarker, text_IT_CheckMarker, text_ES_CheckMarker}},
     {(uint8_t)TXT2BYTE_CompassHeading,  {text_EN_CompassHeading, text_DE_CompassHeading, text_FR_CompassHeading, text_IT_CompassHeading, text_ES_CompassHeading}},
-	{(uint8_t)TXT2BYTE_CalibView,  		{text_EN_CalibView, text_DE_CalibView, text_FR_CalibView, text_IT_CalibView, text_ES_CalibView}},
+	{(uint8_t)TXT2BYTE_CalibView,		{text_EN_CalibView, text_DE_CalibView, text_FR_CalibView, text_IT_CalibView, text_ES_CalibView}},
 	{(uint8_t)TXT2BYTE_IndicateFrame,	{text_EN_IndicateFrame, text_DE_IndicateFrame, text_FR_IndicateFrame, text_IT_IndicateFrame, text_ES_IndicateFrame}},
 	{(uint8_t)TXT2BYTE_BoostBacklight,	{text_EN_BoostBacklight, text_DE_BoostBacklight, text_FR_BoostBacklight, text_IT_BoostBacklight, text_ES_BoostBacklight}},
 	{(uint8_t)TXT2BYTE_FocusSpotSize,	{text_EN_FocusSpotSize, text_DE_FocusSpotSize, text_FR_FocusSpotSize, text_IT_FocusSpotSize, text_ES_FocusSpotSize}},
@@ -2256,4 +2269,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_VpmTable, 	{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
 
 	{(uint8_t)TXT2BYTE_Page, 	{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},
+
+	{(uint8_t)TXT2BYTE_Current, 	{text_EN_Current, text_DE_Current, text_FR_Current, text_IT_Current, text_ES_Current}},
+	{(uint8_t)TXT2BYTE_Log, 	{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
 };

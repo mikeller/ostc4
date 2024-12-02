@@ -892,13 +892,38 @@ bool isCompassCalibrated(void)
     return stateUsed->lifeData.compass_heading != -1;
 }
 
+static void internalLogCompassHeading(uint16_t heading, bool applyHeading, bool clearHeading)
+{
+    uint16_t compassHeading = 0;
+    if (clearHeading) {
+        compassHeading |= 0x8000;
+    } else {
+        compassHeading = heading & 0x1FF;
+    }
+    if (applyHeading) {
+        compassHeading |= 0x4000;
+    }
+
+    stateUsedWrite->events.compassHeadingUpdate = 1;
+    stateUsedWrite->events.info_compassHeadingUpdate = compassHeading;
+}
+
+void logCompassHeading(uint16_t heading) {
+    internalLogCompassHeading(heading, false, false);
+}
+
+void clearCompassHeading(void) {
+    uint16_t clearHeading = 0;
+    stateUsedWrite->diveSettings.compassHeading = clearHeading;
+
+    internalLogCompassHeading(clearHeading, true, true);
+}
 
 void setCompassHeading(uint16_t heading)
 {
-
-    // if heading == 0 set compassHeading to 360, because compassHeading == 0 means 'off'
-
     stateUsedWrite->diveSettings.compassHeading =  ((heading - 360) % 360) + 360;
+
+    internalLogCompassHeading(heading, true, false);
 }
 
 

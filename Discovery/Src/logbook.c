@@ -458,6 +458,10 @@ void logbook_writeSample(const SDiveState *state)
         eventByte1.ub.bit7 = 1;
         eventByte2.ub.bit0 = 1;
     }
+    if (state->events.compassHeadingUpdate) {
+        eventByte1.ub.bit7 = 1;
+        eventByte2.ub.bit1 = 1;
+    }
     //Add EventByte 1
     if(eventByte1.uw > 0)
     {
@@ -497,6 +501,11 @@ void logbook_writeSample(const SDiveState *state)
         length += 1;
         sample[length] = state->events.info_bailoutHe;
         length += 1;
+    }
+    if (state->events.compassHeadingUpdate) {
+        // New heading and type of heading
+        sample[length++] = state->events.info_compassHeadingUpdate & 0xFF;
+        sample[length++] = (state->events.info_compassHeadingUpdate & 0xFF00) >> 8;
     }
 
 

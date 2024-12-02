@@ -316,7 +316,7 @@ static void openEdit_PSCR(void)
 
 static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-    stateUsedWrite->diveSettings.compassHeading = 0;
+    clearCompassHeading();
 
     exitMenuEdit_to_Home_with_Menu_Update();
 
@@ -326,7 +326,17 @@ static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber
 
 static uint8_t OnAction_CompassHeadingReset(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-    stateUsedWrite->diveSettings.compassHeading = settingsGetPointer()->compassBearing;
+    setCompassHeading(settingsGetPointer()->compassBearing);
+
+    exitMenuEdit_to_Home_with_Menu_Update();
+
+    return EXIT_TO_HOME;
+}
+
+
+static uint8_t OnAction_CompassHeadingLog(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	logCompassHeading((uint16_t)stateUsed->lifeData.compass_heading);
 
     exitMenuEdit_to_Home_with_Menu_Update();
 
@@ -383,10 +393,23 @@ static void drawCompassHeadingMenu(bool isRefresh)
         write_label_var(20, 800, ME_Y_LINE4, &FontT48, text);
     }
 
+    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Log);
+    if (!isRefresh) {
+        write_field_button(StMXTRA_CompassHeadingLog, 20, 800, ME_Y_LINE5, &FontT48, text);
+    } else {
+        tMenuEdit_refresh_field(StMXTRA_CompassHeadingLog);
+    }
+
+    if (headingIsSet) {
+        snprintf(text, 32, "%s%c%c (%03u`)", makeGrey(true), TXT_2BYTE, TXT2BYTE_Current, stateUsed->diveSettings.compassHeading);
+        write_label_var(20, 800, ME_Y_LINE6, &FontT48, text);
+    }
+
     if (!isRefresh) {
         setEvent(StMXTRA_CompassHeading, (uint32_t)OnAction_CompassHeading);
         setEvent(StMXTRA_CompassHeadingClear, (uint32_t)OnAction_CompassHeadingClear);
         setEvent(StMXTRA_CompassHeadingReset, (uint32_t)OnAction_CompassHeadingReset);
+        setEvent(StMXTRA_CompassHeadingLog, (uint32_t)OnAction_CompassHeadingLog);
     }
 
     write_buttonTextline(TXT2BYTE_ButtonBack, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonNext);
