@@ -589,6 +589,10 @@ void openEdit_O2Sensors(void)
 	if(((pSettings->ext_sensor_map[0] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[0] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 1;
+		if(pSettings->ext_sensor_map[0] == SENSOR_CO2M)
+		{
+			write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", pSettings->co2_sensor_active);
+		}
 	}
 	else
 	{
@@ -601,6 +605,10 @@ void openEdit_O2Sensors(void)
 	if(((pSettings->ext_sensor_map[1] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[1] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 2;
+		if(pSettings->ext_sensor_map[1] == SENSOR_CO2M)
+		{
+			write_field_on_off(StMHARD3_O2_Sensor2,	 30, 95, ME_Y_LINE2,  &FontT48, "", pSettings->co2_sensor_active);
+		}
 	}
 	else
 	{
@@ -613,6 +621,10 @@ void openEdit_O2Sensors(void)
 	if(((pSettings->ext_sensor_map[2] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[2] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 4;
+		if(pSettings->ext_sensor_map[2] == SENSOR_CO2M)
+		{
+			write_field_on_off(StMHARD3_O2_Sensor3,	 30, 95, ME_Y_LINE3,  &FontT48, "", pSettings->co2_sensor_active);
+		}
 	}
 	else
 	{
