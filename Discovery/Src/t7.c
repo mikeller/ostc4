@@ -4040,16 +4040,20 @@ void t7_showPosition(void)
     t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
     t7cY0free.WindowNumberOfTextLines = 3;
 
+    textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
     textpointer += snprintf(&text[textpointer],50,"\001Longitude\n\r");
     textpointer += snprintf(&text[textpointer],50,"\001Latitude\n\r");
     GFX_write_string(&FontT24, &t7cY0free, text, 1);
 
     t7cY0free.WindowY0 -= 52;
     snprintf(text,60,
+    	"\001%d - %d %d %d %d %d\n\r"
         "\001%0.5f\n\r"
         "\001%0.5f\n\r"
-        ,stateUsed->lifeData.gnssPosition.Longitude
-		,stateUsed->lifeData.gnssPosition.Latitude );
+    	,stateUsed->lifeData.gnssData.numSat, stateUsed->lifeData.gnssData.fixType
+    	,stateUsed->lifeData.gnssData.signalQual[0],stateUsed->lifeData.gnssData.signalQual[1],stateUsed->lifeData.gnssData.signalQual[2],stateUsed->lifeData.gnssData.signalQual[3]
+        ,stateUsed->lifeData.gnssData.fLat
+		,stateUsed->lifeData.gnssData.fLon );
 
     GFX_write_string(&FontT42, &t7cY0free, text, 1);
 }

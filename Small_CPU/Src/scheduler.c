@@ -1747,8 +1747,11 @@ void copyExtCO2data()
 
 void copyGNSSdata(void)
 {
-	global.dataSendToMaster.data[0].fLat = GNSS_Handle.fLat;
-	global.dataSendToMaster.data[0].fLon = GNSS_Handle.fLon;
+	global.dataSendToMaster.data[0].gnssInfo.fLat = GNSS_Handle.fLat;
+	global.dataSendToMaster.data[0].gnssInfo.fLon = GNSS_Handle.fLon;
+	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
+	global.dataSendToMaster.data[0].gnssInfo.numSat = GNSS_Handle.numSat;
+	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 }
 
 

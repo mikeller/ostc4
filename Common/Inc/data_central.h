@@ -167,9 +167,12 @@ typedef struct
 
 typedef struct
 {
-	float Longitude;
-	float Latitude;
-} 	SPositionData;
+	float fLat;
+	float fLon;
+	uint8_t fixType;
+	uint8_t numSat;			/* number of available satellites */
+	uint8_t signalQual[4];	/* signal quality indicator for x sats */
+} SGnssInfo;
 
 
 /* struct SLifeData
@@ -253,7 +256,7 @@ typedef struct
 /* for PSCR Mode */
 	 float ppo2Simulated_bar;
 /* GNSS data */
-	 SPositionData gnssPosition;
+	 SGnssInfo gnssData;
 
 } 	SLifeData;
 

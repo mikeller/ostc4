@@ -29,14 +29,15 @@
 
 
 static uint8_t isEndIndication6(uint8_t index);
-static uint8_t gnssState = UART_GNSS_INIT;
+static uartGnssStatus_t gnssState = UART_GNSS_INIT;
+static gnssRequest_s activeRequest = {0,0};
 
 /* Private variables ---------------------------------------------------------*/
 
 
 #define TX_BUF_SIZE				(40u)		/* max length for commands */
-#define CHUNK_SIZE				(25u)		/* the DMA will handle chunk size transfers */
-#define CHUNKS_PER_BUFFER		(6u)
+#define CHUNK_SIZE				(50u)		/* the DMA will handle chunk size transfers */
+#define CHUNKS_PER_BUFFER		(3u)
 
 #define REQUEST_INT_SENSOR_MS	(1500)		/* Minimum time interval for cyclic sensor data requests per sensor (UART mux) */
 #define COMMAND_TX_DELAY		(30u)		/* The time the sensor needs to recover from a invalid command request */
@@ -48,7 +49,7 @@ static uint8_t GnssConnected = 0;						/* Binary indicator if a sensor is connec
 
 static uint8_t writeIndex = 0;
 
-static uint8_t dataToRead = 0;
+static uint16_t dataToRead = 0;
 
 DMA_HandleTypeDef  hdma_usart6_rx, hdma_usart6_tx;
 
@@ -276,7 +277,13 @@ void UART6_ReadData()
 		futureIndex = 0;
 	}
 
-	if((!isEndIndication6(localRX)) || (!isEndIndication6(futureIndex)))	do
+	if(!isEndIndication6(futureIndex))
+	{
+		moreData = 1;
+	}
+
+	if((!isEndIndication6(localRX)) || (moreData))
+	do
 	{
 		while((!isEndIndication6(localRX)) || (moreData))
 		{
@@ -348,12 +355,16 @@ void UART6_Gnss_SendCmd(uint8_t GnssCmd)
 		case GNSSCMD_GET_NAV_DATA:	pData = getNavigatorData;
 									txLength = sizeof(getNavigatorData) / sizeof(uint8_t);
 			break;
-
+		case GNSSCMD_GET_NAVSAT_DATA: pData = getNavSat;
+									  txLength = sizeof(getNavSat) / sizeof(uint8_t);
+			break;
 		default:
 			break;
 	}
 	if(txLength != 0)
 	{
+		activeRequest.class = pData[2];
+		activeRequest.id = pData[3];
 		UART6_SendCmdUbx(pData, txLength);
 	}
 }
@@ -361,6 +372,7 @@ void UART6_Gnss_SendCmd(uint8_t GnssCmd)
 void UART6_Gnss_Control(void)
 {
 	static uint32_t warmupTick = 0;
+	static uint8_t dataToggle = 0;
 
 	switch (gnssState)
 	{
@@ -385,9 +397,20 @@ void UART6_Gnss_Control(void)
 									gnssState = UART_GNSS_IDLE;
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
-		case UART_GNSS_IDLE:		UART6_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA);
-									gnssState = UART_GNSS_GET_PVT;
-									rxState = GNSSRX_DETECT_HEADER_0;
+		case UART_GNSS_IDLE:		if(dataToggle)
+									{
+										UART6_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA);
+										gnssState = UART_GNSS_GET_PVT;
+										rxState = GNSSRX_DETECT_HEADER_0;
+										dataToggle = 0;
+									}
+									else
+									{
+										UART6_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA);
+										gnssState = UART_GNSS_GET_SAT;
+										rxState = GNSSRX_DETECT_HEADER_0;
+										dataToggle = 1;
+									}
 				break;
 		default:
 				break;
@@ -396,16 +419,30 @@ void UART6_Gnss_Control(void)
 
 void UART6_Gnss_ProcessData(uint8_t data)
 {
+	static uint16_t rxLength = 0;
+	static uint8_t ck_A = 0;
+	static uint8_t ck_B = 0;
+	static uint8_t ck_A_Ref = 0;
+	static uint8_t ck_B_Ref = 0;
+
 	GNSS_Handle.uartWorkingBuffer[writeIndex++] = data;
+	if((rxState >= GNSSRX_DETECT_HEADER_2) && (rxState < GNSSRX_READ_CK_A))
+	{
+		ck_A += data;
+		ck_B += ck_A;
+	}
+
 	switch(rxState)
 	{
 		case GNSSRX_DETECT_ACK_0:
 		case GNSSRX_DETECT_HEADER_0:	if(data == 0xB5)
 										{
 											writeIndex = 0;
-											memset(GNSS_Handle.uartWorkingBuffer,0, sizeof(GNSS_Handle.uartWorkingBuffer));
+											memset(GNSS_Handle.uartWorkingBuffer,0xff, sizeof(GNSS_Handle.uartWorkingBuffer));
 											GNSS_Handle.uartWorkingBuffer[writeIndex++] = data;
 											rxState++;
+											ck_A = 0;
+											ck_B = 0;
 										}
 			break;
 		case GNSSRX_DETECT_ACK_1:
@@ -437,7 +474,7 @@ void UART6_Gnss_ProcessData(uint8_t data)
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;
-		case GNSSRX_DETECT_HEADER_2:	if(data == 0x01)
+		case GNSSRX_DETECT_HEADER_2:	if(data == activeRequest.class)
 			 	 	 	 	 	 	 	{
 											rxState++;
 			 	 	 	 	 	 	 	}
@@ -446,44 +483,51 @@ void UART6_Gnss_ProcessData(uint8_t data)
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;
-		case GNSSRX_DETECT_HEADER_3:
-										switch(data)
+		case GNSSRX_DETECT_HEADER_3:	if(data == activeRequest.id)
+ 	 	 								{
+											rxState = GNSSRX_DETECT_LENGTH_0;
+ 	 	 								}
+										else
 										{
-											case 0x21: rxState = GNSSRX_READ_NAV_DATA;
-														dataToRead = 20;
-												break;
-											case 0x07:	rxState = GNSSRX_READ_PVT_DATA;
-														dataToRead = 92;
-												break;
-											case 0x02:  rxState = GNSSRX_READ_POSLLH_DATA;
-												break;
-											default: 	rxState = GNSSRX_DETECT_HEADER_0;
-												break;
+											rxState = GNSSRX_DETECT_HEADER_0;
 										}
-			break;
-			case GNSSRX_READ_NAV_DATA:
-			case GNSSRX_READ_PVT_DATA:
-			case GNSSRX_READ_POSLLH_DATA:		if(dataToRead > 0)
+				break;
+			case GNSSRX_DETECT_LENGTH_0:	rxLength = GNSS_Handle.uartWorkingBuffer[4];
+											rxState = GNSSRX_DETECT_LENGTH_1;
+				break;
+			case GNSSRX_DETECT_LENGTH_1:    rxLength += (GNSS_Handle.uartWorkingBuffer[5] << 8);
+											rxState = GNSSRX_READ_DATA;
+											dataToRead = rxLength;
+				break;
+			case GNSSRX_READ_DATA:				if(dataToRead > 0)
 												{
 													dataToRead--;
 												}
-												else
+												if(dataToRead == 0)
 												{
-														switch(rxState)
-														{
-															case GNSSRX_READ_NAV_DATA: GNSS_ParseNavigatorData(&GNSS_Handle);
-																break;
-															case GNSSRX_READ_PVT_DATA:	GNSS_ParsePVTData(&GNSS_Handle);
-																break;
-															case GNSSRX_READ_POSLLH_DATA:  GNSS_ParsePOSLLHData(&GNSS_Handle);
-																break;
-															default: 	rxState = GNSSRX_DETECT_HEADER_0;
-																break;
-														}
-														rxState = GNSSRX_DETECT_HEADER_0;
-														gnssState = UART_GNSS_IDLE;
+													rxState = GNSSRX_READ_CK_A;
 												}
 				break;
+			case GNSSRX_READ_CK_A:				ck_A_Ref = data;
+												rxState++;
+				break;
+			case GNSSRX_READ_CK_B:				ck_B_Ref = data;
+												if((ck_A_Ref == ck_A) && (ck_B_Ref == ck_B))
+												{
+													switch(gnssState)
+													{
+														case UART_GNSS_GET_PVT:GNSS_ParsePVTData(&GNSS_Handle);
+															break;
+														case UART_GNSS_GET_SAT: GNSS_ParseNavSatData(&GNSS_Handle);
+															break;
+														default:
+															break;
+													}
+												}
+												rxState = GNSSRX_DETECT_HEADER_0;
+												gnssState = UART_GNSS_IDLE;
+				break;
+
 		default:	rxState = GNSSRX_READY;
 			break;
 	}
@@ -529,7 +573,7 @@ void UART6_HandleUART()
 			retryRequest = 0;
 			timeToTrigger = 1;
 
-			if((gnssState == UART_GNSS_GET_PVT))	/* timeout */
+			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT))	/* timeout */
 			{
 				gnssState = UART_GNSS_IDLE;
 			}

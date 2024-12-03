@@ -26,6 +26,7 @@
  ******************************************************************************
  */
 
+#include <string.h>
 #include "GNSS.h"
 
 union u_Short uShort;
@@ -241,6 +242,55 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
  * Look at: 32.17.30.1 u-blox 8 Receiver description.
  * @param GNSS Pointer to main GNSS structure.
  */
+void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
+
+	uint8_t loop = 0;
+	uint8_t searchIndex = 0;
+	uint8_t statIndex = 0;	/* only 4 state information will be forwarded */
+	uint8_t signalQuality = 0;
+	GNSS->numSat = GNSS_Handle.uartWorkingBuffer[11];
+
+	memset(GNSS->statSat, 0, sizeof(GNSS->statSat));
+
+	if(GNSS->numSat > 0)
+	{
+		searchIndex = 0;
+		while((searchIndex < GNSS->numSat) && (statIndex < 4))	/* get good signal quality */
+		{
+			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
+			if(signalQuality > 4)
+			{
+				GNSS->statSat[statIndex++] = signalQuality;
+			}
+			if(statIndex == 4) break;
+			searchIndex++;
+		}
+		searchIndex = 0;
+		while((searchIndex < GNSS->numSat) && (statIndex < 4))	/* get medium signal quality */
+		{
+			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
+			if((signalQuality > 2) && (signalQuality <= 4))
+			{
+				GNSS->statSat[statIndex++] = signalQuality;
+			}
+			if(statIndex == 4) break;
+			searchIndex++;
+		}
+		searchIndex = 0;
+		while((searchIndex < GNSS->numSat) && (statIndex < 4))	/* get poor signal quality */
+		{
+			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
+			if(signalQuality <= 2)
+			{
+				GNSS->statSat[statIndex++] = signalQuality;
+			}
+			if(statIndex == 4) break;
+			searchIndex++;
+		}
+		loop++;
+	}
+}
+
 void GNSS_ParseNavigatorData(GNSS_StateHandle *GNSS) {
 	uShort.bytes[0] = GNSS_Handle.uartWorkingBuffer[18];
 	uShort.bytes[1] = GNSS_Handle.uartWorkingBuffer[19];
@@ -251,6 +301,7 @@ void GNSS_ParseNavigatorData(GNSS_StateHandle *GNSS) {
 	GNSS->min = GNSS_Handle.uartWorkingBuffer[23];
 	GNSS->sec = GNSS_Handle.uartWorkingBuffer[24];
 }
+
 
 /*!
  * Parse data to geodetic position solution standard.

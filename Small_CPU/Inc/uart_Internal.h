@@ -25,7 +25,7 @@
 #include "stm32f4xx_hal.h"
 
 
-#define BUFFER_NODATA_LOW	(0x15)		/* The read function needs a signiture which indicates that no data for processing is available.*/
+#define BUFFER_NODATA_LOW	(0x15)		/* The read function needs a signature which indicates that no data for processing is available.*/
 #define BUFFER_NODATA_HIGH  (0xA5)
 
 

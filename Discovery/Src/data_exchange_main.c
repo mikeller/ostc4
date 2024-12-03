@@ -1014,8 +1014,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		pStateReal->lifeData.dateBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_dr;
 		pStateReal->lifeData.timeBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_tr;
 
-		pStateReal->lifeData.gnssPosition.Latitude = dataIn.data[0].fLat;
-		pStateReal->lifeData.gnssPosition.Longitude = dataIn.data[0].fLon;
+		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
 	}
 
 	if(pStateReal->data_old__lost_connection_to_slave == 0)
