@@ -24,7 +24,6 @@
 #include "uart.h"
 #include "externalInterface.h"
 
-
 #ifdef ENABLE_CO2_SUPPORT
 static uint8_t CO2Connected = 0;						/* Binary indicator if a sensor is connected or not */
 static receiveStateCO2_t rxState = CO2RX_Ready;
@@ -84,8 +83,8 @@ void uartCo2_Control(void)
 	{
 		CO2Connected = 0;
 		externalInterface_SetCO2Scale(0.0);
-		UART_clearRxBuffer();
-		UART_StartDMA_Receiption();
+		UART_clearRxBuffer(&Uart1Ctrl);
+		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_CO2_SETUP;
 	}
 	if(localComState == UART_CO2_SETUP)
@@ -123,7 +122,7 @@ void uartCo2_Control(void)
 		else
 		{
 			localComState = UART_CO2_OPERATING;					/* sensor in streaming mode if not connected to mux => operating */
-			UART_StartDMA_Receiption();
+			UART_StartDMA_Receiption(&Uart1Ctrl);
 		}
 	}
 	lastComState = localComState;

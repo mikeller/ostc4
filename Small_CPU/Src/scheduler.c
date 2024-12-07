@@ -43,6 +43,7 @@
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "uart_Internal.h"
 #include "GNSS.h"
 #include "uartProtocol_GNSS.h"
 #include "math.h"

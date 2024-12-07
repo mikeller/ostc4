@@ -106,7 +106,7 @@ void uartO2_Control(void)
 
 		localComState = UART_O2_CHECK;
 		lastComState = UART_O2_CHECK;
-		UART_clearRxBuffer();
+		UART_clearRxBuffer(&Uart1Ctrl);
 		uartO2_SetupCmd(localComState,cmdString,&cmdLength);
 		UART_SendCmdString(cmdString);
 		rxState = O2RX_CONFIRM;

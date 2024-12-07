@@ -29,6 +29,8 @@
 static uint8_t SentinelConnected = 0;						/* Binary indicator if a sensor is connected or not */
 static receiveStateSentinel_t rxState = SENTRX_Ready;
 
+extern sUartComCtrl Uart1Ctrl;
+
 void ConvertByteToHexString(uint8_t byte, char* str)
 {
 	uint8_t worker = 0;
@@ -60,7 +62,7 @@ void uartSentinel_Control(void)
 	if(localComState == UART_SENTINEL_INIT)
 	{
 		SentinelConnected = 0;
-		UART_StartDMA_Receiption();
+		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_SENTINEL_IDLE;
 	}
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);

@@ -30,49 +30,50 @@
 
 #ifdef ENABLE_GPIO_V2
 extern UART_HandleTypeDef huart6;
-extern void UART6_RxCpltCallback(UART_HandleTypeDef *huart);
-extern void UART6_TxCpltCallback(UART_HandleTypeDef *huart);
+extern sUartComCtrl Uart6Ctrl;
 #endif
 
 /* Private variables ---------------------------------------------------------*/
-
-
-#define TX_BUF_SIZE				(40u)		/* max length for commands */
-#define CHUNK_SIZE				(25u)		/* the DMA will handle chunk size transfers */
-#define CHUNKS_PER_BUFFER		(6u)
-
-
 
 DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart1_tx;
 
 uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
 uint8_t txBuffer[CHUNK_SIZE];							/* tx uses less bytes */
 uint8_t txBufferQue[TX_BUF_SIZE];						/* In MUX mode command may be send shortly after each other => allow q 1 entry que */
-uint8_t txBufferQueLen;
 
-static uint8_t rxWriteIndex;							/* Index of the data item which is analysed */
-static uint8_t rxReadIndex;								/* Index at which new data is stared */
+
 static uint8_t lastCmdIndex;							/* Index of last command which has not been completely received */
-static uint8_t dmaRxActive;								/* Indicator if DMA reception needs to be started */
-static uint8_t dmaTxActive;								/* Indicator if DMA reception needs to be started */
+
+sUartComCtrl Uart1Ctrl;
+static  sUartComCtrl* pGnssCtrl = NULL;
 
 static uint32_t LastCmdRequestTick = 0;					/* Used by ADC handler to avoid interferance with UART communication */
 
-static uint8_t isEndIndication(uint8_t index);
-
 /* Exported functions --------------------------------------------------------*/
 
-void UART_clearRxBuffer(void)
+
+void UART_SetGnssCtrl(sUartComCtrl* pTarget)
+{
+	pGnssCtrl = pTarget;
+}
+
+sUartComCtrl* UART_GetGnssCtrl()
+{
+	return pGnssCtrl;
+}
+
+
+void UART_clearRxBuffer(sUartComCtrl* pUartCtrl)
 {
 	uint16_t index = 0;
 	do
 	{
-		rxBuffer[index++] = BUFFER_NODATA_LOW;
-		rxBuffer[index++] = BUFFER_NODATA_HIGH;
+		pUartCtrl->pRxBuffer[index++] = BUFFER_NODATA_LOW;
+		pUartCtrl->pRxBuffer[index++] = BUFFER_NODATA_HIGH;
 	} while (index < sizeof(rxBuffer));
 
-	rxReadIndex = 0;
-	rxWriteIndex = 0;
+	pUartCtrl->rxReadIndex = 0;
+	pUartCtrl->rxWriteIndex = 0;
 }
 
 void MX_USART1_UART_Init(void)
@@ -91,13 +92,21 @@ void MX_USART1_UART_Init(void)
 
   MX_USART1_DMA_Init();
 
-  UART_clearRxBuffer();
-  rxReadIndex = 0;
+  UART_clearRxBuffer(&Uart1Ctrl);
   lastCmdIndex = 0;
-  rxWriteIndex = 0;
-  dmaRxActive = 0;
-  dmaTxActive = 0;
-  txBufferQueLen = 0;
+
+  Uart1Ctrl.pHandle = &huart1;
+  Uart1Ctrl.rxWriteIndex = 0;
+  Uart1Ctrl.rxReadIndex = 0;
+  Uart1Ctrl.dmaRxActive = 0;
+  Uart1Ctrl.dmaTxActive = 0;
+  Uart1Ctrl.pRxBuffer = rxBuffer;
+  Uart1Ctrl.pTxBuffer = txBuffer;
+  Uart1Ctrl.txBufferQueLen = 0;
+
+#ifndef ENABLE_GPIO_V2
+  UART_SetGnssCtrl(&Uart1Ctrl);
+#endif
 }
 
 
@@ -109,9 +118,9 @@ void MX_USART1_UART_DeInit(void)
 	HAL_DMA_Abort(&hdma_usart1_tx);
 	HAL_DMA_DeInit(&hdma_usart1_tx);
 	HAL_UART_DeInit(&huart1);
-	dmaRxActive = 0;
-	dmaTxActive = 0;
-	txBufferQueLen = 0;
+	Uart1Ctrl.dmaRxActive = 0;
+	Uart1Ctrl.dmaTxActive = 0;
+	Uart1Ctrl.txBufferQueLen = 0;
 }
 
 void  MX_USART1_DMA_Init()
@@ -156,7 +165,7 @@ void  MX_USART1_DMA_Init()
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 }
 
-void  UART_MUX_SelectAddress(uint8_t muxAddress)
+void UART_MUX_SelectAddress(uint8_t muxAddress)
 {
 	uint8_t indexstr[4];
 
@@ -166,14 +175,14 @@ void  UART_MUX_SelectAddress(uint8_t muxAddress)
 		indexstr[1] = muxAddress;
 		indexstr[2] = 0x0D;
 		indexstr[3] = 0x0A;
-		if(!dmaTxActive)
+		if(!Uart1Ctrl.dmaTxActive)
 		{
 			memcpy(txBuffer, indexstr, 4);
-			dmaTxActive = 0;
+			 Uart1Ctrl.dmaTxActive = 0;
 			if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,4))
 			{
-				dmaTxActive = 1;
-				while(dmaTxActive)
+				 Uart1Ctrl.dmaTxActive = 1;
+				while(Uart1Ctrl.dmaTxActive)
 				{
 					HAL_Delay(1);
 				}
@@ -182,7 +191,7 @@ void  UART_MUX_SelectAddress(uint8_t muxAddress)
 		else
 		{
 			memcpy(txBufferQue, indexstr, 4);
-			txBufferQueLen = 4;
+			Uart1Ctrl.txBufferQueLen = 4;
 		}
 	}
 }
@@ -192,18 +201,18 @@ void UART_SendCmdString(uint8_t *cmdString)
 {
 	uint8_t cmdLength = strlen((char*)cmdString);
 
-	if(dmaTxActive == 0)
+	if(Uart1Ctrl.dmaTxActive == 0)
 	{
 		if(cmdLength < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 		{
-			if(dmaRxActive == 0)
+			if(Uart1Ctrl.dmaRxActive == 0)
 			{
-				UART_StartDMA_Receiption();
+				UART_StartDMA_Receiption(&Uart1Ctrl);
 			}
 			memcpy(txBuffer, cmdString, cmdLength);
 			if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,cmdLength))
 			{
-				dmaTxActive = 1;
+				Uart1Ctrl.dmaTxActive = 1;
 				LastCmdRequestTick = HAL_GetTick();
 			}
 		}
@@ -211,7 +220,7 @@ void UART_SendCmdString(uint8_t *cmdString)
 	else
 	{
 		memcpy(txBufferQue, cmdString, cmdLength);
-		txBufferQueLen = cmdLength;
+		Uart1Ctrl.txBufferQueLen = cmdLength;
 	}
 }
 
@@ -219,15 +228,18 @@ void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
 {
 	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 	{
-		if(dmaRxActive == 0)
+		if(pGnssCtrl != NULL)
 		{
-			UART_StartDMA_Receiption();
-		}
-		memcpy(txBuffer, cmd, len);
-		if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,len))
-		{
-			dmaTxActive = 1;
-			LastCmdRequestTick = HAL_GetTick();
+			if(pGnssCtrl->dmaRxActive == 0)
+			{
+				UART_StartDMA_Receiption(pGnssCtrl);
+			}
+			memcpy(pGnssCtrl->pTxBuffer, cmd, len);
+			if(HAL_OK == HAL_UART_Transmit_DMA(pGnssCtrl->pHandle,pGnssCtrl->pTxBuffer,len))
+			{
+				pGnssCtrl->dmaTxActive = 1;
+				LastCmdRequestTick = HAL_GetTick();
+			}
 		}
 	}
 }
@@ -259,15 +271,15 @@ void StringToUInt64(char *pstr, uint64_t *puint64)
 	*puint64 = result;
 }
 
-void UART_StartDMA_Receiption()
+void UART_StartDMA_Receiption(sUartComCtrl* pUartCtrl)
 {
-	if(dmaRxActive == 0)
+	if(pUartCtrl->dmaRxActive == 0)
 	{
-    	if(((rxWriteIndex / CHUNK_SIZE) != (rxReadIndex / CHUNK_SIZE)) || ((isEndIndication(rxWriteIndex)) && (isEndIndication(rxWriteIndex + 1))))	/* start next transfer if we did not catch up with read index */
+    	if(((pUartCtrl->rxWriteIndex / CHUNK_SIZE) != (pUartCtrl->rxReadIndex / CHUNK_SIZE)) || ((UART_isEndIndication(pUartCtrl, pUartCtrl->rxWriteIndex)) && (UART_isEndIndication(pUartCtrl, pUartCtrl->rxWriteIndex + 1))))	/* start next transfer if we did not catch up with read index */
     	{
-			if(HAL_OK == HAL_UART_Receive_DMA (&huart1, &rxBuffer[rxWriteIndex], CHUNK_SIZE))
+			if(HAL_OK == HAL_UART_Receive_DMA (pUartCtrl->pHandle, &pUartCtrl->pRxBuffer[pUartCtrl->rxWriteIndex], CHUNK_SIZE))
 			{
-				dmaRxActive = 1;
+				pUartCtrl->dmaRxActive = 1;
 			}
     	}
 	}
@@ -282,67 +294,76 @@ void UART_ChangeBaudrate(uint32_t newBaudrate)
 	HAL_NVIC_SetPriority(USART1_IRQn, 1, 3);
 	HAL_NVIC_EnableIRQ(USART1_IRQn);
 
-	UART_clearRxBuffer();
-	rxReadIndex = 0;
-	rxWriteIndex = 0;
-	dmaRxActive = 0;
-	txBufferQueLen = 0;
+	UART_clearRxBuffer(&Uart1Ctrl);
+	Uart1Ctrl.rxReadIndex = 0;
+	Uart1Ctrl.rxWriteIndex = 0;
+	Uart1Ctrl.dmaRxActive = 0;
+	Uart1Ctrl.txBufferQueLen = 0;
 }
 
+void UART_HandleRxComplete(sUartComCtrl* pUartCtrl)
+{
+	pUartCtrl->dmaRxActive = 0;
+	pUartCtrl->rxWriteIndex+=CHUNK_SIZE;
+	if(pUartCtrl->rxWriteIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+	{
+		pUartCtrl->rxWriteIndex = 0;
+	}
+	UART_StartDMA_Receiption(pUartCtrl);
+}
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if(huart == &huart1)
-    {
-    	dmaRxActive = 0;
-    	rxWriteIndex+=CHUNK_SIZE;
-    	if(rxWriteIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-    	{
-    		rxWriteIndex = 0;
-    	}
-		UART_StartDMA_Receiption();
-    }
+	if(huart == &huart1)
+	{
+		UART_HandleRxComplete(&Uart1Ctrl);
+	}
 #ifdef ENABLE_GPIO_V2
-    if(huart == &huart6)
-    {
-    	UART6_RxCpltCallback(huart);
-    }
+	if(huart == &huart6)
+	{
+		UART_HandleRxComplete(&Uart6Ctrl);
+	}
 #endif
+}
+
+void UART_HandleTxComplete(sUartComCtrl* pUartCtrl)
+{
+	pUartCtrl->dmaTxActive = 0;
+	UART_WriteData(pUartCtrl);
+	if(pUartCtrl->txBufferQueLen)
+	{
+		memcpy(pUartCtrl->pTxBuffer, pUartCtrl->pTxQue, pUartCtrl->txBufferQueLen);
+		HAL_UART_Transmit_DMA(pUartCtrl->pHandle,pUartCtrl->pTxBuffer,pUartCtrl->txBufferQueLen);
+		pUartCtrl->dmaTxActive = 1;
+		pUartCtrl->txBufferQueLen = 0;
+	}
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &huart1)
 	{
-		dmaTxActive = 0;
-		UART_WriteData();
-		if(txBufferQueLen)
-		{
-			memcpy(txBuffer, txBufferQue, txBufferQueLen);
-			HAL_UART_Transmit_DMA(&huart1,txBuffer,txBufferQueLen);
-			dmaTxActive = 1;
-			txBufferQueLen = 0;
-		}
+		UART_HandleTxComplete(&Uart1Ctrl);
 	}
 #ifdef ENABLE_GPIO_V2
 	if(huart == &huart6)
 	{
-		UART6_TxCpltCallback(huart);
+		UART_HandleTxComplete(&Uart6Ctrl);
 	}
 #endif
 }
 
-uint8_t isEndIndication(uint8_t index)
+uint8_t UART_isEndIndication(sUartComCtrl* pCtrl, uint8_t index)
 {
 	uint8_t ret = 0;
 	if(index % 2)
 	{
-		if(rxBuffer[index] == BUFFER_NODATA_HIGH)
+		if(pCtrl->pRxBuffer[index] == BUFFER_NODATA_HIGH)
 		{
 			ret = 1;
 		}
 	}
 	else
 	{
-		if(rxBuffer[index] == BUFFER_NODATA_LOW)
+		if(pCtrl->pRxBuffer[index] == BUFFER_NODATA_LOW)
 		{
 			ret = 1;
 		}
@@ -352,35 +373,58 @@ uint8_t isEndIndication(uint8_t index)
 }
 void UART_ReadData(uint8_t sensorType)
 {
-	uint8_t localRX = rxReadIndex;
-	uint8_t futureIndex = rxReadIndex + 1;
+	uint8_t localRX;
+	uint8_t futureIndex;
 	uint8_t moreData = 0;
 
+	sUartComCtrl* pUartCtrl;
+
+	if(sensorType == SENSOR_GNSS)
+	{
+#ifdef ENABLE_GPIO_V2
+		pUartCtrl = &Uart6Ctrl;
+#else
+		pUartCtrl = &Uart1Ctrl;
+#endif
+	}
+	else
+	{
+		pUartCtrl = &Uart1Ctrl;
+	}
+	localRX = pUartCtrl->rxReadIndex;
+	futureIndex = pUartCtrl->rxReadIndex + 1;
 	if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
 	{
 		futureIndex = 0;
 	}
 
-	if((!isEndIndication(localRX)) || (!isEndIndication(futureIndex)))	do
+	if(!UART_isEndIndication(pUartCtrl, futureIndex))
 	{
-		while((!isEndIndication(localRX)) || (moreData))
+		moreData = 1;
+	}
+	
+	//if((!isEndIndication(pUartCtrl, localRX)) || (!isEndIndication(pUartCtrl,futureIndex)))	do
+	if((!UART_isEndIndication(pUartCtrl, localRX)) || (moreData))
+	do
+	{
+		while((!UART_isEndIndication(pUartCtrl, localRX)) || (moreData))
 		{
 			moreData = 0;
 			switch (sensorType)
 			{
 				case SENSOR_MUX:
-				case SENSOR_DIGO2:	uartO2_ProcessData(rxBuffer[localRX]);
+				case SENSOR_DIGO2:	uartO2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 					break;
 	#ifdef ENABLE_CO2_SUPPORT
-				case SENSOR_CO2:	uartCo2_ProcessData(rxBuffer[localRX]);
+				case SENSOR_CO2:	uartCo2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 					break;
 	#endif
-	#ifdef ENABLE_GNSS_SUPPORT
-					case SENSOR_GNSS:	uartGnss_ProcessData(rxBuffer[localRX]);
+	#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+					case SENSOR_GNSS:	uartGnss_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 							break;
 	#endif
 	#ifdef ENABLE_SENTINEL_MODE
-				case SENSOR_SENTINEL:	uartSentinel_ProcessData(rxBuffer[localRX]);
+				case SENSOR_SENTINEL:	uartSentinel_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 					break;
 	#endif
 				default:
@@ -388,19 +432,19 @@ void UART_ReadData(uint8_t sensorType)
 			}
 			if(localRX % 2)
 			{
-				rxBuffer[localRX] = BUFFER_NODATA_HIGH;
+				pUartCtrl->pRxBuffer[localRX] = BUFFER_NODATA_HIGH;
 			}
 			else
 			{
-				rxBuffer[localRX] = BUFFER_NODATA_LOW;
+				pUartCtrl->pRxBuffer[localRX] = BUFFER_NODATA_LOW;
 			}
 
 			localRX++;
-			rxReadIndex++;
-			if(rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+			pUartCtrl->rxReadIndex++;
+			if(pUartCtrl->rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
 			{
 				localRX = 0;
-				rxReadIndex = 0;
+				pUartCtrl->rxReadIndex = 0;
 			}
 			futureIndex++;
 			if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
@@ -408,48 +452,48 @@ void UART_ReadData(uint8_t sensorType)
 				futureIndex = 0;
 			}
 		}
-		if(!isEndIndication(futureIndex))
+		if(!UART_isEndIndication(pUartCtrl, futureIndex))
 		{
 			moreData = 1;
 		}
 	} while(moreData);
 }
 
-void UART_WriteData(void)
+void UART_WriteData(sUartComCtrl* pUartCtrl)
 {
-	if(huart1.hdmatx->State == HAL_DMA_STATE_READY)
+	if(pUartCtrl->pHandle->hdmatx->State == HAL_DMA_STATE_READY)
 	{
-		huart1.gState = HAL_UART_STATE_READY;
-		dmaTxActive = 0;
+		pUartCtrl->pHandle->gState = HAL_UART_STATE_READY;
+		pUartCtrl->dmaTxActive = 0;
 	}
-	if(huart1.hdmarx->State == HAL_DMA_STATE_READY)
+	if(pUartCtrl->pHandle->hdmarx->State == HAL_DMA_STATE_READY)
 	{
-		huart1.RxState = HAL_UART_STATE_READY;
-		dmaRxActive = 0;
+		pUartCtrl->pHandle->RxState = HAL_UART_STATE_READY;
+		pUartCtrl->dmaRxActive = 0;
 	}
 }
 
 void UART_FlushRxBuffer(void)
 {
-	uint8_t futureIndex = rxReadIndex + 1;
+	uint8_t futureIndex = Uart1Ctrl.rxReadIndex + 1;
 
 	if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
 	{
 		futureIndex = 0;
 	}
-	while((rxBuffer[rxReadIndex] != BUFFER_NODATA_LOW) && (rxBuffer[futureIndex] != BUFFER_NODATA_HIGH))
+	while((rxBuffer[Uart1Ctrl.rxReadIndex] != BUFFER_NODATA_LOW) && (rxBuffer[futureIndex] != BUFFER_NODATA_HIGH))
 	{
-		if(rxReadIndex % 2)
+		if(Uart1Ctrl.rxReadIndex % 2)
 		{
-			rxBuffer[rxReadIndex++] = BUFFER_NODATA_HIGH;
+			rxBuffer[Uart1Ctrl.rxReadIndex++] = BUFFER_NODATA_HIGH;
 		}
 		else
 		{
-			rxBuffer[rxReadIndex++] = BUFFER_NODATA_LOW;
+			rxBuffer[Uart1Ctrl.rxReadIndex++] = BUFFER_NODATA_LOW;
 		}
-		if(rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+		if(Uart1Ctrl.rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
 		{
-			rxReadIndex = 0;
+			Uart1Ctrl.rxReadIndex = 0;
 		}
 		futureIndex++;
 		if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)

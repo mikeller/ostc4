@@ -39,6 +39,7 @@
 
 extern SGlobal global;
 extern UART_HandleTypeDef huart1;
+extern sUartComCtrl Uart1Ctrl;
 
 #define ADC_ANSWER_LENGTH		(5u)		/* 3424 will provide addr + 4 data bytes */
 #define ADC_TIMEOUT				(10u)		/* conversion stuck for unknown reason => restart */
@@ -936,7 +937,7 @@ static	uint8_t detectionDelayCnt = 0;
 										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_SENTINEL;
 										externalInterface_SwitchUART(EXT_INTERFACE_UART_SENTINEL);
 										externalInterface_CheckBaudrate(SENSOR_SENTINEL);
-										UART_StartDMA_Receiption();
+										UART_StartDMA_Receiption(&Uart1Ctrl);
 									}
 				break;
 
@@ -1144,7 +1145,7 @@ void externalInterface_HandleUART()
 		if(externalInterface_SensorState[activeSensorId] != UART_COMMON_INIT)
 		{
 			UART_ReadData(pmap[activeSensorId]);
-			UART_WriteData();
+			UART_WriteData(&Uart1Ctrl);
 		}
 		if(externalInterface_SensorState[activeSensorId] == UART_COMMON_INIT)
 		{
@@ -1175,7 +1176,8 @@ void externalInterface_HandleUART()
 			if((externalInterface_SensorState[activeSensorId] == UART_O2_REQ_O2)		/* timeout */
 					|| (externalInterface_SensorState[activeSensorId] == UART_O2_REQ_RAW)
 					|| (externalInterface_SensorState[activeSensorId] == UART_CO2_OPERATING)
-					|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_PVT))
+					|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_PVT)
+					|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_SAT))
 			{
 				forceMuxChannel = 1;
 				externalInterface_SensorState[activeSensorId] = UART_O2_IDLE;

@@ -448,6 +448,10 @@ int main(void) {
 			GPIO_GPS_BCKP_ON();
 			MX_USART6_UART_Init();
 			GNSS_Init(&GNSS_Handle, &huart6);
+#else
+#ifdef  ENABLE_GNSS_SUPPORT
+			GNSS_Init(&GNSS_Handle, &huart1);
+#endif
 #endif
 
 /*
