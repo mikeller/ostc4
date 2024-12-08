@@ -38,7 +38,7 @@ extern sUartComCtrl Uart6Ctrl;
 DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart1_tx;
 
 uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
-uint8_t txBuffer[CHUNK_SIZE];							/* tx uses less bytes */
+uint8_t txBuffer[TX_BUF_SIZE];							/* tx uses less bytes */
 uint8_t txBufferQue[TX_BUF_SIZE];						/* In MUX mode command may be send shortly after each other => allow q 1 entry que */
 
 

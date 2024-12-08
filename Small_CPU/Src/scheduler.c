@@ -37,6 +37,7 @@
 #include "rtc.h"
 #include "dma.h"
 #include "adc.h"
+#include "gpio.h"
 #include "calc_crush.h"
 #include "stm32f4xx_hal_rtc_ex.h"
 #include "decom.h"
@@ -1100,7 +1101,10 @@ void scheduleSleepMode(void)
 	global.dataSendToMaster.mode = 0;
 	global.deviceDataSendToMaster.mode = 0;
 	secondsCount = 0;
-	
+#ifdef ENABLE_GPIO_V2
+	uint16_t deepSleepCntDwn = 21600; 	/* 12 hours in 2 second steps */
+	GPIO_InitTypeDef GPIO_InitStruct;
+#endif
 	/* prevent button wake up problem while in sleep_prepare
 	 * sleep prepare does I2C_DeInit()
 	 */
@@ -1179,6 +1183,22 @@ void scheduleSleepMode(void)
 			global.mode = MODE_BOOT;
 		}
 		scheduleUpdateLifeData(2000);
+#ifdef ENABLE_GPIO_V2
+		if(deepSleepCntDwn)
+		{
+			deepSleepCntDwn--;
+			if(deepSleepCntDwn == 0)
+			{
+				GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+				GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+				GPIO_InitStruct.Pull = GPIO_NOPULL;
+				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
+				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+				GPIO_GPS_OFF();
+				uartGnss_SetState(UART_GNSS_INIT);
+			}
+		}
+#endif
 	}
 	while(global.mode == MODE_SLEEP);
 	/* new section for system after Standby */

@@ -35,10 +35,9 @@ static gnssRequest_s activeRequest = {0,0};
 
 static receiveStateGnss_t rxState = GNSSRX_READY;
 static uint8_t GnssConnected = 0;						/* Binary indicator if a sensor is connected or not */
-
 static uint8_t writeIndex = 0;
-
 static uint8_t dataToRead = 0;
+static uint8_t ReqPowerDown = 0;
 
 void ConvertByteToHexString(uint8_t byte, char* str)
 {
@@ -63,6 +62,13 @@ void ConvertByteToHexString(uint8_t byte, char* str)
 	}
 }
 
+void uartGnss_ReqPowerDown(uint8_t request)
+{
+	if(GnssConnected)
+	{
+		ReqPowerDown = 1;
+	}
+}
 
 uartGnssStatus_t uartGnss_GetState()
 {
@@ -98,6 +104,15 @@ void UART_Gnss_SendCmd(uint8_t GnssCmd)
 		case GNSSCMD_GET_NAVSAT_DATA: pData = getNavSat;
 									  txLength = sizeof(getNavSat) / sizeof(uint8_t);
 			break;
+		case GNSSCMD_MODE_PWS:		pData = setPowerLow;
+		  	  	  	  	  	  	  	txLength = sizeof(setPowerLow) / sizeof(uint8_t);
+		  	break;
+		case GNSSCMD_MODE_NORMAL:	pData = setPowerNormal;
+				  	  	  	  	   	txLength = sizeof(setPowerNormal) / sizeof(uint8_t);
+				  	break;
+		case GNSSCMD_SET_CONFIG:	pData = setConfig;
+						  	  	  	txLength = sizeof(setConfig) / sizeof(uint8_t);
+				     break;
 		default:
 			break;
 	}
@@ -115,7 +130,6 @@ void uartGnss_Control(void)
 	static uint8_t dataToggle = 0;
 	uint8_t activeSensor = 0;
 	sUartComCtrl* pUartCtrl = UART_GetGnssCtrl();
-//	uartGnssStatus_t localComState;
 
 	if(pUartCtrl == &Uart1Ctrl)
 	{
@@ -143,19 +157,41 @@ void uartGnss_Control(void)
 		case UART_GNSS_LOADCONF_2:	UART_Gnss_SendCmd(GNSSCMD_LOADCONF_2);
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
-		case UART_GNSS_IDLE:		if(dataToggle)
+		case UART_GNSS_PWRDOWN:		UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
+									rxState = GNSSRX_DETECT_ACK_0;
+				break;
+
+		case UART_GNSS_PWRUP:
+		case UART_GNSS_INACTIVE:	UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
+									rxState = GNSSRX_DETECT_ACK_0;
+									gnssState = UART_GNSS_PWRUP;
+				break;
+		case UART_GNSS_SETCONF:		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
+									rxState = GNSSRX_DETECT_ACK_0;
+				break;
+
+		case UART_GNSS_IDLE:		if(ReqPowerDown)
 									{
-										UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA);
-										gnssState = UART_GNSS_GET_PVT;
-										rxState = GNSSRX_DETECT_HEADER_0;
-										dataToggle = 0;
+										UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
+										gnssState = UART_GNSS_PWRDOWN;
+										rxState = GNSSRX_DETECT_ACK_0;
 									}
 									else
 									{
-										UART_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA);
-										gnssState = UART_GNSS_GET_SAT;
-										rxState = GNSSRX_DETECT_HEADER_0;
-										dataToggle = 1;
+										if(dataToggle)
+										{
+											UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA);
+											gnssState = UART_GNSS_GET_PVT;
+											rxState = GNSSRX_DETECT_HEADER_0;
+											dataToggle = 0;
+										}
+										else
+										{
+											UART_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA);
+											gnssState = UART_GNSS_GET_SAT;
+											rxState = GNSSRX_DETECT_HEADER_0;
+											dataToggle = 1;
+										}
 									}
 				break;
 		default:
@@ -168,6 +204,7 @@ void uartGnss_Control(void)
 
 }
 
+
 void uartGnss_ProcessData(uint8_t data)
 {
 	static uint16_t rxLength = 0;
@@ -175,6 +212,15 @@ void uartGnss_ProcessData(uint8_t data)
 	static uint8_t ck_B = 0;
 	static uint8_t ck_A_Ref = 0;
 	static uint8_t ck_B_Ref = 0;
+	uint8_t activeSensor = 0;
+
+	sUartComCtrl* pUartCtrl = UART_GetGnssCtrl();
+
+	if(pUartCtrl == &Uart1Ctrl)
+	{
+		activeSensor = externalInterface_GetActiveUartSensor();
+		gnssState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
+	}
 
 	GNSS_Handle.uartWorkingBuffer[writeIndex++] = data;
 	if((rxState >= GNSSRX_DETECT_HEADER_2) && (rxState < GNSSRX_READ_CK_A))
@@ -217,7 +263,22 @@ void uartGnss_ProcessData(uint8_t data)
 			break;
 		case GNSSRX_DETECT_ACK_3:		if((data == 0x01))
 										{
-											if((gnssState >= UART_GNSS_LOADCONF_0) && (gnssState <= UART_GNSS_LOADCONF_2))
+											rxState = GNSSRX_READY;
+											if(gnssState == UART_GNSS_PWRUP)
+											{
+												gnssState = UART_GNSS_IDLE;
+											}
+											else if(gnssState == UART_GNSS_PWRDOWN)
+											{
+												rxState = GNSSRX_DETECT_ACK_0;
+												UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
+												gnssState = UART_GNSS_SETCONF;
+											}
+											else if(gnssState == UART_GNSS_SETCONF)
+											{
+												gnssState = UART_GNSS_INACTIVE;
+											}
+											else if((gnssState >= UART_GNSS_LOADCONF_0) && (gnssState <= UART_GNSS_LOADCONF_2))
 											{
 												if(gnssState == UART_GNSS_LOADCONF_2)
 												{
@@ -229,7 +290,6 @@ void uartGnss_ProcessData(uint8_t data)
 												}
 											}
 											GnssConnected = 1;
-											rxState = GNSSRX_READY;
 										}
 										else
 										{
@@ -292,6 +352,10 @@ void uartGnss_ProcessData(uint8_t data)
 
 		default:	rxState = GNSSRX_READY;
 			break;
+	}
+	if(pUartCtrl == &Uart1Ctrl)
+	{
+		externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,gnssState);
 	}
 }
 

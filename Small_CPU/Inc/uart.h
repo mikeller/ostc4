@@ -28,7 +28,7 @@
 #define BUFFER_NODATA_LOW	(0x15)		/* The read function needs a signiture which indicates that no data for processing is available.*/
 #define BUFFER_NODATA_HIGH  (0xA5)
 
-#define TX_BUF_SIZE				(40u)		/* max length for commands */
+#define TX_BUF_SIZE				(80u)		/* max length for commands */
 #define CHUNK_SIZE				(80u)		/* the DMA will handle chunk size transfers */
 #define CHUNKS_PER_BUFFER		(3u)
 

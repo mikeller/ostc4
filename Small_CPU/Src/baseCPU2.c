@@ -135,6 +135,7 @@
 #include "spi.h"
 #include "rtc.h"
 #include "adc.h"
+#include "gpio.h"
 #include "compass.h"
 #include "pressure.h"
 #include "batteryGasGauge.h"
@@ -144,6 +145,7 @@
 #include "externalInterface.h"
 #include "uart.h"
 #include "uart_Internal.h"
+#include "uartProtocol_GNSS.h"
 #include "GNSS.h"
 
 
@@ -215,12 +217,6 @@ uint8_t firmwareVersionLow(void) {
 #define BUTTON_OSTC_HAL_RCC_GPIO_CLK_ENABLE()					__HAL_RCC_GPIOA_CLK_ENABLE()
 #define BUTTON_OSTC_IRQn              EXTI0_IRQn
 
-#define VIBRATION_CONTROL_PIN			GPIO_PIN_3		/* PortA */
-#define LED_CONTROL_PIN_RED        		GPIO_PIN_2		/* PortA */
-#define LED_CONTROL_PIN_GREEN      		GPIO_PIN_1		/* PortA */
-#define MAINCPU_CONTROL_PIN				GPIO_PIN_0		/* PortC */
-#define	GPS_POWER_CONTROL_PIN			GPIO_PIN_15		/* PortB */
-#define	GPS_BCKP_CONTROL_PIN			GPIO_PIN_14		/* PortB */
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -232,22 +228,6 @@ SBackup backup;
 static void EXTI_Wakeup_Button_Init(void);
 static void EXTI_Wakeup_Button_DeInit(void);
 
-static void GPIO_LEDs_VIBRATION_Init(void);
-static void GPIO_Power_MainCPU_Init(void);
-static void GPIO_Power_MainCPU_ON(void);
-static void GPIO_Power_MainCPU_OFF(void);
-#ifdef ENABLE_GPIO_V2
-static void GPIO_LED_RED_OFF(void);
-static void GPIO_LED_RED_ON(void);
-static void GPIO_LED_GREEN_OFF(void);
-static void GPIO_LED_GREEN_ON(void);
-static void GPIO_VIBRATION_OFF(void);
-static void GPIO_VIBRATION_ON(void);
-static void GPIO_GPS_OFF(void);
-static void GPIO_GPS_ON(void);
-static void GPIO_GPS_BCKP_OFF(void);
-static void GPIO_GPS_BCKP_ON(void);
-#endif
 #ifdef DEBUG_I2C_LINES
 void GPIO_test_I2C_lines(void);
 #endif
@@ -294,6 +274,9 @@ int main(void) {
 #endif
 
     uint8_t extInterfaceActive = 0;
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+    uint32_t shutdownTick = 0;
+#endif
 
 	HAL_Init();
 	SystemClock_Config();
@@ -454,33 +437,6 @@ int main(void) {
 #endif
 #endif
 
-/*
- * Demo code from SimpleMethod
- * called 1/second
-			while (1) {
-
-				if ((HAL_GetTick() - Timer) > 1000) {
-					GNSS_GetUniqID(&GNSS_Handle);
-					GNSS_ParseBuffer(&GNSS_Handle);
-					HAL_Delay(250);
-					GNSS_GetPVTData(&GNSS_Handle);
-					GNSS_ParseBuffer(&GNSS_Handle);
-					printf("Day: %d-%d-%d \r\n", GNSS_Handle.day, GNSS_Handle.month,GNSS_Handle.year);
-					printf("Time: %d:%d:%d \r\n", GNSS_Handle.hour, GNSS_Handle.min,GNSS_Handle.sec);
-					printf("Status of fix: %d \r\n", GNSS_Handle.fixType);
-					printf("Latitude: %f \r\n", GNSS_Handle.fLat);
-					printf("Longitude: %f \r\n",(float) GNSS_Handle.lon / 10000000.0);
-					printf("Height above ellipsoid: %d \r\n", GNSS_Handle.height);
-					printf("Height above mean sea level: %d \r\n", GNSS_Handle.hMSL);
-					printf("Ground Speed (2-D): %d \r\n", GNSS_Handle.gSpeed);
-					printf("Unique ID: %04X %04X %04X %04X %04X \n\r",
-							GNSS_Handle.uniqueID[0], GNSS_Handle.uniqueID[1],
-							GNSS_Handle.uniqueID[2], GNSS_Handle.uniqueID[3],
-							GNSS_Handle.uniqueID[4], GNSS_Handle.uniqueID[5]);
-					Timer = HAL_GetTick();
-				}
-*/
-
 			global.mode = MODE_SURFACE;
 			break;
 
@@ -533,8 +489,29 @@ int main(void) {
 
 		case MODE_SHUTDOWN:
 			HAL_Delay(200);
-			global.mode = MODE_SLEEP;
+
 			MX_SPI3_Init();
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+			if(shutdownTick == 0)
+			{
+				shutdownTick = HAL_GetTick();
+				uartGnss_ReqPowerDown(1);
+			}
+#ifdef ENABLE_GNSS_SUPPORT
+			externalInterface_HandleUART();
+#else
+			UART6_HandleUART();
+#endif
+			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 5000))
+			{
+				global.mode = MODE_SLEEP;
+			}
+#else
+			global.mode = MODE_SLEEP;
+#endif
+
+
 			break;
 
 		case MODE_SLEEP:
@@ -809,47 +786,6 @@ void HAL_SYSTICK_Callback(void) {
  }
  */
 
-static void GPIO_LEDs_VIBRATION_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	__GPIOA_CLK_ENABLE();
-	GPIO_InitStructure.Pin = LED_CONTROL_PIN_RED;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_RED, GPIO_PIN_SET);
-
-	GPIO_InitStructure.Pin = LED_CONTROL_PIN_GREEN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_SET);
-
-	GPIO_InitStructure.Pin = VIBRATION_CONTROL_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_RESET);
-
-	__GPIOB_CLK_ENABLE();
-	GPIO_InitStructure.Pin = GPS_POWER_CONTROL_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOB, GPS_POWER_CONTROL_PIN, GPIO_PIN_SET);
-
-	GPIO_InitStructure.Pin = GPS_BCKP_CONTROL_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
 void GPIO_new_DEBUG_Init(void) {
 #ifdef DEBUG_PIN_ACTIVE
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -874,67 +810,6 @@ void GPIO_new_DEBUG_HIGH(void) {
 	HAL_GPIO_WritePin(GPIOC,LED_CONTROL_PIN,GPIO_PIN_SET);
 #endif
 }
-
-static void GPIO_Power_MainCPU_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-	__GPIOC_CLK_ENABLE();
-	GPIO_InitStructure.Pin = MAINCPU_CONTROL_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOC, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
-static void GPIO_Power_MainCPU_ON(void) {
-	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
-static void GPIO_Power_MainCPU_OFF(void) {
-	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_SET);
-}
-
-#ifdef ENABLE_GPIO_V2
-static void GPIO_LED_GREEN_ON(void) {
-	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_RESET);
-}
-
-static void GPIO_LED_GREEN_OFF(void) {
-	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_SET);
-}
-
-static void GPIO_LED_RED_ON(void) {
-	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_RED, GPIO_PIN_RESET);
-}
-
-static void GPIO_LED_RED_OFF(void) {
-	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_RED, GPIO_PIN_SET);
-}
-
-static void GPIO_VIBRATION_ON(void) {
-	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_SET);
-}
-
-static void GPIO_VIBRATION_OFF(void) {
-	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
-static void GPIO_GPS_ON(void) {
-	HAL_GPIO_WritePin( GPIOB, GPS_POWER_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
-static void GPIO_GPS_OFF(void) {
-	HAL_GPIO_WritePin( GPIOB, GPS_POWER_CONTROL_PIN, GPIO_PIN_SET);
-}
-
-static void GPIO_GPS_BCKP_ON(void) {
-	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_SET);
-}
-
-static void GPIO_GPS_BCKP_OFF(void) {
-	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
-}
-#endif
 
 /**
  * @brief  Configures EXTI Line0 (connected to PA0 + PA1 pin) in interrupt mode
@@ -1023,9 +898,10 @@ void sleep_prepare(void) {
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_3 | GPIO_PIN_8 | GPIO_PIN_9); /* debug */
 #endif
 
+/*
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
-
+*/
 	GPIO_InitStruct.Pin =  GPIO_PIN_All ^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | EXT33V_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
 
 	HAL_GPIO_Init( GPIOC, &GPIO_InitStruct);
@@ -1045,7 +921,7 @@ void sleep_prepare(void) {
 	GPIO_LED_RED_OFF();
 	GPIO_VIBRATION_OFF();
 	GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
-	GPIO_GPS_OFF();
+/*	GPIO_GPS_OFF();				will be done in transition slleep => deep sleep */
 
 	MX_USART6_UART_DeInit();
 #endif

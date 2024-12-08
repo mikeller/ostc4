@@ -37,9 +37,13 @@
 		UART_GNSS_IDLE,			/* sensor detected and no communication pending */
 		UART_GNSS_ERROR,		/* Error message received from sensor */
 		UART_GNSS_WARMUP = 10,
+		UART_GNSS_INACTIVE,		/* no requests to the receiver */
 		UART_GNSS_LOADCONF_0,
 		UART_GNSS_LOADCONF_1,
 		UART_GNSS_LOADCONF_2,
+		UART_GNSS_PWRDOWN,
+		UART_GNSS_PWRUP,
+		UART_GNSS_SETCONF,		/* save configuration */
 		UART_GNSS_GET_PVT,
 		UART_GNSS_GET_SAT
   } uartGnssStatus_t;
@@ -68,6 +72,9 @@
   	GNSSCMD_LOADCONF_0 = 0,
 	GNSSCMD_LOADCONF_1,
 	GNSSCMD_LOADCONF_2,
+	GNSSCMD_MODE_PWS,
+	GNSSCMD_MODE_NORMAL,
+	GNSSCMD_SET_CONFIG,
 	GNSSCMD_GET_NAV_DATA,
 	GNSSCMD_GET_PVT_DATA,
 	GNSSCMD_GET_POSLLH_DATA,
@@ -80,6 +87,7 @@
     uint8_t id;
   } gnssRequest_s;
 
+void uartGnss_ReqPowerDown(uint8_t request);
 uartGnssStatus_t uartGnss_GetState(void);
 void uartGnss_SetState(uartGnssStatus_t newState);
 void uartGnss_Control(void);
