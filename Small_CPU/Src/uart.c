@@ -224,6 +224,23 @@ void UART_SendCmdString(uint8_t *cmdString)
 	}
 }
 
+void UART_AddFletcher(uint8_t* pBuffer, uint8_t length)
+{
+	uint8_t ck_A = 0;
+	uint8_t ck_B = 0;
+	uint8_t index = 0;
+
+
+	pBuffer += 2; /* skip sync chars */
+	for(index = 2; index < length; index++)
+	{
+		ck_A += *pBuffer++;
+		ck_B += ck_A;
+	}
+	*pBuffer++ = ck_A;
+	*pBuffer++ = ck_B;
+}
+
 void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
 {
 	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
@@ -235,6 +252,8 @@ void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
 				UART_StartDMA_Receiption(pGnssCtrl);
 			}
 			memcpy(pGnssCtrl->pTxBuffer, cmd, len);
+			UART_AddFletcher(pGnssCtrl->pTxBuffer, len);
+			len += 2;
 			if(HAL_OK == HAL_UART_Transmit_DMA(pGnssCtrl->pHandle,pGnssCtrl->pTxBuffer,len))
 			{
 				pGnssCtrl->dmaTxActive = 1;
