@@ -158,7 +158,7 @@ void UART6_HandleUART()
 	static uint8_t retryRequest = 0;
 	static uint32_t lastRequestTick = 0;
 	static uint32_t TriggerTick = 0;
-	static uint8_t timeToTrigger = 0;
+	static uint16_t timeToTrigger = 0;
 	uint32_t tick =  HAL_GetTick();
 
 	uartGnssStatus_t gnssState = uartGnss_GetState();
@@ -174,6 +174,16 @@ void UART6_HandleUART()
 			TriggerTick = tick - 10;	/* just to make sure control is triggered */
 			timeToTrigger = 1;
 			retryRequest = 0;
+		}
+		else if((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested()))		/* send dummy bytes to wakeup receiver */
+		{
+			txBufferUart6[0] = 0xFF;
+			txBufferUart6[1] = 0xFF;
+			HAL_UART_Transmit_DMA(Uart6Ctrl.pHandle, Uart6Ctrl.pTxBuffer,2);
+			timeToTrigger = 500;						/* receiver needs 500ms for wakeup */
+			lastRequestTick = tick;
+			gnssState = UART_GNSS_PWRUP;
+			uartGnss_SetState(gnssState);
 		}
 		else if(((retryRequest == 0)		/* timeout or error */
 				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE))	/* retry if no answer after half request interval */
@@ -194,7 +204,7 @@ void UART6_HandleUART()
 			retryRequest = 0;
 			timeToTrigger = 1;
 
-			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT))	/* timeout */
+			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT) || (gnssState == UART_GNSS_PWRUP))	/* timeout */
 			{
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);

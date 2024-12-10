@@ -41,6 +41,7 @@
 		UART_GNSS_LOADCONF_0,
 		UART_GNSS_LOADCONF_1,
 		UART_GNSS_LOADCONF_2,
+		UART_GNSS_SETMODE_MOBILE,
 		UART_GNSS_PWRDOWN,
 		UART_GNSS_PWRUP,
 		UART_GNSS_SETCONF,		/* save configuration */
@@ -72,6 +73,7 @@
   	GNSSCMD_LOADCONF_0 = 0,
 	GNSSCMD_LOADCONF_1,
 	GNSSCMD_LOADCONF_2,
+	GNSSCMD_SETMOBILE,
 	GNSSCMD_MODE_PWS,
 	GNSSCMD_MODE_NORMAL,
 	GNSSCMD_SET_CONFIG,
@@ -88,6 +90,7 @@
   } gnssRequest_s;
 
 void uartGnss_ReqPowerDown(uint8_t request);
+uint8_t uartGnss_isPowerDownRequested(void);
 uartGnssStatus_t uartGnss_GetState(void);
 void uartGnss_SetState(uartGnssStatus_t newState);
 void uartGnss_Control(void);

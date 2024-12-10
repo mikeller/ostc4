@@ -66,8 +66,13 @@ void uartGnss_ReqPowerDown(uint8_t request)
 {
 	if(GnssConnected)
 	{
-		ReqPowerDown = 1;
+		ReqPowerDown = request;
 	}
+}
+
+uint8_t uartGnss_isPowerDownRequested()
+{
+	return ReqPowerDown;
 }
 
 uartGnssStatus_t uartGnss_GetState()
@@ -94,6 +99,9 @@ void UART_Gnss_SendCmd(uint8_t GnssCmd)
 				break;
 		case GNSSCMD_LOADCONF_2:	pData = setGNSS;
 									txLength = sizeof(setGNSS) / sizeof(uint8_t);
+				break;
+		case GNSSCMD_SETMOBILE:		pData = setPortableMode;
+									txLength = sizeof(setPortableMode) / sizeof(uint8_t);
 				break;
 		case GNSSCMD_GET_PVT_DATA:	pData = getPVTData;
 									txLength = sizeof(getPVTData) / sizeof(uint8_t);
@@ -157,12 +165,14 @@ void uartGnss_Control(void)
 		case UART_GNSS_LOADCONF_2:	UART_Gnss_SendCmd(GNSSCMD_LOADCONF_2);
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
+		case UART_GNSS_SETMODE_MOBILE: UART_Gnss_SendCmd(GNSSCMD_LOADCONF_2);
+									   rxState = GNSSRX_DETECT_ACK_0;
+				break;
 		case UART_GNSS_PWRDOWN:		UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
 
-		case UART_GNSS_PWRUP:
-		case UART_GNSS_INACTIVE:	UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
+		case UART_GNSS_PWRUP:		UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
 									rxState = GNSSRX_DETECT_ACK_0;
 									gnssState = UART_GNSS_PWRUP;
 				break;
@@ -264,30 +274,25 @@ void uartGnss_ProcessData(uint8_t data)
 		case GNSSRX_DETECT_ACK_3:		if((data == 0x01))
 										{
 											rxState = GNSSRX_READY;
-											if(gnssState == UART_GNSS_PWRUP)
+											switch(gnssState)
 											{
-												gnssState = UART_GNSS_IDLE;
-											}
-											else if(gnssState == UART_GNSS_PWRDOWN)
-											{
-												rxState = GNSSRX_DETECT_ACK_0;
-												UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
-												gnssState = UART_GNSS_SETCONF;
-											}
-											else if(gnssState == UART_GNSS_SETCONF)
-											{
-												gnssState = UART_GNSS_INACTIVE;
-											}
-											else if((gnssState >= UART_GNSS_LOADCONF_0) && (gnssState <= UART_GNSS_LOADCONF_2))
-											{
-												if(gnssState == UART_GNSS_LOADCONF_2)
-												{
-													gnssState = UART_GNSS_IDLE;
-												}
-												else
-												{
-													gnssState++;
-												}
+												case UART_GNSS_PWRUP: gnssState = UART_GNSS_IDLE;
+													break;
+												case UART_GNSS_PWRDOWN:	rxState = GNSSRX_DETECT_ACK_0;
+																		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
+																		gnssState = UART_GNSS_SETCONF;
+													break;
+												case UART_GNSS_SETCONF:	gnssState = UART_GNSS_INACTIVE;
+													break;
+												case UART_GNSS_LOADCONF_0:
+												case UART_GNSS_LOADCONF_1:	gnssState++;
+													break;
+												case UART_GNSS_LOADCONF_2:	gnssState = UART_GNSS_SETMODE_MOBILE;
+													break;
+												case UART_GNSS_SETMODE_MOBILE: gnssState = UART_GNSS_IDLE;
+													break;
+												default:
+													break;
 											}
 											GnssConnected = 1;
 										}
