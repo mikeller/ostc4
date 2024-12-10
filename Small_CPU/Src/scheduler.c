@@ -21,8 +21,6 @@
   */ 
 	
 	
-//#define DEBUGMODE
-
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "baseCPU2.h"
@@ -1115,7 +1113,7 @@ void scheduleSleepMode(void)
 	{
 		I2C_DeInit();
 
-#ifdef DEBUGMODE
+#ifdef ENABLE_SLEEP_DEBUG
 		HAL_Delay(2000);
 #else
 		RTC_StopMode_2seconds();
@@ -1189,12 +1187,13 @@ void scheduleSleepMode(void)
 			deepSleepCntDwn--;
 			if(deepSleepCntDwn == 0)
 			{
+				GPIO_GPS_OFF();
 				GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 				GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
 				GPIO_InitStruct.Pull = GPIO_NOPULL;
 				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
 				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
-				GPIO_GPS_OFF();
+				__HAL_RCC_GPIOB_CLK_DISABLE();
 				uartGnss_SetState(UART_GNSS_INIT);
 			}
 		}
