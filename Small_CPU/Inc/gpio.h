@@ -33,6 +33,7 @@
 #define	GPS_BCKP_CONTROL_PIN			GPIO_PIN_14		/* PortB */
 
 void GPIO_LEDs_VIBRATION_Init(void);
+void GPIO_GNSS_Init();
 void GPIO_Power_MainCPU_Init(void);
 void GPIO_Power_MainCPU_ON(void);
 void GPIO_Power_MainCPU_OFF(void);

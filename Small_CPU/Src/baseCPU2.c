@@ -147,6 +147,7 @@
 #include "uart_Internal.h"
 #include "uartProtocol_GNSS.h"
 #include "GNSS.h"
+#include "configuration.h"
 
 
 // From Common/Inc:
@@ -287,6 +288,7 @@ int main(void) {
 
 	MX_RTC_init();
 	GPIO_LEDs_VIBRATION_Init();
+	GPIO_GNSS_Init();
 	GPIO_new_DEBUG_Init(); // added 170322 hw
 	initGlobals();
 
@@ -506,6 +508,7 @@ int main(void) {
 			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 5000))
 			{
 				global.mode = MODE_SLEEP;
+				uartGnss_ReqPowerDown(0);	/* release power down request */
 			}
 #else
 			global.mode = MODE_SLEEP;
@@ -894,7 +897,7 @@ void sleep_prepare(void) {
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Pin = GPIO_PIN_All;
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
-#ifdef DEBUGMODE
+#ifdef ENABLE_SLEEP_DEBUG
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_3 | GPIO_PIN_8 | GPIO_PIN_9); /* debug */
 #endif
 
@@ -907,7 +910,7 @@ void sleep_prepare(void) {
 	HAL_GPIO_Init( GPIOC, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | VIBRATION_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN);
-#ifdef DEBUGMODE
+#ifdef ENABLE_SLEEP_DEBUG
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | GPIO_PIN_13 | GPIO_PIN_14); /* wake up button & debug */
 #endif
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStruct);
@@ -921,12 +924,14 @@ void sleep_prepare(void) {
 	GPIO_LED_RED_OFF();
 	GPIO_VIBRATION_OFF();
 	GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
-/*	GPIO_GPS_OFF();				will be done in transition slleep => deep sleep */
+/*	GPIO_GPS_OFF();				will be done in transition sleep => deep sleep */
 
 	MX_USART6_UART_DeInit();
 #endif
-#ifndef DEBUGMODE
+#ifndef ENABLE_SLEEP_DEBUG
+/*
 	__HAL_RCC_GPIOB_CLK_DISABLE();
+*/
 #endif
 	__HAL_RCC_GPIOH_CLK_DISABLE();
 

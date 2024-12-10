@@ -56,6 +56,11 @@ void GPIO_LEDs_VIBRATION_Init(void) {
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStructure);
 	HAL_GPIO_WritePin( GPIOA, VIBRATION_CONTROL_PIN, GPIO_PIN_RESET);
+}
+
+void GPIO_GNSS_Init()
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
 
 	__GPIOB_CLK_ENABLE();
 	GPIO_InitStructure.Pin = GPS_POWER_CONTROL_PIN;
