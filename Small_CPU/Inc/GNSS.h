@@ -91,6 +91,8 @@ typedef struct
 	uint8_t numSat;
 	uint8_t statSat[4];
 
+	uint8_t alive;
+
 }GNSS_StateHandle;
 
 GNSS_StateHandle GNSS_Handle;

@@ -138,6 +138,8 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 	{
 		GNSS->fLat = searchCnt++;
 	}
+
+	GNSS->alive = !GNSS->alive;
 }
 
 /*!

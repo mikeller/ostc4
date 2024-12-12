@@ -1206,6 +1206,11 @@ void scheduleSleepMode(void)
 	setButtonsNow = 0;
 	reinitGlobals();
 	ReInit_battery_charger_status_pins();
+
+	if(deepSleepCntDwn == 0)
+	{
+		GPIO_GNSS_Init();
+	}
 }
 
 
@@ -1771,6 +1776,8 @@ void copyGNSSdata(void)
 	global.dataSendToMaster.data[0].gnssInfo.fLon = GNSS_Handle.fLon;
 	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
 	global.dataSendToMaster.data[0].gnssInfo.numSat = GNSS_Handle.numSat;
+	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
+
 	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 }
 

@@ -505,7 +505,7 @@ int main(void) {
 #else
 			UART6_HandleUART();
 #endif
-			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 5000))
+			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 3000))
 			{
 				global.mode = MODE_SLEEP;
 				uartGnss_ReqPowerDown(0);	/* release power down request */
@@ -526,6 +526,11 @@ int main(void) {
 			GPIO_LEDs_VIBRATION_Init();
 			sleep_prepare();
 
+			while(time_elapsed_ms(shutdownTick,HAL_GetTick()) < 1000 )	/* delay shutdown till shutdown animation is finished */
+			{
+				HAL_Delay(10);
+			}
+			shutdownTick = 0;
 			scheduleSleepMode();
 			if (hasExternalClock())
 				SystemClock_Config_HSE();
@@ -934,8 +939,6 @@ void sleep_prepare(void) {
 */
 #endif
 	__HAL_RCC_GPIOH_CLK_DISABLE();
-
-	HAL_Delay(1000);
 }
 
 /*

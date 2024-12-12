@@ -169,6 +169,7 @@ typedef struct
 {
 	float fLat;
 	float fLon;
+	uint8_t alive;
 	uint8_t fixType;
 	uint8_t numSat;			/* number of available satellites */
 	uint8_t signalQual[4];	/* signal quality indicator for x sats */
