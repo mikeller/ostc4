@@ -460,9 +460,9 @@ int main(void) {
             global.no_fly_time_minutes = 0;
             global.lifeData.dive_time_seconds = 0;
             global.lifeData.dive_time_seconds_without_surface_time = 0;
-
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
             uartGnss_ReqPowerDown(1);
-
+#endif
             scheduleDiveMode();
             // done now in scheduler prior to change mode: global.seconds_since_last_dive = 1;
 
@@ -488,8 +488,9 @@ int main(void) {
 
             backup.no_fly_time_minutes = 0;
             backup.seconds_since_last_dive = 0;
-
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
             uartGnss_ReqPowerDown(0);
+#endif
 			break;
 
 		case MODE_SHUTDOWN:
