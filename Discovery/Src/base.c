@@ -571,7 +571,7 @@ int main(void)
             logbook_InitAndWrite(stateUsed);
 #endif
         	if(stateUsed == stateRealGetPointer())	/* Handle log entries while in dive mode*/
-                logbook_InitAndWrite(stateUsed);
+                logbook_InitAndWrite((SDiveState*)stateUsed);
         }
 #ifdef T7_DEBUG_RUNTIME
     	timeMainLoop = time_elapsed_ms(startTimeMainLoop, HAL_GetTick());

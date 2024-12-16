@@ -4072,7 +4072,7 @@ void t7_showPosition(void)
     	snprintf(text,60,
     			"\001%0.5f\n\r"
     			"\001%0.5f\n\r"
-    			,stateUsed->lifeData.gnssData.fLat ,stateUsed->lifeData.gnssData.fLon);
+    			,stateUsed->lifeData.gnssData.coord.fLat ,stateUsed->lifeData.gnssData.coord.fLon);
     }
     GFX_write_string(&FontT42, &t7cY0free, text, 1);
 

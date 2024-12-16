@@ -169,6 +169,11 @@ typedef struct
 {
 	float fLat;
 	float fLon;
+}SGnssCoord;
+
+typedef struct
+{
+	SGnssCoord coord;
 	uint8_t alive;
 	uint8_t fixType;
 	uint8_t numSat;			/* number of available satellites */
@@ -312,6 +317,8 @@ typedef struct
 	int16_t info_bailoutO2;
     int16_t compassHeadingUpdate;
     uint16_t info_compassHeadingUpdate;
+    int16_t gnssPositionUpdate;
+    SGnssCoord info_gnssPosition;
 } SEvents;
 
 

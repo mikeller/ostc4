@@ -367,7 +367,7 @@ uint8_t prepareReplayLog(uint8_t StepBackwards)
     	ReplayDataOffset = StepBackwards;
 		logbook_getHeader(StepBackwards ,&logbookHeader);
 
-		dataLength = logbook_readSampleData(StepBackwards, DEPTH_DATA_LENGTH, ReplayDepthData,NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ReplayMarkerData);
+		dataLength = logbook_readSampleData(StepBackwards, DEPTH_DATA_LENGTH, ReplayDepthData,NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ReplayMarkerData);
 
 	/* check if a marker is provided. If not disable marker functionality for the replay block */
 		for(index = 0; index < dataLength; index++)

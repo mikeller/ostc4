@@ -405,6 +405,7 @@ void logbook_writeSample(const SDiveState *state)
     length++;
     eventByte1.uw = 0;
     eventByte2.uw = 0;
+    uint8_t* pdata;
     //uint16_t tmpU16 = 0;
 	const SDecoinfo * pDecoinfo; // new hw 160620
 
@@ -462,6 +463,11 @@ void logbook_writeSample(const SDiveState *state)
         eventByte1.ub.bit7 = 1;
         eventByte2.ub.bit1 = 1;
     }
+    if (state->events.gnssPositionUpdate) {
+            eventByte1.ub.bit7 = 1;
+            eventByte2.ub.bit2 = 1;
+    }
+
     //Add EventByte 1
     if(eventByte1.uw > 0)
     {
@@ -507,7 +513,18 @@ void logbook_writeSample(const SDiveState *state)
         sample[length++] = state->events.info_compassHeadingUpdate & 0xFF;
         sample[length++] = (state->events.info_compassHeadingUpdate & 0xFF00) >> 8;
     }
-
+    if (state->events.gnssPositionUpdate) {
+    	pdata = (uint8_t*)&state->events.info_gnssPosition.fLon;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+        pdata = (uint8_t*)&state->events.info_gnssPosition.fLat;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+    }
 
     if(divisor.temperature == 0)
     {
@@ -688,7 +705,8 @@ void logbook_writeSample(const SDiveState *state)
   * @return bytes read / 0 = reading Error
   */
 static uint16_t readSample(int32_t* depth, int16_t * gasid, int16_t* setpoint_cbar, int32_t* temperature, int32_t* sensor1, int32_t* sensor2,
-						   int32_t* sensor3, int32_t* cns, SManualGas* manualGas, int16_t* bailout, int16_t* decostopDepth, uint16_t* tank, uint8_t* event)
+						   int32_t* sensor3, int32_t* cns, SManualGas* manualGas, int16_t* bailout, int16_t* decostopDepth, uint16_t* tank,
+						   SGnssCoord* pPosition, uint8_t* event)
 {
 	int length = 0;
 	_Bool bEvent = 0;
@@ -700,6 +718,8 @@ static uint16_t readSample(int32_t* depth, int16_t * gasid, int16_t* setpoint_cb
 	uint8_t tempU8 = 0;
 	uint16_t temp = 0;
 	uint16_t bytesRead = 0;
+	uint32_t tempU32 = 0;
+	uint8_t index = 0;
 
 	if(gasid)
 		*gasid = -1;
@@ -815,6 +835,34 @@ static uint16_t readSample(int32_t* depth, int16_t * gasid, int16_t* setpoint_cb
 
 				if(gasid)
 						*gasid = 0;
+			}
+			/* gnss position start dive */
+			if(eventByte2.ub.bit2)
+			{
+				tempU32 = 0;
+				for(index = 0; index < 4; index++)
+				{
+					ext_flash_read_next_sample_part( (uint8_t*)&tempU8, 1);
+					bytesRead +=1;
+					length -= 1;
+					tempU32 |= (tempU8 << (index * 8));
+				}
+				if(tempU32 != 0xffffffff)
+				{
+					memcpy(&pPosition->fLon, &tempU32, 4);
+				}
+				tempU32 = 0;
+				for(index = 0; index < 4; index++)
+				{
+					ext_flash_read_next_sample_part( (uint8_t*)&tempU8, 1);
+					bytesRead +=1;
+					length -= 1;
+					tempU32 |= (tempU8 << (index * 8));
+				}
+				if(tempU32 != 0xffffffff)
+				{
+					memcpy(&pPosition->fLat, &tempU32, 4);
+				}
 			}
 	}
 
@@ -958,7 +1006,7 @@ static uint16_t readSample(int32_t* depth, int16_t * gasid, int16_t* setpoint_cb
   */
 uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t* depth, uint8_t*  gasid, int16_t* temperature, uint16_t* ppo2,
 							    uint16_t* setpoint, uint16_t* sensor1, uint16_t* sensor2, uint16_t* sensor3, uint16_t* cns, uint8_t* bailout,
-								uint16_t* decostopDepth, uint16_t* tank, uint8_t* event)
+								uint16_t* decostopDepth, uint16_t* tank, SGnssCoord* pPosition, uint8_t* event)
 {
      //Test read
     //SLogbookHeader header;
@@ -995,6 +1043,9 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
 	uint16_t tankVal = 0;
 	uint32_t small_profileLength = 0;
 	uint8_t eventdata;
+	SGnssCoord posCoord;
+	posCoord.fLat = 0.0;
+	posCoord.fLon = 0.0;
 
      SManualGas manualGasVal;
      SManualGas manualGasLast;
@@ -1075,7 +1126,7 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
 				ext_flash_set_entry_point();
 				divisorBackup = divisor;
 				retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal,
-									&bailoutVal, &decostepDepthVal, &tankVal, &eventdata);
+									&bailoutVal, &decostepDepthVal, &tankVal, &posCoord, &eventdata);
 
 				if(retVal == 0)
 				{
@@ -1083,7 +1134,7 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
 						ext_flash_reopen_read_sample_at_entry_point();
 						divisor = divisorBackup;
 						retVal = readSample(&depthVal,&gasidVal,&setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal,
-											&manualGasVal, &bailoutVal, &decostepDepthVal, &tankVal, &eventdata);
+											&manualGasVal, &bailoutVal, &decostepDepthVal, &tankVal, &posCoord, &eventdata);
 
 						if(retVal == 0)
 								break;
@@ -1223,6 +1274,10 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
 					}
 				}
 		}
+		if(pPosition)
+		{
+			memcpy(pPosition, &posCoord, sizeof(posCoord));
+		}
 	}
 	else
 	{
@@ -1251,7 +1306,7 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
  *          and finishes logbook after end of dive
 *********************************************************************************/
 
-void logbook_InitAndWrite(const SDiveState *pStateReal)
+void logbook_InitAndWrite(SDiveState *pStateReal)
 {
 	SSettings *pSettings = settingsGetPointer();
 	static uint8_t bDiveMode = 0;
@@ -1268,6 +1323,7 @@ void logbook_InitAndWrite(const SDiveState *pStateReal)
 			pSettings->totalDiveCounter++;
 			logbook_initNewdiveProfile(pStateReal,settingsGetPointer());
 			min_temperature_float_celsius = pStateReal->lifeData.temperature_celsius;
+
 			//Write logbook sample
 			logbook_writeSample(pStateReal);
 			resetEvents(pStateReal);
@@ -1304,6 +1360,17 @@ void logbook_InitAndWrite(const SDiveState *pStateReal)
 
 				ext_flash_CloseSector();	/* this is just a repair function which invalidates a not used sector in case a log maintenance was called before dive */
 				bDiveMode = 3;
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+			pStateReal->events.gnssPositionUpdate = 1;
+			pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
+			if((pStateReal->events.info_gnssPosition.fLat == 0.0) && (pStateReal->events.info_gnssPosition.fLon == 0.0)) /* no pos => define dummy */
+			{
+				pStateReal->events.info_gnssPosition.fLon = 47.77;
+				pStateReal->events.info_gnssPosition.fLat = 8.99;
+			}
+#endif
+
 			}
 			if(bDiveMode == 3)
 				logbook_UpdateHeader(pStateReal);
@@ -1798,7 +1865,11 @@ void logbook_recover_brokenlog(uint8_t headerId)
     int32_t sensor2Val = 0;
     int32_t sensor3Val = 0;
     int32_t cnsVal = 0;
-     SManualGas manualGasVal;
+    SManualGas manualGasVal;
+    int16_t decostepDepthVal = 0;
+	uint16_t tankVal = 0;
+	uint8_t eventdata;
+	SGnssCoord posCoord;
 
 		//uint16_t* ppo2, uint16_t* cns#
      uint32_t bytesRead = 0;
@@ -1818,21 +1889,22 @@ void logbook_recover_brokenlog(uint8_t headerId)
 
         ext_flash_set_entry_point();
         divisorBackup = divisor;
-				retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal, &bailoutVal, NULL, NULL, NULL);
+		retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal,
+							&bailoutVal, &decostepDepthVal,&tankVal, &posCoord, &eventdata);
         if(retVal == 0)
         {
           //Error try to read again!!!
           ext_flash_reopen_read_sample_at_entry_point();
           divisor = divisorBackup;
-					retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal, &bailoutVal, NULL, NULL, NULL);
-
+		  retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal,
+								&bailoutVal, &decostepDepthVal, &tankVal, &posCoord, &eventdata);
           if(retVal == 0)
           {
               //Error try to read again!!!
               ext_flash_reopen_read_sample_at_entry_point();
               divisor = divisorBackup;
-							retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal, &bailoutVal, NULL, NULL, NULL);
-
+			  retVal = readSample(&depthVal,&gasidVal, &setPointVal, &temperatureVal, &sensor1Val, &sensor2Val, &sensor3Val, &cnsVal, &manualGasVal,
+				 				&bailoutVal, &decostepDepthVal,&tankVal, &posCoord, &eventdata);
               if(retVal == 0)
               {
                 ext_flash_reopen_read_sample_at_entry_point();
