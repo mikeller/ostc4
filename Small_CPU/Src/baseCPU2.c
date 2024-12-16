@@ -275,9 +275,7 @@ int main(void) {
 #endif
 
     uint8_t extInterfaceActive = 0;
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
     uint32_t shutdownTick = 0;
-#endif
 
 	HAL_Init();
 	SystemClock_Config();
@@ -462,6 +460,9 @@ int main(void) {
             global.no_fly_time_minutes = 0;
             global.lifeData.dive_time_seconds = 0;
             global.lifeData.dive_time_seconds_without_surface_time = 0;
+
+            uartGnss_ReqPowerDown(1);
+
             scheduleDiveMode();
             // done now in scheduler prior to change mode: global.seconds_since_last_dive = 1;
 
@@ -487,6 +488,8 @@ int main(void) {
 
             backup.no_fly_time_minutes = 0;
             backup.seconds_since_last_dive = 0;
+
+            uartGnss_ReqPowerDown(0);
 			break;
 
 		case MODE_SHUTDOWN:

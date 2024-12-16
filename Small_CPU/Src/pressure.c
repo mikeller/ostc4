@@ -49,7 +49,6 @@
 /* remove comment to use a predefined profile for pressure changes instead of real world data */
 /* #define SIMULATE_PRESSURE */
 
-
 #define PRESSURE_SURFACE_MAX_MBAR			(1060.0f)		/* It is unlikely that pressure at surface is greater than this value => clip to it */
 
 #define PRESSURE_MINIMUM					(0.0f)
@@ -564,7 +563,7 @@ void pressure_simulation()
 		}
 		secondtick = lasttick;
 
-#define DIVE_AT_SPEED 1
+#define DIVE_EASY 1
 #ifdef DIVE_AFTER_LANDING
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	 /* stay stable for 10 seconds */
 		else if(passedSecond < 300) pressure_sim_mbar -= 1.0; /* decrease pressure in 5 minutes target 770mbar => delta 330 */
@@ -576,7 +575,14 @@ void pressure_simulation()
 		else if(passedSecond < 2500) pressure_sim_mbar -= 10.0; /* return to surface */
 		else pressure_sim_mbar = 1000.0;					/* final state */
 #endif
-#ifdef DIVE_AT_SPEED
+#ifdef DIVE_EASY
+		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	 /* stay stable for 10 seconds */
+		else if(passedSecond < 120) pressure_sim_mbar += 1.0; /* decrease pressure in 2 minutes */
+		else if(passedSecond < 240) pressure_sim_mbar += 0.0;	/*stay stable 2 minutes*/
+		else if(passedSecond < 360) pressure_sim_mbar -= 1.0;	/* return to 1 bar in 2 Minutes*/
+		else pressure_sim_mbar = 1000.0;					/* final state */
+#endif
+#if DIVE_AT_SPEED
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	   /* stay stable for 10 seconds */
 		else if(passedSecond < 20) delta_mbar = 200.0 / SECDIV; /* Start dive */
 		else if(passedSecond < 30) delta_mbar = 0.0;	/*stay on depth*/
@@ -594,8 +600,8 @@ void pressure_simulation()
 		{
 			pressure_sim_mbar = surface_pressure_mbar;
 		}
-
-#else	/* short dive */
+#endif
+#ifdef SHORTDIVE	/* short dive */
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	   /* stay stable for 10 seconds */
 		else if(passedSecond < 180) pressure_sim_mbar += 10.0; /* Start dive */
 		else if(passedSecond < 300) pressure_sim_mbar += 0.0;	/*stay on depth*/

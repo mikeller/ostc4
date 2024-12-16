@@ -169,6 +169,11 @@ void initGlobals(void)
 	global.dataSendToMaster.footer.checkCode[0] = 0xE1;
 	global.dataSendToMaster.sensorErrors = 0;
 
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = 0.0;
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = 0.0;
+	global.dataSendToMaster.data[0].gnssInfo.fixType = 0;
+	global.dataSendToMaster.data[0].gnssInfo.numSat = 0;
+
 	global.sync_error_count = 0;
 	global.check_sync_not_running = 0;
 
@@ -525,6 +530,9 @@ void scheduleDiveMode(void)
 		ticksdiff = time_elapsed_ms(Scheduler.tickstart,lasttick);
 
 		externalInterface_HandleUART();
+#ifdef ENABLE_GPIO_V2
+		UART6_HandleUART();
+#endif
 		if(ticksdiff >= Scheduler.counterSPIdata100msec * 100 + 10)
 		{
 			if(SPI_Evaluate_RX_Data()!=0) /* did we receive something ? */
@@ -1119,8 +1127,6 @@ void scheduleSleepMode(void)
 		RTC_StopMode_2seconds();
 #endif
 		
-
-		
 		if(global.mode == MODE_SLEEP)
 			secondsCount += 2;
 
@@ -1191,10 +1197,20 @@ void scheduleSleepMode(void)
 				GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 				GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
 				GPIO_InitStruct.Pull = GPIO_NOPULL;
-				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
+				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN);
+				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+
+				uartGnss_SetState(UART_GNSS_INIT);
+			}
+		}
+		else
+		{
+			if(global.lifeData.battery_voltage < 3.5)	/* switch off backup voltage if battery gets low */
+			{
+				GPIO_GPS_BCKP_OFF();
+				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_BCKP_CONTROL_PIN);
 				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
 				__HAL_RCC_GPIOB_CLK_DISABLE();
-				uartGnss_SetState(UART_GNSS_INIT);
 			}
 		}
 #endif
@@ -1206,11 +1222,12 @@ void scheduleSleepMode(void)
 	setButtonsNow = 0;
 	reinitGlobals();
 	ReInit_battery_charger_status_pins();
-
+#ifdef ENABLE_GPIO_V2
 	if(deepSleepCntDwn == 0)
 	{
 		GPIO_GNSS_Init();
 	}
+#endif
 }
 
 
@@ -1772,8 +1789,8 @@ void copyExtCO2data()
 
 void copyGNSSdata(void)
 {
-	global.dataSendToMaster.data[0].gnssInfo.fLat = GNSS_Handle.fLat;
-	global.dataSendToMaster.data[0].gnssInfo.fLon = GNSS_Handle.fLon;
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.fLat;
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.fLon;
 	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
 	global.dataSendToMaster.data[0].gnssInfo.numSat = GNSS_Handle.numSat;
 	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
