@@ -49,7 +49,6 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
     SSettings *data;
     int i;
     uint8_t textPointer;
-    uint8_t dateFormat;
     uint8_t RTEhigh, RTElow;
     RTC_DateTypeDef Sdate;
     RTC_TimeTypeDef Stime;
@@ -59,6 +58,7 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
     textPointer = 0;
     *tab = 300;
     *subtext = 0;
+    char tmpString[15];
 
     resetLineMask(StMSYS);
 
@@ -128,49 +128,11 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         translateDate(pStateReal->lifeData.dateBinaryFormat, &Sdate);
         translateTime(pStateReal->lifeData.timeBinaryFormat, &Stime);
 
-        dateFormat = data->date_format;
-
-        textPointer += snprintf(&text[textPointer], 40,
-            "Date"
-            "\016\016"
-            " "
-        );
-
-        if(dateFormat == DDMMYY)
-        {
-            textPointer += snprintf(&text[textPointer], 40,
-                "DDMMYY"
-                "\017"
-                "\t"
-                "%02d-%02d-%02d"
-                "  "
-                , Sdate.Date, Sdate.Month, 2000 + Sdate.Year
-            );
-        }
-        else
-        if(dateFormat == MMDDYY)
-        {
-            textPointer += snprintf(&text[textPointer], 40,
-                "MMDDYY"
-                "\017"
-                "\t"
-                "%02d-%02d-%02d"
-                "  "
-                ,Sdate.Month, Sdate.Date, 2000 + Sdate.Year
-            );
-        }
-        else
-        if(dateFormat == YYMMDD)
-        {
-            textPointer += snprintf(&text[textPointer], 40,
-                "YYMMDD"
-                "\017"
-                "\t"
-                "%02d-%02d-%02d"
-                "  "
-                , 2000 + Sdate.Year, Sdate.Month, Sdate.Date
-            );
-        }
+        text[textPointer++] = TXT_Date;
+        getStringOfFormat_DDMMYY(tmpString,15);
+        textPointer += snprintf(&text[textPointer], 40,"\016\016 %s ",tmpString);
+       convertStringOfDate_DDMMYY(tmpString,15,Sdate.Date, Sdate.Month, Sdate.Year);
+        textPointer += snprintf(&text[textPointer], 40,"\017\t%s   ",tmpString);
 
         textPointer += snprintf(&text[textPointer], 60,
             "%02d:%02d:%02d"

@@ -1969,6 +1969,26 @@ static uint8_t text_FR_Log[] = "Enregistrer";
 static uint8_t text_IT_Log[] = "Registrare";
 static uint8_t text_ES_Log[] = "Registrar";
 
+static uint8_t text_EN_DDMMYY[] = "DDMMYY";
+static uint8_t text_DE_DDMMYY[] = "TTMMJJ";
+static uint8_t text_FR_DDMMYY[] = "";
+static uint8_t text_IT_DDMMYY[] = "";
+static uint8_t text_ES_DDMMYY[] = "";
+
+static uint8_t text_EN_MMDDYY[] = "MMDDYY";
+static uint8_t text_DE_MMDDYY[] = "MMTTJJ";
+static uint8_t text_FR_MMDDYY[] = "";
+static uint8_t text_IT_MMDDYY[] = "";
+static uint8_t text_ES_MMDDYY[] = "";
+
+static uint8_t text_EN_YYMMDD[] = "YYMMDD";
+static uint8_t text_DE_YYMMDD[] = "JJMMTT";
+static uint8_t text_FR_YYMMDD[] = "";
+static uint8_t text_IT_YYMMDD[] = "";
+static uint8_t text_ES_YYMMDD[] = "";
+
+
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2059,7 +2079,7 @@ const tText text_array[] =
 	{(uint8_t)TXT_PSCRLungRatio,	{text_EN_LungRatio, text_DE_LungRatio, text_FR_LungRatio, text_IT_LungRatio, text_ES_LungRatio}},
 	{(uint8_t)TXT_SimPpo2,			{text_EN_SimPpo2, text_DE_SimPpo2, text_FR_SimPpo2, text_IT_SimPpo2, text_ES_SimPpo2}},
 	{(uint8_t)TXT_CO2Sensor,		{text_EN_CO2Sensor, text_DE_CO2Sensor, text_FR_CO2Sensor, text_IT_CO2Sensor, text_ES_CO2Sensor}},
-	{(uint8_t)TXT_ButtonLock,			{text_EN_KeyLock, text_DE_KeyLock, text_FR_KeyLock, text_IT_KeyLock, text_ES_KeyLock}},
+	{(uint8_t)TXT_ButtonLock,		{text_EN_KeyLock, text_DE_KeyLock, text_FR_KeyLock, text_IT_KeyLock, text_ES_KeyLock}},
 };
 
 const tText text_array2[] =
@@ -2239,11 +2259,11 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_CheckSettings, 	{text_EN_CheckSettings, text_DE_CheckSettings, text_FR_CheckSettings, text_IT_CheckSettings, text_ES_CheckSettings}},
 	{(uint8_t)TXT2BYTE_NotCalibrated, 	{text_EN_NotCalibrated, text_DE_NotCalibrated, text_FR_NotCalibrated, text_IT_NotCalibrated, text_ES_NotCalibrated}},
 
-	{(uint8_t)TXT2BYTE_CcrSummary, 	{text_EN_CcrSummary, text_DE_CcrSummary, text_FR_CcrSummary, text_IT_CcrSummary, text_ES_CcrSummary}},
-	{(uint8_t)TXT2BYTE_Setpoint, 	{text_EN_Setpoint, text_DE_Setpoint, text_FR_Setpoint, text_IT_Setpoint, text_ES_Setpoint}},
-	{(uint8_t)TXT2BYTE_Scrubber, 	{text_EN_Scrubber, text_DE_Scrubber, text_FR_Scrubber, text_IT_Scrubber, text_ES_Scrubber}},
+	{(uint8_t)TXT2BYTE_CcrSummary, 		{text_EN_CcrSummary, text_DE_CcrSummary, text_FR_CcrSummary, text_IT_CcrSummary, text_ES_CcrSummary}},
+	{(uint8_t)TXT2BYTE_Setpoint, 		{text_EN_Setpoint, text_DE_Setpoint, text_FR_Setpoint, text_IT_Setpoint, text_ES_Setpoint}},
+	{(uint8_t)TXT2BYTE_Scrubber, 		{text_EN_Scrubber, text_DE_Scrubber, text_FR_Scrubber, text_IT_Scrubber, text_ES_Scrubber}},
 	{(uint8_t)TXT2BYTE_BailoutShort, 	{text_EN_BailoutShort, text_DE_BailoutShort, text_FR_BailoutShort, text_IT_BailoutShort, text_ES_BailoutShort}},
-	{(uint8_t)TXT2BYTE_LoopShort, 	{text_EN_LoopShort, text_DE_LoopShort, text_FR_LoopShort, text_IT_LoopShort, text_ES_LoopShort}},
+	{(uint8_t)TXT2BYTE_LoopShort, 		{text_EN_LoopShort, text_DE_LoopShort, text_FR_LoopShort, text_IT_LoopShort, text_ES_LoopShort}},
 	{(uint8_t)TXT2BYTE_SetpointShort, 	{text_EN_SetpointShort, text_DE_SetpointShort, text_FR_SetpointShort, text_IT_SetpointShort, text_ES_SetpointShort}},
 
 	{(uint8_t)TXT2BYTE_SetpointLow, 	{text_EN_SetpointLow, text_DE_SetpointLow, text_FR_SetpointLow, text_IT_SetpointLow, text_ES_SetpointLow}},
@@ -2251,25 +2271,31 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_SetpointDeco, 	{text_EN_SetpointDeco, text_DE_SetpointDeco, text_FR_SetpointDeco, text_IT_SetpointDeco, text_ES_SetpointDeco}},
 	{(uint8_t)TXT2BYTE_SetpointDelayed, 	{text_EN_SetpointDelayed, text_DE_SetpointDelayed, text_FR_SetpointDelayed, text_IT_SetpointDelayed, text_ES_SetpointDelayed}},
 
-	{(uint8_t)TXT2BYTE_Enabled, 	{text_EN_Enabled, text_DE_Enabled, text_FR_Enabled, text_IT_Enabled, text_ES_Enabled}},
-	{(uint8_t)TXT2BYTE_Custom, 	{text_EN_Custom, text_DE_Custom, text_FR_Custom, text_IT_Custom, text_ES_Custom}},
+	{(uint8_t)TXT2BYTE_Enabled, 		{text_EN_Enabled, text_DE_Enabled, text_FR_Enabled, text_IT_Enabled, text_ES_Enabled}},
+	{(uint8_t)TXT2BYTE_Custom, 			{text_EN_Custom, text_DE_Custom, text_FR_Custom, text_IT_Custom, text_ES_Custom}},
 
-	{(uint8_t)TXT2BYTE_Set, 	{text_EN_Set, text_DE_Set, text_FR_Set, text_IT_Set, text_ES_Set}},
-	{(uint8_t)TXT2BYTE_Clear, 	{text_EN_Clear, text_DE_Clear, text_FR_Clear, text_IT_Clear, text_ES_Clear}},
-	{(uint8_t)TXT2BYTE_Reset, 	{text_EN_Reset, text_DE_Reset, text_FR_Reset, text_IT_Reset, text_ES_Reset}},
+	{(uint8_t)TXT2BYTE_Set, 			{text_EN_Set, text_DE_Set, text_FR_Set, text_IT_Set, text_ES_Set}},
+	{(uint8_t)TXT2BYTE_Clear, 			{text_EN_Clear, text_DE_Clear, text_FR_Clear, text_IT_Clear, text_ES_Clear}},
+	{(uint8_t)TXT2BYTE_Reset, 			{text_EN_Reset, text_DE_Reset, text_FR_Reset, text_IT_Reset, text_ES_Reset}},
 
 	{(uint8_t)TXT2BYTE_CounterLung, 	{text_EN_CounterLung, text_DE_CounterLung, text_FR_CounterLung, text_IT_CounterLung, text_ES_CounterLung}},
-	{(uint8_t)TXT2BYTE_Pressure, 	{text_EN_Pressure, text_DE_Pressure, text_FR_Pressure, text_IT_Pressure, text_ES_Pressure}},
+	{(uint8_t)TXT2BYTE_Pressure, 		{text_EN_Pressure, text_DE_Pressure, text_FR_Pressure, text_IT_Pressure, text_ES_Pressure}},
 
-	{(uint8_t)TXT2BYTE_Timer, 	{text_EN_Timer, text_DE_Timer, text_FR_Timer, text_IT_Timer, text_ES_Timer}},
-	{(uint8_t)TXT2BYTE_Starting, 	{text_EN_Starting, text_DE_Starting, text_FR_Starting, text_IT_Starting, text_ES_Starting}},
-	{(uint8_t)TXT2BYTE_Finished, 	{text_EN_Finished, text_DE_Finished, text_FR_Finished, text_IT_Finished, text_ES_Finished}},
+	{(uint8_t)TXT2BYTE_Timer, 			{text_EN_Timer, text_DE_Timer, text_FR_Timer, text_IT_Timer, text_ES_Timer}},
+	{(uint8_t)TXT2BYTE_Starting, 		{text_EN_Starting, text_DE_Starting, text_FR_Starting, text_IT_Starting, text_ES_Starting}},
+	{(uint8_t)TXT2BYTE_Finished, 		{text_EN_Finished, text_DE_Finished, text_FR_Finished, text_IT_Finished, text_ES_Finished}},
 
-	{(uint8_t)TXT2BYTE_Position, 	{text_EN_Position, text_DE_Position, text_FR_Position, text_IT_Position, text_ES_Position}},
-	{(uint8_t)TXT2BYTE_VpmTable, 	{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
+	{(uint8_t)TXT2BYTE_Position, 		{text_EN_Position, text_DE_Position, text_FR_Position, text_IT_Position, text_ES_Position}},
+	{(uint8_t)TXT2BYTE_VpmTable, 		{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
 
-	{(uint8_t)TXT2BYTE_Page, 	{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},
+	{(uint8_t)TXT2BYTE_Page, 			{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},
 
-	{(uint8_t)TXT2BYTE_Current, 	{text_EN_Current, text_DE_Current, text_FR_Current, text_IT_Current, text_ES_Current}},
-	{(uint8_t)TXT2BYTE_Log, 	{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
+	{(uint8_t)TXT2BYTE_Current, 		{text_EN_Current, text_DE_Current, text_FR_Current, text_IT_Current, text_ES_Current}},
+	{(uint8_t)TXT2BYTE_Log, 			{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
+	{(uint8_t)TXT2BYTE_DDMMYY, 			{text_EN_DDMMYY, text_DE_DDMMYY, text_FR_DDMMYY, text_IT_DDMMYY, text_ES_DDMMYY}},
+	{(uint8_t)TXT2BYTE_MMDDYY, 			{text_EN_MMDDYY, text_DE_MMDDYY, text_FR_MMDDYY, text_IT_MMDDYY, text_ES_MMDDYY}},
+	{(uint8_t)TXT2BYTE_YYMMDD, 			{text_EN_YYMMDD, text_DE_YYMMDD, text_FR_YYMMDD, text_IT_YYMMDD, text_ES_YYMMDD}},
+
+
+
 };

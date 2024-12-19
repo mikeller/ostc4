@@ -48,6 +48,7 @@ static uint8_t infoPage = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_DateTime(void);
+void openEdit_DateFormat(void);
 void openEdit_Language(void);
 void openEdit_Design(void);
 void openEdit_Information(void);
@@ -60,6 +61,7 @@ void openEdit_Maintenance(void);
 uint8_t OnAction_Date					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Time					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_12HR				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_Format				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_DDMMYY				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_MMDDYY				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_YYMMDD				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -237,14 +239,19 @@ void openEdit_DateTime(void)
 {
     RTC_DateTypeDef Sdate;
     RTC_TimeTypeDef Stime;
-    uint8_t day,month,year,hour,minute, dateFormat, ddmmyy, mmddyy, yymmdd;
+    uint8_t day,month,year,hour,minute;
     char text[32];
+    char formatStr[10];
     SSettings *pSettings;
     const SFirmwareData *pFirmwareInfo;
     pFirmwareInfo = firmwareDataGetPointer();
     const SDiveState * pStateReal = stateRealGetPointer();
 
     pSettings = settingsGetPointer();
+
+    set_globalState(StMSYS1_DateTime);
+	resetMenuEdit(CLUT_MenuPageSystem);
+
     translateDate(pStateReal->lifeData.dateBinaryFormat, &Sdate);
     translateTime(pStateReal->lifeData.timeBinaryFormat, &Stime);
     year = Sdate.Year;
@@ -263,18 +270,17 @@ void openEdit_DateTime(void)
         day = 1;
 
 //	daylightsaving = Stime.DayLightSaving;
-    dateFormat = pSettings->date_format;
-    ddmmyy = 0;
-    mmddyy = 0;
-    yymmdd = 0;
 
-    if(dateFormat == DDMMYY)
-        ddmmyy = 1;
-    else
-    if(dateFormat == MMDDYY)
-        mmddyy = 1;
-    else
-        yymmdd = 1;
+    switch(pSettings->date_format)
+    {
+    	default:
+    	case DDMMYY: snprintf(formatStr,10,"DDMMYY");
+    		break;
+    	case MMDDYY: snprintf(formatStr,10,"MMDDYY");
+    		break;
+    	case YYMMDD: snprintf(formatStr,10,"YYMMDD");
+    	    break;
+    };
 
     text[0] = '\001';
     text[1] = TXT_DateAndTime;
@@ -285,24 +291,29 @@ void openEdit_DateTime(void)
     write_label_fix(  20, 340, ME_Y_LINE1, &FontT42, TXT_TimeConfig);
     write_label_fix(  20, 340, ME_Y_LINE2, &FontT42, TXT_Format);
     write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
-    write_label_var( 600, 800, ME_Y_LINE4, &FontT48, "\016\016DDMMYY\017");
-    write_label_fix(  20, 790, ME_Y_LINE5, &FontT42, TXT_Format);
-//	write_label_fix( 350 ,580, 250, &FontT42, TXT_Daylightsaving);
+    write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
 
     write_field_2digit(StMSYS1_Time,		320, 780, ME_Y_LINE1,  &FontT48, "##:##", (uint32_t)hour, (uint32_t)minute, 0, 0);
-    write_field_on_off(StMSYS1_12HR,			320, 790, ME_Y_LINE2,  &FontT48, "12 HR", pSettings->amPMTime);
-    write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "##-##-20##", (uint32_t)day, (uint32_t)month, (uint32_t)year, 0);
-    write_field_on_off(StMSYS1_DDMMYY,	320, 790, ME_Y_LINE4,  &FontT48, "DDMMYY", ddmmyy);
-    write_field_on_off(StMSYS1_MMDDYY,	320, 790, ME_Y_LINE5,  &FontT48, "MMDDYY", mmddyy);
-    write_field_on_off(StMSYS1_YYMMDD,	320, 790, ME_Y_LINE6,  &FontT48, "YYMMDD", yymmdd);
-//	write_field_on_off(StMSYS1_DST,			350, 580, 310,  &FontT48, "Active", daylightsaving);
+    write_field_on_off(StMSYS1_12HR,		320, 790, ME_Y_LINE2,  &FontT48, "12 HR", pSettings->amPMTime);
+
+    switch(pSettings->date_format)
+    {
+    	default:
+    	case DDMMYY:  write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "##-##-20##", (uint32_t)day, (uint32_t)month, (uint32_t)year, 0);
+    		break;
+    	case MMDDYY:  write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "##-##-20##", (uint32_t)month, (uint32_t)day, (uint32_t)year, 0);
+    		break;
+    	case YYMMDD:  write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "20##-##-##", (uint32_t)year, (uint32_t)month, (uint32_t)day, 0);
+    		break;
+    }
+
+
+    write_field_button(StMSYS1_FORMAT, 320, 790, ME_Y_LINE4,  &FontT48, formatStr);
 
     setEvent(StMSYS1_Date, 		(uint32_t)OnAction_Date);
     setEvent(StMSYS1_Time, 		(uint32_t)OnAction_Time);
     setEvent(StMSYS1_12HR,      (uint32_t)OnAction_12HR);
-    setEvent(StMSYS1_DDMMYY,	(uint32_t)OnAction_DDMMYY);
-    setEvent(StMSYS1_MMDDYY,	(uint32_t)OnAction_MMDDYY);
-    setEvent(StMSYS1_YYMMDD,	(uint32_t)OnAction_YYMMDD);
+    setEvent(StMSYS1_FORMAT,	(uint32_t)OnAction_Format);
 //	setEvent(StMSYS1_DST,			(uint32_t)OnAction_DST);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
@@ -318,13 +329,41 @@ uint8_t OnAction_Date(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber,
     const SFirmwareData *pFirmwareInfo;
     pFirmwareInfo = firmwareDataGetPointer();
 
+    uint8_t mapDMY[3];
+    switch(settingsGetPointer()->date_format)
+    {
+    	default:
+    	case DDMMYY: mapDMY[0] = 0;
+    				 mapDMY[1] = 1;
+    				 mapDMY[2] = 2;
+    		break;
+    	case MMDDYY: mapDMY[0] = 1;
+		 	 	 	 mapDMY[1] = 0;
+		 	 	 	 mapDMY[2] = 2;
+    		break;
+    	case YYMMDD: mapDMY[0] = 2;
+ 	 	 	 	 	 mapDMY[1] = 1;
+ 	 	 	 	 	 mapDMY[2] = 0;
+    	break;
+    }
+
     if(action == ACTION_BUTTON_ENTER)
     {
         return digitContent;
     }
     if(action == ACTION_BUTTON_ENTER_FINAL)
     {
-        evaluateNewString(editId, &newDay, &newMonth, &newYear, 0);
+    	switch(settingsGetPointer()->date_format)
+    	    {
+    	    	default:
+    	    	case DDMMYY: evaluateNewString(editId, &newDay, &newMonth, &newYear, 0);
+    	    		break;
+    	    	case MMDDYY: evaluateNewString(editId, &newMonth, &newDay, &newYear, 0);
+    	    		break;
+    	    	case YYMMDD: evaluateNewString(editId, &newYear, &newMonth, &newDay, 0);
+    	    		break;
+    	    }
+
         if(newDay == 0)
             newDay = 1;
         if(newDay > 31)
@@ -349,29 +388,52 @@ uint8_t OnAction_Date(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber,
 
         setDate(sdatestructure);
 
-        tMenuEdit_newInput(editId, newDay, newMonth, newYear, 0);
+        switch(settingsGetPointer()->date_format)
+        {
+           	default:
+           	case DDMMYY: tMenuEdit_newInput(editId, newDay, newMonth, newYear, 0);
+          		break;
+           	case MMDDYY: tMenuEdit_newInput(editId, newMonth, newDay, newYear, 0);
+           		break;
+           	case YYMMDD: tMenuEdit_newInput(editId, newYear, newMonth, newDay, 0);
+           		break;
+        }
+
         return UNSPECIFIC_RETURN;
     }
     if(action == ACTION_BUTTON_NEXT)		/* clip values to a specific range e.g. 12 months */
     {
         digitContentNew = digitContent + 1;
-        if((blockNumber == 0) && (digitContentNew > '0' + 31))
+
+        if((blockNumber == mapDMY[0]) && (digitContentNew > '0' + 31))
+        {
             digitContentNew = '1';
-        if((blockNumber == 1) && (digitContentNew > '0' + 12))
+        }
+        if((blockNumber == mapDMY[1]) && (digitContentNew > '0' + 12))
+        {
             digitContentNew = '1';
-        if((blockNumber == 2) && (digitContentNew > '0' + pFirmwareInfo->release_year + 10))
+        }
+        if((blockNumber == mapDMY[2]) && (digitContentNew > '0' + pFirmwareInfo->release_year + 10))
+        {
             digitContentNew = '0' + pFirmwareInfo->release_year;
+        }
         return digitContentNew;
     }
     if(action == ACTION_BUTTON_BACK)		/* clip values to a specific range e.g. 12 months */
     {
         digitContentNew = digitContent - 1;
-        if((blockNumber == 0) && (digitContentNew < '1'))
+        if((blockNumber == mapDMY[0]) && (digitContentNew < '1'))
+        {
             digitContentNew = '0' + 31;
-        if((blockNumber == 1) && (digitContentNew < '1'))
+        }
+        if((blockNumber ==  mapDMY[1]) && (digitContentNew < '1'))
+        {
             digitContentNew = '0' + 12;
-        if((blockNumber == 2) && (digitContentNew < '0' + pFirmwareInfo->release_year))
+        }
+        if((blockNumber ==  mapDMY[2]) && (digitContentNew < '0' + pFirmwareInfo->release_year))
+        {
             digitContentNew = '0' + pFirmwareInfo->release_year + 10;
+        }
         return digitContentNew;
     }
 /*
@@ -486,6 +548,59 @@ uint8_t OnAction_12HR(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber,
     pSettings->amPMTime = !(pSettings->amPMTime);
 
     tMenuEdit_set_on_off(editId, pSettings->amPMTime);
+
+    return UNSPECIFIC_RETURN;
+}
+
+void openEdit_DateFormat(void)
+{
+    char text[32];
+    SSettings *pSettings;
+
+    uint8_t ddmmyy = 0;
+    uint8_t mmddyy= 0;
+    uint8_t yymmdd = 0;
+
+    pSettings = settingsGetPointer();
+
+
+    set_globalState(StMSYS1_FORMAT);
+	resetMenuEdit(CLUT_MenuPageSystem);
+	setBackMenu((uint32_t)openEdit_DateTime,0,4);
+
+    switch(pSettings->date_format)
+    {
+    	default:
+    	case DDMMYY: ddmmyy = 1;
+    		break;
+    	case MMDDYY: mmddyy = 1;
+    		break;
+    	case YYMMDD: yymmdd = 1;
+    	    break;
+    };
+
+    text[0] = '\001';
+    text[1] = TXT_Format;
+    text[2] = 0;
+
+    write_topline(text);
+
+    write_label_fix(  20, 790, ME_Y_LINE2, &FontT42, TXT_Format);
+
+    write_field_on_off(StMSYS1_DDMMYY,  320, 790, ME_Y_LINE1,  &FontT48, "DDMMYY", ddmmyy);
+    write_field_on_off(StMSYS1_MMDDYY,	320, 790, ME_Y_LINE2,  &FontT48, "MMDDYY", mmddyy);
+    write_field_on_off(StMSYS1_YYMMDD,	320, 790, ME_Y_LINE3,  &FontT48, "YYMMDD", yymmdd);
+
+    setEvent(StMSYS1_DDMMYY,	(uint32_t)OnAction_DDMMYY);
+    setEvent(StMSYS1_MMDDYY,	(uint32_t)OnAction_MMDDYY);
+    setEvent(StMSYS1_YYMMDD,	(uint32_t)OnAction_YYMMDD);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+uint8_t OnAction_Format(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	openEdit_DateFormat();
 
     return UNSPECIFIC_RETURN;
 }

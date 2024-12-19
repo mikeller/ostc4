@@ -567,4 +567,8 @@ void disableTimer(void);
 
 uint8_t drawingColor_from_ascentspeed(float speed);
 
+void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year);
+void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen);
+
+
 #endif // DATA_CENTRAL_H

@@ -972,4 +972,39 @@ uint8_t drawingColor_from_ascentspeed(float speed)
     return color;
 }
 
+/* returns the date in the order defined by the settings DDMMYY => X */
+void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year)
+{
+	if(strLen > 10)
+	{
+		switch(settingsGetPointer()->date_format)
+		{
+			default:
+			case DDMMYY: snprintf(pString,strLen,"%02d.%02d.%02d",day,month,year);
+				break;
+			case MMDDYY: snprintf(pString,strLen,"%02d.%02d.%02d",month,day,year);
+				break;
+			case YYMMDD: snprintf(pString,strLen,"%02d.%02d.%02d",year,month,day);
+				break;
+		}
+	}
+}
+/* returns the format in the order defined by the settings DDMMYY => X */
+void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen)
+{
+	if(strLen > 10)
+	{
+		switch(settingsGetPointer()->date_format)
+		{
+			default:
+			case DDMMYY: snprintf(pString,strLen,"%c%c",TXT_2BYTE,TXT2BYTE_DDMMYY);
+				break;
+			case MMDDYY:  snprintf(pString,strLen,"%c%c",TXT_2BYTE,TXT2BYTE_MMDDYY);
+				break;
+			case YYMMDD:  snprintf(pString,strLen,"%c%c",TXT_2BYTE,TXT2BYTE_YYMMDD);
+				break;
+		}
+	}
+}
+
 
