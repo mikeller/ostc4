@@ -1007,4 +1007,91 @@ void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen)
 	}
 }
 
+uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8_t* pColor)  /* this function is only called if diver is below last last stop depth */
+{
+	static SSlowExitState slowExitState = SE_END;
+	static uint16_t countDownSec = 0;
+	static float exitDepthMeter = 0.0;
+	static uint32_t exitSecTick = 0;
+	static uint32_t lastSecTick = 0;
+	static uint8_t color = 0;
+	static uint8_t drawingActive = 0;
 
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+	if((stateUsed->lifeData.max_depth_meter < pSettings->last_stop_depth_meter)	/* start of dive => reinit timer */
+			|| (slowExitState == SE_REINIT))
+	{
+		if(slowExitState != SE_INIT)
+		{
+			countDownSec = pSettings->slowExitTime * 60;
+			slowExitState = SE_INIT;
+			exitDepthMeter =  pSettings->last_stop_depth_meter;
+			color = 0;
+			drawingActive = 0;
+		}
+	}
+	else
+	{
+		if(slowExitState != SE_END)
+		{
+			if((slowExitState == SE_INIT) && (stateUsed->lifeData.dive_time_seconds > 900)) /* min 15min divetime */
+			{
+				slowExitState = SE_ACTIVE;
+				exitSecTick = HAL_GetTick();
+				lastSecTick = exitSecTick;
+			}
+			else if(slowExitState == SE_ACTIVE)
+			{
+				if(time_elapsed_ms(lastSecTick, HAL_GetTick()) > 60000) /* restart timer if diver go below exit zone */
+				{
+					slowExitState = SE_REINIT;
+				}
+				else if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
+				{
+					exitSecTick = HAL_GetTick();
+					lastSecTick = exitSecTick;
+					/* select depth digit color */
+					if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) < 0.5 )
+					{
+						color = CLUT_NiceGreen;
+					}
+					else if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.5)
+					{
+						color = CLUT_WarningYellow;
+					}
+					else if(stateUsed->lifeData.depth_meter - exitDepthMeter < -1.5 )
+					{
+						color = CLUT_WarningRed;
+					}
+					else
+					{
+						color = 0;
+					}
+
+					if((fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.6 ) /* only decrease counter if diver is close to target depth */
+							|| (color == CLUT_WarningRed))								 /* or if diver is far ahead */
+					{
+						countDownSec--;
+						if(countDownSec == 0)
+						{
+							slowExitState = SE_END;
+							color = 0;
+							exitDepthMeter = 0;
+						}
+						else
+						{
+							exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+						}
+					}
+					drawingActive = 1;
+				}
+			}
+		}
+	}
+	*pCountDownSec = countDownSec;
+	*pExitDepthMeter = exitDepthMeter;
+	*pColor = color;
+	return drawingActive;
+}

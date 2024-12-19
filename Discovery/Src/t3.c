@@ -85,6 +85,7 @@ uint8_t t3_test_customview_warnings(void);
 void t3_refresh_customview(float depth);
 void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t ActualHeading, uint16_t UserSetHeading);
 uint8_t t3_EvaluateAFCondition(uint8_t T3CView);
+uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl1, GFX_DrawCfgWindow* tXr1);  /* this function is only called if diver is below last last stop depth */
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -390,14 +391,27 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
 {
     char text[256];
     uint8_t textPointer;
-    uint8_t color;
+    uint8_t color = 0;
     uint8_t depthChangeRate;
     uint8_t depthChangeAscent;
     point_t start, stop, startZeroLine;
     SDivetime Divetime = {0,0,0,0};
+    uint16_t 	nextstopLengthSeconds = 0;
+    uint8_t 	nextstopDepthMeter = 0;
 
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
+
+	const SDecoinfo * pDecoinfo = getDecoInfo();
+	if(pDecoinfo->output_time_to_surface_seconds)
+	{
+	    tHome_findNextStop(pDecoinfo->output_stop_length_seconds, &nextstopDepthMeter, &nextstopLengthSeconds);
+	}
+	else
+	{
+	    nextstopDepthMeter = 0;
+	    nextstopLengthSeconds = 0;
+	}
 
     start.x = 0;
     stop.x = 799;
@@ -423,40 +437,6 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     {
     	GFX_draw_line(tXscreen, start, stop, CLUT_Font020);
     }
-
-    /* depth */
-    color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
-    float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
-
-    if(depth <= 0.3f)
-        depth = 0;
-
-    if(settingsGetPointer()->nonMetricalSystem)
-        snprintf(text,TEXTSIZE,"\032\f[feet]");
-    else
-        snprintf(text,TEXTSIZE,"\032\f%c",TXT_Depth);
-    GFX_write_string(&FontT42,tXl1,text,0);
-
-    if(			((mode == DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 4) || (stateUsed->lifeData.ascent_rate_meter_per_min < -4 )))
-            || 	((mode != DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 8) || (stateUsed->lifeData.ascent_rate_meter_per_min < -10)))
-        )
-    {
-        snprintf(text,TEXTSIZE,"\f\002%.0f %c%c/min  "
-            , unit_depth_float(stateUsed->lifeData.ascent_rate_meter_per_min)
-            , unit_depth_char1()
-            , unit_depth_char2()
-        );
-        GFX_write_string(&FontT42,tXl1,text,0);
-    }
-
-    if( depth < 100)
-        snprintf(text,TEXTSIZE,"\020\003\016%01.1f",depth);
-    else
-        snprintf(text,TEXTSIZE,"\020\003\016%01.0f",depth);
-
-    Gfx_colorsscheme_mod(text,color);
-    GFX_write_string(&FontT105,tXl1,text,1);
-
 
     /* ascentrate graph */
     if(mode == DIVEMODE_Apnea)
@@ -555,69 +535,108 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     }
     else
     {
-        /* ascentrate graph -standard mode */
-        if(stateUsed->lifeData.ascent_rate_meter_per_min > 0)
-        {
-        	 if(!pSettings->FlipDisplay)
-        	 {
-        		 start.y = tXl1->WindowY0 - 1;
-        	 }
-        	 else
-        	 {
-        		 start.y = tXl1->WindowY1 + 1;
-        	 }
+    	if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
+    	{
+    		color = t3_drawSlowExitGraph(tXscreen, tXl1, tXr1);
+    	}
+    	else
+    	{
+			if(stateUsed->lifeData.ascent_rate_meter_per_min > 0) /* ascentrate graph -standard mode */
+			{
+				 if(!pSettings->FlipDisplay)
+				 {
+					 start.y = tXl1->WindowY0 - 1;
+				 }
+				 else
+				 {
+					 start.y = tXl1->WindowY1 + 1;
+				 }
 
-            for(int i = 0; i<4;i++)
-            {
-                start.y += 5*8;
-                stop.y = start.y;
-                if(!pSettings->FlipDisplay)
-                {
-                	start.x = tXl1->WindowX1 - 1;
-                }
-                else
-                {
-                	start.x = tXr1->WindowX1 - 1;
-                }
-                stop.x = start.x - 17;
-                GFX_draw_line(tXscreen, start, stop, 0);
-            }
-            // new thick bar design Sept. 2015
-            if(!pSettings->FlipDisplay)
-            {
-            	start.x = tXl1->WindowX1 - 3 - 5;
-            }
-            else
-            {
-            	start.x = tXr1->WindowX1 - 3 - 5;
-            }
+				for(int i = 0; i<4;i++)
+				{
+					start.y += 5*8;
+					stop.y = start.y;
+					if(!pSettings->FlipDisplay)
+					{
+						start.x = tXl1->WindowX1 - 1;
+					}
+					else
+					{
+						start.x = tXr1->WindowX1 + 3;
+					}
+					stop.x = start.x - 17;
+					GFX_draw_line(tXscreen, start, stop, 0);
+				}
+				// new thick bar design Sept. 2015
+				if(!pSettings->FlipDisplay)
+				{
+					start.x = tXl1->WindowX1 - 3 - 5;
+				}
+				else
+				{
+					start.x = tXr1->WindowX1 - 3 - 5;
+				}
 
-            stop.x = start.x;
-            if(!pSettings->FlipDisplay)
-            {
-            	start.y = tXl1->WindowY0 - 1;
-            }
-            else
-            {
-            	start.y = tXl1->WindowY1 + 1;
-            }
+				stop.x = start.x;
+				if(!pSettings->FlipDisplay)
+				{
+					start.y = tXl1->WindowY0 - 1;
+				}
+				else
+				{
+					start.y = tXl1->WindowY1 + 1;
+				}
 
-            stop.y = start.y + (uint16_t)(stateUsed->lifeData.ascent_rate_meter_per_min * 8);
-            stop.y -= 3; // wegen der Liniendicke von 12 anstelle von 9
-            if(stop.y >= 470)
-                stop.y = 470;
-            start.y += 7; // starte etwas weiter oben
-            if(stateUsed->lifeData.ascent_rate_meter_per_min <= 10)
-                color = CLUT_EverythingOkayGreen;
-            else
-            if(stateUsed->lifeData.ascent_rate_meter_per_min <= 15)
-                color = CLUT_WarningYellow;
-            else
-                color = CLUT_WarningRed;
+				stop.y = start.y + (uint16_t)(stateUsed->lifeData.ascent_rate_meter_per_min * 8);
+				stop.y -= 3; // wegen der Liniendicke von 12 anstelle von 9
+				if(stop.y >= 470)
+					stop.y = 470;
+				start.y += 7; // starte etwas weiter oben
+				if(stateUsed->lifeData.ascent_rate_meter_per_min <= 10)
+					color = CLUT_EverythingOkayGreen;
+				else
+				if(stateUsed->lifeData.ascent_rate_meter_per_min <= 15)
+					color = CLUT_WarningYellow;
+				else
+					color = CLUT_WarningRed;
 
-            GFX_draw_thick_line(12,tXscreen, start, stop, color);
-        }
+				GFX_draw_thick_line(12,tXscreen, start, stop, color);
+			}
+   	    color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
+    	}
     }
+    /* depth */
+    float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
+
+    if(depth <= 0.3f)
+        depth = 0;
+
+    if(settingsGetPointer()->nonMetricalSystem)
+        snprintf(text,TEXTSIZE,"\032\f[feet]");
+    else
+        snprintf(text,TEXTSIZE,"\032\f%c",TXT_Depth);
+    GFX_write_string(&FontT42,tXl1,text,0);
+
+    if(			((mode == DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 4) || (stateUsed->lifeData.ascent_rate_meter_per_min < -4 )))
+            || 	((mode != DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 8) || (stateUsed->lifeData.ascent_rate_meter_per_min < -10)))
+        )
+    {
+        snprintf(text,TEXTSIZE,"\f\002%.0f %c%c/min  "
+            , unit_depth_float(stateUsed->lifeData.ascent_rate_meter_per_min)
+            , unit_depth_char1()
+            , unit_depth_char2()
+        );
+        GFX_write_string(&FontT42,tXl1,text,0);
+    }
+
+    if( depth < 100)
+        snprintf(text,TEXTSIZE,"\020\003\016%01.1f",depth);
+    else
+        snprintf(text,TEXTSIZE,"\020\003\016%01.0f",depth);
+
+    Gfx_colorsscheme_mod(text,color);
+    GFX_write_string(&FontT105,tXl1,text,1);
+
 
     // divetime
     if(mode == DIVEMODE_Apnea)
@@ -2124,4 +2143,89 @@ void t3_handleAutofocus(void)
 			}
 		}
 	}
+}
+
+#define ASCENT_GRAPH_YPIXEL 220
+uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl1, GFX_DrawCfgWindow* tXr1)  /* this function is only called if diver is below last last stop depth */
+{
+	static uint16_t countDownSec = 0;
+	uint8_t drawingMeterStep;
+	static float exitDepthMeter = 0.0;
+
+
+	uint8_t index = 0;
+	uint8_t color = 0;
+	point_t start, stop;
+
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+
+	if(calculateSlowExit(&countDownSec, &exitDepthMeter, &color))	/* graph to be drawn? */
+	{
+	 	 if(!pSettings->FlipDisplay)
+	 	 {
+	 		 start.y = tXl1->WindowY0 - 1;
+	 	 }
+	 	 else
+	 	 {
+	 		 start.y = tXl1->WindowY1 + 1;
+	 	 }
+
+		drawingMeterStep = ASCENT_GRAPH_YPIXEL / pSettings->last_stop_depth_meter;		/* based on 120 / 4 = 30 of standard ascent graph */
+
+		for(index = 0; index < pSettings->last_stop_depth_meter; index++)	/* draw meter indicators */
+	     {
+	         start.y += drawingMeterStep;
+	         stop.y = start.y;
+	         if(!pSettings->FlipDisplay)
+	         {
+	         	start.x = tXl1->WindowX1 - 1;
+	         }
+	         else
+	         {
+	        	start.x = tXr1->WindowX1 + 3;
+	         }
+	         stop.x = start.x - 43;
+	         GFX_draw_line(tXscreen, start, stop, 0);
+	     }
+
+		/* draw cntdown bar */
+
+		if(!pSettings->FlipDisplay)
+		{
+			start.x -= 20;
+			start.y = tXl1->WindowY0 + ASCENT_GRAPH_YPIXEL + 2;
+		}
+		else
+		{
+			start.x -= 25;
+			start.y = tXl1->WindowY1 + ASCENT_GRAPH_YPIXEL + 5;
+		}
+		stop.x = start.x;
+		stop.y = start.y - countDownSec * (ASCENT_GRAPH_YPIXEL / (float)(pSettings->slowExitTime * 60.0));
+		if(stop.y >= 470) stop.y = 470;
+		if(!pSettings->FlipDisplay)
+		{
+			stop.y += 5;
+		}
+		GFX_draw_thick_line(15,tXscreen, start, stop, 3);
+		/* mark diver depth */
+		if(!pSettings->FlipDisplay)
+		{
+			start.x = tXl1->WindowX1 - 32;
+			stop.x = start.x + 24;
+		}
+		else
+		{
+		   	start.x = tXr1->WindowX1 - 33;
+		   	stop.x = start.x + 24;
+		}
+
+
+		start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
+		stop.y = start.y;
+		GFX_draw_thick_line(10,tXscreen, start, stop, 9);
+	}
+	return color;
 }

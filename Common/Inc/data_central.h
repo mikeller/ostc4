@@ -180,6 +180,14 @@ typedef struct
 	uint8_t signalQual[4];	/* signal quality indicator for x sats */
 } SGnssInfo;
 
+typedef enum
+{
+	SE_INIT = 0,
+	SE_REINIT,
+	SE_ACTIVE,
+	SE_END
+} SSlowExitState;
+
 
 /* struct SLifeData
  * contains data all actual data (pressure, stuturation, etc. as received from second ship
@@ -570,5 +578,6 @@ uint8_t drawingColor_from_ascentspeed(float speed);
 void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year);
 void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen);
 
+uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8_t* pColor);
 
 #endif // DATA_CENTRAL_H
