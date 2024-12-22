@@ -4040,7 +4040,7 @@ void t7_showPosition(void)
     if(stateUsed->lifeData.gnssData.fixType < 2)
     {
     	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
-    	if(stateUsed->lifeData.gnssData.alive)
+    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
     	{
     		textpointer += snprintf(&text[textpointer],50,"\001\020Status\n\r");
     	}

@@ -242,6 +242,8 @@ void tMenuEdit_refresh_live_content(void)
 	 	 case (StMHARD5_Button1 & MaskFieldDigit): // will not be executed in EditFieldMode as global state is different
 						refreshFct = refresh_ButtonValuesFromPIC;
 	 	 	 break;
+	 	 case StMSYS1_DateTime: refreshFct = refresh_DateTime;
+		 	 break;
 	 	 case (StMSYS3_Units & MaskFieldDigit): refreshFct = refresh_Design;
 	 	 	 break;
 	 	 case (StMCustom1_CViewTimeout & MaskFieldDigit):refreshFct = refresh_Customviews;
@@ -1337,6 +1339,15 @@ void clean_content_of_Id(int8_t localId)
 void clean_content_of_actual_Id(void)
 {
 	clean_content_of_Id(actualId);
+}
+
+uint8_t togglePlusMinus(uint8_t input)
+{
+    if (input == '+') {
+        return '-';
+    } else {
+        return '+';
+    }
 }
 
 void write_field_udigit_and_2digit(uint8_t subtype, uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint32_t int1,  uint32_t int2,  uint32_t int3,  uint32_t int4)

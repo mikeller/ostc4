@@ -184,6 +184,14 @@ typedef struct
 	uint8_t Corrections;
 } SSettingsStatus;
 
+
+typedef struct
+{
+	int8_t hours;
+	uint8_t minutes;
+} StimeZone;
+
+
 /* SSettings
 	 * gas[0] and setpoint[0] are the special ones configurable during the dive
 	 */
@@ -314,6 +322,8 @@ typedef struct
 	uint8_t ext_sensor_map[8];		/* redefined in 0xFFFF0027 */
 	uint8_t cvAutofocus;
 	uint8_t slowExitTime;
+	/* new in 0xFFFF002c */
+	StimeZone timeZone;
 } SSettings;
 
 typedef struct

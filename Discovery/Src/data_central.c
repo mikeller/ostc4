@@ -1095,3 +1095,31 @@ uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8
 	*pColor = color;
 	return drawingActive;
 }
+
+void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHours, uint8_t* pLocalMinutes)
+{
+    int8_t localHours = 0;
+    int8_t localMinutes = 0;
+    SSettings* pSettings = settingsGetPointer();
+
+	localHours = utcHours + pSettings->timeZone.hours;
+	if(localHours < 0)
+	{
+		localHours += 24;
+	}
+	if(localHours > 24)
+	{
+		localHours -= 24;
+	}
+	localMinutes = utcMinutes + pSettings->timeZone.minutes;
+	if(localMinutes < 0)
+	{
+		localMinutes += 60;
+	}
+	if(localMinutes > 60)
+	{
+		localMinutes -= 60;
+	}
+	*pLocalHours = localHours;
+	*pLocalMinutes = localMinutes;
+}

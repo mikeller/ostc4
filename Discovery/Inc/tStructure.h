@@ -316,8 +316,9 @@
 #define StMSYS1_DDMMYY	_MB(2,8,1,3,1)
 #define StMSYS1_MMDDYY	_MB(2,8,1,3,2)
 #define StMSYS1_YYMMDD	_MB(2,8,1,3,3)
-#define StMSYS1_DST		_MB(2,8,1,4,0)
-#define StMSYS1_12HR    _MB(2,8,1,5,0)
+#define StMSYS1_12HR    _MB(2,8,1,4,0)
+#define StMSYS1_GNSSDT  _MB(2,8,1,5,0)
+#define StMSYS1_ZONE	_MB(2,8,1,6,0)
 
 #define StMSYS_Timer	_MB(2,8,2,1,0)
 

@@ -38,5 +38,6 @@ void openEdit_System(uint8_t line);
 void refresh_InformationPage(void);
 void refresh_Design(void);
 void refresh_Customviews(void);
+void refresh_DateTime(void);
 
 #endif /* TMENU_EDIT_SYSTEM_H */

@@ -89,7 +89,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF002B,
+    .header = 0xFFFF002C,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -340,7 +340,9 @@ const SSettings SettingsStandard = {
     .delaySetpointLow = false,
     .timerDurationS = 180,
 	.cvAutofocus = 0,
-	.slowExitTime = 0
+	.slowExitTime = 0,
+	.timeZone.hours = 0,
+	.timeZone.minutes = 0
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -602,6 +604,10 @@ void set_new_settings_missing_in_ext_flash(void)
     	// no break;
     case 0xFFFF002A:
     	Settings.slowExitTime = 0;
+    	// no break;
+    case 0xFFFF002B:
+    	Settings.timeZone.hours = 0;
+    	Settings.timeZone.minutes = 0;
     	// no break;
     default:
         pSettings->header = pStandard->header;
@@ -1854,6 +1860,15 @@ uint8_t check_and_correct_settings(void)
     	 Settings.cvAutofocus = 0;
     }
     parameterId++;
+    if((Settings.timeZone.hours > 14)
+    		|| (Settings.timeZone.hours < -12)
+			|| (Settings.timeZone.minutes > 45))
+    {
+    	Settings.timeZone.hours = 0;
+    	Settings.timeZone.minutes = 0;
+    	 corrections++;
+    }
+	parameterId++;
     if(corrections)
     {
     	settingsWarning = 1;

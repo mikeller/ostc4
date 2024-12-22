@@ -171,6 +171,17 @@ typedef struct
 	float fLon;
 }SGnssCoord;
 
+
+typedef struct
+{
+	uint8_t year;
+	uint8_t month;
+	uint8_t day;
+	uint8_t hour;
+	uint8_t min;
+	uint8_t sec;
+}SDateTime;
+
 typedef struct
 {
 	SGnssCoord coord;
@@ -178,6 +189,7 @@ typedef struct
 	uint8_t fixType;
 	uint8_t numSat;			/* number of available satellites */
 	uint8_t signalQual[4];	/* signal quality indicator for x sats */
+	SDateTime DateTime;		/* UTC time information */
 } SGnssInfo;
 
 typedef enum
@@ -577,6 +589,7 @@ uint8_t drawingColor_from_ascentspeed(float speed);
 
 void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year);
 void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen);
+void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHours, uint8_t* pLocalMinutes);
 
 uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8_t* pColor);
 

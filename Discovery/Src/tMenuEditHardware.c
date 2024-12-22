@@ -159,17 +159,6 @@ void openEdit_FlipDisplay(void)
     exitMenuEdit_to_Home();
 }
 
-
-static uint8_t togglePlusMinus(uint8_t input)
-{
-    if (input == '+') {
-        return '-';
-    } else {
-        return '+';
-    }
-}
-
-
 static uint8_t OnAction_CompassDeclination(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     SSettings *settings = settingsGetPointer();

@@ -78,6 +78,7 @@ void write_label_var(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t
 void clean_content(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle,  const tFont *Font);
 void write_content(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle,  const tFont *Font, const char *text, uint8_t color);
 
+uint8_t togglePlusMinus(uint8_t input);
 void write_topline( char *text);
 void write_buttonTextline( uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode);
 void write_field_udigit(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint32_t int1,  uint32_t int2,  uint32_t int3,  uint32_t int4);

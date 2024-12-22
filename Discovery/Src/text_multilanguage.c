@@ -1987,7 +1987,11 @@ static uint8_t text_FR_YYMMDD[] = "";
 static uint8_t text_IT_YYMMDD[] = "";
 static uint8_t text_ES_YYMMDD[] = "";
 
-
+static uint8_t text_EN_TIMEZONE[] = "Time zone";
+static uint8_t text_DE_TIMEZONE[] = "Zeitzone";
+static uint8_t text_FR_TIMEZONE[] = "";
+static uint8_t text_IT_TIMEZONE[] = "";
+static uint8_t text_ES_TIMEZONE[] = "";
 
 /* Lookup Table -------------------------------------------------------------*/
 
@@ -2295,6 +2299,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_DDMMYY, 			{text_EN_DDMMYY, text_DE_DDMMYY, text_FR_DDMMYY, text_IT_DDMMYY, text_ES_DDMMYY}},
 	{(uint8_t)TXT2BYTE_MMDDYY, 			{text_EN_MMDDYY, text_DE_MMDDYY, text_FR_MMDDYY, text_IT_MMDDYY, text_ES_MMDDYY}},
 	{(uint8_t)TXT2BYTE_YYMMDD, 			{text_EN_YYMMDD, text_DE_YYMMDD, text_FR_YYMMDD, text_IT_YYMMDD, text_ES_YYMMDD}},
+	{(uint8_t)TXT2BYTE_TIMEZONE, 		{text_EN_TIMEZONE, text_DE_TIMEZONE, text_FR_TIMEZONE, text_IT_TIMEZONE, text_ES_TIMEZONE}},
 
 
 
