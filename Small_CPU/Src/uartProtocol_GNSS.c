@@ -289,7 +289,7 @@ void uartGnss_ProcessData(uint8_t data)
 													break;
 												case UART_GNSS_LOADCONF_2:	gnssState = UART_GNSS_SETMODE_MOBILE;
 													break;
-												case UART_GNSS_SETMODE_MOBILE: gnssState = UART_GNSS_IDLE;
+												case UART_GNSS_SETMODE_MOBILE: gnssState = UART_GNSS_PWRUP;
 													break;
 												default:
 													break;
