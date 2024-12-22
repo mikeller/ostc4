@@ -1109,6 +1109,7 @@ void scheduleSleepMode(void)
 	secondsCount = 0;
 #ifdef ENABLE_GPIO_V2
 	uint16_t deepSleepCntDwn = 21600; 	/* 12 hours in 2 second steps */
+	uint8_t deepSleep = 0;
 	GPIO_InitTypeDef GPIO_InitStruct;
 #endif
 	/* prevent button wake up problem while in sleep_prepare
@@ -1193,20 +1194,21 @@ void scheduleSleepMode(void)
 			deepSleepCntDwn--;
 			if(deepSleepCntDwn == 0)
 			{
+				deepSleep = 1;
 				GPIO_GPS_OFF();
 				GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 				GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
 				GPIO_InitStruct.Pull = GPIO_NOPULL;
 				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN);
 				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
-
 				uartGnss_SetState(UART_GNSS_INIT);
 			}
 		}
 		else
 		{
-			if(global.lifeData.battery_voltage < 3.5)	/* switch off backup voltage if battery gets low */
+			if((deepSleep = 1) && (global.lifeData.battery_voltage < 3.5))	/* switch off backup voltage if battery gets low */
 			{
+				deepSleep = 2;
 				GPIO_GPS_BCKP_OFF();
 				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_BCKP_CONTROL_PIN);
 				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
@@ -1223,7 +1225,7 @@ void scheduleSleepMode(void)
 	reinitGlobals();
 	ReInit_battery_charger_status_pins();
 #ifdef ENABLE_GPIO_V2
-	if(deepSleepCntDwn == 0)
+	if(deepSleep != 0)
 	{
 		GPIO_GNSS_Init();
 	}
@@ -1793,6 +1795,13 @@ void copyGNSSdata(void)
 	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.fLon;
 	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
 	global.dataSendToMaster.data[0].gnssInfo.numSat = GNSS_Handle.numSat;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.year = (uint8_t) (GNSS_Handle.year - 2000);
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.month = GNSS_Handle.month;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.day = GNSS_Handle.day;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.hour = GNSS_Handle.hour;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.min = GNSS_Handle.min;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.sec = GNSS_Handle.sec;
+
 	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
 
 	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));

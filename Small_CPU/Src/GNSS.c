@@ -28,6 +28,7 @@
 
 #include <string.h>
 #include "GNSS.h"
+#include "data_exchange.h"
 
 union u_Short uShort;
 union i_Short iShort;
@@ -56,6 +57,7 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->vAcc = 0;
 	GNSS->gSpeed = 0;
 	GNSS->headMot = 0;
+	GNSS->alive = 0;
 }
 
 /*!
@@ -139,7 +141,22 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 		GNSS->fLat = searchCnt++;
 	}
 
-	GNSS->alive = !GNSS->alive;
+	if(GNSS->alive & GNSS_ALIVE_STATE_ALIVE)							/* alive */
+	{
+		GNSS->alive &= !GNSS_ALIVE_STATE_ALIVE;
+	}
+	else
+	{
+		GNSS->alive |= GNSS_ALIVE_STATE_ALIVE;
+	}
+	if((GNSS_Handle.uartWorkingBuffer[17] & 0x03) == 0x03)	/* date/time valid */
+	{
+		GNSS->alive |= GNSS_ALIVE_STATE_TIME;
+	}
+	else
+	{
+		GNSS->alive &= !GNSS_ALIVE_STATE_TIME;
+	}
 }
 
 /*!

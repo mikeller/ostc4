@@ -75,7 +75,7 @@ void GPIO_GNSS_Init()
 	GPIO_InitStructure.Pull = GPIO_PULLDOWN;
 	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_SET);
 }
 
 void GPIO_Power_MainCPU_Init(void) {
