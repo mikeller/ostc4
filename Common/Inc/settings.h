@@ -324,6 +324,7 @@ typedef struct
 	uint8_t slowExitTime;
 	/* new in 0xFFFF002c */
 	StimeZone timeZone;
+	uint8_t warningBuzzer;
 } SSettings;
 
 typedef struct

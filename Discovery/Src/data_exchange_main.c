@@ -73,6 +73,7 @@
 #include "buehlmann.h"
 #include "externLogbookFlash.h"
 #include "vpm.h"
+#include "check_warning.h"
 
 /* #define TESTBENCH */
 
@@ -441,6 +442,13 @@ void DateEx_copy_to_dataOut(void)
 	}
 #endif
 
+#ifdef ENABLE_GPIO_V2
+	if(getBuzzerActivationState())
+	{
+		externalInterface_Cmd |= EXT_INTERFACE_BUZZER_ON;
+	}
+#endif
+
 	dataOut.data.externalInterface_Cmd = externalInterface_Cmd;
 	externalInterface_Cmd = 0;
 
@@ -583,13 +591,16 @@ static void DataEX_helper_set_Unknown_Date_deviceData(SDeviceLine *lineWrite)
 	RTC_DateTypeDef sdatestructure;
 	RTC_TimeTypeDef stimestructure;
 
+	const SFirmwareData *pFirmwareInfo;
+    pFirmwareInfo = firmwareDataGetPointer();
+
 	stimestructure.Hours = UNKNOWN_TIME_HOURS;
 	stimestructure.Minutes = UNKNOWN_TIME_MINUTES;
 	stimestructure.Seconds = UNKNOWN_TIME_SECOND;
 
 	sdatestructure.Date = UNKNOWN_DATE_DAY;
 	sdatestructure.Month = UNKNOWN_DATE_MONTH;
-	sdatestructure.Year = UNKNOWN_DATE_YEAR;
+	sdatestructure.Year =  pFirmwareInfo->release_year;
 	setWeekday(&sdatestructure);
 
 	DataEX_helper_SetTime(stimestructure, &lineWrite->time_rtc_tr);

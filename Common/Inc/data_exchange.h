@@ -38,6 +38,7 @@
 /* 4th nibble command channel */
 #define EXT_INTERFACE_33V_ON		(0x8000u)	/* Bit set to enable 3.3V power interface */
 #define EXT_INTERFACE_ADC_ON		(0x4000u)	/* Bit set to enable ADC conversion */
+#define EXT_INTERFACE_BUZZER_ON		(0x2000u)	/* Bit set to enable the buzzer */
 
 /* Command subset */
 #define EXT_INTERFACE_AUTODETECT 	(0x0001u)	/* Start auto detection of connected sensors	*/

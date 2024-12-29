@@ -56,6 +56,7 @@ void openEdit_Customview(void);
 void openEdit_BigScreen(void);
 void openEdit_MotionCtrl(void);
 void openEdit_ViewPort(void);
+void openEdit_WarningBuz(void);
 void refresh_Customviews(void);
 void setMenuContentStructure();
 char customview_TXT2BYTE_helper(uint8_t customViewId);
@@ -125,7 +126,6 @@ void refresh_Customviews(void)
     write_label_var(  30, 700, ME_Y_LINE4, &FontT48, text);
 
     tMenuEdit_refresh_field(StMCustom1_CViewAutoFocusBF);
-
 
     // field corner  return
     textpointer = 0;
@@ -375,8 +375,14 @@ void openEdit_Custom(uint8_t line)
     		break;
     	case 4:		openEdit_CustomviewDivemode(cv_changelist_BS);
     		break;
+#ifdef ENABLE_MOTION_CONTROL
     	case 5:		openEdit_ViewPort();
     		break;
+#endif
+#ifdef ENABLE_GPIO_V2
+    	case 5:		openEdit_WarningBuz();
+    	    	break;
+#endif
     }
 }
 
@@ -450,6 +456,7 @@ void openEdit_MotionCtrl(void)
 
 void openEdit_ViewPort(void)
 {
+#ifdef ENABLE_MOTION_CONTROL
 	resetMenuEdit(CLUT_MenuPageCustomView);
     refresh_ViewPort();
 
@@ -464,8 +471,22 @@ void openEdit_ViewPort(void)
     setEvent(StMCustom5_CViewPortLayout,	(uint32_t)OnAction_CViewPortLayout);
     setEvent(StMCustom5_CViewPortAmbient,	(uint32_t)OnAction_CViewPortAmbient);
     setEvent(StMCustom5_CViewPortControl,	(uint32_t)OnAction_CViewPortControl);
+#endif
 }
+void openEdit_WarningBuz(void)
+{
+    SSettings *pSettings = settingsGetPointer();
 
+    if(pSettings->warningBuzzer == 0)
+    {
+        pSettings->warningBuzzer = 1;
+    }
+    else
+    {
+        pSettings->warningBuzzer = 0;
+    }
+    exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
+}
 
 char customview_TXT2BYTE_helper(uint8_t customViewId)
 {

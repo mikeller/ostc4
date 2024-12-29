@@ -256,10 +256,12 @@ void tMenuEdit_refresh_live_content(void)
 	 	 case StMCustom3_CViewSelection5:
 	 	 case StMCustom3_CViewSelection6: refreshFct = CustomviewDivemode_refresh;
 	 	 	 break;
+#ifdef ENABLE_MOTION_CONTROL
 	 	 case (StMCustom5_CViewPortCalib & MaskFieldDigit):
 	 	 case StMCustom5_CViewPortLayout:
 	 	 case StMCustom5_CViewPortAmbient: refreshFct = refresh_ViewPort;
 	 		 break;
+#endif
 	 	 default:	 /* no menu has been updated */
 	 		 break;
 	 }

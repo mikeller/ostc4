@@ -1993,6 +1993,12 @@ static uint8_t text_FR_TIMEZONE[] = "";
 static uint8_t text_IT_TIMEZONE[] = "";
 static uint8_t text_ES_TIMEZONE[] = "";
 
+static uint8_t text_EN_BUZZER[] = "Buzzer";
+static uint8_t text_DE_BUZZER[] = "Vibration";
+static uint8_t text_FR_BUZZER[] = "";
+static uint8_t text_IT_BUZZER[] = "";
+static uint8_t text_ES_BUZZER[] = "";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2301,6 +2307,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_YYMMDD, 			{text_EN_YYMMDD, text_DE_YYMMDD, text_FR_YYMMDD, text_IT_YYMMDD, text_ES_YYMMDD}},
 	{(uint8_t)TXT2BYTE_TIMEZONE, 		{text_EN_TIMEZONE, text_DE_TIMEZONE, text_FR_TIMEZONE, text_IT_TIMEZONE, text_ES_TIMEZONE}},
 
+	{(uint8_t)TXT2BYTE_BUZZER, 		{text_EN_BUZZER, text_DE_BUZZER, text_FR_BUZZER, text_IT_BUZZER, text_ES_BUZZER}},
 
 
 };

@@ -1502,7 +1502,9 @@ void t7_show_customview_warnings(void)
 {
     char text[256];
     uint8_t textpointer, lineFree;
+#ifdef HAVE_DEBUG_WARNINGS
     uint8_t index = 0;
+#endif
 
     text[0] = '\025';
     text[1] = '\f';
@@ -1614,6 +1616,7 @@ void t7_show_customview_warnings(void)
     }
 */
     GFX_write_string(&FontT48,&t7cW,text,1);
+    requestBuzzerActivation(1);
 }
 
 
@@ -3217,7 +3220,10 @@ void t7_refresh_divemode(void)
     if(customview_warnings && warning_count_high_time)
         t7_show_customview_warnings();
     else
+    {
         t7_refresh_customview();
+        requestBuzzerActivation(0);
+    }
 
     /* the frame */
     draw_frame(1,1, CLUT_DIVE_pluginbox, CLUT_DIVE_FieldSeperatorLines);

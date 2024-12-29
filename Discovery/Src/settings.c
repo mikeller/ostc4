@@ -342,7 +342,8 @@ const SSettings SettingsStandard = {
 	.cvAutofocus = 0,
 	.slowExitTime = 0,
 	.timeZone.hours = 0,
-	.timeZone.minutes = 0
+	.timeZone.minutes = 0,
+	.warningBuzzer = 0
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -608,6 +609,7 @@ void set_new_settings_missing_in_ext_flash(void)
     case 0xFFFF002B:
     	Settings.timeZone.hours = 0;
     	Settings.timeZone.minutes = 0;
+    	Settings.warningBuzzer = 0;
     	// no break;
     default:
         pSettings->header = pStandard->header;
@@ -1317,6 +1319,16 @@ uint8_t check_and_correct_settings(void)
         setFirstCorrection(parameterId);
     }
     parameterId++;
+
+    if(Settings.warningBuzzer > 1)
+    {
+    	Settings.warningBuzzer = 0;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++;
+
+
 /*	uint8_t serialHigh;
  */
 

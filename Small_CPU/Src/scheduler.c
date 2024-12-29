@@ -342,6 +342,9 @@ void scheduleSpecial_Evaluate_DataSendToSlave(void)
 	{
 		externalInterface_ExecuteCmd(global.dataSendToSlave.data.externalInterface_Cmd);
 	}
+#ifdef ENABLE_GPIO_V2
+	GPIO_HandleBuzzer();
+#endif
 
 
 #if 0

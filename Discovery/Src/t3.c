@@ -762,10 +762,14 @@ void t3_refresh_divemode(void)
         customview_warnings = t3_test_customview_warnings();
 
     if(customview_warnings && warning_count_high_time)
+    {
         t3_basics_show_customview_warnings(&t3c1);
+    }
     else
+    {
         t3_refresh_customview(depth_meter);
-
+        requestBuzzerActivation(0);
+    }
     if(stateUsed->warnings.lowBattery)
         t3_basics_battery_low_customview_extra(&t3r1); //t3c1);
 }
@@ -1534,7 +1538,9 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
 {
     char text[256], textMain[256];
     uint8_t textpointer, textpointerMain, lineFree, more;
+#ifdef HAVE_DEBUG_WARNINGS
     uint8_t index = 0;
+#endif
 
     snprintf(text,TEXTSIZE,"\025\f%c",TXT_Warning);
     GFX_write_string(&FontT42,&t3c1,text,0);
@@ -1680,6 +1686,7 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
     {
         GFX_write_string(&FontT48,&t3c2,text,0);
     }
+    requestBuzzerActivation(1);
 }
 
 uint8_t t3_customview_disabled(uint8_t view)

@@ -393,6 +393,8 @@ extern const tText text_array2[];
 		TXT2BYTE_YYMMDD,
 		TXT2BYTE_TIMEZONE,
 
+		TXT2BYTE_BUZZER,
+
 		TXT2BYTE_END,
 };
 
