@@ -535,11 +535,12 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     }
     else
     {
+    	color = 0xff;
     	if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
     	{
     		color = t3_drawSlowExitGraph(tXscreen, tXl1, tXr1);
     	}
-    	else
+    	if(color == 0xff)	/* no slow exit => continue with common ascent graph */
     	{
 			if(stateUsed->lifeData.ascent_rate_meter_per_min > 0) /* ascentrate graph -standard mode */
 			{
@@ -2233,6 +2234,10 @@ uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl
 		start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
 		stop.y = start.y;
 		GFX_draw_thick_line(10,tXscreen, start, stop, 9);
+	}
+	else
+	{
+		color = 0xff;
 	}
 	return color;
 }

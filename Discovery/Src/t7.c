@@ -2809,17 +2809,20 @@ void t7_refresh_divemode(void)
     GFX_write_string(&FontT105,&t7l2,TextL2,1);
 
 /* ascent rate graph */
-
+    color = 0xff;
     if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
     {
     	color = t7_drawSlowExitGraph();
     }
-    else if(stateUsed->lifeData.ascent_rate_meter_per_min > 1)	/* a value < 1 would cause a bar in negative direction brush rectangle of 12 and step width of 6 */
+    if(color == 0xff)
     {
-        color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
-    	t7_drawAcentGraph(color);
-    }
+    	color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
+    	if(stateUsed->lifeData.ascent_rate_meter_per_min > 1)	/* a value < 1 would cause a bar in negative direction brush rectangle of 12 and step width of 6 */
+    	{
 
+    	    	t7_drawAcentGraph(color);
+    	}
+    }
 
     /* depth */
     float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
@@ -4876,6 +4879,10 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 		start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
 		stop.y = start.y;
 		GFX_draw_thick_line(10,&t7screen, start, stop, 9);
+	}
+	else
+	{
+		color = 0xff;
 	}
 	return color;
 }
