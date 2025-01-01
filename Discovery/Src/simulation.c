@@ -231,7 +231,7 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
 
     pDiveState->lifeData.dive_time_seconds += 1;
     pDiveState->lifeData.pressure_ambient_bar = sim_get_ambient_pressure(pDiveState);
-    if(pDiveState->lifeData.pressure_ambient_bar < 1.5)
+    if(pDiveState->lifeData.depth_meter < 1.5)
     {
     	lastPressure_bar = 0;
     	pDiveState->lifeData.ascent_rate_meter_per_min = 0;
