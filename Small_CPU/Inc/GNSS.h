@@ -93,6 +93,10 @@ typedef struct
 
 	uint8_t alive;
 
+	float last_fLon;	/* last known position storage and time stamp */
+	float last_fLat;
+	float last_hour;
+
 }GNSS_StateHandle;
 
 GNSS_StateHandle GNSS_Handle;

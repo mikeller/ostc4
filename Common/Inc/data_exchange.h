@@ -56,6 +56,7 @@
 
 #define GNSS_ALIVE_STATE_ALIVE		(0x01u)		/* Communication to module active */
 #define GNSS_ALIVE_STATE_TIME		(0x02u)		/* Time information valid */
+#define GNSS_ALIVE_BACKUP_POS		(0x04u)		/* Backup position not older than x hours */
 
 enum MODE
 {

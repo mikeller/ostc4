@@ -1363,8 +1363,12 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 
 #if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
 			pStateReal->events.gnssPositionUpdate = 1;
-			pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
-			if((pStateReal->events.info_gnssPosition.fLat == 0.0) && (pStateReal->events.info_gnssPosition.fLon == 0.0)) /* no pos => define dummy */
+
+			if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
+			{
+				pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
+			}
+			else /* no pos => define dummy */
 			{
 				pStateReal->events.info_gnssPosition.fLon = 47.77;
 				pStateReal->events.info_gnssPosition.fLat = 8.99;

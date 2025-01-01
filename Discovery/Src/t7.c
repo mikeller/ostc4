@@ -4049,7 +4049,7 @@ void t7_showPosition(void)
     if(stateUsed->lifeData.gnssData.fixType < 2)
     {
     	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
-    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
+    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE)
     	{
     		textpointer += snprintf(&text[textpointer],50,"\001\020Status\n\r");
     	}
@@ -4095,6 +4095,11 @@ void t7_showPosition(void)
     		stop.x += 40;
 
     		index++;
+    	}
+    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
+    	{
+    		snprintf(text,50,"\001%2.2f %2.2f", stateUsed->lifeData.gnssData.coord.fLat,stateUsed->lifeData.gnssData.coord.fLon);
+    		GFX_write_string(&FontT24, &t7cY0free, text, 3);
     	}
     }
 

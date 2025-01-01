@@ -29,6 +29,7 @@
 #include <string.h>
 #include "GNSS.h"
 #include "data_exchange.h"
+#include "rtc.h"
 
 union u_Short uShort;
 union i_Short iShort;
@@ -57,7 +58,6 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->vAcc = 0;
 	GNSS->gSpeed = 0;
 	GNSS->headMot = 0;
-	GNSS->alive = 0;
 }
 
 /*!
@@ -79,6 +79,8 @@ void GNSS_ParseUniqID(GNSS_StateHandle *GNSS) {
 void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 
 	static float searchCnt = 1.0;
+
+	RTC_TimeTypeDef sTimeNow;
 
 	uShort.bytes[0] = GNSS_Handle.uartWorkingBuffer[10];
 	GNSS->yearBytes[0]=GNSS_Handle.uartWorkingBuffer[10];
@@ -143,7 +145,7 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 
 	if(GNSS->alive & GNSS_ALIVE_STATE_ALIVE)							/* alive */
 	{
-		GNSS->alive &= !GNSS_ALIVE_STATE_ALIVE;
+		GNSS->alive &= ~GNSS_ALIVE_STATE_ALIVE;
 	}
 	else
 	{
@@ -155,7 +157,16 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 	}
 	else
 	{
-		GNSS->alive &= !GNSS_ALIVE_STATE_TIME;
+		GNSS->alive &= ~GNSS_ALIVE_STATE_TIME;
+	}
+
+	if(GNSS->fixType >= 2)
+	{
+		RTC_GetTime(&sTimeNow);
+		GNSS->alive |= GNSS_ALIVE_BACKUP_POS;
+		GNSS->last_fLat = GNSS->fLat;
+		GNSS->last_fLon = GNSS->fLon;
+		GNSS->last_hour = sTimeNow.Hours;
 	}
 }
 

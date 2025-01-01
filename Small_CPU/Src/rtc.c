@@ -29,6 +29,12 @@ RTC_HandleTypeDef RTCHandle;
 static void RTC_Error_Handler(void);
 
 
+
+void RTC_GetTime(RTC_TimeTypeDef* pstimestructure)
+{
+	HAL_RTC_GetTime(&RTCHandle, pstimestructure, RTC_FORMAT_BIN);
+}
+
 void RTC_SetTime(RTC_TimeTypeDef stimestructure)
 {
 

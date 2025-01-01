@@ -383,6 +383,12 @@ int main(void) {
 	GPIO_Power_MainCPU_Init();
 	global.mode = MODE_TEST;
 #endif
+
+	GNSS_Handle.alive = 0;			/* only init at startup (outside init function) */
+	GNSS_Handle.last_fLat = 0.0;
+	GNSS_Handle.last_fLon = 0.0;
+	GNSS_Handle.last_hour = 0;
+
 	while (1) {
 /*		printf("Global mode = %d\n", global.mode); */
 
