@@ -1192,6 +1192,12 @@ void externalInterface_HandleUART()
 						break;
 				}
 			}
+			if((externalInterface_SensorState[activeSensorId] == UART_CO2_SETUP)	/* timeout while setting up sensors */
+					|| (externalInterface_SensorState[activeSensorId] == UART_O2_CHECK))
+			{
+				forceMuxChannel = 1;
+			}
+
 
 			if(pmap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX) /* select next sensor if mux is connected */
 			{
