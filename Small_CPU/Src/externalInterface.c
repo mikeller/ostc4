@@ -1018,15 +1018,6 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 											SensorMap[index] = SENSOR_SEARCH;
 										}
 			break;
-		case EXT_INTERFACE_CO2_CALIB:	for(index = 0; index < EXT_INTERFACE_SENSOR_CNT; index++)
-										{
-											if(SensorMap[index] == SENSOR_CO2)
-											{
-												externalInterface_SensorState[index] = UART_CO2_CALIBRATE;
-												break;
-											}
-										}
-			break;
 		case EXT_INTERFACE_COPY_SENSORMAP:	if(externalAutoDetect == DETECTION_OFF)
 											{
 												memcpy(SensorMap, MasterSensorMap, sizeof(MasterSensorMap));
@@ -1049,6 +1040,27 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 												}
 											}
 			break;
+		case EXT_INTERFACE_CO2_CALIB:	index = (Cmd >> 8) & 0x000F;
+										if(SensorMap[index] == SENSOR_CO2M)
+										{
+											index = Mux2ADCMap[index];
+										}
+										if(SensorMap[index] == SENSOR_CO2)
+										{
+											externalInterface_SensorState[index] = UART_CO2_CALIBRATE;
+										}
+			break;
+		case EXT_INTERFACE_O2_INDICATE:	index = (Cmd >> 8) & 0x000F;
+										if(SensorMap[index] == SENSOR_DIGO2M)
+										{
+											index = Mux2ADCMap[index];
+										}
+										if(SensorMap[index] == SENSOR_DIGO2)
+										{
+											externalInterface_SensorState[index] = UART_O2_CHECK;
+										}
+			break;
+
 		default:
 			break;
 	}
@@ -1209,14 +1221,17 @@ void externalInterface_HandleUART()
 						forceMuxChannel = 0;
 						timeToTrigger = 100;
 						activeUartChannel = index;
-						if((pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_DIGO2)
-								|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_CO2)
-								|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_GNSS))
+						switch(pmap[index + EXT_INTERFACE_MUX_OFFSET])
 						{
-							uartO2_SetChannel(activeUartChannel);
-							externalInterface_CheckBaudrate(SENSOR_MUX);
-							UART_MUX_SelectAddress(activeUartChannel);
-							externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
+							case SENSOR_DIGO2: uartO2_SetChannel(activeUartChannel);
+							/* no break */
+							case SENSOR_CO2:
+							case SENSOR_GNSS: 	externalInterface_CheckBaudrate(SENSOR_MUX);
+												UART_MUX_SelectAddress(activeUartChannel);
+												externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
+								break;
+							default:
+								break;
 						}
 					}
 				}

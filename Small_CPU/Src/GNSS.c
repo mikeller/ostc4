@@ -66,7 +66,7 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
  * @param GNSS Pointer to main GNSS structure.
  */
 void GNSS_ParseUniqID(GNSS_StateHandle *GNSS) {
-	for (int var = 0; var < 5; var++) {
+	for (int var = 0; var < 4; var++) {
 		GNSS->uniqueID[var] = GNSS_Handle.uartWorkingBuffer[10 + var];
 	}
 }

@@ -482,7 +482,7 @@ void DateEx_copy_to_dataOut(void)
 		
 		settingsHelperButtonSens_keepPercentageValues(settingsGetPointerStandard()->ButtonResponsiveness[3], settings->ButtonResponsiveness);
 		setButtonResponsiveness(settings->ButtonResponsiveness);
-		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP);
+		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP, 0);
 	}
 }
 
@@ -1363,9 +1363,14 @@ uint8_t DataEX_external_ADC_Present(void)
 	return retval;
 }
 
-void DataEX_setExtInterface_Cmd(uint16_t Cmd)
+void DataEX_setExtInterface_Cmd(uint16_t Cmd, uint8_t sensorId)
 {
-	externalInterface_Cmd = Cmd;
+	if(sensorId < EXT_INTERFACE_SENSOR_CNT - 1)
+	{
+		externalInterface_Cmd |= Cmd;
+		externalInterface_Cmd |= sensorId << 8;
+	}
+
 	return;
 }
 

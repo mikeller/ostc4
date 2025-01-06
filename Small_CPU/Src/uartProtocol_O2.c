@@ -134,6 +134,10 @@ void uartO2_Control(void)
 		rxState = O2RX_CONFIRM;
 		uartO2_SetupCmd(localComState,cmdString,&cmdLength);
 		UART_SendCmdString(cmdString);
+		if(localComState == UART_O2_CHECK)
+		{
+			localComState = UART_O2_IDLE;	/* confirmation seems to be send after blinking => the response could be longer as the channel switch time => ignore */
+		}
 	}
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);
 }

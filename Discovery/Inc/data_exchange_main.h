@@ -56,6 +56,6 @@ SDataReceiveFromMaster * dataOutGetPointer(void);
 
 uint16_t DataEX_debug_data(uint16_t *dataOut20x5);
 
-void DataEX_setExtInterface_Cmd(uint16_t Cmd);
+void DataEX_setExtInterface_Cmd(uint16_t Cmd,uint8_t sensorId);
 
 #endif /* DATA_EXCHANGE_MAIN_H */

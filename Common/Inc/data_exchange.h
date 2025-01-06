@@ -33,9 +33,9 @@
 
 /* Command definitions for control of external interface */
 /* 1st nibble binary on/off states */
-/* 2nd nibble UART protocol selection */
-/* 3rd nibble reserve */
-/* 4th nibble command channel */
+/* 2nd nibble target sensor ID (if sensor command is active) */
+/* 3rd nibble sensor commands */
+/* 4th nibble control channel */
 #define EXT_INTERFACE_33V_ON		(0x8000u)	/* Bit set to enable 3.3V power interface */
 #define EXT_INTERFACE_ADC_ON		(0x4000u)	/* Bit set to enable ADC conversion */
 #define EXT_INTERFACE_BUZZER_ON		(0x2000u)	/* Bit set to enable the buzzer */

@@ -843,7 +843,7 @@ uint8_t OnAction_Sensor_Info(uint32_t editId, uint8_t blockNumber, uint8_t digit
 
 uint8_t OnAction_Sensor_Detect(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	DataEX_setExtInterface_Cmd(EXT_INTERFACE_AUTODETECT);
+	DataEX_setExtInterface_Cmd(EXT_INTERFACE_AUTODETECT, 0);
 	return UNSPECIFIC_RETURN;
 }
 
