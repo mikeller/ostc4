@@ -202,11 +202,11 @@ static uint8_t text_IT_Compass[] = "Bussola";
 static uint8_t text_ES_Compass[] = "Brújula";
 
 // Menu SYS1
-static uint8_t text_EN_o2Sensors[] = "Oxygen sensors";
-static uint8_t text_DE_o2Sensors[] = "O2-Sensoren";
-static uint8_t text_FR_o2Sensors[] = "Cellules O2";
-static uint8_t text_IT_o2Sensors[] = "Sensore O2";
-static uint8_t text_ES_o2Sensors[] = "Sensores de O2";
+static uint8_t text_EN_o2Sensors[] = "External sensors";
+static uint8_t text_DE_o2Sensors[] = "Externe Sensoren";
+static uint8_t text_FR_o2Sensors[] = "Cellules externe";
+static uint8_t text_IT_o2Sensors[] = "Sensori esterni";
+static uint8_t text_ES_o2Sensors[] = "Sensores externos";
 
 // Menu SYS1
 static uint8_t text_EN_Brightness[] = "Brightness";
