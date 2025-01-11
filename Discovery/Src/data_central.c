@@ -904,7 +904,7 @@ void clearCompassHeading(void) {
 
 void setCompassHeading(uint16_t heading)
 {
-    stateUsedWrite->diveSettings.compassHeading =  ((heading - 360) % 360) + 360;
+    stateUsedWrite->diveSettings.compassHeading = ((heading - 360) % 360) + 360;
 
     internalLogCompassHeading(heading, true, false);
 }

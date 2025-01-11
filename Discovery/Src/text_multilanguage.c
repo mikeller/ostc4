@@ -1920,6 +1920,12 @@ static uint8_t text_FR_Log[] = "Enregistrer";
 static uint8_t text_IT_Log[] = "Registrare";
 static uint8_t text_ES_Log[] = "Registrar";
 
+static uint8_t text_EN_Reverse[] = "Reverse";
+static uint8_t text_DE_Reverse[] = "Umkehren";
+static uint8_t text_FR_Reverse[] = "Inverser";
+static uint8_t text_IT_Reverse[] = "Invertire";
+static uint8_t text_ES_Reverse[] = "Invertir";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2213,4 +2219,5 @@ const tText text_array2[] =
 
 	{(uint8_t)TXT2BYTE_Current, 	{text_EN_Current, text_DE_Current, text_FR_Current, text_IT_Current, text_ES_Current}},
 	{(uint8_t)TXT2BYTE_Log, 	{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
+	{(uint8_t)TXT2BYTE_Reverse, 	{text_EN_Reverse, text_DE_Reverse, text_FR_Reverse, text_IT_Reverse, text_ES_Reverse}},
 };
