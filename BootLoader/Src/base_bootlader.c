@@ -39,7 +39,7 @@
 	==============================================================================
 
 	151130	hw	sleep on button3
-								(MX_tell_reset_logik_alles_ok() + DataEX_call() in endlos loop)
+								(MX_tell_reset_logik_alles_ok() + DataEX_call() in endless loop)
 
 	==============================================================================
 							##### bootloader specific #####
@@ -89,7 +89,7 @@
 	==============================================================================
 							##### MainTask #####
 	==============================================================================
-	[..] For everthing slow without importance to be 'in time'.
+	[..] For everything slow without importance to be 'in time'.
 			 Like VPM and Buehlmann.
 			 No sprintf and probably no GFX_SetFramesTopBottom() stuff neither.
 			 If sprintf is called while sprintf is executed it blows up everything.
@@ -99,7 +99,7 @@
 	==============================================================================
 	[..] The SDRAM is handled by getFrame() and releaseFrame().
 			 Each frame with 800*480*2 Bytes.
-			 Be carefull to release every frame
+			 Be careful to release every frame
 			 otherwise there will be a memory leakage over time.
 			 housekeepingFrame() in the MainTask takes care of cleaning the frames.
 			 All frames are filled with 0x00. This will be transparent with color of
@@ -127,7 +127,7 @@
 						GFX_SetFrameTop() + GFX_SetFrameBottom()
 						Those do not change anything on the display but give commands to..
 				(#) GFX_change_LTDC()	The only place that changes the pointer.
-															This prevents erratic behaviour if several changes
+															This prevents erratic behavior if several changes
 															are made within one refresh rate of the screen.
 															Is called in IRQ by PD4 and HAL_GPIO_EXTI_IRQHandler
 															from VSYNC signal.
@@ -142,7 +142,7 @@
 										with automatic language switch by
 										selected_language in SSettings
 										see openEdit_Language() in tMenuEditSystem.c
-										Therefore there are differnent functions
+										Therefore there are different functions
 										for example:
 										write_label_fix() for single char multilanguage
 										write_label_var() for strings that could include
@@ -265,11 +265,11 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 		.versionBeta    = 1,
 
 	/* 4 bytes with trailing 0 */
-	.signature = "cw",
+	.signature = "mh",
 
-	.release_year   = 16,
-	.release_month  = 4,
-	.release_day    = 8,
+	.release_year   = 25,
+	.release_month  = 1,
+	.release_day    = 11,
 	.release_sub    = 0,
 
 	/* max 48 with trailing 0 */
@@ -441,12 +441,6 @@ GPIO_test_I2C_lines();
 
 	MX_GPIO_Init();
 
-	/* feedback for the user
-	 * aber sehr unschï¿½n beim Warmstart
-	 * da das letzte Bild noch lange nachleuchtet */
-//	MX_GPIO_Backlight_max_static_only_Init();
-
-
 	/* button press is only 40 to 50 us low */
 	MX_GPIO_One_Button_only_Init();
 
@@ -588,7 +582,7 @@ GPIO_test_I2C_lines();
 	/* here comes the variable upper firmware loader */
 	if((i == 0) && (status == HAL_OK))
 	{
-		tInfo_newpage("load firmware2 data");
+		tInfo_newpage("load fontpack data");
 		uint8_t* pBuffer = (uint8_t*)((uint32_t)0xD0000000); /* blocked via  GFX_init1_no_DMA */
 		firmware_load_result = ext_flash_read_firmware2(&pOffset, pBuffer,768000*2,0,0);
 
@@ -660,11 +654,11 @@ GPIO_test_I2C_lines();
 
 	if((i == 0) && (status == HAL_OK))
 	{
-		tInfo_newpage("Done.");
-		tInfo_write("Cleaning.");
+		tInfo_newpage("done.");
+		tInfo_write("cleaning.");
 		ext_flash_erase_firmware_if_not_empty();
 		ext_flash_erase_firmware2_if_not_empty();
-		tInfo_write("Reset device.");
+		tInfo_write("reset device.");
 		reset_to_firmware_using_Watchdog();
 	}
 
@@ -709,19 +703,19 @@ GPIO_test_I2C_lines();
 	MX_Bluetooth_PowerOn();
 	tComm_init();
 
-	tInfo_button_text("Exit","","Sleep");
-	tInfo_newpage("Bootloader 240812");
+	tInfo_button_text("exit","","sleep");
+	tInfo_newpage("bootloader 250111");
 	tInfo_write("start bluetooth");
 	tInfo_write("");
 	tInfo_write(textVersion);
 	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
 	{
-		tInfo_write("Init bluetooth");
+		tInfo_write("init bluetooth");
 		tComm_StartBlueModBaseInit();
 	}
 	else
 	{
-		tInfo_write("Bluetooth set");
+		tInfo_write("bluetooth set");
 		tComm_StartBlueModConfig();
 	}
 
@@ -775,7 +769,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		tComm_exit();
 		returnFromCommCleanUpRequest = 0;
 		GFX_hwBackgroundOn();
-		tInfo_button_text("Exit","","Sleep");
+		tInfo_button_text("exit","","sleep");
 		tInfo_newpage("bluetooth disonnected");
 		tInfo_write("");
 		tInfo_write("");
@@ -821,13 +815,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if(GFX_logoStatus() != 0)
 		return;
 
-	if(GPIO_Pin == BUTTON_BACK_PIN) // links
+	if(GPIO_Pin == BUTTON_BACK_PIN) // left
 		action = ACTION_BUTTON_BACK;
 	else
-	if(GPIO_Pin == BUTTON_ENTER_PIN) // mitte
+	if(GPIO_Pin == BUTTON_ENTER_PIN) // center
 		action = ACTION_BUTTON_ENTER;
 	else
-	if(GPIO_Pin == BUTTON_NEXT_PIN) // rechts
+	if(GPIO_Pin == BUTTON_NEXT_PIN) // right
 		action = ACTION_BUTTON_NEXT;
 #ifdef BUTTON_CUSTOM_PIN
 	else
@@ -1252,7 +1246,7 @@ static void Error_Handler(void)
 }
 
 /**
-	* @brief  Perform the SDRAM exernal memory inialization sequence
+	* @brief  Perform the SDRAM external memory initialization sequence
 	* @param  hsdram: SDRAM handle
 	* @param  Command: Pointer to SDRAM command structure
 	* @retval None
@@ -1316,7 +1310,7 @@ static void SDRAM_Initialization_Sequence(SDRAM_HandleTypeDef *hsdram, FMC_SDRAM
 static void DualBoot(void)
 {
 		// Set BFB2 bit to enable boot from Flash Bank2
-		// Allow Access to Flash control registers and user Falsh
+		// Allow Access to Flash control registers and user Flash
 		HAL_FLASH_Unlock();
 
 		// Allow Access to option bytes sector
@@ -1366,7 +1360,7 @@ static void DualBoot(void)
 
 /**
 	* @brief DMA2D configuration.
-	* @note  This function Configure tha DMA2D peripheral :
+	* @note  This function Configure the DMA2D peripheral :
 	*        1) Configure the transfer mode : memory to memory W/ pixel format conversion
 	*        2) Configure the output color mode as ARGB4444
 	*        3) Configure the output memory address at SRAM memory
