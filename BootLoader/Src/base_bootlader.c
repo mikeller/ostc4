@@ -282,8 +282,8 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 	.magic[3] = FIRMWARE_MAGIC_END
 };
 
-#if 0
-const SHardwareData HardwareData __attribute__((at(HARDWAREDATA_ADDRESS))) = {
+#if 1
+const SHardwareData HardwareData  __attribute__ ((section (".bootloader_hardware_data"))) = {
 
 	// first 52 bytes
 	.primarySerial = 0xFFFF,

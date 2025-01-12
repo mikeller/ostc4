@@ -188,7 +188,10 @@ SECTIONS
  	KEEP( *(.bootloader_firmware_data) )
  } > ROM_BOOT
  
- 
+  .bootloader_hardware_data 0x0800A040 : {
+  	PROVIDE( bootloader_HardwareData = . );
+ 	KEEP( *(.bootloader_hardware_data) )
+ } > ROM_BOOT
  
   .text 0x08001000 :
   {
