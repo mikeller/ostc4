@@ -282,7 +282,7 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 	.magic[3] = FIRMWARE_MAGIC_END
 };
 
-const SHardwareData HardwareData __attribute__((section(".HARDWAREDATA_ADDRESS"))) =
+const SHardwareData HardwareData __attribute__((section(".bootloader_hardware_data"))) =
 {
 
 	// first 52 bytes
