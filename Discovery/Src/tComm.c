@@ -388,10 +388,15 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
 
 //	char aTxFactoryDefaults[50] = "AT&F1\r";
 
-    char aTxBufferEscapeSequence[50] = "+++";
+    char aTxBufferEscapeSequence[50] = "+++";	/* factory default */
     // limit is 19 chars, with 7 chars shown in BLE advertising mode
     //________________________123456789012345678901
+
+#ifndef BOOTLOADER_STANDALONE
     char aTxBufferName[50] = "AT+BNAME=OSTC4-12345\r";
+#else
+    char aTxBufferName[50] = "AT+UBTLN=OSTC4-12345\r";
+#endif
     char answerOkay[6] = "\r\nOK\r\n";
 
     gfx_number_to_string(5,1,&aTxBufferName[15],serial);
@@ -2187,17 +2192,36 @@ uint8_t tComm_HandleBlueModConfig()
 	{
 		case BM_CONFIG_ECHO: 			sprintf(TxBuffer,"ATE0\r");
 			break;
-		case BM_CONFIG_SILENCE:			sprintf(TxBuffer,"ATS30=0\r");
+		case BM_CONFIG_SILENCE:
+#ifndef BOOTLOADER_STANDALONE
+										sprintf(TxBuffer,"ATS30=0\r");
+#else
+										BmTmpConfig++;
+#endif
 			break;
-		case BM_CONFIG_ESCAPE_DELAY:	sprintf(TxBuffer,"ATS12=10\r");
+		case BM_CONFIG_ESCAPE_DELAY:
+#ifndef BOOTLOADER_STANDALONE
+			sprintf(TxBuffer,"ATS12=10\r");
+#else
+										BmTmpConfig++;
+#endif
 			break;
-		case BM_CONFIG_SIGNAL_POLL:		sprintf(TxBuffer,"AT+BSTPOLL=100\r");
+		case BM_CONFIG_SIGNAL_POLL:
+#ifndef BOOTLOADER_STANDALONE
+										sprintf(TxBuffer,"AT+BSTPOLL=100\r");
+#else
+										BmTmpConfig++;
+#endif
 			break;
 		case BM_CONFIG_BAUD:
 #ifdef ENABLE_FAST_COMM
+ 	#ifndef BOOTLOADER_STANDALONE
 										sprintf(TxBuffer,"AT%%B22\r");
+	#else
+										sprintf(TxBuffer,"AT+UMRS=460800,1,8,1,1,1\r");
+	#endif
 #else
-										BmTmpConfig++;
+										BmTmpConfig = BM_CONFIG_DONE;
 #endif
 			break;
 		case BM_CONFIG_RETRY:			ConfigRetryCnt--;
@@ -2267,7 +2291,11 @@ uint8_t tComm_HandleBlueModConfig()
 			}
 			else if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate == 460800)) /* This shut not happen because default speed is 115200 => update module configuration */
 			{
+#ifndef BOOTLOADER_STANDALONE
 				sprintf(TxBuffer,"AT%%B8\r");	/* set default baudrate */
+#else
+				sprintf(TxBuffer,"AT+UMRS=115200,1,8,1,1,1\r");
+#endif
 				CmdSize = strlen(TxBuffer);
 				HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
 				HAL_UART_DeInit(&UartHandle);
@@ -2281,6 +2309,10 @@ uint8_t tComm_HandleBlueModConfig()
 			if(result == HAL_OK)
 			{
 				BmTmpConfig++;
+				if(BmTmpConfig == BM_CONFIG_RETRY)
+				{
+					BmTmpConfig = BM_CONFIG_DONE;
+				}
 			}
 			if(BmTmpConfig == BM_CONFIG_ECHO)
 			{
