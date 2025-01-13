@@ -4041,11 +4041,22 @@ void t7_showPosition(void)
     point_t start, stop;
     uint8_t index = 0;
     uint8_t color = 0;
+    SSettings* pSettings = settingsGetPointer();
 
     t7cY0free.WindowLineSpacing = 28 + 48 + 14;
     t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
     t7cY0free.WindowNumberOfTextLines = 3;
     t7cY0free.WindowY0 -= 20;
+
+    t7cY0free.WindowX0 = CUSTOMBOX_LINE_LEFT + CUSTOMBOX_INSIDE_OFFSET;
+    t7cY0free.WindowX1 = CUSTOMBOX_LINE_RIGHT - CUSTOMBOX_INSIDE_OFFSET;
+
+    if(pSettings->FlipDisplay)
+    {
+       	t7cY0free.WindowY0 = t7cH.WindowY0 + 15;
+        t7cY0free.WindowY1 = t7cY0free.WindowY0 + 250;
+    }
+
     if(stateUsed->lifeData.gnssData.fixType < 2)
     {
     	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
@@ -4065,7 +4076,15 @@ void t7_showPosition(void)
     }
     GFX_write_string(&FontT24, &t7cY0free, text, 1);
 
-    t7cY0free.WindowY0 -= 52;
+    if(!pSettings->FlipDisplay)
+    {
+    	t7cY0free.WindowY0 -= 52;
+    }
+    else
+    {
+        t7cY0free.WindowY1 = 370;
+    }
+
     if(stateUsed->lifeData.gnssData.fixType < 2)
     {
 		snprintf(text,60,"\001%d\n\r",stateUsed->lifeData.gnssData.numSat);
@@ -4081,10 +4100,21 @@ void t7_showPosition(void)
 
     if(stateUsed->lifeData.gnssData.fixType < 2)	/* draw status bars */
     {
-    	start.x = t7cY0free.WindowX0 + 85;
-    	stop.x = start.x;
-    	start.y = t7cY0free.WindowY0 + 75;
-    	stop.y = start.y + 20;
+    	 if(!pSettings->FlipDisplay)
+    	 {
+    	    	start.x = t7cY0free.WindowX0 + 85;
+    	    	stop.x = start.x;
+    	    	start.y = t7cY0free.WindowY0 + 75;
+    	    	stop.y = start.y + 20;
+    	 }
+    	 else
+    	 {
+			start.x = t7cY0free.WindowX0 - 50;
+			stop.x = start.x;
+			start.y = t7cY0free.WindowY0 - 75;
+			stop.y = start.y - 20;
+    	 }
+
     	while((index < stateUsed->lifeData.gnssData.numSat) && (index < 4))
     	{
     		if(stateUsed->lifeData.gnssData.signalQual[index] > 4) color = CLUT_NiceGreen;
@@ -4712,7 +4742,7 @@ void t7_ChargerView(void)
     }
     else
     {
-        	t7cY0free.WindowY1 += 52;
+        t7cY0free.WindowY1 += 52;
     }
 
     if((stateUsed->lifeData.battery_charge > 0) && (stateUsed->chargeStatus != CHARGER_off))
