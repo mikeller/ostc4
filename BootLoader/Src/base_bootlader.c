@@ -716,7 +716,14 @@ GPIO_test_I2C_lines();
 	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
 	{
 		tInfo_write("init bluetooth");
-		tComm_StartBlueModBaseInit();
+		if(isNewDisplay())
+		{
+			tComm_StartBlueModBaseInit();
+		}
+		else
+		{
+			tComm_StartBlueModConfig();
+		}
 	}
 	else
 	{
@@ -837,42 +844,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		action = 0;
 	get_globalStateList(&status);
 
-	switch(status.base)
+	if(status.base == BaseComm)
 	{
-		case BaseComm:
 			if(action == ACTION_BUTTON_BACK)
 			{
 				reset_to_firmware_using_Watchdog();
 			}
-		 break;
-
-		default:
-			if((action == ACTION_BUTTON_NEXT) && (counterToPreventSleep == 255) && (get_globalState() == StS))
-			{
-				while(1)
-				{
-					MX_tell_reset_logik_alles_ok();
-					DataEX_call();
-					HAL_Delay(100);
-				}
-			}
-			else
-			if(action == ACTION_BUTTON_BACK)
-			{
-				reset_to_firmware_using_Watchdog();
-			}
-			else
-			if(action == ACTION_BUTTON_CUSTOM)
-			{
-				if(get_globalState() == StS)
-					gotoSleep();
-			}
-			else
-			if(action == ACTION_BUTTON_ENTER)
-			{
-				reset_to_update_using_system_reset();
-			}
-			break;
+	}
+	else
+	{
+		switch (action)
+		{
+			case ACTION_BUTTON_NEXT: if((counterToPreventSleep == 255) && (get_globalState() == StS))
+										{
+											while(1)
+											{
+												MX_tell_reset_logik_alles_ok();
+												DataEX_call();
+												HAL_Delay(100);
+											}
+										}
+				break;
+			case ACTION_BUTTON_BACK:	reset_to_firmware_using_Watchdog();
+				break;
+			case ACTION_BUTTON_CUSTOM:	if(get_globalState() == StS)
+										{
+											gotoSleep();
+										}
+				break;
+			case ACTION_BUTTON_ENTER:	/* reset_to_update_using_system_reset(); old function */
+										tComm_StartBlueModBaseInit(); /* new: factory reset bluetooth */
+				break;
+			default:
+				break;
+		}
 	}
 }
 

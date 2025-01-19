@@ -198,6 +198,8 @@ SECTIONS
     . = ALIGN(4);
     *(.text.HAL*)
     . = ALIGN(4);
+    *(.text*sprint*)
+    *(.text.MX*)
   } >ROM_BOOT
  
  
@@ -227,7 +229,7 @@ SECTIONS
 	 *(.upper_fonts.FontT24*)
 } > ROM_BOOT
 
-.lower_directory 0x08004000 : {
+.lower_directory 0x08004300 : {
 	*(.lower_font_directory*)
 	*(.upper_font_directory.FontT48*)
 	*(.upper_font_directory.FontT24*)
