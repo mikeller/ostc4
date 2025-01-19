@@ -52,7 +52,7 @@
 /* #define T7_DEBUG_RUNTIME */
 
 /* Enable to have event based warnings being displayed as warning messages when they occur */
-#define HAVE_DEBUG_WARNINGS
+/* #define HAVE_DEBUG_WARNINGS */
 
 /* Enable to have access to the motion control selection menu */
 /* #define ENABLE_MOTION_CONTROL */
