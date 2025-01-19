@@ -387,11 +387,14 @@ extern const tText text_array2[];
 
         TXT2BYTE_Current,
         TXT2BYTE_Log,
+        TXT2BYTE_Reverse,
 
 		TXT2BYTE_DDMMYY,
 		TXT2BYTE_MMDDYY,
 		TXT2BYTE_YYMMDD,
 		TXT2BYTE_TIMEZONE,
+
+		TXT2BYTE_BUZZER,
 
 		TXT2BYTE_END,
 };

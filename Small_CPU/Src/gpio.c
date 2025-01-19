@@ -23,6 +23,8 @@
 
 #include "stm32f4xx_hal.h"
 #include "gpio.h"
+#include "data_exchange.h"
+#include "scheduler.h"
 
 /* Exported variables --------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -89,6 +91,40 @@ void GPIO_Power_MainCPU_Init(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
 }
 
+#ifdef ENABLE_GPIO_V2
+void GPIO_HandleBuzzer()
+{
+	static uint32_t buzzerOnTick = 0;
+	static uint8_t buzzerWasOn = 0;
+
+	if(((global.dataSendToSlave.data.externalInterface_Cmd & EXT_INTERFACE_BUZZER_ON) != 0))
+	{
+		if(!buzzerWasOn)
+		{
+			buzzerOnTick = HAL_GetTick();
+			GPIO_VIBRATION_ON();
+			/* GPIO_LED_RED_ON(); */
+
+			if(time_elapsed_ms(buzzerOnTick,HAL_GetTick()) > EXT_INTERFACE_BUZZER_ON_TIME_MS)
+			{
+				GPIO_VIBRATION_OFF();
+			/*	GPIO_LED_RED_OFF(); */
+			}
+		}
+		buzzerWasOn = 1;
+	}
+	else
+	{
+		if(buzzerWasOn)
+		{
+			buzzerOnTick = 0;
+			GPIO_VIBRATION_OFF();
+			/* GPIO_LED_RED_OFF(); */
+		}
+		buzzerWasOn = 0;
+	}
+}
+#endif
 void GPIO_Power_MainCPU_ON(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
 }

@@ -61,12 +61,12 @@ void openInfo_Sensor(uint8_t sensorId)
     	case 0: setBackMenu((uint32_t)openEdit_O2Sensors,0,1);
     	    		break;
     }
-
     sensorActive = 1;
     if(pSettings->ppo2sensors_deactivated & (1 << (activeSensorId)))
     {
     	sensorActive = 0;
     }
+    DataEX_setExtInterface_Cmd(EXT_INTERFACE_O2_INDICATE, activeSensorId);
 }
 
 
@@ -260,7 +260,7 @@ void sendActionToInfoSensor(uint8_t sendAction)
     		break;
 		case ACTION_BUTTON_NEXT:		if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
 										{
-											DataEX_setExtInterface_Cmd(EXT_INTERFACE_CO2_CALIB);
+											DataEX_setExtInterface_Cmd(EXT_INTERFACE_CO2_CALIB, activeSensorId);
 										}
 			break;
 		case ACTION_TIMEOUT:

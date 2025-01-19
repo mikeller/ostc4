@@ -44,6 +44,10 @@
 #define EXT_INTERFACE_SENSOR_CNT	(8u)		/* 1 MUX + 7 sensors may be connected to the external interface (1 MUX + 3 ADC + 4 UART) */
 #define EXT_INTERFACE_MUX_OFFSET	(3u)		/* the sensor struct starts with 3 ADC sensors */
 
+#define EXT_INTERFACE_BUZZER_ON_TIME_MS (2000u)		/* max time the buzzer should be active without break */
+#define EXT_INTERFACE_BUZZER_STABLE_TIME_MS (500u)	/* min time a state (ON / OFF) should be stable before it may be changed */
+
+
 /* Helper structs ------------------------------------------------------------*/
 
 //struct SGas

@@ -535,11 +535,12 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     }
     else
     {
+    	color = 0xff;
     	if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
     	{
     		color = t3_drawSlowExitGraph(tXscreen, tXl1, tXr1);
     	}
-    	else
+    	if(color == 0xff)	/* no slow exit => continue with common ascent graph */
     	{
 			if(stateUsed->lifeData.ascent_rate_meter_per_min > 0) /* ascentrate graph -standard mode */
 			{
@@ -762,10 +763,14 @@ void t3_refresh_divemode(void)
         customview_warnings = t3_test_customview_warnings();
 
     if(customview_warnings && warning_count_high_time)
+    {
         t3_basics_show_customview_warnings(&t3c1);
+    }
     else
+    {
         t3_refresh_customview(depth_meter);
-
+        requestBuzzerActivation(0);
+    }
     if(stateUsed->warnings.lowBattery)
         t3_basics_battery_low_customview_extra(&t3r1); //t3c1);
 }
@@ -1534,7 +1539,9 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
 {
     char text[256], textMain[256];
     uint8_t textpointer, textpointerMain, lineFree, more;
+#ifdef HAVE_DEBUG_WARNINGS
     uint8_t index = 0;
+#endif
 
     snprintf(text,TEXTSIZE,"\025\f%c",TXT_Warning);
     GFX_write_string(&FontT42,&t3c1,text,0);
@@ -1680,6 +1687,7 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
     {
         GFX_write_string(&FontT48,&t3c2,text,0);
     }
+    requestBuzzerActivation(1);
 }
 
 uint8_t t3_customview_disabled(uint8_t view)
@@ -2226,6 +2234,10 @@ uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl
 		start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
 		stop.y = start.y;
 		GFX_draw_thick_line(10,tXscreen, start, stop, 9);
+	}
+	else
+	{
+		color = 0xff;
 	}
 	return color;
 }

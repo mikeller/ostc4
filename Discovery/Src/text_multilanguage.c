@@ -1993,6 +1993,18 @@ static uint8_t text_FR_TIMEZONE[] = "";
 static uint8_t text_IT_TIMEZONE[] = "";
 static uint8_t text_ES_TIMEZONE[] = "";
 
+static uint8_t text_EN_BUZZER[] = "Buzzer";
+static uint8_t text_DE_BUZZER[] = "Vibration";
+static uint8_t text_FR_BUZZER[] = "";
+static uint8_t text_IT_BUZZER[] = "";
+static uint8_t text_ES_BUZZER[] = "";
+
+static uint8_t text_EN_Reverse[] = "Reverse";
+static uint8_t text_DE_Reverse[] = "Umkehren";
+static uint8_t text_FR_Reverse[] = "Inverser";
+static uint8_t text_IT_Reverse[] = "Invertire";
+static uint8_t text_ES_Reverse[] = "Invertir";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2300,6 +2312,12 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_MMDDYY, 			{text_EN_MMDDYY, text_DE_MMDDYY, text_FR_MMDDYY, text_IT_MMDDYY, text_ES_MMDDYY}},
 	{(uint8_t)TXT2BYTE_YYMMDD, 			{text_EN_YYMMDD, text_DE_YYMMDD, text_FR_YYMMDD, text_IT_YYMMDD, text_ES_YYMMDD}},
 	{(uint8_t)TXT2BYTE_TIMEZONE, 		{text_EN_TIMEZONE, text_DE_TIMEZONE, text_FR_TIMEZONE, text_IT_TIMEZONE, text_ES_TIMEZONE}},
+
+	{(uint8_t)TXT2BYTE_BUZZER, 			{text_EN_BUZZER, text_DE_BUZZER, text_FR_BUZZER, text_IT_BUZZER, text_ES_BUZZER}},
+
+	{(uint8_t)TXT2BYTE_Current, 		{text_EN_Current, text_DE_Current, text_FR_Current, text_IT_Current, text_ES_Current}},
+ 	{(uint8_t)TXT2BYTE_Log, 			{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
+	{(uint8_t)TXT2BYTE_Reverse, 		{text_EN_Reverse, text_DE_Reverse, text_FR_Reverse, text_IT_Reverse, text_ES_Reverse}},
 
 
 

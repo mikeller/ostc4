@@ -43,6 +43,7 @@
 
 
 #define DEBOUNCE_FALLBACK_TIME_MS	(5000u)		/* set warning after 5 seconds of pending error condition */
+#define GUI_BUZZER_TIMEOUT_MS		(200u)      /* the buzzer should be active while Warning string is shown, but diver may be in a menu... */
 
 #define SETPOINT_DECO_START_RANGE_M 3.0
 #define SWITCH_DEPTH_LOW_MINIMUM_M 1.0
@@ -53,6 +54,7 @@ static uint8_t betterBailoutGasId = 0;
 static uint8_t betterSetpointId = 1;
 static int8_t fallback = 0;
 static uint16_t debounceFallbackTimeMS = 0;
+static uint8_t buzzerRequestActive = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 static int8_t check_fallback(SDiveState * pDiveState);
@@ -75,9 +77,66 @@ static int8_t check_helper_same_oxygen_and_helium_content(SGasLine * gas1, SGasL
 #ifdef HAVE_DEBUG_WARNINGS
 static int8_t check_debug(SDiveState * pDiveState);
 #endif
+static uint8_t buzzerOn = 0;			/* current state of the buzzer */
 
-
+static void setBuzzer(int8_t warningActive);
 /* Exported functions --------------------------------------------------------*/
+
+void requestBuzzerActivation(uint8_t active)
+{
+	buzzerRequestActive = active;
+}
+
+uint8_t getBuzzerActivationState()
+{
+	return buzzerOn;
+}
+
+static void setBuzzer(int8_t warningActive)
+{
+	static uint32_t guiTimeoutCnt = 0;		/* max delay till buzzer will be activated independend from gui request */
+	static uint32_t stateTick = 0;			/* activation tick of current state */
+	static uint8_t lastWarningState = 0;	/* the parameter value of the last call*/
+
+	uint32_t tick =  HAL_GetTick();
+
+	if(warningActive)
+	{
+		if(!lastWarningState)				/* init structures */
+		{
+			guiTimeoutCnt = tick;
+			stateTick = tick;
+		}
+		if(buzzerOn)
+		{
+			if(time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_STABLE_TIME_MS)	/* buzzer has to be on for a certain time */
+			{
+				if((!buzzerRequestActive) || (time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_ON_TIME_MS))
+				{
+					buzzerOn = 0;
+					stateTick = tick;
+					guiTimeoutCnt = tick;
+				}
+			}
+		}
+		else
+		{
+			if(time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_STABLE_TIME_MS)	/* buzzer has to be off for a certain time */
+			{
+				if((buzzerRequestActive) || (time_elapsed_ms(guiTimeoutCnt, tick) > EXT_INTERFACE_BUZZER_ON_TIME_MS + GUI_BUZZER_TIMEOUT_MS))
+				{
+					buzzerOn = 1;
+					stateTick = tick;
+				}
+			}
+		}
+	}
+	else
+	{
+		buzzerOn = 0;
+	}
+	lastWarningState = warningActive;
+}
 
 void check_warning(void)
 {
@@ -89,22 +148,31 @@ void check_warning2(SDiveState * pDiveState)
 {
   pDiveState->warnings.numWarnings = 0;
 
-	pDiveState->warnings.numWarnings += check_aGF(pDiveState);
+/* Warnings checked before the SetBuzzer call will activate the buzzer */
 	pDiveState->warnings.numWarnings += check_AscentRate(pDiveState);
-	pDiveState->warnings.numWarnings += check_CNS(pDiveState);
 	pDiveState->warnings.numWarnings += check_Deco(pDiveState);
 	pDiveState->warnings.numWarnings += check_ppO2(pDiveState);
 	pDiveState->warnings.numWarnings += check_O2_sensors(pDiveState);
-	pDiveState->warnings.numWarnings += check_BetterGas(pDiveState);
-	pDiveState->warnings.numWarnings += check_BetterSetpoint(pDiveState);
-	pDiveState->warnings.numWarnings += check_Battery(pDiveState);
 	pDiveState->warnings.numWarnings += check_fallback(pDiveState);
-#ifdef ENABLE_BOTTLE_SENSOR
-	pDiveState->warnings.numWarnings += check_pressureSensor(pDiveState);
-#endif
 #ifdef ENABLE_CO2_SUPPORT
 	pDiveState->warnings.numWarnings += check_co2(pDiveState);
 #endif
+
+	if(settingsGetPointer()->warningBuzzer)
+	{
+		setBuzzer(pDiveState->warnings.numWarnings);
+	}
+
+/* Warnings checked after this line will not cause activation of the buzzer */
+	pDiveState->warnings.numWarnings += check_aGF(pDiveState);
+	pDiveState->warnings.numWarnings += check_CNS(pDiveState);
+	pDiveState->warnings.numWarnings += check_BetterGas(pDiveState);
+	pDiveState->warnings.numWarnings += check_BetterSetpoint(pDiveState);
+	pDiveState->warnings.numWarnings += check_Battery(pDiveState);
+#ifdef ENABLE_BOTTLE_SENSOR
+	pDiveState->warnings.numWarnings += check_pressureSensor(pDiveState);
+#endif
+
 #ifdef HAVE_DEBUG_WARNINGS
 	pDiveState->warnings.numWarnings += check_debug(pDiveState);
 #endif
@@ -164,7 +232,7 @@ static int8_t check_fallback(SDiveState * pDiveState)
 
 static int8_t check_ppO2(SDiveState * pDiveState)
 {
-	if((pDiveState->mode != MODE_DIVE) || (pDiveState->warnings.fallback))
+	if((pDiveState->mode != MODE_DIVE) || ((isLoopMode(pDiveState->diveSettings.diveMode) && (pDiveState->warnings.fallback))))
 	{
 		pDiveState->warnings.ppO2Low = 0;
 		pDiveState->warnings.ppO2High = 0;
@@ -208,7 +276,7 @@ static int8_t check_O2_sensors(SDiveState * pDiveState)
 	pDiveState->warnings.sensorOutOfBounds[2] = 0;
 
 	if(isLoopMode(pDiveState->diveSettings.diveMode) && (pDiveState->diveSettings.CCR_Mode == CCRMODE_Sensors))
-
+	{
 		if(settingsGetPointer()->ppo2sensors_source == O2_SENSOR_SOURCE_OPTIC)
 		{
 			{
@@ -216,7 +284,8 @@ static int8_t check_O2_sensors(SDiveState * pDiveState)
 					pDiveState->warnings.sensorLinkLost = 1;
 			}
 		}
-	test_O2_sensor_values_outOfBounds(&pDiveState->warnings.sensorOutOfBounds[0], &pDiveState->warnings.sensorOutOfBounds[1], &pDiveState->warnings.sensorOutOfBounds[2]);
+		test_O2_sensor_values_outOfBounds(&pDiveState->warnings.sensorOutOfBounds[0], &pDiveState->warnings.sensorOutOfBounds[1], &pDiveState->warnings.sensorOutOfBounds[2]);
+	}
 	return 		pDiveState->warnings.sensorLinkLost
 					+ pDiveState->warnings.sensorOutOfBounds[0]
 					+ pDiveState->warnings.sensorOutOfBounds[1]

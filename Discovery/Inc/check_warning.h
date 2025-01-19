@@ -45,4 +45,6 @@ void reset_debounce_warning_fallback();
 uint8_t getSetpointHighId(void);
 uint8_t getSetpointLowId(void);
 uint8_t getSetpointDecoId(void);
+void requestBuzzerActivation(uint8_t active);
+uint8_t getBuzzerActivationState();
 #endif // CHECK_WARNING_H

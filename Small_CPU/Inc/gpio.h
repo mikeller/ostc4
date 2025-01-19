@@ -49,6 +49,8 @@ void GPIO_GPS_OFF(void);
 void GPIO_GPS_ON(void);
 void GPIO_GPS_BCKP_OFF(void);
 void GPIO_GPS_BCKP_ON(void);
+
+void GPIO_HandleBuzzer();
 #endif
 #ifdef __cplusplus
 }

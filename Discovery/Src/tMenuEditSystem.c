@@ -41,6 +41,7 @@
 #include "tMenuEditCustom.h"
 #include "motion.h"
 #include "t7.h"
+#include "math.h"
 
 
 /*#define HAVE_DEBUG_VIEW */
@@ -1687,28 +1688,39 @@ uint8_t OnAction_AdjustSurfacePressure		(uint32_t editId, uint8_t blockNumber, u
     const SDiveState* pDiveState = stateRealGetPointer();
     SSettings* pSettings = settingsGetPointer();
     uint8_t index = 0;
-    int8_t newOffset = 0;
+    float orgpressure_surface_mbar;
+    float DiveO2_mbar;
+    int8_t newOffset_mbar = 0;
+
 
     char text[32];
 
-    float orgpressure_surface;
+
 
     for (index = 0; index < 3; index++)
     {
     	if(settingsGetPointer()->ext_sensor_map[index] == SENSOR_DIGO2M)
     	{
     		pDiveO2Data = (SSensorDataDiveO2*)stateRealGetPointer()->lifeData.extIf_sensor_data[index];
-    		orgpressure_surface = pDiveState->lifeData.pressure_surface_bar - (settingsGetPointer()->offsetPressure_mbar / 1000.0);
-    		newOffset = ((pDiveO2Data->pressure/1000) - (orgpressure_surface * 1000));
+    		DiveO2_mbar = (pDiveO2Data->pressure/1000.0);
 
-    		if((pDiveState->lifeData.pressure_surface_bar * 1000 + newOffset) != (pDiveO2Data->pressure/1000)) /* there might be a rounding difference => compensate */
+    		orgpressure_surface_mbar = (pDiveState->lifeData.pressure_surface_bar * 1000) - (settingsGetPointer()->offsetPressure_mbar);
+    		newOffset_mbar = DiveO2_mbar - orgpressure_surface_mbar;
+
+    		if(fabs(orgpressure_surface_mbar + ((float)newOffset_mbar) - DiveO2_mbar) > 0.5) /* there might be a rounding difference => compensate */
 			{
-    			newOffset += (pDiveO2Data->pressure/1000) - (pDiveState->lifeData.pressure_surface_bar * 1000 + newOffset);
+    			if((orgpressure_surface_mbar + ((float)newOffset_mbar)) - (pDiveO2Data->pressure/1000.0) > 0.0)
+				{
+    				newOffset_mbar -=1;
+				}
+				else
+				{
+					newOffset_mbar +=1;
+				}
 			}
 
-    		pSettings->offsetPressure_mbar = newOffset;
-    		snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),
-    		        													pDiveState->lifeData.pressure_surface_bar + pSettings->offsetPressure_mbar / 1000.0);
+    		pSettings->offsetPressure_mbar = newOffset_mbar;
+    		snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),	(orgpressure_surface_mbar + pSettings->offsetPressure_mbar) / 1000.0);
     		tMenuEdit_newButtonText(StMSYS5_AdjustSurfPres,text);
     		break;
     	}

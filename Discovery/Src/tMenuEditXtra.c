@@ -314,6 +314,16 @@ static void openEdit_PSCR(void)
 
 
 
+static uint8_t OnAction_CompassHeadingReverse(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    setCompassHeading((stateUsed->diveSettings.compassHeading + 180) % 360);
+
+    exitMenuEdit_to_Home_with_Menu_Update();
+
+    return EXIT_TO_HOME;
+}
+
+
 static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     clearCompassHeading();
@@ -352,6 +362,13 @@ static void drawCompassHeadingMenu(bool isRefresh)
     snprintf(text, 32, "\001%c%c", TXT_2BYTE, TXT2BYTE_CompassHeading);
     write_topline(text);
 
+    if (!isRefresh) {
+        snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Set);
+        write_field_button(StMXTRA_CompassHeading, 20, 800, ME_Y_LINE1, &FontT48, text);
+    } else {
+        tMenuEdit_refresh_field(StMXTRA_CompassHeading);
+    }
+
     uint16_t heading;
     if (settings->compassInertia) {
         heading = (uint16_t)compass_getCompensated();
@@ -361,14 +378,18 @@ static void drawCompassHeadingMenu(bool isRefresh)
     snprintf(text,32,"\001%03i`",heading);
     write_label_var(0, 800, ME_Y_LINE1, &FontT54, text);
 
-    if (!isRefresh) {
-        snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Set);
-        write_field_button(StMXTRA_CompassHeading, 20, 800, ME_Y_LINE2, &FontT48, text);
+    bool headingIsSet = stateUsed->diveSettings.compassHeading;
+    snprintf(text, 32, "%s%c%c", makeGrey(!headingIsSet), TXT_2BYTE, TXT2BYTE_Reverse);
+    if (headingIsSet) {
+        if (!isRefresh) {
+            write_field_button(StMXTRA_CompassHeadingReverse, 20, 800, ME_Y_LINE2, &FontT48, text);
+        } else {
+            tMenuEdit_refresh_field(StMXTRA_CompassHeadingReverse);
+        }
     } else {
-        tMenuEdit_refresh_field(StMXTRA_CompassHeading);
+        write_label_var(20, 800, ME_Y_LINE2, &FontT48, text);
     }
 
-    bool headingIsSet = stateUsed->diveSettings.compassHeading;
     snprintf(text, 32, "%s%c%c", makeGrey(!headingIsSet), TXT_2BYTE, TXT2BYTE_Clear);
     if (headingIsSet) {
         if (!isRefresh) {
@@ -407,6 +428,7 @@ static void drawCompassHeadingMenu(bool isRefresh)
 
     if (!isRefresh) {
         setEvent(StMXTRA_CompassHeading, (uint32_t)OnAction_CompassHeading);
+        setEvent(StMXTRA_CompassHeadingReverse, (uint32_t)OnAction_CompassHeadingReverse);
         setEvent(StMXTRA_CompassHeadingClear, (uint32_t)OnAction_CompassHeadingClear);
         setEvent(StMXTRA_CompassHeadingReset, (uint32_t)OnAction_CompassHeadingReset);
         setEvent(StMXTRA_CompassHeadingLog, (uint32_t)OnAction_CompassHeadingLog);

@@ -1502,7 +1502,9 @@ void t7_show_customview_warnings(void)
 {
     char text[256];
     uint8_t textpointer, lineFree;
+#ifdef HAVE_DEBUG_WARNINGS
     uint8_t index = 0;
+#endif
 
     text[0] = '\025';
     text[1] = '\f';
@@ -1614,6 +1616,7 @@ void t7_show_customview_warnings(void)
     }
 */
     GFX_write_string(&FontT48,&t7cW,text,1);
+    requestBuzzerActivation(1);
 }
 
 
@@ -2806,17 +2809,20 @@ void t7_refresh_divemode(void)
     GFX_write_string(&FontT105,&t7l2,TextL2,1);
 
 /* ascent rate graph */
-
+    color = 0xff;
     if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
     {
     	color = t7_drawSlowExitGraph();
     }
-    else if(stateUsed->lifeData.ascent_rate_meter_per_min > 1)	/* a value < 1 would cause a bar in negative direction brush rectangle of 12 and step width of 6 */
+    if(color == 0xff)
     {
-        color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
-    	t7_drawAcentGraph(color);
-    }
+    	color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
+    	if(stateUsed->lifeData.ascent_rate_meter_per_min > 1)	/* a value < 1 would cause a bar in negative direction brush rectangle of 12 and step width of 6 */
+    	{
 
+    	    	t7_drawAcentGraph(color);
+    	}
+    }
 
     /* depth */
     float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
@@ -3217,7 +3223,10 @@ void t7_refresh_divemode(void)
     if(customview_warnings && warning_count_high_time)
         t7_show_customview_warnings();
     else
+    {
         t7_refresh_customview();
+        requestBuzzerActivation(0);
+    }
 
     /* the frame */
     draw_frame(1,1, CLUT_DIVE_pluginbox, CLUT_DIVE_FieldSeperatorLines);
@@ -4032,15 +4041,26 @@ void t7_showPosition(void)
     point_t start, stop;
     uint8_t index = 0;
     uint8_t color = 0;
+    SSettings* pSettings = settingsGetPointer();
 
     t7cY0free.WindowLineSpacing = 28 + 48 + 14;
     t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
     t7cY0free.WindowNumberOfTextLines = 3;
     t7cY0free.WindowY0 -= 20;
+
+    t7cY0free.WindowX0 = CUSTOMBOX_LINE_LEFT + CUSTOMBOX_INSIDE_OFFSET;
+    t7cY0free.WindowX1 = CUSTOMBOX_LINE_RIGHT - CUSTOMBOX_INSIDE_OFFSET;
+
+    if(pSettings->FlipDisplay)
+    {
+       	t7cY0free.WindowY0 = t7cH.WindowY0 + 15;
+        t7cY0free.WindowY1 = t7cY0free.WindowY0 + 250;
+    }
+
     if(stateUsed->lifeData.gnssData.fixType < 2)
     {
     	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
-    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
+    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE)
     	{
     		textpointer += snprintf(&text[textpointer],50,"\001\020Status\n\r");
     	}
@@ -4056,7 +4076,15 @@ void t7_showPosition(void)
     }
     GFX_write_string(&FontT24, &t7cY0free, text, 1);
 
-    t7cY0free.WindowY0 -= 52;
+    if(!pSettings->FlipDisplay)
+    {
+    	t7cY0free.WindowY0 -= 52;
+    }
+    else
+    {
+        t7cY0free.WindowY1 = 370;
+    }
+
     if(stateUsed->lifeData.gnssData.fixType < 2)
     {
 		snprintf(text,60,"\001%d\n\r",stateUsed->lifeData.gnssData.numSat);
@@ -4072,10 +4100,21 @@ void t7_showPosition(void)
 
     if(stateUsed->lifeData.gnssData.fixType < 2)	/* draw status bars */
     {
-    	start.x = t7cY0free.WindowX0 + 85;
-    	stop.x = start.x;
-    	start.y = t7cY0free.WindowY0 + 75;
-    	stop.y = start.y + 20;
+    	 if(!pSettings->FlipDisplay)
+    	 {
+    	    	start.x = t7cY0free.WindowX0 + 85;
+    	    	stop.x = start.x;
+    	    	start.y = t7cY0free.WindowY0 + 75;
+    	    	stop.y = start.y + 20;
+    	 }
+    	 else
+    	 {
+			start.x = t7cY0free.WindowX0 - 50;
+			stop.x = start.x;
+			start.y = t7cY0free.WindowY0 - 75;
+			stop.y = start.y - 20;
+    	 }
+
     	while((index < stateUsed->lifeData.gnssData.numSat) && (index < 4))
     	{
     		if(stateUsed->lifeData.gnssData.signalQual[index] > 4) color = CLUT_NiceGreen;
@@ -4086,6 +4125,11 @@ void t7_showPosition(void)
     		stop.x += 40;
 
     		index++;
+    	}
+    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
+    	{
+    		snprintf(text,50,"\001%2.2f %2.2f", stateUsed->lifeData.gnssData.coord.fLat,stateUsed->lifeData.gnssData.coord.fLon);
+    		GFX_write_string(&FontT24, &t7cY0free, text, 3);
     	}
     }
 
@@ -4698,7 +4742,7 @@ void t7_ChargerView(void)
     }
     else
     {
-        	t7cY0free.WindowY1 += 52;
+        t7cY0free.WindowY1 += 52;
     }
 
     if((stateUsed->lifeData.battery_charge > 0) && (stateUsed->chargeStatus != CHARGER_off))
@@ -4870,6 +4914,10 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 		start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
 		stop.y = start.y;
 		GFX_draw_thick_line(10,&t7screen, start, stop, 9);
+	}
+	else
+	{
+		color = 0xff;
 	}
 	return color;
 }

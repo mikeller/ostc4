@@ -342,6 +342,9 @@ void scheduleSpecial_Evaluate_DataSendToSlave(void)
 	{
 		externalInterface_ExecuteCmd(global.dataSendToSlave.data.externalInterface_Cmd);
 	}
+#ifdef ENABLE_GPIO_V2
+	GPIO_HandleBuzzer();
+#endif
 
 
 #if 0
@@ -1791,6 +1794,8 @@ void copyExtCO2data()
 
 void copyGNSSdata(void)
 {
+	RTC_TimeTypeDef sTimeNow;
+
 	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.fLat;
 	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.fLon;
 	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
@@ -1804,6 +1809,23 @@ void copyGNSSdata(void)
 
 	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
 
+	if(( GNSS_Handle.fixType < 2) && (GNSS_Handle.alive & GNSS_ALIVE_BACKUP_POS))		/* fallback to last known position ? */
+	{
+		RTC_GetTime(&sTimeNow);
+		if(GNSS_Handle.last_hour > sTimeNow.Hours)
+		{
+			sTimeNow.Hours += 24;	/* compensate date change */
+		}
+		if(sTimeNow.Hours - GNSS_Handle.last_hour > 2)
+		{
+			GNSS_Handle.alive &= ~GNSS_ALIVE_BACKUP_POS;		/* position outdated */
+		}
+		else
+		{
+			global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.last_fLat;
+			global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.last_fLon;
+		}
+	}
 	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 }
 

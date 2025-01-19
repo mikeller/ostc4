@@ -73,6 +73,7 @@
 #include "buehlmann.h"
 #include "externLogbookFlash.h"
 #include "vpm.h"
+#include "check_warning.h"
 
 /* #define TESTBENCH */
 
@@ -441,6 +442,13 @@ void DateEx_copy_to_dataOut(void)
 	}
 #endif
 
+#ifdef ENABLE_GPIO_V2
+	if(getBuzzerActivationState())
+	{
+		externalInterface_Cmd |= EXT_INTERFACE_BUZZER_ON;
+	}
+#endif
+
 	dataOut.data.externalInterface_Cmd = externalInterface_Cmd;
 	externalInterface_Cmd = 0;
 
@@ -474,7 +482,7 @@ void DateEx_copy_to_dataOut(void)
 		
 		settingsHelperButtonSens_keepPercentageValues(settingsGetPointerStandard()->ButtonResponsiveness[3], settings->ButtonResponsiveness);
 		setButtonResponsiveness(settings->ButtonResponsiveness);
-		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP);
+		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP, 0);
 	}
 }
 
@@ -583,13 +591,16 @@ static void DataEX_helper_set_Unknown_Date_deviceData(SDeviceLine *lineWrite)
 	RTC_DateTypeDef sdatestructure;
 	RTC_TimeTypeDef stimestructure;
 
+	const SFirmwareData *pFirmwareInfo;
+    pFirmwareInfo = firmwareDataGetPointer();
+
 	stimestructure.Hours = UNKNOWN_TIME_HOURS;
 	stimestructure.Minutes = UNKNOWN_TIME_MINUTES;
 	stimestructure.Seconds = UNKNOWN_TIME_SECOND;
 
 	sdatestructure.Date = UNKNOWN_DATE_DAY;
 	sdatestructure.Month = UNKNOWN_DATE_MONTH;
-	sdatestructure.Year = UNKNOWN_DATE_YEAR;
+	sdatestructure.Year =  pFirmwareInfo->release_year;
 	setWeekday(&sdatestructure);
 
 	DataEX_helper_SetTime(stimestructure, &lineWrite->time_rtc_tr);
@@ -1352,9 +1363,14 @@ uint8_t DataEX_external_ADC_Present(void)
 	return retval;
 }
 
-void DataEX_setExtInterface_Cmd(uint16_t Cmd)
+void DataEX_setExtInterface_Cmd(uint16_t Cmd, uint8_t sensorId)
 {
-	externalInterface_Cmd = Cmd;
+	if(sensorId < EXT_INTERFACE_SENSOR_CNT - 1)
+	{
+		externalInterface_Cmd |= Cmd;
+		externalInterface_Cmd |= sensorId << 8;
+	}
+
 	return;
 }
 
