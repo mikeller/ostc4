@@ -116,7 +116,7 @@ static uint8_t text_ES_CNSshort[] = "CNS";
 // dive mode
 static uint8_t text_EN_Temperature[] = "Temp.";
 static uint8_t text_DE_Temperature[] = "Temperatur";
-static uint8_t text_FR_Temperature[] = "Temp."; // Température (ist zu lang)
+static uint8_t text_FR_Temperature[] = "Temp."; // Température (Does not fit)
 static uint8_t text_IT_Temperature[] = "Temp.";
 static uint8_t text_ES_Temperature[] = "Temp."; 
 
@@ -158,9 +158,9 @@ static uint8_t text_ES_Ceiling[] = "Techo";
 // dive mode
 static uint8_t text_EN_ActualGradient[] = "Saturation";
 static uint8_t text_DE_ActualGradient[] = "Sättigung";
-static uint8_t text_FR_ActualGradient[] = "";
-static uint8_t text_IT_ActualGradient[] = "";
-static uint8_t text_ES_ActualGradient[] = "";
+static uint8_t text_FR_ActualGradient[] = "Saturation";
+static uint8_t text_IT_ActualGradient[] = "Saturazione";
+static uint8_t text_ES_ActualGradient[] = "Saturación";
 
 // dive mode
 static uint8_t text_EN_Stopwatch[] = "Stopwatch";
@@ -174,39 +174,39 @@ static uint8_t text_EN_CompassCalib[] = "Calibrate compass";
 static uint8_t text_DE_CompassCalib[] = "Kompass kalibrieren";
 static uint8_t text_FR_CompassCalib[] = "Calibration boussole";
 static uint8_t text_IT_CompassCalib[] = "Calibrazione bussola";
-static uint8_t text_ES_CompassCalib[] = "Calibrar brújula";
+static uint8_t text_ES_CompassCalib[] = "Calibrar brujula";
 
 static uint8_t text_EN_CompassInertia[] = "Compass inertia level";
 static uint8_t text_DE_CompassInertia[] = "Kompass Trägheitsfaktor";
-static uint8_t text_FR_CompassInertia[] = "";
-static uint8_t text_IT_CompassInertia[] = "";
-static uint8_t text_ES_CompassInertia[] = "";
+static uint8_t text_FR_CompassInertia[] = "Facteur d'inertie";
+static uint8_t text_IT_CompassInertia[] = "Inerzia della bussola";
+static uint8_t text_ES_CompassInertia[] = "inercia de la brujula";
 
-static uint8_t text_EN_CompassDeclination[] = "Compass declination";
-static uint8_t text_DE_CompassDeclination[] = "Kompass Deklination";
+static uint8_t text_EN_CompassDeclination[] = "Declination";
+static uint8_t text_DE_CompassDeclination[] = "Deklination";
 static uint8_t text_FR_CompassDeclination[] = "Déclinaison";
 static uint8_t text_IT_CompassDeclination[] = "Ddeclinazione";
 static uint8_t text_ES_CompassDeclination[] = "Declinación";
 
 static uint8_t text_EN_Autofocus[] = "Autofocus";
 static uint8_t text_DE_Autofocus[] = "Automatik";
-static uint8_t text_FR_Autofocus[] = "";
-static uint8_t text_IT_Autofocus[] = "";
-static uint8_t text_ES_Autofocus[] = "";
+static uint8_t text_FR_Autofocus[] = "Automatique";
+static uint8_t text_IT_Autofocus[] = "Automatico";
+static uint8_t text_ES_Autofocus[] = "Automático";
 
 // Menu SYS1 and Customview header
 static uint8_t text_EN_Compass[] = "Compass";
 static uint8_t text_DE_Compass[] = "Kompass";
 static uint8_t text_FR_Compass[] = "Boussole";
 static uint8_t text_IT_Compass[] = "Bussola";
-static uint8_t text_ES_Compass[] = "Brújula";
+static uint8_t text_ES_Compass[] = "Brujula";
 
 // Menu SYS1
-static uint8_t text_EN_o2Sensors[] = "Oxygen sensors";
-static uint8_t text_DE_o2Sensors[] = "O2-Sensoren";
-static uint8_t text_FR_o2Sensors[] = "Cellules O2";
-static uint8_t text_IT_o2Sensors[] = "Sensore O2";
-static uint8_t text_ES_o2Sensors[] = "Sensores de O2";
+static uint8_t text_EN_o2Sensors[] = "External sensors";
+static uint8_t text_DE_o2Sensors[] = "Externe Sensoren";
+static uint8_t text_FR_o2Sensors[] = "Capteurs externes";
+static uint8_t text_IT_o2Sensors[] = "Sensori esterni";
+static uint8_t text_ES_o2Sensors[] = "Sensores externos";
 
 // Menu SYS1
 static uint8_t text_EN_Brightness[] = "Brightness";
@@ -309,9 +309,9 @@ static uint8_t text_ES_Inactive[] = "Inactivo";
 // Menu Gas
 static uint8_t text_EN_Off[] = "Off";
 static uint8_t text_DE_Off[] = "Ausblenden";
-static uint8_t text_FR_Off[] = "";
-static uint8_t text_IT_Off[] = "";
-static uint8_t text_ES_Off[] = "";
+static uint8_t text_FR_Off[] = "Masquer";
+static uint8_t text_IT_Off[] = "Nascondere";
+static uint8_t text_ES_Off[] = "Ocultar";
 
 // Menu Gas
 static uint8_t text_EN_ChangeDepth[] = "Change depth";
@@ -353,7 +353,7 @@ static uint8_t text_EN_SafetyStop[] = "Safety stop";
 static uint8_t text_DE_SafetyStop[] = "Sicherheitsstop";
 static uint8_t text_FR_SafetyStop[] = "Palier sécurité";
 static uint8_t text_IT_SafetyStop[] = "Sicurezza";
-static uint8_t text_ES_SafetyStop[] = "Parada de seguridad";
+static uint8_t text_ES_SafetyStop[] = "Parada segurid.";
 
 // Menu DECO1 (CCR mode only)
 static uint8_t text_EN_CCRmode[] = "CCR mode";
@@ -388,7 +388,7 @@ static uint8_t text_EN_LastDecostop[] = "Last deco";
 static uint8_t text_DE_LastDecostop[] = "Letzter Stopp";
 static uint8_t text_FR_LastDecostop[] = "Dern. palier";
 static uint8_t text_IT_LastDecostop[] = "Ultima deco";
-static uint8_t text_ES_LastDecostop[] = "Última parada";
+static uint8_t text_ES_LastDecostop[] = "Ultima parada";
 
 // Menu DECO2 and Dive Menu
 static uint8_t text_EN_ZHL16GF[] = "ZH-L16+GF";
@@ -429,13 +429,13 @@ static uint8_t text_EN_Maximum[] = "Maximum";
 static uint8_t text_DE_Maximum[] = "Maximum";
 static uint8_t text_FR_Maximum[] = "Maximum";
 static uint8_t text_IT_Maximum[] = "Massimo";
-static uint8_t text_ES_Maximum[] = "Max";
+static uint8_t text_ES_Maximum[] = "Máximo";
 
 static uint8_t text_EN_Minimum[] = "Minimum";
 static uint8_t text_DE_Minimum[] = "Minimum";
 static uint8_t text_FR_Minimum[] = "Minimum";
 static uint8_t text_IT_Minimum[] = "Minimo";
-static uint8_t text_ES_Minimum[] = "Min";
+static uint8_t text_ES_Minimum[] = "Mínimo";
 
 static uint8_t text_EN_Salinity[] = "Salinity";
 static uint8_t text_DE_Salinity[] = "Salzgehalt";
@@ -478,9 +478,9 @@ static uint8_t text_ES_PreDive[] = "";
 
 static uint8_t text_EN_ChargeHour[] = "Hour(s) till 100%";
 static uint8_t text_DE_ChargeHour[] = "Stunde(n) bis 100%";
-static uint8_t text_FR_ChargeHour[] = "";
-static uint8_t text_IT_ChargeHour[] = "";
-static uint8_t text_ES_ChargeHour[] = "";
+static uint8_t text_FR_ChargeHour[] = "Hour(s) jusqu'à 100";
+static uint8_t text_IT_ChargeHour[] = "Ore fino al 100%";
+static uint8_t text_ES_ChargeHour[] = "Hora(s) hasta el 100%";
 
 static uint8_t text_EN_Date[] = "Date";
 static uint8_t text_DE_Date[] = "Datum";
@@ -613,24 +613,24 @@ static uint8_t text_ES_Design_t7_metric[] = "Metro/Celsius";
 
 // Menu SYS2
 static uint8_t text_EN_Information[] = "Information";
-static uint8_t text_DE_Information[] = "";
-static uint8_t text_FR_Information[] = ""; // Information
-static uint8_t text_IT_Information[] = "Info";
+static uint8_t text_DE_Information[] = "Information";
+static uint8_t text_FR_Information[] = "Information"; // Information
+static uint8_t text_IT_Information[] = "Informazioni";
 static uint8_t text_ES_Information[] = "Información";
 
 // Menu SYS2
 static uint8_t text_EN_ResetMenu[] = "Reset menu";
 static uint8_t text_DE_ResetMenu[] = "Reset-Menü";
 static uint8_t text_FR_ResetMenu[] = "Menu RaZ"; // RaZ
-static uint8_t text_IT_ResetMenu[] = "Reset";
-static uint8_t text_ES_ResetMenu[] = "Restaurar";
+static uint8_t text_IT_ResetMenu[] = "Menu di reset";
+static uint8_t text_ES_ResetMenu[] = "Menu de reinicio";
 
 // Menu SYS2 sub
 static uint8_t text_EN_LogbookOffset[] = "Logbook offset";
 static uint8_t text_DE_LogbookOffset[] = "Logbuch-Versatz";
 static uint8_t text_FR_LogbookOffset[] = "Num. 1er plongée";
 static uint8_t text_IT_LogbookOffset[] = "Logbook offset";
-static uint8_t text_ES_LogbookOffset[] = "Diario: iniciar numeración en";
+static uint8_t text_ES_LogbookOffset[] = "Logbook offset";
 
 
 // Menu SYS2 sub
@@ -643,30 +643,30 @@ static uint8_t text_ES_Maintenance[] = "Mantenimiento";
 // Menu SYS2 sub
 static uint8_t text_EN_SetBatteryCharge[] = "Restore Battery Charge";
 static uint8_t text_DE_SetBatteryCharge[] = "Batterie zurücksetzen";
-static uint8_t text_FR_SetBatteryCharge[] = "";
+static uint8_t text_FR_SetBatteryCharge[] = "Réinit. l'état de charge";
 static uint8_t text_IT_SetBatteryCharge[] = "Ricaricare batteria";
 static uint8_t text_ES_SetBatteryCharge[] = "Recalibrar nivel carga";
 
 // Menu SYS2 sub
 static uint8_t text_EN_AdjustAmbPressure[] = "Adjust pressure";
 static uint8_t text_DE_AdjustAmbPressure[] = "Druckanpassung";
-static uint8_t text_FR_AdjustAmbPressure[] = "";
-static uint8_t text_IT_AdjustAmbPressure[] = "";
-static uint8_t text_ES_AdjustAmbPressure[] = "";
+static uint8_t text_FR_AdjustAmbPressure[] = "Ajuster la pression";
+static uint8_t text_IT_AdjustAmbPressure[] = "Regolare pressione";
+static uint8_t text_ES_AdjustAmbPressure[] = "Ajustar la presión";
 
 // Menu SYS2 sub
 static uint8_t text_EN_SetFactoryDefaults[] = "Store button factory defaults";
 static uint8_t text_DE_SetFactoryDefaults[] = "Taster zurücksetzen";
-static uint8_t text_FR_SetFactoryDefaults[] = "";
+static uint8_t text_FR_SetFactoryDefaults[] = "Réinitialiser le bouton";
 static uint8_t text_IT_SetFactoryDefaults[] = "Impostazioni pulsante";
 static uint8_t text_ES_SetFactoryDefaults[] = "Restablecer ajustes de fábrica";
 
 // Menu SYS2 sub
 static uint8_t text_EN_SetSampleIndex[] = "Analyse log memory";
 static uint8_t text_DE_SetSampleIndex[] = "Prüfe Logbuchspeicher";
-static uint8_t text_FR_SetSampleIndex[] = "Maintain log memory";
-static uint8_t text_IT_SetSampleIndex[] = "Maintain log memory";
-static uint8_t text_ES_SetSampleIndex[] = "Maintain log memory";
+static uint8_t text_FR_SetSampleIndex[] = "Vérifier carnet";
+static uint8_t text_IT_SetSampleIndex[] = "Controllare registro";
+static uint8_t text_ES_SetSampleIndex[] = "Comprobar del diario";
 
 
 // Menu SYS2 sub
@@ -748,7 +748,7 @@ static uint8_t text_ES_RTE[] = "RTE";
 
 // Surface warning
 static uint8_t text_EN_Fonts[] = "fonts"; // Character fonts!!
-static uint8_t text_DE_Fonts[] = "";
+static uint8_t text_DE_Fonts[] = "schrift";
 static uint8_t text_FR_Fonts[] = "polices";
 static uint8_t text_IT_Fonts[] = "Carattere";
 static uint8_t text_ES_Fonts[] = "Tipos de letra";
@@ -784,7 +784,7 @@ static uint8_t text_EN_CompassHeading[] = "Compass heading";
 static uint8_t text_DE_CompassHeading[] = "Kompasskurs";
 static uint8_t text_FR_CompassHeading[] = "Cap";
 static uint8_t text_IT_CompassHeading[] = "Direzione bussola";
-static uint8_t text_ES_CompassHeading[] = "Rumbo brújula";
+static uint8_t text_ES_CompassHeading[] = "Rumbo brujula";
 
 // Dive Menu
 static uint8_t text_EN_CalibView[] = "Calibrate View";
@@ -823,20 +823,20 @@ static uint8_t text_ES_Reset[] = "Restaurar";
 
 static uint8_t text_EN_CounterLung[] = "Counterlung";
 static uint8_t text_DE_CounterLung[] = "Gegenlunge";
-static uint8_t text_FR_CounterLung[] = "";
-static uint8_t text_IT_CounterLung[] = "";
-static uint8_t text_ES_CounterLung[] = "";
+static uint8_t text_FR_CounterLung[] = "Poumon opposé";
+static uint8_t text_IT_CounterLung[] = "Contropolmone";
+static uint8_t text_ES_CounterLung[] = "Contrapulmón";
 
 static uint8_t text_EN_Pressure[] = "Pressure";
 static uint8_t text_DE_Pressure[] = "Druck";
-static uint8_t text_FR_Pressure[] = "";
-static uint8_t text_IT_Pressure[] = "";
-static uint8_t text_ES_Pressure[] = "";
+static uint8_t text_FR_Pressure[] = "Pression";
+static uint8_t text_IT_Pressure[] = "Pressione";
+static uint8_t text_ES_Pressure[] = "Presión";
 
 
 // Menu SIM
 static uint8_t text_EN_Simulator[] = "Simulator";
-static uint8_t text_DE_Simulator[] = "";
+static uint8_t text_DE_Simulator[] = "Simulator";
 static uint8_t text_FR_Simulator[] = "Simulateur";
 static uint8_t text_IT_Simulator[] = "Simulazione";
 static uint8_t text_ES_Simulator[] = "Simulador";
@@ -887,7 +887,7 @@ static uint8_t text_ES_SimSummary[] = "Resumen";
 static uint8_t text_EN_SimDecTo[] = "Dec to";
 static uint8_t text_DE_SimDecTo[] = "Abst.";
 static uint8_t text_FR_SimDecTo[] = "Desc a";
-static uint8_t text_IT_SimDecTo[] = "";
+static uint8_t text_IT_SimDecTo[] = "Scen a";
 static uint8_t text_ES_SimDecTo[] = "Desc a";
 
 // Menu SIM sub
@@ -901,13 +901,13 @@ static uint8_t text_ES_SimLevel[] = "Nivel";
 static uint8_t text_EN_SimAscTo[] = "Asc to";
 static uint8_t text_DE_SimAscTo[] = "Aufst.";
 static uint8_t text_FR_SimAscTo[] = "Rem. a";
-static uint8_t text_IT_SimAscTo[] = "";
+static uint8_t text_IT_SimAscTo[] = "Asce a";
 static uint8_t text_ES_SimAscTo[] = "Asc a";
 
 // Menu SIM sub
 static uint8_t text_EN_SimSurface[] = "Surface";
 static uint8_t text_DE_SimSurface[] = "Oberfl.";
-static uint8_t text_FR_SimSurface[] = ""; // Surface
+static uint8_t text_FR_SimSurface[] = "Surface";
 static uint8_t text_IT_SimSurface[] = "Superficie";
 static uint8_t text_ES_SimSurface[] = "Superficie";
 
@@ -949,21 +949,21 @@ static uint8_t text_ES_ButtonSensitivity[] = "Sensiblidad botones";
 //
 static uint8_t text_EN_SpecialDiveGas[] = "Free configurable";
 static uint8_t text_DE_SpecialDiveGas[] = "Frei einstellbar";
-static uint8_t text_FR_SpecialDiveGas[] = "";
+static uint8_t text_FR_SpecialDiveGas[] = "Réglage libre";
 static uint8_t text_IT_SpecialDiveGas[] = "Configurazione libera";
 static uint8_t text_ES_SpecialDiveGas[] = "Configuración libre";
 
 // Dive Menu
 static uint8_t text_EN_SpecialDiveGasMenu[] = "Lost gas and extra gas";
 static uint8_t text_DE_SpecialDiveGasMenu[] = "Verlorene Gase und Extra-Gas";
-static uint8_t text_FR_SpecialDiveGasMenu[] = "";
+static uint8_t text_FR_SpecialDiveGasMenu[] = "Gaz perdus et extra-gaz";
 static uint8_t text_IT_SpecialDiveGasMenu[] = "Gas perso e extra gas";
 static uint8_t text_ES_SpecialDiveGasMenu[] = "Gas perdido y gas extra";
 
 // Dive Menu (CCR mode)
 static uint8_t text_EN_SpecialDiveGasMenuCCR[] = "Lost Gas";
 static uint8_t text_DE_SpecialDiveGasMenuCCR[] = "Verlorene Gase";
-static uint8_t text_FR_SpecialDiveGasMenuCCR[] = "";
+static uint8_t text_FR_SpecialDiveGasMenuCCR[] = "Gaz perdus";
 static uint8_t text_IT_SpecialDiveGasMenuCCR[] = "Gas perso";
 static uint8_t text_ES_SpecialDiveGasMenuCCR[] = "Gas perdido";
 
@@ -977,20 +977,20 @@ static uint8_t text_ES_UseSensor[] = "Usar sensor";
 // Dive Menu (CCR mode)
 static uint8_t text_EN_AutomaticSP[] = "Switch SP automatically";
 static uint8_t text_DE_AutomaticSP[] = "Automatischer SP Wechsel";
-static uint8_t text_FR_AutomaticSP[] = "";
-static uint8_t text_IT_AutomaticSP[] = "";
-static uint8_t text_ES_AutomaticSP[] = "";
+static uint8_t text_FR_AutomaticSP[] = "Changement automatique de SP";
+static uint8_t text_IT_AutomaticSP[] = "Cambio automatico di SP";
+static uint8_t text_ES_AutomaticSP[] = "Cambio automático de SP";
 
 // Warning
 static uint8_t text_EN_WarnDecoMissed[] = "Deco stop";
-static uint8_t text_DE_WarnDecoMissed[] = "Deco Stopp";
-static uint8_t text_FR_WarnDecoMissed[] = "";
+static uint8_t text_DE_WarnDecoMissed[] = "Deko Stopp";
+static uint8_t text_FR_WarnDecoMissed[] = "Palier déco";
 static uint8_t text_IT_WarnDecoMissed[] = "Deco stop";
 static uint8_t text_ES_WarnDecoMissed[] = "Deco stop";
 
 // Warning
 static uint8_t text_EN_WarnFallback[] = "Fallback";
-static uint8_t text_DE_WarnFallback[] = "";
+static uint8_t text_DE_WarnFallback[] = "Fallback";
 static uint8_t text_FR_WarnFallback[] = "Fallback"; // NEED to more specific here I guess...
 static uint8_t text_IT_WarnFallback[] = "Fallback";
 static uint8_t text_ES_WarnFallback[] = "Fallback";
@@ -1046,7 +1046,7 @@ static uint8_t text_ES_Nitrogen[] = "Nitrógeno";
 
 // Tissue Graph
 static uint8_t text_EN_Helium[] = "Helium";
-static uint8_t text_DE_Helium[] = "";
+static uint8_t text_DE_Helium[] = "Helium";
 static uint8_t text_FR_Helium[] = "Hélium";
 static uint8_t text_IT_Helium[] = "Helio";
 static uint8_t text_ES_Helium[] = "Helio";
@@ -1070,7 +1070,7 @@ static uint8_t text_EN_SafetyStop2[] = "Safety stop";
 static uint8_t text_DE_SafetyStop2[] = "Sicherheit";
 static uint8_t text_FR_SafetyStop2[] = "Palier sécurité";
 static uint8_t text_IT_SafetyStop2[] = "Sicurezza";
-static uint8_t text_ES_SafetyStop2[] = "Parada de seguridad";
+static uint8_t text_ES_SafetyStop2[] = "Parada seguridad";
 
 // Surface mode
 static uint8_t text_EN_noFly[] = "noFly";
@@ -1091,7 +1091,7 @@ static uint8_t text_EN_TimeSinceLastDive[] = "Last dive";
 static uint8_t text_DE_TimeSinceLastDive[] = "Tauchpause";
 static uint8_t text_FR_TimeSinceLastDive[] = "Intervalle";
 static uint8_t text_IT_TimeSinceLastDive[] = "Ultima immersione";
-static uint8_t text_ES_TimeSinceLastDive[] = "Última inmersión";
+static uint8_t text_ES_TimeSinceLastDive[] = "Ultima inmersión";
 
 // Button label (tiny line)
 static uint8_t text_EN_ButtonLogbook[] = "Logbook";
@@ -1112,7 +1112,7 @@ static uint8_t text_EN_ButtonMenu[] = "Menu";
 static uint8_t text_DE_ButtonMenu[] = "Menü";
 static uint8_t text_FR_ButtonMenu[] = "Menu";
 static uint8_t text_IT_ButtonMenu[] = "Menu";
-static uint8_t text_ES_ButtonMenu[] = "Menú";
+static uint8_t text_ES_ButtonMenu[] = "Menu";
 
 // Button label (tiny line)
 static uint8_t text_EN_ButtonBack[] = "Back";
@@ -1153,8 +1153,8 @@ static uint8_t text_ES_ButtonPlus[] = "+";
 static uint8_t text_EN_SimFollowDecoStops[] = "Ascent follows decostops";
 static uint8_t text_DE_SimFollowDecoStops[] = "Sim-Aufstieg folgt Stopps";
 static uint8_t text_FR_SimFollowDecoStops[] = "Remonté selon paliers";
-static uint8_t text_IT_SimFollowDecoStops[] = "";
-static uint8_t text_ES_SimFollowDecoStops[] = "Ascenso según paradas deco";
+static uint8_t text_IT_SimFollowDecoStops[] = "Sim ascenso sigue paradas";
+static uint8_t text_ES_SimFollowDecoStops[] = "Ascenso segUn paradas deco";
 
 // Menu SYS1
 static uint8_t text_EN_Bluetooth[] = "Bluetooth";
@@ -1186,15 +1186,15 @@ static uint8_t text_ES_O2voltage[] = "Voltaje O2";
 
 // Customview Header
 static uint8_t text_EN_Gaslist[] = "Gaslist OC";
-static uint8_t text_DE_Gaslist[] = "";
+static uint8_t text_DE_Gaslist[] = "OC Gasliste";
 static uint8_t text_FR_Gaslist[] = "Liste gaz OC";
 static uint8_t text_IT_Gaslist[] = "Lista gas OC";
-static uint8_t text_ES_Gaslist[] = "lista de gases OC";
+static uint8_t text_ES_Gaslist[] = "lista gases OC";
 
 // Customview Header
 static uint8_t text_EN_Info[] = "Info";
-static uint8_t text_DE_Info[] = "";
-static uint8_t text_FR_Info[] = ""; // Info
+static uint8_t text_DE_Info[] = "Info";
+static uint8_t text_FR_Info[] = "Info";
 static uint8_t text_IT_Info[] = "Info";
 static uint8_t text_ES_Info[] = "Info";
 
@@ -1208,9 +1208,9 @@ static uint8_t text_ES_Warning[] = "Peligro";
 // Customview Header
 static uint8_t text_EN_Charging[] = "Charging";
 static uint8_t text_DE_Charging[] = "Ladezyklus";
-static uint8_t text_FR_Charging[] = "";
-static uint8_t text_IT_Charging[] = "";
-static uint8_t text_ES_Charging[] = "";
+static uint8_t text_FR_Charging[] = "Cycle de charge";
+static uint8_t text_IT_Charging[] = "Ciclo di carica";
+static uint8_t text_ES_Charging[] = "Ciclo de carga";
 
 // Menu SYS2 sub Information
 static uint8_t text_EN_Usage_Battery[] = "Battery life";
@@ -1259,7 +1259,7 @@ static uint8_t text_EN_NumberOfDives[] = "Total number of dives (max. depth)";
 static uint8_t text_DE_NumberOfDives[] = "Anzahl Tauchgänge (max. Tiefe)";
 static uint8_t text_FR_NumberOfDives[] = "Nombre total de plongées (prof. max)";
 static uint8_t text_IT_NumberOfDives[] = "Numero totale di immersioni (prof. max)";
-static uint8_t text_ES_NumberOfDives[] = "Número total de inmersiones (prof. max)";
+static uint8_t text_ES_NumberOfDives[] = "NUmero total de inmersiones (prof. max)";
 
 // Menu SYS2 sub Information
 static uint8_t text_EN_AmbientTemperature[] = "Ambient temperature range";
@@ -1333,40 +1333,40 @@ static uint8_t text_IT_HUDBattery[] = "Batteria HUD";
 static uint8_t text_ES_HUDBattery[] = "Carga del HUD";
 
 static uint8_t text_EN_SensorDetect[] = "Auto detection";
-static uint8_t text_DE_SensorDetect[] = "Sensor suchen";
-static uint8_t text_FR_SensorDetect[] = "";
-static uint8_t text_IT_SensorDetect[] = "";
-static uint8_t text_ES_SensorDetect[] = "";
+static uint8_t text_DE_SensorDetect[] = "Sensoren suchen";
+static uint8_t text_FR_SensorDetect[] = "Chercher capteurs";
+static uint8_t text_IT_SensorDetect[] = "Ricerca sensori";
+static uint8_t text_ES_SensorDetect[] = "BUsqueda sensores";
 
-static uint8_t text_EN_O2Calib[] = "Calibrate";
+static uint8_t text_EN_O2Calib[] = "Calibration";
 static uint8_t text_DE_O2Calib[] = "Kalibrierung";
-static uint8_t text_FR_O2Calib[] = "";
-static uint8_t text_IT_O2Calib[] = "";
-static uint8_t text_ES_O2Calib[] = "";
+static uint8_t text_FR_O2Calib[] = "Calibrage";
+static uint8_t text_IT_O2Calib[] = "Calibrazione";
+static uint8_t text_ES_O2Calib[] = "Calibración";
 
 static uint8_t text_EN_O2Interface[] = "O2 Interface";
 static uint8_t text_DE_O2Interface[] = "O2 Interface";
-static uint8_t text_FR_O2Interface[] = "";
-static uint8_t text_IT_O2Interface[] = "";
-static uint8_t text_ES_O2Interface[] = "";
+static uint8_t text_FR_O2Interface[] = "Interface O2";
+static uint8_t text_IT_O2Interface[] = "Interfaccia O2";
+static uint8_t text_ES_O2Interface[] = "Interfaz O2";
 
 static uint8_t text_EN_O2IFOptic[] = "optical";
 static uint8_t text_DE_O2IFOptic[] = "optisch";
-static uint8_t text_FR_O2IFOptic[] = "";
-static uint8_t text_IT_O2IFOptic[] = "";
-static uint8_t text_ES_O2IFOptic[] = "";
+static uint8_t text_FR_O2IFOptic[] = "optique";
+static uint8_t text_IT_O2IFOptic[] = "ottico";
+static uint8_t text_ES_O2IFOptic[] = "óptico";
 
 static uint8_t text_EN_O2IFAnalog[] = "analog";
 static uint8_t text_DE_O2IFAnalog[] = "analog";
-static uint8_t text_FR_O2IFAnalog[] = "";
-static uint8_t text_IT_O2IFAnalog[] = "";
-static uint8_t text_ES_O2IFAnalog[] = "";
+static uint8_t text_FR_O2IFAnalog[] = "analogique";
+static uint8_t text_IT_O2IFAnalog[] = "analogico";
+static uint8_t text_ES_O2IFAnalog[] = "analógico";
 
 static uint8_t text_EN_O2IFDigital[] = "digital";
 static uint8_t text_DE_O2IFDigital[] = "digital";
-static uint8_t text_FR_O2IFDigital[] = "";
-static uint8_t text_IT_O2IFDigital[] = "";
-static uint8_t text_ES_O2IFDigital[] = "";
+static uint8_t text_FR_O2IFDigital[] = "digitale";
+static uint8_t text_IT_O2IFDigital[] = "digital";
+static uint8_t text_ES_O2IFDigital[] = "digital";
 
 // Menu SYS1 sub (buttons)
 static uint8_t text_EN_LowerIsLess[] = "Lower is less sensitive";
@@ -1378,9 +1378,9 @@ static uint8_t text_ES_LowerIsLess[] = "A menor valor, menos sensibilidad";
 // Dive Mode YELLOW TEXT under Customview
 static uint8_t text_EN_DiveMenuQ[] = " Menu? ";
 static uint8_t text_DE_DiveMenuQ[] = " Menü? ";
-static uint8_t text_FR_DiveMenuQ[] = "";
-static uint8_t text_IT_DiveMenuQ[] = "Menu?";
-static uint8_t text_ES_DiveMenuQ[] = "Menú";
+static uint8_t text_FR_DiveMenuQ[] = " Menu  ";
+static uint8_t text_IT_DiveMenuQ[] = " Menu? ";
+static uint8_t text_ES_DiveMenuQ[] = " Menu  ";
 
 // Dive Mode YELLOW TEXT under Customview
 static uint8_t text_EN_DiveQuitQ[] = " Quit? ";
@@ -1392,7 +1392,7 @@ static uint8_t text_ES_DiveQuitQ[] = "¿Salir?";
 // Dive Mode YELLOW TEXT under Customview
 static uint8_t text_EN_DiveBearingQ[] = "Bearing";
 static uint8_t text_DE_DiveBearingQ[] = "Peilung";
-static uint8_t text_FR_DiveBearingQ[] = "";
+static uint8_t text_FR_DiveBearingQ[] = "Gisement";
 static uint8_t text_IT_DiveBearingQ[] = "";
 static uint8_t text_ES_DiveBearingQ[] = "Rumbo";
 
@@ -1413,15 +1413,15 @@ static uint8_t text_ES_ExtraDisplay[] = "Letras grandes";
 // Menu SYS2
 static uint8_t text_EN_ExtraBigFont[] = "Optional";
 static uint8_t text_DE_ExtraBigFont[] = "Optional";
-static uint8_t text_FR_ExtraBigFont[] = "si";
-static uint8_t text_IT_ExtraBigFont[] = "si";
-static uint8_t text_ES_ExtraBigFont[] = "si";
+static uint8_t text_FR_ExtraBigFont[] = "En option";
+static uint8_t text_IT_ExtraBigFont[] = "Opzionale";
+static uint8_t text_ES_ExtraBigFont[] = "Opcional";
 
 static uint8_t text_EN_ExtraBFActive[] = "Start screen";
-static uint8_t text_DE_ExtraBFActive[] = "Start Bildschirm";
-static uint8_t text_FR_ExtraBFActive[] = "";
-static uint8_t text_IT_ExtraBFActive[] = "";
-static uint8_t text_ES_ExtraBFActive[] = "";
+static uint8_t text_DE_ExtraBFActive[] = "Startbildschirm";
+static uint8_t text_FR_ExtraBFActive[] = "Écran démarrage";
+static uint8_t text_IT_ExtraBFActive[] = "Schermata iniziale";
+static uint8_t text_ES_ExtraBFActive[] = "Pantalla de inicio";
 
 // Menu SYS2 (future feature)
 static uint8_t text_EN_ExtraDecoGame[] = "Deco game";
@@ -1472,7 +1472,7 @@ static uint8_t text_ES_MoCtrlScroll[] = "Scroll";
 static uint8_t text_EN_DecoDataLost[] = "Decompression data will be lost";
 static uint8_t text_DE_DecoDataLost[] = "Dekompressionsdaten verloren!";
 static uint8_t text_FR_DecoDataLost[] = "RaZ de la décompression"; // RaZ
-static uint8_t text_IT_DecoDataLost[] = "";
+static uint8_t text_IT_DecoDataLost[] = "Dati di decompressione persi!";
 static uint8_t text_ES_DecoDataLost[] = "Se perderá la información de descompresión";
 
 // Menu SYS1 sub and Dive Menu
@@ -1490,9 +1490,9 @@ static uint8_t text_ES_ResetBearing[] = "Borrar rumbo";
 
 // Menu SYS1, sub
 static uint8_t text_EN_SensorList[] = "Sensor";
-static uint8_t text_DE_SensorList[] = "";
-static uint8_t text_FR_SensorList[] = "Cellule";
-static uint8_t text_IT_SensorList[] = "";
+static uint8_t text_DE_SensorList[] = "Sensor";
+static uint8_t text_FR_SensorList[] = "Capteur";
+static uint8_t text_IT_SensorList[] = "Sensore";
 static uint8_t text_ES_SensorList[] = "Sensor";
 
 // Menu SYS1, sub
@@ -1529,15 +1529,15 @@ static uint8_t text_ES_DispNoneDbg[] = "Debug/None";
 
 static uint8_t text_EN_ApneaTotal[] = "total";
 static uint8_t text_DE_ApneaTotal[] = "gesamt";
-static uint8_t text_FR_ApneaTotal[] = "";
+static uint8_t text_FR_ApneaTotal[] = "total";
 static uint8_t text_IT_ApneaTotal[] = "Completo";
 static uint8_t text_ES_ApneaTotal[] = "Total";
 
 static uint8_t text_EN_ApneaLast[] = "last";
 static uint8_t text_DE_ApneaLast[] = "letzter";
 static uint8_t text_FR_ApneaLast[] = "dernier";
-static uint8_t text_IT_ApneaLast[] = "";
-static uint8_t text_ES_ApneaLast[] = "último";
+static uint8_t text_IT_ApneaLast[] = "ultimo";
+static uint8_t text_ES_ApneaLast[] = "Ultimo";
 
 static uint8_t text_EN_ApneaSurface[] = "Surface time";
 static uint8_t text_DE_ApneaSurface[] = "Oberflächenzeit";
@@ -1592,7 +1592,7 @@ static uint8_t text_ES_Gauge[] = "Profundimetro";
 
 
 static uint8_t text_EN_Default[] = "Default";
-static uint8_t text_DE_Default[] = "";
+static uint8_t text_DE_Default[] = "Standard";
 static uint8_t text_FR_Default[] = "Défaut";
 static uint8_t text_IT_Default[] = "Standard";
 static uint8_t text_ES_Default[] = "Por defecto";
@@ -1604,7 +1604,7 @@ static uint8_t text_IT_LiterproMinute[] = "Litri/Minuti";
 static uint8_t text_ES_LiterproMinute[] = "Litros/Minuto";
 
 static uint8_t text_EN_Reserve[] = "Reserve";
-static uint8_t text_DE_Reserve[] = "";
+static uint8_t text_DE_Reserve[] = "Reserve";
 static uint8_t text_FR_Reserve[] = "Réserve";
 static uint8_t text_IT_Reserve[] = "Riserva";
 static uint8_t text_ES_Reserve[] = "Reserva";
@@ -1612,7 +1612,7 @@ static uint8_t text_ES_Reserve[] = "Reserva";
 static uint8_t text_EN_Daylightsaving[] = "Daylight sav.";
 static uint8_t text_DE_Daylightsaving[] = "Sommerzeit";
 static uint8_t text_FR_Daylightsaving[] = "Heure d'été";
-static uint8_t text_IT_Daylightsaving[] = "";
+static uint8_t text_IT_Daylightsaving[] = "L'ora legale";
 static uint8_t text_ES_Daylightsaving[] = "Horario de verano";
 
 static uint8_t text_EN_ShowDebug[] = "Debug info";
@@ -1780,8 +1780,8 @@ static uint8_t text_ES_DecoTTS[] = "";
 static uint8_t text_EN_SlowExit[] = "Slow exit";
 static uint8_t text_DE_SlowExit[] = "Ausstieg";
 static uint8_t text_FR_SlowExit[] = "";
-static uint8_t text_IT_SlowExit[] = "";
-static uint8_t text_ES_SlowExit[] = "";
+static uint8_t text_IT_SlowExit[] = "Ascensione";
+static uint8_t text_ES_SlowExit[] = "Salida lenta";
 
 static uint8_t text_EN_ScrubTime[] = "Scrubber time";
 static uint8_t text_DE_ScrubTime[] = "Kalkstandzeit";
@@ -1839,9 +1839,9 @@ static uint8_t text_ES_CO2Sensor[] = "CO2 Sensor";
 
 static uint8_t text_EN_KeyLock[] = "Key lock";
 static uint8_t text_DE_KeyLock[] = "Tastensperre";
-static uint8_t text_FR_KeyLock[] = "";
-static uint8_t text_IT_KeyLock[] = "";
-static uint8_t text_ES_KeyLock[] = "";
+static uint8_t text_FR_KeyLock[] = "Verrouillage du clavier";
+static uint8_t text_IT_KeyLock[] = "Serratura a chiave";
+static uint8_t text_ES_KeyLock[] = "Cerradura de llave";
 
 static uint8_t text_EN_NotCalibrated[] = "not calibrated";
 static uint8_t text_DE_NotCalibrated[] = "nicht kalibriert";

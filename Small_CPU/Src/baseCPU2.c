@@ -174,14 +174,14 @@ const SFirmwareData cpu2_FirmwareData __attribute__(( section(".firmware_data") 
 		.versionFirst = 3,
 		.versionSecond = 4,
 		.versionThird = 0,
-		.versionBeta = 1,
+		.versionBeta = 0,
 
 /* 4 bytes with trailing 0 */
 		.signature = "mh",
 
-		.release_year = 23,
-		.release_month = 9,
-		.release_day = 14,
+		.release_year = 25,
+		.release_month = 1,
+		.release_day = 18,
 		.release_sub = 0,
 
 		/* max 48 with trailing 0 */

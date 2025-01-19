@@ -91,7 +91,7 @@
 #define ENABLE_FAST_COMM
 
 /* Enable to have position sensor support active */
-#define ENABLE_GPIO_V2
+/* #define ENABLE_GPIO_V2 */
 
 /* Enable RTE sleep mode debugging */
 /* #define ENABLE_SLEEP_DEBUG */
