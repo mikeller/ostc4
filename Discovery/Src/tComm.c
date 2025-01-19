@@ -139,6 +139,7 @@ HAL_StatusTypeDef receive_uart_large_size(UART_HandleTypeDef *huart, uint8_t *pD
 static uint8_t openComm(uint8_t aRxByte);
 uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence);
 uint8_t prompt4D4C(uint8_t mode);
+uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr);
 
 #ifdef BOOTLOADER_STANDALONE
     static uint8_t receive_update_data_cpu2(void);
@@ -385,6 +386,7 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
 {
     uint8_t answer = HAL_OK;
     uint8_t aRxBuffer[50];
+    char aTxBufferName[50];
 
 //	char aTxFactoryDefaults[50] = "AT&F1\r";
 
@@ -392,11 +394,8 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     // limit is 19 chars, with 7 chars shown in BLE advertising mode
     //________________________123456789012345678901
 
-#ifndef BOOTLOADER_STANDALONE
-    char aTxBufferName[50] = "AT+BNAME=OSTC4-12345\r";
-#else
-    char aTxBufferName[50] = "AT+UBTLN=OSTC4-12345\r";
-#endif
+    tComm_GetBTCmdStr(BT_CMD_NAME, aTxBufferName);
+
     char answerOkay[6] = "\r\nOK\r\n";
 
     gfx_number_to_string(5,1,&aTxBufferName[15],serial);
@@ -457,11 +456,12 @@ void tComm_Disconnect()
 	uint8_t answer;
 	uint8_t retrycnt = 3;
 	char aTxDisconnect[] ="ATH\r";
-	char aTxBufferEnd[] = "ATO\r";
+	char aTxBufferEnd[10];
 	char aTxBufferEscapeSequence[] = "+++";
 
 	uint8_t sizeDisconnect = sizeof(aTxDisconnect) -1;
 
+	tComm_GetBTCmdStr(BT_CMD_EXIT_CMD, aTxBufferEnd);
 	HAL_UART_AbortReceive_IT(&UartHandle);
 	do
 	{
@@ -2162,6 +2162,87 @@ void tComm_StartBlueModBaseInit()
 }
 #endif
 
+
+uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
+{
+	uint8_t ret = 0;
+	uint8_t oldModule = 1;
+
+	if(isNewDisplay())
+	{
+		oldModule = 0;
+	}
+
+	switch (cmdId)
+	{
+		case BT_CMD_ECHO:	sprintf(pCmdStr,"ATE0\r");
+							ret = 1;
+			break;
+		case BT_CMD_SILENCE:	if(oldModule)
+								{
+									strcpy(pCmdStr,"ATS30=0\r");
+									ret = 1;
+								}
+			break;
+		case BT_CMD_ESCAPE_DELAY:	if(oldModule)
+									{
+										strcpy(pCmdStr,"ATS12=10\r");
+										ret = 1;
+									}
+			break;
+		case BT_CMD_SIGNAL_POLL:	if(oldModule)
+									{
+										strcpy(pCmdStr,"AT+BSTPOLL=100\r");
+										ret = 1;
+									}
+			break;
+		case BT_CMD_BAUDRATE_115:	if(oldModule)
+									{
+										strcpy(pCmdStr,"AT%B8\r");
+									}
+									else
+									{
+										strcpy(pCmdStr,"AT+UMRS=115200,1,8,1,1,1\r");
+									}
+									ret = 1;
+			break;
+
+		case BT_CMD_BAUDRATE_460:	if(oldModule)
+									{
+										strcpy(pCmdStr,"AT%B22\r");
+									}
+									else
+									{
+										strcpy(pCmdStr,"AT+UMRS=460800,1,8,1,1,1\r");
+									}
+									ret = 1;
+			break;
+		case BT_CMD_NAME:			if(oldModule)
+									{
+										strcpy(pCmdStr,"AT+BNAME=OSTC4-12345\r");
+									}
+									else
+									{
+										strcpy(pCmdStr,"AT+UBTLN=OSTC5-12345\r");
+									}
+									ret = 1;
+			break;
+		case BT_CMD_EXIT_CMD:		if(oldModule)
+									{
+										strcpy(pCmdStr,"ATO\r");
+									}
+									else
+									{
+										strcpy(pCmdStr,"ATO1\r");
+									}
+									ret = 1;
+			break;
+		default:
+			break;
+	}
+	return ret;
+}
+
 void tComm_StartBlueModConfig()
 {
 	uint8_t answer = HAL_OK;
@@ -2186,40 +2267,21 @@ uint8_t tComm_HandleBlueModConfig()
 
 	uint8_t result = HAL_OK;
 
-	TxBuffer[0] = 0;
+	memset(TxBuffer, 0, sizeof(TxBuffer));
 
 	switch (BmTmpConfig)
 	{
-		case BM_CONFIG_ECHO: 			sprintf(TxBuffer,"ATE0\r");
+		case BM_CONFIG_ECHO: 			tComm_GetBTCmdStr (BT_CMD_ECHO, TxBuffer);
 			break;
-		case BM_CONFIG_SILENCE:
-#ifndef BOOTLOADER_STANDALONE
-										sprintf(TxBuffer,"ATS30=0\r");
-#else
-										BmTmpConfig++;
-#endif
+		case BM_CONFIG_SILENCE:			tComm_GetBTCmdStr (BT_CMD_SILENCE, TxBuffer);
 			break;
-		case BM_CONFIG_ESCAPE_DELAY:
-#ifndef BOOTLOADER_STANDALONE
-			sprintf(TxBuffer,"ATS12=10\r");
-#else
-										BmTmpConfig++;
-#endif
+		case BM_CONFIG_ESCAPE_DELAY:	tComm_GetBTCmdStr (BT_CMD_ESCAPE_DELAY, TxBuffer);
 			break;
-		case BM_CONFIG_SIGNAL_POLL:
-#ifndef BOOTLOADER_STANDALONE
-										sprintf(TxBuffer,"AT+BSTPOLL=100\r");
-#else
-										BmTmpConfig++;
-#endif
+		case BM_CONFIG_SIGNAL_POLL:		tComm_GetBTCmdStr(BT_CMD_SIGNAL_POLL, TxBuffer);
 			break;
 		case BM_CONFIG_BAUD:
 #ifdef ENABLE_FAST_COMM
- 	#ifndef BOOTLOADER_STANDALONE
-										sprintf(TxBuffer,"AT%%B22\r");
-	#else
-										sprintf(TxBuffer,"AT+UMRS=460800,1,8,1,1,1\r");
-	#endif
+										tComm_GetBTCmdStr(BT_CMD_BAUDRATE_460, TxBuffer);
 #else
 										BmTmpConfig = BM_CONFIG_DONE;
 #endif
@@ -2237,7 +2299,7 @@ uint8_t tComm_HandleBlueModConfig()
 			ConfigRetryCnt = 0;
 			RestartModule = 1;
 			break;
-#ifdef BOOTLOADER_STANDALONE
+#ifdef BOOTLOADER_STANDALONE		/* the procedure below is just needed for the initial bluetooth module initialization */
 		case BM_INIT_TRIGGER_ON:	HAL_Delay(2000);
 									HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
 									BmTmpConfig++;
@@ -2255,7 +2317,11 @@ uint8_t tComm_HandleBlueModConfig()
 								break;
 		case BM_INIT_BLE:			sprintf(TxBuffer,"AT+UBTLE=2\r"); 		/* Bluetooth low energy Peripheral */
 								break;
-		case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC4-12345\r"); /* Bluetooth name */
+		case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC5-12345\r"); /* Bluetooth name */
+									if(hardwareDataGetPointer()->primarySerial != 0xFFFF) /* module reinit? => restore old name */
+									{
+										gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
+									}
 								break;
 		case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");    /* Disable SPP Server on ID0 */
 								break;
@@ -2291,11 +2357,8 @@ uint8_t tComm_HandleBlueModConfig()
 			}
 			else if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate == 460800)) /* This shut not happen because default speed is 115200 => update module configuration */
 			{
-#ifndef BOOTLOADER_STANDALONE
-				sprintf(TxBuffer,"AT%%B8\r");	/* set default baudrate */
-#else
-				sprintf(TxBuffer,"AT+UMRS=115200,1,8,1,1,1\r");
-#endif
+				tComm_GetBTCmdStr(BT_CMD_BAUDRATE_115, TxBuffer);
+
 				CmdSize = strlen(TxBuffer);
 				HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
 				HAL_UART_DeInit(&UartHandle);
@@ -2322,6 +2385,13 @@ uint8_t tComm_HandleBlueModConfig()
 			}
 		}
 	}
+	else		/* no command for the configuration step found => skip step */
+	{
+		if((BmTmpConfig > BM_CONFIG_OFF) && (BmTmpConfig < BM_CONFIG_DONE))
+		{
+			BmTmpConfig++;
+		}
+	}
 	if(result != HAL_OK)
 	{
 		ConfigRetryCnt++;
@@ -2333,7 +2403,7 @@ uint8_t tComm_HandleBlueModConfig()
 				RestartModule = 0;      /* only one try */
 				ConfigRetryCnt = 200;	/* used for delay to startup module again */
 
-				if(BmTmpConfig == BM_CONFIG_ECHO)	/* the module did not answer even once => try again with alternative baud rate */
+				if((BmTmpConfig == BM_CONFIG_ECHO) || (BmTmpConfig == BM_INIT_ECHO))	/* the module did not answer even once => try again with alternative baud rate */
 				{
 					HAL_UART_DeInit(&UartHandle);
 					HAL_Delay(1);

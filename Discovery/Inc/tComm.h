@@ -43,7 +43,6 @@ typedef enum
 		BM_CONFIG_SILENCE,
 		BM_CONFIG_DONE,
 		BM_CONFIG_RETRY,
-#ifdef BOOTLOADER_STANDALONE
 		BM_INIT_TRIGGER_ON = 100,
 		BM_INIT_TRIGGER_OFF,
 		BM_INIT_ECHO,
@@ -58,9 +57,20 @@ typedef enum
 		BM_INIT_STORE,
 		BM_INIT_RESTART,
 		BM_INIT_DONE
-#endif
 } BlueModTmpConfig_t;
 
+
+typedef enum
+{
+	BT_CMD_ECHO,
+	BT_CMD_ESCAPE_DELAY,
+	BT_CMD_SIGNAL_POLL,
+	BT_CMD_BAUDRATE_115,
+	BT_CMD_BAUDRATE_460,
+	BT_CMD_SILENCE,
+	BT_CMD_NAME,
+	BT_CMD_EXIT_CMD
+} BTCmd;
 /* Exported functions --------------------------------------------------------*/
 
 void tComm_init(void);
