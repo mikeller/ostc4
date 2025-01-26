@@ -543,11 +543,17 @@ static  void  vpm_calc_deco(void)
     for (i = 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
     {
         if((pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero  >= depth_change[0] + 1)
-        		&& (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc))
+#ifdef ENABLE_DECOCALC_OPTION
+        		&& (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc)
+#endif
+        	)
             continue;
 
         if((pDiveSettings->decogaslist[i].change_during_ascent_depth_meter_otherwise_zero <= 0)
-        	|| (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
+#ifdef ENABLE_DECOCALC_OPTION
+        	|| (pDiveSettings->gas[pDiveSettings->decogaslist[i].GasIdInSettings].note.ub.decocalc == 0)
+#endif
+        )
             break;
 
         j++;

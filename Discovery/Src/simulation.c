@@ -502,6 +502,7 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
     SDiveState * pDiveState = &stateSim;
     copyDiveSettingsToSim();
 
+#ifdef ENABLE_DECOCALC_OPTION
     /* activate deco calculation for all deco gases */
     for(index = 0; index < 1 + (2*NUM_GASES); index++)
     {
@@ -510,6 +511,7 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
     		pDiveState->diveSettings.gas[index].note.ub.decocalc = 1;
     	}
     }
+#endif
 
     vpm_init(&pDiveState->vpm,  pDiveState->diveSettings.vpm_conservatism, 0, 0);
     //buehlmann_init();
@@ -566,7 +568,10 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
         for(int i=1; i<=5;i++)
         {
             if((pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-            		|| (pDiveState->diveSettings.gas[pDiveState->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0))
+#ifdef ENABLE_DECOCALC_OPTION
+            		|| (pDiveState->diveSettings.gas[pDiveState->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0)
+#endif
+					)
                 break;
             gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
             gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].GasIdInSettings;

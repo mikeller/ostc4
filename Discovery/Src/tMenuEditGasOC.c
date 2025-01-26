@@ -66,7 +66,9 @@ uint8_t OnAction_Mix			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumbe
 uint8_t OnAction_GasType		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ChangeDepth	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetToMOD		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+#ifdef ENABLE_DECOCALC_OPTION
 uint8_t OnAction_CalcDeco		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+#endif
 uint8_t OnAction_BottleSize		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 uint8_t OnAction_First			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -383,7 +385,11 @@ void tMEGas_check_switch_to_bailout(void)
 /* surface mode */
 void openEdit_Gas(uint8_t line, uint8_t ccr)
 {
-    uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off, decocalc;//, bottleSizeLiter;
+    uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off ;//, bottleSizeLiter;
+
+#ifdef ENABLE_DECOCALC_OPTION
+    uint8_t decocalc;
+#endif
 
     char text[32];
     char textMOD[32];
@@ -422,7 +428,9 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
     deco = editGasPage.pGasLine[gasID].note.ub.deco;
     travel = editGasPage.pGasLine[gasID].note.ub.travel;
     off = editGasPage.pGasLine[gasID].note.ub.off;
+#ifdef ENABLE_DECOCALC_OPTION
     decocalc = editGasPage.pGasLine[gasID].note.ub.decocalc;
+#endif
     //bottleSizeLiter = editGasPage.pGasLine[gasID].bottle_size_liter;
 
     if(active)
@@ -508,7 +516,7 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
             text[txtptr++] = TXT2BYTE_SetToMOD;
             text[txtptr++] = 0;
             write_field_button(StMOG_SetToMOD,		20, 710, ME_Y_LINE4, &FontT48,text);
-
+#ifdef ENABLE_DECOCALC_OPTION
             if(deco)
             {
 				txtptr = 0;
@@ -518,6 +526,7 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
 
 				write_field_on_off(StMOG_CalcDeco, 20, 710, ME_Y_LINE5, &FontT48, text, decocalc);
             }
+#endif
         }
         else
         {
@@ -569,10 +578,12 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
             setEvent(StMOG_ChangeDepth,		(uint32_t)OnAction_ChangeDepth);
             setEvent(StMOG_SetToMOD,		(uint32_t)OnAction_SetToMOD);
         }
+#ifdef ENABLE_DECOCALC_OPTION
         if(deco)
         {
         	setEvent(StMOG_CalcDeco,		(uint32_t)OnAction_CalcDeco);
         }
+#endif
 /*
         setEvent(StMOG_Bottle, 				(uint32_t)OnAction_BottleSize);
 */
@@ -1124,7 +1135,7 @@ uint8_t OnAction_SetToMOD	(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 
     return UPDATE_DIVESETTINGS;
 }
-
+#ifdef ENABLE_DECOCALC_OPTION
 uint8_t OnAction_CalcDeco	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     if(editGasPage.pGasLine[editGasPage.gasID].note.ub.decocalc)
@@ -1139,7 +1150,7 @@ uint8_t OnAction_CalcDeco	(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 
     return UPDATE_DIVESETTINGS;
 }
-
+#endif
 uint8_t OnAction_ChangeDepth(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     uint8_t digitContentNew;

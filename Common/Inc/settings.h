@@ -120,7 +120,9 @@ uint8_t first:1;
 uint8_t deco:1;
 uint8_t travel:1;
 uint8_t off:1;
+#ifdef ENABLE_DECOCALC_OPTION
 uint8_t decocalc:1;
+#endif
 uint8_t spare:2;
 } gasubit8_t;
 
