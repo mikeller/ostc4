@@ -109,6 +109,7 @@ void uartO2_Control(void)
 		UART_clearRxBuffer(&Uart1Ctrl);
 		uartO2_SetupCmd(localComState,cmdString,&cmdLength);
 		UART_SendCmdString(cmdString);
+		HAL_Delay(80);
 		rxState = O2RX_CONFIRM;
 		respondErrorDetected = 0;
 		digO2Connected = 0;

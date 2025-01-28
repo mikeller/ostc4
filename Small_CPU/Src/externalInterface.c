@@ -688,7 +688,7 @@ static	uint8_t detectionDelayCnt = 0;
 	{
 		switch(externalAutoDetect)
 		{
-			case DETECTION_INIT:	externalInterfaceMuxReqIntervall = 0;
+			case DETECTION_INIT:	externalInterfaceMuxReqIntervall = 0xffff;
 									sensorIndex = 0;
 									uartMuxChannel = 0;
 									tmpSensorMap[0] = SENSOR_OPTIC;
@@ -1177,72 +1177,70 @@ void externalInterface_HandleUART()
 			timeToTrigger = COMMAND_TX_DELAY;
 			retryRequest = 1;
 		}
-
 		else if(time_elapsed_ms(lastRequestTick,tick) > externalInterfaceMuxReqIntervall)	/* switch sensor and / or trigger next request */
 		{
-			lastRequestTick = tick;
-			TriggerTick = tick;
-			retryRequest = 0;
-			timeToTrigger = 1;
-
-			if((externalInterface_SensorState[activeSensorId] == UART_O2_REQ_O2)		/* timeout */
-					|| (externalInterface_SensorState[activeSensorId] == UART_O2_REQ_RAW)
-					|| (externalInterface_SensorState[activeSensorId] == UART_CO2_OPERATING)
-					|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_PVT)
-					|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_SAT))
+			if(timeToTrigger == 0)	/* no pending action */
 			{
-				forceMuxChannel = 1;
-				externalInterface_SensorState[activeSensorId] = UART_O2_IDLE;
-				switch(pmap[activeSensorId])
+				TriggerTick = tick;
+				retryRequest = 0;
+				timeToTrigger = 1;
+
+				if((externalInterface_SensorState[activeSensorId] == UART_O2_REQ_O2)		/* timeout */
+						|| (externalInterface_SensorState[activeSensorId] == UART_O2_REQ_RAW)
+						|| (externalInterface_SensorState[activeSensorId] == UART_CO2_OPERATING)
+						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_PVT)
+						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_SAT))
 				{
-					case SENSOR_DIGO2: setExternalInterfaceChannel(activeSensorId,0.0);
-						break;
-					case SENSOR_CO2: externalInterface_SetCO2Value(0.0);
-									 externalInterface_SetCO2State(0);
-						break;
-					default:
-						break;
-				}
-			}
-			if((externalInterface_SensorState[activeSensorId] == UART_CO2_SETUP)	/* timeout while setting up sensors */
-					|| (externalInterface_SensorState[activeSensorId] == UART_O2_CHECK))
-			{
-				forceMuxChannel = 1;
-			}
-
-
-			if(pmap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX) /* select next sensor if mux is connected */
-			{
-				if(activeUartChannel < MAX_MUX_CHANNEL)
-				{
-					index = ExternalInterface_SelectUsedMuxChannel(activeUartChannel);
-					if((index != activeUartChannel) || (forceMuxChannel))
+					forceMuxChannel = 1;
+					externalInterface_SensorState[activeSensorId] = UART_O2_IDLE;
+					switch(pmap[activeSensorId])
 					{
-						forceMuxChannel = 0;
-						timeToTrigger = 100;
-						activeUartChannel = index;
-						switch(pmap[index + EXT_INTERFACE_MUX_OFFSET])
+						case SENSOR_DIGO2: setExternalInterfaceChannel(activeSensorId,0.0);
+							break;
+						case SENSOR_CO2: externalInterface_SetCO2Value(0.0);
+										 externalInterface_SetCO2State(0);
+							break;
+						default:
+							break;
+					}
+				}
+				if((externalInterface_SensorState[activeSensorId] == UART_CO2_SETUP)	/* timeout while setting up sensors */
+						|| (externalInterface_SensorState[activeSensorId] == UART_O2_CHECK))
+				{
+					forceMuxChannel = 1;
+				}
+
+
+				if(pmap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX) /* select next sensor if mux is connected */
+				{
+					if(activeUartChannel < MAX_MUX_CHANNEL)
+					{
+						index = ExternalInterface_SelectUsedMuxChannel(activeUartChannel);
+						if((index != activeUartChannel) || (forceMuxChannel))
 						{
-							case SENSOR_DIGO2: uartO2_SetChannel(activeUartChannel);
-							/* no break */
-							case SENSOR_CO2:
-							case SENSOR_GNSS: 	externalInterface_CheckBaudrate(SENSOR_MUX);
-												UART_MUX_SelectAddress(activeUartChannel);
-												externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
-								break;
-							default:
-								break;
+							forceMuxChannel = 0;
+							timeToTrigger = 100;
+							activeUartChannel = index;
+							switch(pmap[index + EXT_INTERFACE_MUX_OFFSET])
+							{
+								case SENSOR_DIGO2: uartO2_SetChannel(activeUartChannel);
+								/* no break */
+								case SENSOR_CO2:
+								case SENSOR_GNSS: 	externalInterface_CheckBaudrate(SENSOR_MUX);
+													UART_MUX_SelectAddress(activeUartChannel);
+													externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
+									break;
+								default:
+									break;
+							}
 						}
 					}
 				}
 			}
-			else
-			{
-				timeToTrigger = 1;
-			}
 		}
 		if((timeToTrigger != 0) && (time_elapsed_ms(TriggerTick,tick) > timeToTrigger))
 		{
+			lastRequestTick = tick;
 			timeToTrigger = 0;
 			switch (pmap[activeSensorId])
 			{
