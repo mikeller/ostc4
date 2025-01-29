@@ -317,6 +317,7 @@ void UART_ChangeBaudrate(uint32_t newBaudrate)
 	Uart1Ctrl.rxReadIndex = 0;
 	Uart1Ctrl.rxWriteIndex = 0;
 	Uart1Ctrl.dmaRxActive = 0;
+	Uart1Ctrl.dmaTxActive = 0;
 	Uart1Ctrl.txBufferQueLen = 0;
 }
 
@@ -390,7 +391,7 @@ uint8_t UART_isEndIndication(sUartComCtrl* pCtrl, uint8_t index)
 
 	return ret;
 }
-void UART_ReadData(uint8_t sensorType)
+void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips processing of data => data is discarded */
 {
 	uint8_t localRX;
 	uint8_t futureIndex;
@@ -422,7 +423,6 @@ void UART_ReadData(uint8_t sensorType)
 		moreData = 1;
 	}
 	
-	//if((!isEndIndication(pUartCtrl, localRX)) || (!isEndIndication(pUartCtrl,futureIndex)))	do
 	if((!UART_isEndIndication(pUartCtrl, localRX)) || (moreData))
 	do
 	{
@@ -489,36 +489,6 @@ void UART_WriteData(sUartComCtrl* pUartCtrl)
 	{
 		pUartCtrl->pHandle->RxState = HAL_UART_STATE_READY;
 		pUartCtrl->dmaRxActive = 0;
-	}
-}
-
-void UART_FlushRxBuffer(void)
-{
-	uint8_t futureIndex = Uart1Ctrl.rxReadIndex + 1;
-
-	if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-	{
-		futureIndex = 0;
-	}
-	while((rxBuffer[Uart1Ctrl.rxReadIndex] != BUFFER_NODATA_LOW) && (rxBuffer[futureIndex] != BUFFER_NODATA_HIGH))
-	{
-		if(Uart1Ctrl.rxReadIndex % 2)
-		{
-			rxBuffer[Uart1Ctrl.rxReadIndex++] = BUFFER_NODATA_HIGH;
-		}
-		else
-		{
-			rxBuffer[Uart1Ctrl.rxReadIndex++] = BUFFER_NODATA_LOW;
-		}
-		if(Uart1Ctrl.rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-		{
-			Uart1Ctrl.rxReadIndex = 0;
-		}
-		futureIndex++;
-		if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-		{
-			futureIndex = 0;
-		}
 	}
 }
 

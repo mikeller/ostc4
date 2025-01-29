@@ -165,7 +165,7 @@ void UART6_HandleUART()
 
 		if(gnssState != UART_GNSS_INIT)
 		{
-			UART_ReadData(SENSOR_GNSS);
+			UART_ReadData(SENSOR_GNSS, 0);
 			UART_WriteData(&Uart6Ctrl);
 		}
 		if(gnssState == UART_GNSS_INIT)

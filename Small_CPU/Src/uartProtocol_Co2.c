@@ -83,7 +83,7 @@ void uartCo2_Control(void)
 	{
 		CO2Connected = 0;
 		externalInterface_SetCO2Scale(0.0);
-		UART_clearRxBuffer(&Uart1Ctrl);
+		UART_ReadData(SENSOR_CO2, 1);	/* flush buffer */
 		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_CO2_SETUP;
 	}
@@ -110,8 +110,16 @@ void uartCo2_Control(void)
 			//if(cmdLength == 0)							/* poll data */
 			if(localComState == UART_CO2_IDLE)
 			{
-				uartCo2_SendCmd(CO2CMD_GETDATA, cmdString, &cmdLength);
-				localComState = UART_CO2_OPERATING;
+				if(externalInterface_GetCO2Scale() == 0.0)
+				{
+					uartCo2_SendCmd(CO2CMD_GETSCALE, cmdString, &cmdLength);
+					localComState = UART_CO2_SETUP;
+				}
+				else
+				{
+					uartCo2_SendCmd(CO2CMD_GETDATA, cmdString, &cmdLength);
+					localComState = UART_CO2_OPERATING;
+				}
 			}
 			else											/* resend last command */
 			{
@@ -207,6 +215,7 @@ void uartCo2_ProcessData(uint8_t data)
 				default:			rxState = CO2RX_Ready;
 					break;
 			}
+			rxState = CO2RX_Ready;
 		}
 		if(rxState != CO2RX_Data0)	/* reset state machine because message in wrong format */
 		{

@@ -75,6 +75,7 @@ void uartO2_Control(void)
 	static uint8_t lastComState = 0;
 	static uint8_t lastActiveSensor = 0xFF;
 
+	uint8_t *pmap = externalInterface_GetSensorMapPointer(0);
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 
 	uartO2Status_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
@@ -96,7 +97,7 @@ void uartO2_Control(void)
 		{
 			localComState = UART_O2_IDLE;
 		}
-		UART_FlushRxBuffer();
+		UART_ReadData(SENSOR_DIGO2, 1);	/* flush buffer */
 	}
 
 	if(localComState == UART_O2_INIT)
@@ -106,10 +107,13 @@ void uartO2_Control(void)
 
 		localComState = UART_O2_CHECK;
 		lastComState = UART_O2_CHECK;
-		UART_clearRxBuffer(&Uart1Ctrl);
+		UART_ReadData(SENSOR_DIGO2, 1);	/* flush buffer */
 		uartO2_SetupCmd(localComState,cmdString,&cmdLength);
 		UART_SendCmdString(cmdString);
-		HAL_Delay(80);
+		if(pmap[EXT_INTERFACE_SENSOR_CNT-1] != SENSOR_MUX)	/* stand alone mode => add some time for sensor com setup */
+		{
+			HAL_Delay(80);
+		}
 		rxState = O2RX_CONFIRM;
 		respondErrorDetected = 0;
 		digO2Connected = 0;

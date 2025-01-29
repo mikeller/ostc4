@@ -1156,7 +1156,7 @@ void externalInterface_HandleUART()
 
 		if(externalInterface_SensorState[activeSensorId] != UART_COMMON_INIT)
 		{
-			UART_ReadData(pmap[activeSensorId]);
+			UART_ReadData(pmap[activeSensorId], 0);
 			UART_WriteData(&Uart1Ctrl);
 		}
 		if(externalInterface_SensorState[activeSensorId] == UART_COMMON_INIT)
@@ -1263,16 +1263,6 @@ void externalInterface_HandleUART()
 					break;
 			}
 		}
-#if 0
-		else
-		{
-			if(((time_elapsed_ms(lastRequestTick,tick) > (externalInterfaceMuxReqIntervall - 100))
-				 && externalInterface_SensorState[activeSensorId] = UART_COMMON_IDLE))
-			{
-				externalInterface_ReadAndSwitch();
-			}
-		}
-#endif
 	}
 
 #if 0
