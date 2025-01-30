@@ -460,6 +460,7 @@ void refresh_O2Sensors(void)
 				case SENSOR_CO2:
 				case SENSOR_CO2M: strSensorId[3] = 'C';
 								 strSensorId[4] = 'O';
+								 strSensorId[5] = '2';
 								break;
 				case SENSOR_SENTINEL:
 				case SENSOR_SENTINELM: strSensorId[3] = 'S';
