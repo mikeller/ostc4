@@ -183,21 +183,28 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
 
         for(index = 0; index < 3; index++)
         {
-        	localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index];
-        	if(localCalibCoeff[index] < 0.01)
+        	if(pDiveState->lifeData.extIf_sensor_map[index] == SENSOR_DIGO2M)
         	{
-        		for(index2 = 0; index2 < 3; index2++)		/* no valid coeff => check other entries */
-        		{
-        			if(pSettings->ppo2sensors_calibCoeff[index2] > 0.01)
-        			{
-        				localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index2];
-        				break;
-        			}
-        			if(index2 == 3)		/* no coeff at all => use default */
-        			{
-        				localCalibCoeff[index] = 0.02;
-        			}
-        		}
+        		localCalibCoeff[index] = 0.01;
+        	}
+        	else
+        	{
+				localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index];
+				if(localCalibCoeff[index] < 0.01)
+				{
+					for(index2 = 0; index2 < 3; index2++)		/* no valid coeff => check other entries */
+					{
+						if(pSettings->ppo2sensors_calibCoeff[index2] > 0.01)
+						{
+							localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index2];
+							break;
+						}
+						if(index2 == 3)		/* no coeff at all => use default */
+						{
+							localCalibCoeff[index] = 0.02;
+						}
+					}
+				}
         	}
         }
 
@@ -495,7 +502,9 @@ static void sim_reduce_deco_time_one_second(SDiveState* pDiveState)
 SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, uint8_t *gasChangeListDepthGas20x2)
 {
     uint8_t ptrGasChangeList = 0; // new hw 160704
+#ifdef ENABLE_DECOCALC_OPTION
     uint8_t index = 0;
+#endif
     for (int i = 0; i < 40; i++)
     	gasChangeListDepthGas20x2[i] = 0;
 
