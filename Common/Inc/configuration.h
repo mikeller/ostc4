@@ -28,7 +28,7 @@
 #define CONFIGURATION_HEADER
 
 /* Enable this to make the simulator write a logbook entry */
-/* #define SIM_WRITES_LOGBOOK 1 */
+//#define SIM_WRITES_LOGBOOK 1
 
 /* Enable this for support of optical bottle pressure interface */
 /* #define ENABLE_BOTTLE_SENSOR */
@@ -95,6 +95,9 @@
 
 /* Enable to have a faster transfer speed between bluetooth module and CPU */
 #define ENABLE_FAST_COMM
+
+/* Enable to have position sensor support active */
+/* #define ENABLE_GPIO_V2 */
 
 /* Enable RTE sleep mode debugging */
 /* #define ENABLE_SLEEP_DEBUG */
