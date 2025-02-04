@@ -2981,13 +2981,15 @@ void t7_refresh_divemode(void)
         if (isLoopMode(stateUsed->diveSettings.diveMode)) {
             textPointer = snprintf(TextR1, TEXTSIZE, "\a\001 %c%c ", TXT_2BYTE, TXT2BYTE_BailoutShort);
             textPointer += tHome_gas_writer(stateUsed->diveSettings.gas[actualBetterBailoutGasId()].oxygen_percentage, stateUsed->diveSettings.gas[actualBetterBailoutGasId()].helium_percentage, &TextR1[textPointer]);
-            TextR1[textPointer++] = ' ';
             TextR1[textPointer++] = '?';
+            TextR1[textPointer++] = ' ';
+            TextR1[textPointer++] = 0;
         } else {
             textPointer = snprintf(TextR1, TEXTSIZE, "\a\001 %c%c %01.2f/", TXT_2BYTE, TXT2BYTE_LoopShort, stateUsed->diveSettings.setpoint[actualBetterSetpointId()].setpoint_cbar / 100.0);
             textPointer += tHome_gas_writer(stateUsed->diveSettings.gas[stateUsed->lifeData.lastDiluent_GasIdInSettings].oxygen_percentage, stateUsed->diveSettings.gas[stateUsed->lifeData.lastDiluent_GasIdInSettings].helium_percentage, &TextR1[textPointer]);
-            TextR1[textPointer++] = ' ';
             TextR1[textPointer++] = '?';
+            TextR1[textPointer++] = ' ';
+            TextR1[textPointer++] = 0;
         }
 
         GFX_write_string_color(&FontT48, &t7c2, TextR1, 0, CLUT_WarningYellow);
@@ -4921,6 +4923,7 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 	}
 	return color;
 }
+
 void t7_tick(void)
 {
     SSettings *settings = settingsGetPointer();
