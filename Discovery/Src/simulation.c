@@ -254,7 +254,7 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     		{
     			pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur--;
     		}
-    		translateDate(stateUsed->lifeData.dateBinaryFormat, &stateUsedWrite->scrubberDataDive[pSettings->scubberActiveId].lastDive);
+            translateDate(stateUsed->lifeData.dateBinaryFormat, &pDiveState->scrubberDataDive[pSettings->scubberActiveId].lastDive);
     	}
     }
 

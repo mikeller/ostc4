@@ -44,6 +44,6 @@ void t3_set_customview_to_primary(void);
 uint8_t t3_customview_disabled(uint8_t view);
 void t3_handleAutofocus(void);
 
-int printScrubberText(char *text, size_t size, SSettings *settings);
+int printScrubberText(char *text, size_t size, const SScrubberData *scrubberData, SSettings *settings);
 
 #endif /* T3_H */

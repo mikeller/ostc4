@@ -1341,7 +1341,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 
                 textpointer = 0;
                 text[textpointer++] = '\002';
-                textpointer += printScrubberText(&text[textpointer], 10, pSettings);
+                textpointer += printScrubberText(&text[textpointer], 10, stateUsed->scrubberDataDive, pSettings);
                 GFX_write_string(&FontT105,tXc1,text,1);
             }
         }
@@ -1996,9 +1996,9 @@ uint8_t t3_getCustomView(void)
     return t3_selection_customview;
 }
 
-int printScrubberText(char *text, size_t size, SSettings *settings)
+int printScrubberText(char *text, size_t size, const SScrubberData *scrubberData, SSettings *settings)
 {
-    int16_t currentTimerMinutes = stateUsed->scrubberDataDive[settings->scubberActiveId].TimerCur;
+    int16_t currentTimerMinutes = scrubberData[settings->scubberActiveId].TimerCur;
     char colour = '\020';
     if (currentTimerMinutes <= 0) {
         colour = '\025';

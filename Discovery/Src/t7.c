@@ -1962,7 +1962,7 @@ static void t7_CcrSummary(SSettings *settings)
         data[dataIndex++] = '\n';
         data[dataIndex++] = '\r';
         data[dataIndex++] = '\t';
-        dataIndex += printScrubberText(&data[dataIndex], 10, settings);
+        dataIndex += printScrubberText(&data[dataIndex], 10, settings->scrubberData, settings);
     }
 
     heading[headingIndex++] = '\017';
@@ -3396,7 +3396,7 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     	tinyHeaderFont = 1;
         headerText[2] = TXT_ScrubTime;
 
-        printScrubberText(text, TEXTSIZE, pSettings);
+        printScrubberText(text, TEXTSIZE, stateUsed->scrubberDataDive, pSettings);
 
 		break;
 #ifdef ENABLE_PSCR_MODE
@@ -4247,7 +4247,7 @@ void t7_SummaryOfLeftCorner(void)
         text[textpointer++] = '\r';
         text[textpointer++] = '\t';
 
-        textpointer += printScrubberText(&text[textpointer], 10, pSettings);
+        textpointer += printScrubberText(&text[textpointer], 10, stateUsed->scrubberDataDive, pSettings);
     }
     text[textpointer++] = 0;
     Gfx_colorsscheme_mod(text, 0);
