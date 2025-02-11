@@ -44,6 +44,10 @@
 #define EXT_INTERFACE_SENSOR_CNT	(8u)		/* 1 MUX + 7 sensors may be connected to the external interface (1 MUX + 3 ADC + 4 UART) */
 #define EXT_INTERFACE_MUX_OFFSET	(3u)		/* the sensor struct starts with 3 ADC sensors */
 
+#define EXT_INTERFACE_BUZZER_ON_TIME_MS (2000u)		/* max time the buzzer should be active without break */
+#define EXT_INTERFACE_BUZZER_STABLE_TIME_MS (500u)	/* min time a state (ON / OFF) should be stable before it may be changed */
+
+
 /* Helper structs ------------------------------------------------------------*/
 
 //struct SGas
@@ -165,6 +169,42 @@ typedef struct
 }		SDeviceState;
 */
 
+typedef struct
+{
+	float fLat;
+	float fLon;
+}SGnssCoord;
+
+
+typedef struct
+{
+	uint8_t year;
+	uint8_t month;
+	uint8_t day;
+	uint8_t hour;
+	uint8_t min;
+	uint8_t sec;
+}SDateTime;
+
+typedef struct
+{
+	SGnssCoord coord;
+	uint8_t alive;
+	uint8_t fixType;
+	uint8_t numSat;			/* number of available satellites */
+	uint8_t signalQual[4];	/* signal quality indicator for x sats */
+	SDateTime DateTime;		/* UTC time information */
+} SGnssInfo;
+
+typedef enum
+{
+	SE_INIT = 0,
+	SE_REINIT,
+	SE_ACTIVE,
+	SE_END
+} SSlowExitState;
+
+
 /* struct SLifeData
  * contains data all actual data (pressure, stuturation, etc. as received from second ship
  * and has actualGas to be send to Small CPU (second chip)
@@ -245,6 +285,9 @@ typedef struct
 
 /* for PSCR Mode */
 	 float ppo2Simulated_bar;
+/* GNSS data */
+	 SGnssInfo gnssData;
+
 } 	SLifeData;
 
 
@@ -276,6 +319,9 @@ typedef struct
 #ifdef ENABLE_BOTTLE_SENSOR
 	int8_t newPressure;
 #endif
+#ifdef HAVE_DEBUG_WARNINGS
+	int8_t debug;
+#endif
 } SWarnings;
 
 
@@ -293,7 +339,11 @@ typedef struct
 	int16_t bailout;
 	int16_t info_bailoutHe;
 	int16_t info_bailoutO2;
-} 	SEvents;
+    int16_t compassHeadingUpdate;
+    uint16_t info_compassHeadingUpdate;
+    int16_t gnssPositionUpdate;
+    SGnssCoord info_gnssPosition;
+} SEvents;
 
 
 
@@ -324,6 +374,10 @@ typedef struct
 	 */
 	uint8_t vpm_conservatism;
 
+	/* VPM table mode, do not change during dive!!!
+	 */
+	uint8_t vpm_tableMode;
+
 	/* Bï¿½hlmann GF
 	 * and a variable that is used by Buehlmann during the dive
 	 * to remember the position of GF low during ascend
@@ -351,6 +405,8 @@ typedef struct
 
 	uint8_t pscr_o2_drop;
 	uint8_t pscr_lung_ratio;
+
+	uint32_t activeAFViews;
  }  SDiveSettings;
 
 enum CHARGE_STATUS{
@@ -401,6 +457,8 @@ typedef struct
 
     timerState_e timerState;
     int timerStartedS;
+
+    SScrubberData scrubberDataDive[2];
 } 	SDiveState;
 
 
@@ -446,9 +504,12 @@ typedef enum
 	 SENSOR_DIGO2,
 	 SENSOR_DIGO2M,
 	 SENSOR_SENTINEL,
+	 SENSOR_SENTINELM,
 	 SENSOR_TYPE_O2_END,
 	 SENSOR_CO2,
 	 SENSOR_CO2M,
+	 SENSOR_GNSS,
+	 SENSOR_GNSSM,
 	 SENSOR_MUX,
 	 SENSOR_END
 } externalInterfaceSensorType;
@@ -520,9 +581,20 @@ _Bool is_ambient_pressure_close_to_surface(SLifeData *lifeData);
 uint8_t isLoopMode(uint8_t Mode);
 
 bool isCompassCalibrated(void);
+void logCompassHeading(uint16_t heading);
+void clearCompassHeading(void);
 void setCompassHeading(uint16_t heading);
 
 const SDecoinfo *getDecoInfo(void);
 
 void disableTimer(void);
+
+uint8_t drawingColor_from_ascentspeed(float speed);
+
+void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year);
+void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen);
+void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHours, uint8_t* pLocalMinutes);
+
+uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8_t* pColor);
+
 #endif // DATA_CENTRAL_H

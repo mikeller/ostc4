@@ -34,6 +34,7 @@
 #include "tInfo.h"
 #include "tInfoSensor.h"
 #include "tMenuEdit.h"
+#include "data_exchange_main.h"
 
 #include <string.h>
 #include <inttypes.h>
@@ -60,12 +61,12 @@ void openInfo_Sensor(uint8_t sensorId)
     	case 0: setBackMenu((uint32_t)openEdit_O2Sensors,0,1);
     	    		break;
     }
-
     sensorActive = 1;
     if(pSettings->ppo2sensors_deactivated & (1 << (activeSensorId)))
     {
     	sensorActive = 0;
     }
+    DataEX_setExtInterface_Cmd(EXT_INTERFACE_O2_INDICATE, activeSensorId);
 }
 
 
@@ -108,39 +109,8 @@ void uint64ToString(uint64_t value, char* pbuf)
 	strcpy(pbuf,&tmpBuf[index+1]);
 }
 
-void tInfo_write_buttonTextline_simple(uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode)
-{
-    char localtext[32];
 
-    if(left2ByteCode)
-    {
-        localtext[0] = TXT_2BYTE;
-        localtext[1] = left2ByteCode;
-        localtext[2] = 0;
-        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
-    }
-
-    if(middle2ByteCode)
-    {
-        localtext[0] = '\001';
-        localtext[1] = TXT_2BYTE;
-        localtext[2] = middle2ByteCode;
-        localtext[3] = 0;
-        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
-    }
-
-    if(right2ByteCode)
-    {
-        localtext[0] = '\002';
-        localtext[1] = TXT_2BYTE;
-        localtext[2] = right2ByteCode;
-        localtext[3] = 0;
-        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
-    }
-}
-
-//  ===============================================================================
-void refreshInfo_Sensor(GFX_DrawCfgScreen s)
+static void refreshInfo_SensorO2(GFX_DrawCfgScreen s)
 {
 	const SDiveState *pStateReal = stateRealGetPointer();
     SSensorDataDiveO2* pDiveO2Data;
@@ -150,6 +120,98 @@ void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 
     float pressure = 0.0;
 
+    pDiveO2Data = (SSensorDataDiveO2*)pStateReal->lifeData.extIf_sensor_data[activeSensorId];
+	strIndex = snprintf(text,32,"ID: ");
+	if(pDiveO2Data->sensorId != 0)
+	{
+		uint64ToString(pDiveO2Data->sensorId,&text[strIndex]);
+	}
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE1, &FontT48, text, CLUT_Font020);
+	snprintf(text,32,"%c: %02.1f",TXT_Temperature , (float)pDiveO2Data->temperature / 1000.0);
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE2, &FontT48, text, CLUT_Font020);
+
+#ifdef ENABLE_EXTERNAL_PRESSURE
+	pressure = (float)(stateRealGetPointer()->lifeData.ppO2Sensor_bar[2]);
+#else
+	pressure = (float)pDiveO2Data->pressure / 1000.0;
+#endif
+	snprintf(text,32,"Druck: %02.1f (%02.1f)", (float)pDiveO2Data->pressure / 1000.0, pressure *1000.0);
+
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE3, &FontT48, text, CLUT_Font020);
+	snprintf(text,32,"Feuchtigkeit: %02.1f", (float)pDiveO2Data->humidity / 1000.0);
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE4, &FontT48, text, CLUT_Font020);
+	snprintf(text,32,"Status: 0x%lx", pDiveO2Data->status);
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE5, &FontT48, text, CLUT_Font020);
+#ifdef ENABLE_EXTERNAL_PRESSURE
+	snprintf(text,32,"Norm ppO2: %02.3f (%02.1f)", (float)(stateRealGetPointer()->lifeData.ppO2Sensor_bar[0] / (pressure / 1000.0)),(float)(stateRealGetPointer()->lifeData.ppO2Sensor_bar[0]));
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
+#endif
+
+	if(sensorActive)
+	{
+		*textPointer++ = '\005';
+	}
+	else
+	{
+		*textPointer++ = '\006';
+	}
+	*textPointer++ = ' ';
+	*textPointer++ = TXT_2BYTE;
+	*textPointer++ = TXT2BYTE_Sensor;
+	*textPointer++ = ' ';
+	*textPointer++ = TXT_2BYTE;
+	*textPointer++ = TXT2BYTE_O2IFDigital;
+	*textPointer++ = '1' + activeSensorId;
+
+	snprintf(textPointer, 20,": %01.2f, %01.1f mV",  pStateReal->lifeData.ppO2Sensor_bar[activeSensorId], pStateReal->lifeData.sensorVoltage_mV[activeSensorId]);
+
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
+
+	tInfo_write_buttonTextline_simple(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,0);
+}
+
+static void refreshInfo_SensorCo2(GFX_DrawCfgScreen s)
+{
+	const SDiveState *pStateReal = stateRealGetPointer();
+    char text[31];
+    char *textPointer = text;
+
+    snprintf(text,32,"CO2: %ld ppm",pStateReal->lifeData.CO2_data.CO2_ppm);
+    tInfo_write_content_simple(  30, 770, ME_Y_LINE1, &FontT48, text, CLUT_Font020);
+
+
+    snprintf(text,32,"Signal: %d",pStateReal->lifeData.CO2_data.signalStrength);
+    tInfo_write_content_simple(  30, 770, ME_Y_LINE2, &FontT48, text, CLUT_Font020);
+
+	if(sensorActive)
+	{
+		*textPointer++ = '\005';
+	}
+	else
+	{
+		*textPointer++ = '\006';
+	}
+	*textPointer++ = ' ';
+	*textPointer++ = TXT_2BYTE;
+	*textPointer++ = TXT2BYTE_Sensor;
+	*textPointer++ = ' ';
+	*textPointer++ = 'C';
+	*textPointer++ = 'o';
+	*textPointer++ = '1' + activeSensorId;
+
+	snprintf(textPointer, 20,": %ld ppm",  pStateReal->lifeData.CO2_data.CO2_ppm);
+
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
+
+	tInfo_write_buttonTextline_simple(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_O2Calib);
+}
+//  ===============================================================================
+void refreshInfo_Sensor(GFX_DrawCfgScreen s)
+{
+	const SDiveState *pStateReal = stateRealGetPointer();
+
+    char text[31];
+
     text[0] = '\001';
 	text[1] = TXT_Sensor;
 	text[2] = ' ';
@@ -157,57 +219,16 @@ void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 	text[4] = ' ';
 	text[5] = '1' + activeSensorId;
 	text[6] = 0;
-	tInfo_write_content_simple(  30, 340, ME_Y_LINE_BASE, &FontT48, text, CLUT_MenuPageHardware);
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE_BASE, &FontT48, text, CLUT_MenuPageHardware);
 
-    pDiveO2Data = (SSensorDataDiveO2*)&stateRealGetPointer()->lifeData.extIf_sensor_data[activeSensorId];
-
-    strIndex = snprintf(text,32,"ID: ");
-    if(pDiveO2Data->sensorId != 0)
-    {
-    	uint64ToString(pDiveO2Data->sensorId,&text[strIndex]);
-    }
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE1, &FontT48, text, CLUT_Font020);
-    snprintf(text,32,"%c: %02.1f",TXT_Temperature , (float)pDiveO2Data->temperature / 1000.0);
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE2, &FontT48, text, CLUT_Font020);
-
-#ifdef ENABLE_EXTERNAL_PRESSURE
-    pressure = (float)(stateRealGetPointer()->lifeData.ppO2Sensor_bar[2]);
-#else
-    pressure = (float)pDiveO2Data->pressure / 1000.0;
-#endif
-    snprintf(text,32,"Druck: %02.1f (%02.1f)", (float)pDiveO2Data->pressure / 1000.0, pressure *1000.0);
-
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE3, &FontT48, text, CLUT_Font020);
-    snprintf(text,32,"Feuchtigkeit: %02.1f", (float)pDiveO2Data->humidity / 1000.0);
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE4, &FontT48, text, CLUT_Font020);
-    snprintf(text,32,"Status: 0x%lx", pDiveO2Data->status);
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE5, &FontT48, text, CLUT_Font020);
-#ifdef ENABLE_EXTERNAL_PRESSURE
-    snprintf(text,32,"Norm ppO2: %02.3f (%02.1f)", (float)(stateRealGetPointer()->lifeData.ppO2Sensor_bar[0] / (pressure / 1000.0)),(float)(stateRealGetPointer()->lifeData.ppO2Sensor_bar[0]));
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
-#endif
-
-    if(sensorActive)
-    {
-    	*textPointer++ = '\005';
-    }
-    else
-    {
-    	*textPointer++ = '\006';
-    }
-    *textPointer++ = ' ';
-    *textPointer++ = TXT_2BYTE;
-    *textPointer++ = TXT2BYTE_Sensor;
-    *textPointer++ = ' ';
-    *textPointer++ = TXT_2BYTE;
-    *textPointer++ = TXT2BYTE_O2IFDigital;
-    *textPointer++ = '1' + activeSensorId;
-
-    snprintf(textPointer, 20,": %01.2f, %01.1f mV",  pStateReal->lifeData.ppO2Sensor_bar[activeSensorId], pStateReal->lifeData.sensorVoltage_mV[activeSensorId]);
-
-    tInfo_write_content_simple(  30, 340, ME_Y_LINE6, &FontT48, text, CLUT_Font020);
-
-    tInfo_write_buttonTextline_simple(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,0);
+	switch(pStateReal->lifeData.extIf_sensor_map[activeSensorId])
+	{
+		default:
+		case SENSOR_DIGO2M:	refreshInfo_SensorO2(s);
+			break;
+		case SENSOR_CO2M: refreshInfo_SensorCo2(s);
+			break;
+	}
 }
 
 void sendActionToInfoSensor(uint8_t sendAction)
@@ -220,16 +241,28 @@ void sendActionToInfoSensor(uint8_t sendAction)
 
     	case ACTION_BUTTON_ENTER:    	if(settingsGetPointer()->ppo2sensors_deactivated & (1 << (activeSensorId)))
 										{
+    										if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
+    										{
+    											settingsGetPointer()->co2_sensor_active = 1;
+    										}
     										settingsGetPointer()->ppo2sensors_deactivated &= ~(uint8_t)(1 << (activeSensorId));
 											sensorActive = 1;
 										}
 										else
 										{
+											if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
+											{
+    											settingsGetPointer()->co2_sensor_active = 0;
+    										}
 											settingsGetPointer()->ppo2sensors_deactivated |= (uint8_t)(1 << (activeSensorId));
 											sensorActive = 0;
 										}
     		break;
-		case ACTION_BUTTON_NEXT:
+		case ACTION_BUTTON_NEXT:		if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
+										{
+											DataEX_setExtInterface_Cmd(EXT_INTERFACE_CO2_CALIB, activeSensorId);
+										}
+			break;
 		case ACTION_TIMEOUT:
 		case ACTION_MODE_CHANGE:
 	    case ACTION_IDLE_TICK:

@@ -56,13 +56,16 @@ void openEdit_Customview(void);
 void openEdit_BigScreen(void);
 void openEdit_MotionCtrl(void);
 void openEdit_ViewPort(void);
+void openEdit_WarningBuz(void);
 void refresh_Customviews(void);
+void setMenuContentStructure();
 char customview_TXT2BYTE_helper(uint8_t customViewId);
 char customviewBF_TXT2BYTE_helper(uint8_t customViewId);
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_CViewTimeout  (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CViewStandard (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CViewStandardBF(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_CViewAutofocusBF(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CornerTimeout (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CornerStandard(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_CViewPortCalib(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -114,6 +117,15 @@ void refresh_Customviews(void)
     text[5] = customviewBF_TXT2BYTE_helper(settingsGetPointer()->tX_customViewPrimaryBF);
     text[6] = 0;
     write_label_var(  30, 700, ME_Y_LINE3, &FontT48, text);
+
+    /* Bigfont autofocus selector */
+    textpointer = 0;
+    text[textpointer++] = TXT_2BYTE;
+    text[textpointer++] = TXT2BYTE_ExtraDisplay;
+    textpointer += snprintf(&text[textpointer],20,"  %c%c",TXT_2BYTE, TXT2BYTE_Autofocus);
+    write_label_var(  30, 700, ME_Y_LINE4, &FontT48, text);
+
+    tMenuEdit_refresh_field(StMCustom1_CViewAutoFocusBF);
 
     // field corner  return
     textpointer = 0;
@@ -363,8 +375,14 @@ void openEdit_Custom(uint8_t line)
     		break;
     	case 4:		openEdit_CustomviewDivemode(cv_changelist_BS);
     		break;
+#ifdef ENABLE_MOTION_CONTROL
     	case 5:		openEdit_ViewPort();
     		break;
+#endif
+#ifdef ENABLE_GPIO_V2
+    	case 5:		openEdit_WarningBuz();
+    	    	break;
+#endif
     }
 }
 
@@ -377,14 +395,14 @@ void openEdit_Customview(void)
     write_field_button(StMCustom1_CViewTimeout,		400, 700, ME_Y_LINE1,  &FontT48, "");
     write_field_button(StMCustom1_CViewStandard,	400, 700, ME_Y_LINE2,  &FontT48, "");
     write_field_button(StMCustom1_CViewStandardBF,	400, 700, ME_Y_LINE3,  &FontT48, "");
-
+    write_field_on_off(StMCustom1_CViewAutoFocusBF,	650, 700, ME_Y_LINE4,  &FontT48, "", settingsGetPointer()->cvAutofocus);
     write_field_button(StMCustom1_CornerTimeout,	400, 700, ME_Y_LINE5,  &FontT48, "");
     write_field_button(StMCustom1_CornerStandard,	400, 700, ME_Y_LINE6,  &FontT48, "");
 
     setEvent(StMCustom1_CViewTimeout,		(uint32_t)OnAction_CViewTimeout);
     setEvent(StMCustom1_CViewStandard,		(uint32_t)OnAction_CViewStandard);
     setEvent(StMCustom1_CViewStandardBF,	(uint32_t)OnAction_CViewStandardBF);
-
+    setEvent(StMCustom1_CViewAutoFocusBF,	(uint32_t)OnAction_CViewAutofocusBF);
     setEvent(StMCustom1_CornerTimeout,		(uint32_t)OnAction_CornerTimeout);
     setEvent(StMCustom1_CornerStandard,		(uint32_t)OnAction_CornerStandard);
 }
@@ -438,6 +456,7 @@ void openEdit_MotionCtrl(void)
 
 void openEdit_ViewPort(void)
 {
+#ifdef ENABLE_MOTION_CONTROL
 	resetMenuEdit(CLUT_MenuPageCustomView);
     refresh_ViewPort();
 
@@ -452,8 +471,22 @@ void openEdit_ViewPort(void)
     setEvent(StMCustom5_CViewPortLayout,	(uint32_t)OnAction_CViewPortLayout);
     setEvent(StMCustom5_CViewPortAmbient,	(uint32_t)OnAction_CViewPortAmbient);
     setEvent(StMCustom5_CViewPortControl,	(uint32_t)OnAction_CViewPortControl);
+#endif
 }
+void openEdit_WarningBuz(void)
+{
+    SSettings *pSettings = settingsGetPointer();
 
+    if(pSettings->warningBuzzer == 0)
+    {
+        pSettings->warningBuzzer = 1;
+    }
+    else
+    {
+        pSettings->warningBuzzer = 0;
+    }
+    exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
+}
 
 char customview_TXT2BYTE_helper(uint8_t customViewId)
 {
@@ -491,6 +524,9 @@ char customview_TXT2BYTE_helper(uint8_t customViewId)
     case CVIEW_Timer:
         text = TXT2BYTE_Timer;
         break;
+    case CVIEW_Position:
+        text = TXT2BYTE_Position;
+        break;
     case CVIEW_noneOrDebug:
     	text = TXT2BYTE_DispNoneDbg;
     	break;
@@ -522,6 +558,9 @@ char customviewBF_TXT2BYTE_helper(uint8_t customViewId)
         text = TXT2BYTE_Profile;
         break;
 #endif
+    case CVIEW_T3_Temperature:
+    	text = TXT2BYTE_AmbientTemperature;
+    	break;
     case CVIEW_T3_GasList:
         text = TXT2BYTE_Gaslist;
         break;
@@ -646,6 +685,20 @@ uint8_t OnAction_CViewStandardBF(uint32_t editId, uint8_t blockNumber, uint8_t d
     return UPDATE_DIVESETTINGS;
 }
 
+uint8_t OnAction_CViewAutofocusBF(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
+	if(pSettings->cvAutofocus)
+	{
+		pSettings->cvAutofocus = 0;
+	}
+	else
+	{
+		pSettings->cvAutofocus = 1;
+	}
+	tMenuEdit_set_on_off(editId, pSettings->cvAutofocus);
+	return UPDATE_DIVESETTINGS;
+}
 
 uint8_t OnAction_CornerTimeout(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
@@ -733,11 +786,20 @@ uint8_t OnAction_Customview_Toggle(uint32_t editId, uint8_t blockNumber, uint8_t
 
 uint8_t OnAction_Customview_NextPage(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
+	resetMenuContentStructure();
 	customviewsSubpage++;
+
 	if(customviewsSubpage == customviewsSubpageMax)
 	{
 		customviewsSubpage = 0;
+		setMenuContentStructure();
+		tMenuEdit_select(StMCustom3_CViewSelection6);
 	}
+	else
+	{
+		setMenuContentStructure();
+	}
+
 	CustomviewDivemode_refresh();
     return UPDATE_DIVESETTINGS;
 }
@@ -828,45 +890,39 @@ uint8_t OnAction_CViewPortSpot(uint32_t editId, uint8_t blockNumber, uint8_t dig
     return UPDATE_DIVESETTINGS;
 }
 
-void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
+void setMenuContentStructure()
 {
-
-	SSettings *pSettings = settingsGetPointer();
 	char text[MAX_PAGE_TEXTSIZE];
 	uint8_t textPointer = 0;
 	uint32_t id;
 
     uint8_t i;
+    uint8_t endID = CVIEW_END;
+	SSettings *pSettings = settingsGetPointer();
 
-    resetMenuEdit(CLUT_MenuPageCustomView);
-	customviewsSubpageMax = (tHome_getNumberOfAvailableCVs(pcv_changelist) / CV_PER_PAGE) + 1;
+    if(pcv_curchangelist == cv_changelist_BS)
+    {
+    	endID = CVIEW_T3_END;
+    }
 
-	if(pcv_curchangelist != pcv_changelist)		/* new selection base? => reset page index */
-	{
-		customviewsSubpage = 0;
-	}
-	pcv_curchangelist = pcv_changelist;
-
-	CustomviewDivemode_refresh(pcv_changelist);
-
-     for(i=0; i<5;i++)		/* fill maximum 5 items and leave last one for sub page selection */
-     {
-    	textPointer = 0;
-     	id = pcv_changelist[customviewsSubpage * 5 + i];
-     	if((id == CVIEW_END) || (id == CVIEW_T3_END))	/* last list item? */
-     	{
-     		break;
-     	}
-     	else
-     	{
-     			if(pcv_changelist == cv_changelist)
-     			{
-     				text[textPointer++] = '\006' - CHECK_BIT_THOME(pSettings->cv_configuration,id);
-     			}
-     			else
-     			{
-     				text[textPointer++] = '\006' - CHECK_BIT_THOME(pSettings->cv_config_BigScreen,id);
-     			}
+    for(i=0; i<5;i++)		/* fill maximum 5 items and leave last one for sub page selection */
+    {
+   	textPointer = 0;
+    	id = pcv_curchangelist[customviewsSubpage * 5 + i];
+    	if(id == endID) /* last list item? */
+    	{
+    		break;
+    	}
+    	else
+    	{
+    			if(pcv_curchangelist == cv_changelist)
+    			{
+    				text[textPointer++] = '\006' - CHECK_BIT_THOME(pSettings->cv_configuration,id);
+    			}
+    			else
+    			{
+    				text[textPointer++] = '\006' - CHECK_BIT_THOME(pSettings->cv_config_BigScreen,id);
+    			}
 				text[textPointer++] = ' ';
 				textPointer += snprintf(&text[textPointer], 60,	"%c%c\n\r",	TXT_2BYTE, customview_TXT2BYTE_helper(id));
 
@@ -885,45 +941,46 @@ void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
 					default:
 						break;
 				}
-     	}
-     }
-     for(;i<5;i++)	/* clear empty lines in case menu shows less than 5 entries */
-     {
-			switch(i)
-			{
-				case 0: 	write_label_var( 30, 800, ME_Y_LINE1, &FontT48, "");
-					break;
-				case 1:		write_label_var( 30, 800, ME_Y_LINE2, &FontT48, "");
-					break;
-				case 2: 	write_label_var( 30, 800, ME_Y_LINE3, &FontT48, "");
-					break;
-				case 3: 	write_label_var( 30, 800, ME_Y_LINE4, &FontT48, "");
-					break;
-				case 4: 	write_label_var( 30, 800, ME_Y_LINE5, &FontT48, "");
-					break;
-				default:
-					break;
-			};
-     }
-     if(customviewsSubpageMax != 1)
-     {
-         textPointer = 0;
-         text[textPointer++] = TXT_2BYTE;
-         text[textPointer++] = TXT2BYTE_ButtonNext;
-         text[textPointer] = 0;
-    	 write_field_button(StMCustom3_CViewSelection6,	30, 800, ME_Y_LINE6,  &FontT48, text);
-     }
+    	}
+    }
+    for(;i<5;i++)	/* clear empty lines in case menu shows less than 5 entries */
+    {
+		switch(i)
+		{
+			case 0: 	write_label_var( 30, 800, ME_Y_LINE1, &FontT48, "");
+				break;
+			case 1:		write_label_var( 30, 800, ME_Y_LINE2, &FontT48, "");
+				break;
+			case 2: 	write_label_var( 30, 800, ME_Y_LINE3, &FontT48, "");
+				break;
+			case 3: 	write_label_var( 30, 800, ME_Y_LINE4, &FontT48, "");
+				break;
+			case 4: 	write_label_var( 30, 800, ME_Y_LINE5, &FontT48, "");
+				break;
+			default:
+				break;
+		};
+    }
 
-     /* because of the ID handling inside of the functions, all buttons needs to be assigned before the events may be set => have the same loop twice */
-     for(i=0; i<5;i++)		/* fill maximum 5 items and leave last one for sub page selection */
-     {
-     	id = pcv_changelist[customviewsSubpage * 5 + i];
-     	if((id == CVIEW_END) || (id == CVIEW_T3_END))	/* last list item? */
-     	{
-     		break;
-     	}
-     	else
-     	{
+    if(customviewsSubpageMax != 1)
+    {
+        textPointer = 0;
+        text[textPointer++] = TXT_2BYTE;
+        text[textPointer++] = TXT2BYTE_ButtonNext;
+        text[textPointer] = 0;
+   	 write_field_button(StMCustom3_CViewSelection6,	30, 800, ME_Y_LINE6,  &FontT48, text);
+    }
+
+    /* because of the ID handling inside of the functions, all buttons needs to be assigned before the events may be set => have the same loop twice */
+    for(i=0; i<5;i++)		/* fill maximum 5 items and leave last one for sub page selection */
+    {
+    	id = pcv_curchangelist[customviewsSubpage * 5 + i];
+    	if(id == endID)		/* last list item? */
+    	{
+    		break;
+    	}
+    	else
+    	{
 				switch(i)
 				{
 					case 0: 	setEvent(StMCustom3_CViewSelection1, 				(uint32_t)OnAction_Customview_Toggle);
@@ -941,14 +998,27 @@ void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
 						break;
 				}
 
-     	}
-     }
-     if(customviewsSubpageMax != 1)
-     {
-    	 setEvent(StMCustom3_CViewSelection6,(uint32_t)OnAction_Customview_NextPage);
-     }
+    	}
+    }
+    if(customviewsSubpageMax != 1)
+    {
+   	 setEvent(StMCustom3_CViewSelection6,(uint32_t)OnAction_Customview_NextPage);
+    }
+}
+void openEdit_CustomviewDivemode(const uint8_t* pcv_changelist)
+{
+    resetMenuEdit(CLUT_MenuPageCustomView);
+	customviewsSubpageMax = (tHome_getNumberOfAvailableCVs(pcv_changelist) / CV_PER_PAGE) + 1;
 
-     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+	if(pcv_curchangelist != pcv_changelist)		/* new selection base? => reset page index */
+	{
+		customviewsSubpage = 0;
+	}
+	pcv_curchangelist = pcv_changelist;
+
+	setMenuContentStructure();
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
 void openEdit_CustomviewDivemodeMenu(uint8_t line)
@@ -1004,6 +1074,12 @@ void CustomviewDivemode_refresh()
 	uint32_t id;
 
     uint8_t i;
+    uint8_t endID = CVIEW_END;
+
+    if(pcv_curchangelist == cv_changelist_BS)
+    {
+    	endID = CVIEW_T3_END;
+    }
 
     text[textPointer++] = '\001';
     text[textPointer++] = TXT_2BYTE;
@@ -1018,7 +1094,7 @@ void CustomviewDivemode_refresh()
      {
     	textPointer = 0;
      	id = pcv_curchangelist[customviewsSubpage * 5 + i];
-     	if((id == CVIEW_END) || (id == CVIEW_T3_END))	/* last list item? */
+     	if(id == endID)	/* last list item? */
      	{
      		break;
      	}

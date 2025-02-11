@@ -38,6 +38,7 @@
 #include "data_exchange_main.h"
 #include "motion.h"
 #include "configuration.h"
+#include "tInfoPreDive.h"
 
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,9 +55,6 @@ static void openEdit_Scrubber(void);
 #ifdef ENABLE_PSCR_MODE
 static void openEdit_PSCR(void);
 #endif
-#ifdef ENABLE_CO2_SUPPORT
-static void openEdit_CO2Sensor(void);
-#endif
 
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_CompassHeading	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -67,11 +65,6 @@ static uint8_t OnAction_ScrubberMode(uint32_t editId, uint8_t blockNumber, uint8
 #ifdef ENABLE_PSCR_MODE
 static uint8_t OnAction_PSCRO2Drop(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_PSCRLungRation(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-#endif
-
-#ifdef ENABLE_CO2_SUPPORT
-static uint8_t OnAction_CO2OnOff(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-static uint8_t OnAction_CO2Calib(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #endif
 
 /* Exported functions --------------------------------------------------------*/
@@ -98,10 +91,14 @@ void openEdit_Xtra(uint8_t line)
 			case 3:
 				openEdit_SetManualMarker();
 				break;
+#ifdef ENABLE_MOTION_CONTROL
 			case 4:
 				openEdit_CalibViewport();
 				break;
 			case 5:
+#else
+			case 4:
+#endif
 				if(is_stateUsedSetToSim())
 				{
 					 openEdit_SimFollowDecostops();
@@ -115,11 +112,6 @@ void openEdit_Xtra(uint8_t line)
     }
     else /* surface mode */
     {
-        if((settingsGetPointer()->dive_mode != DIVEMODE_PSCR) && (line > 3))		/* PSCR items are only optional */
-		{
-			line = 6;
-		}
-
 		switch(line)
 		{
 			case 1: openEdit_CCRModeSensorOrFixedSP();
@@ -132,8 +124,8 @@ void openEdit_Xtra(uint8_t line)
 			case 4: openEdit_PSCR();
 				break;
 #endif
-#ifdef ENABLE_CO2_SUPPORT
-			case 6: openEdit_CO2Sensor();
+#ifdef ENABLE_PREDIVE_CHECK
+			case 5:	openInfo_PreDive();
 				break;
 #endif
 			default:
@@ -321,46 +313,20 @@ static void openEdit_PSCR(void)
 }
 
 
-#ifdef ENABLE_CO2_SUPPORT
-static void openEdit_CO2Sensor()
+
+static uint8_t OnAction_CompassHeadingReverse(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-    char text[32];
+    setCompassHeading((stateUsed->diveSettings.compassHeading + 180) % 360);
 
-    resetMenuEdit(CLUT_MenuPageXtra);
+    exitMenuEdit_to_Home_with_Menu_Update();
 
-    snprintf(text,32,"\001%c",TXT_CO2Sensor);
-    write_topline(text);
-
-    refresh_CO2Data();
-    if(settingsGetPointer()->co2_sensor_active)
-    {
-    	text[0] = '\005';
-    }
-    else
-    {
-        text[0] = '\006';
-    }
-    text[0] = TXT_CO2Sensor;
-    text[1] = 0;
-
-    write_field_on_off(StMXTRA_CO2_Sensor,	 30, 95, ME_Y_LINE3,  &FontT48, text, settingsGetPointer()->co2_sensor_active);
-
-   	text[0] = TXT_2BYTE;
-    text[1] = TXT2BYTE_O2Calib;
-    text[2] = 0;
-    write_field_button(StMXTRA_CO2_Sensor_Calib,30, 800, ME_Y_LINE4,  &FontT48, text);
-
-    setEvent(StMXTRA_CO2_Sensor,	(uint32_t)OnAction_CO2OnOff);
-    setEvent(StMXTRA_CO2_Sensor_Calib,	(uint32_t)OnAction_CO2Calib);
-
-    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+    return EXIT_TO_HOME;
 }
-#endif
 
 
 static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-    stateUsedWrite->diveSettings.compassHeading = 0;
+    clearCompassHeading();
 
     exitMenuEdit_to_Home_with_Menu_Update();
 
@@ -370,7 +336,17 @@ static uint8_t OnAction_CompassHeadingClear(uint32_t editId, uint8_t blockNumber
 
 static uint8_t OnAction_CompassHeadingReset(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-    stateUsedWrite->diveSettings.compassHeading = settingsGetPointer()->compassBearing;
+    setCompassHeading(settingsGetPointer()->compassBearing);
+
+    exitMenuEdit_to_Home_with_Menu_Update();
+
+    return EXIT_TO_HOME;
+}
+
+
+static uint8_t OnAction_CompassHeadingLog(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	logCompassHeading((uint16_t)stateUsed->lifeData.compass_heading);
 
     exitMenuEdit_to_Home_with_Menu_Update();
 
@@ -386,6 +362,13 @@ static void drawCompassHeadingMenu(bool isRefresh)
     snprintf(text, 32, "\001%c%c", TXT_2BYTE, TXT2BYTE_CompassHeading);
     write_topline(text);
 
+    if (!isRefresh) {
+        snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Set);
+        write_field_button(StMXTRA_CompassHeading, 20, 800, ME_Y_LINE1, &FontT48, text);
+    } else {
+        tMenuEdit_refresh_field(StMXTRA_CompassHeading);
+    }
+
     uint16_t heading;
     if (settings->compassInertia) {
         heading = (uint16_t)compass_getCompensated();
@@ -395,14 +378,18 @@ static void drawCompassHeadingMenu(bool isRefresh)
     snprintf(text,32,"\001%03i`",heading);
     write_label_var(0, 800, ME_Y_LINE1, &FontT54, text);
 
-    if (!isRefresh) {
-        snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Set);
-        write_field_button(StMXTRA_CompassHeading, 20, 800, ME_Y_LINE2, &FontT48, text);
+    bool headingIsSet = stateUsed->diveSettings.compassHeading;
+    snprintf(text, 32, "%s%c%c", makeGrey(!headingIsSet), TXT_2BYTE, TXT2BYTE_Reverse);
+    if (headingIsSet) {
+        if (!isRefresh) {
+            write_field_button(StMXTRA_CompassHeadingReverse, 20, 800, ME_Y_LINE2, &FontT48, text);
+        } else {
+            tMenuEdit_refresh_field(StMXTRA_CompassHeadingReverse);
+        }
     } else {
-        tMenuEdit_refresh_field(StMXTRA_CompassHeading);
+        write_label_var(20, 800, ME_Y_LINE2, &FontT48, text);
     }
 
-    bool headingIsSet = stateUsed->diveSettings.compassHeading;
     snprintf(text, 32, "%s%c%c", makeGrey(!headingIsSet), TXT_2BYTE, TXT2BYTE_Clear);
     if (headingIsSet) {
         if (!isRefresh) {
@@ -427,10 +414,24 @@ static void drawCompassHeadingMenu(bool isRefresh)
         write_label_var(20, 800, ME_Y_LINE4, &FontT48, text);
     }
 
+    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Log);
+    if (!isRefresh) {
+        write_field_button(StMXTRA_CompassHeadingLog, 20, 800, ME_Y_LINE5, &FontT48, text);
+    } else {
+        tMenuEdit_refresh_field(StMXTRA_CompassHeadingLog);
+    }
+
+    if (headingIsSet) {
+        snprintf(text, 32, "%s%c%c (%03u`)", makeGrey(true), TXT_2BYTE, TXT2BYTE_Current, stateUsed->diveSettings.compassHeading);
+        write_label_var(20, 800, ME_Y_LINE6, &FontT48, text);
+    }
+
     if (!isRefresh) {
         setEvent(StMXTRA_CompassHeading, (uint32_t)OnAction_CompassHeading);
+        setEvent(StMXTRA_CompassHeadingReverse, (uint32_t)OnAction_CompassHeadingReverse);
         setEvent(StMXTRA_CompassHeadingClear, (uint32_t)OnAction_CompassHeadingClear);
         setEvent(StMXTRA_CompassHeadingReset, (uint32_t)OnAction_CompassHeadingReset);
+        setEvent(StMXTRA_CompassHeadingLog, (uint32_t)OnAction_CompassHeadingLog);
     }
 
     write_buttonTextline(TXT2BYTE_ButtonBack, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonNext);
@@ -442,23 +443,6 @@ void refresh_CompassHeading(void)
     drawCompassHeadingMenu(true);
 }
 
-
-void refresh_CO2Data(void)
-{
-    char text[32];
-
-    snprintf(text,32,"\001%c",TXT_CO2Sensor);
-    write_topline(text);
-
-    snprintf(text,32,"CO2: %ld ppm",stateUsed->lifeData.CO2_data.CO2_ppm);
-    write_label_var(   30, 800, ME_Y_LINE1, &FontT48, text);
-
-    snprintf(text,32,"Signal: %d",stateUsed->lifeData.CO2_data.signalStrength);
-    write_label_var(   30, 800, ME_Y_LINE2, &FontT48, text);
-
-    tMenuEdit_refresh_field(StMXTRA_CO2_Sensor);
-    tMenuEdit_refresh_field(StMXTRA_CO2_Sensor_Calib);
-}
 
 void openEdit_CompassHeading(void)
 {
@@ -684,26 +668,4 @@ static uint8_t OnAction_PSCRLungRation(uint32_t editId, uint8_t blockNumber, uin
 }
 #endif
 
-#ifdef ENABLE_CO2_SUPPORT
-static uint8_t OnAction_CO2OnOff(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-	SSettings *pSettings = settingsGetPointer();
-	if(pSettings->co2_sensor_active)
-	{
-		pSettings->co2_sensor_active = 0;
-		tMenuEdit_set_on_off(StMXTRA_CO2_Sensor,0);
-	}
-	else
-	{
-		pSettings->co2_sensor_active = 1;
-		tMenuEdit_set_on_off(StMXTRA_CO2_Sensor,1);
-	}
-	return UPDATE_DIVESETTINGS;
-}
 
-static uint8_t OnAction_CO2Calib(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-	DataEX_setExtInterface_Cmd(EXT_INTERFACE_CO2_CALIB);
-	return UPDATE_DIVESETTINGS;
-}
-#endif

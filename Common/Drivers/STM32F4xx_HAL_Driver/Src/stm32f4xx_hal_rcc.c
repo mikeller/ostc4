@@ -93,6 +93,8 @@
   * @{
   */
 
+
+extern __IO const uint8_t AHBPrescTable[16];
 #ifdef HAL_RCC_MODULE_ENABLED
 
 /* Private typedef -----------------------------------------------------------*/

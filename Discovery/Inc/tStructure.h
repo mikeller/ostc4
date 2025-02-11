@@ -65,6 +65,7 @@
 #define InfoPageLogShow 3
 #define InfoPageCompass 6
 #define InfoPageSensor  8
+#define InfoPagePreDive 9
 
 #define StI 			_MB(0,1,0,0,0)
 #define StILOGLIST		_MB(0,2,0,0,0)
@@ -74,6 +75,7 @@
 #define StICOMPASS		_MB(0,6,0,0,0)
 #define StIDEBUG		_MB(0,7,0,0,0)
 #define StISENINFO		_MB(0,8,0,0,0)
+#define StIPREDIVE		_MB(0,9,0,0,0)
 
 #define StI_GoToLogbook			_MB(0,1,1,0,0)
 #define StI_GoToPlanner			_MB(0,1,2,0,0)
@@ -129,7 +131,8 @@
 #define StMOG_GasType				_MB(2,1,255,2,0)
 #define StMOG_ChangeDepth		_MB(2,1,255,3,0)
 #define StMOG_SetToMOD			_MB(2,1,255,4,0)
-#define StMOG_Bottle				_MB(2,1,255,5,0)
+#define StMOG_CalcDeco				_MB(2,1,255,5,0)
+/* #define StMOG_Bottle				_MB(2,1,255,5,0) */
 
 #define StMOG_MOD					_MB(2,1,255,9,0)
 
@@ -201,8 +204,10 @@
 /* DIVE MODE */
 #define StMXTRA_ResetStopwatch	_MB(2,4,1,1,0)
 #define StMXTRA_CompassHeading	_MB(2,4,2,1,0)
-#define StMXTRA_CompassHeadingClear	_MB(2,4,2,2,0)
-#define StMXTRA_CompassHeadingReset	_MB(2,4,2,3,0)
+#define StMXTRA_CompassHeadingReverse	_MB(2,4,2,2,0)
+#define StMXTRA_CompassHeadingClear	_MB(2,4,2,3,0)
+#define StMXTRA_CompassHeadingReset	_MB(2,4,2,4,0)
+#define StMXTRA_CompassHeadingLog	_MB(2,4,2,5,0)
 
  /* SURFACE MODE */
 
@@ -212,11 +217,10 @@
 #define StMXTRA_ScrubTimer_Max			_MB(2,4,3,2,0)
 #define StMXTRA_ScrubTimer_Reset		_MB(2,4,3,3,0)
 #define StMXTRA_ScrubTimer_OP_Mode		_MB(2,4,3,5,0)
-
 #define StMXTRA_PSCR_O2_Drop			_MB(2,4,4,1,0)
 #define StMXTRA_PSCR_LUNG_RATIO			_MB(2,4,4,2,0)
-#define StMXTRA_CO2_Sensor				_MB(2,4,5,1,0)
-#define StMXTRA_CO2_Sensor_Calib		_MB(2,4,5,2,0)
+#define StMXTRA_Predive_Check			_MB(2,4,5,1,0)
+
 
 
 
@@ -243,17 +247,19 @@
 
 #define StMDECO3_PPO2Max			_MB(2,5,2,1,0)
 #define StMDECO4_SafetyStop			_MB(2,5,3,1,0)
-#define StMDECO5_FUTURE				_MB(2,5,4,1,0)
-#define StMDECO6_SALINITY			_MB(2,5,5,1,0)
+#define StMDECO_SlowExit			_MB(2,5,4,1,0)
+#define StMDECO5_FUTURE				_MB(2,5,5,1,0)
+#define StMDECO6_SALINITY			_MB(2,5,6,1,0)
 
 /* PAGE 6 */
 #define StMDECOP	_MB(2,6,0,0,0)
 
 #define StMDECOP1_Algorithm		_MB(2,6,1,1,0)
-#define StMDECOP2_VPM					_MB(2,6,2,1,0)
-#define StMDECOP3_GF					_MB(2,6,3,1,0)
-#define StMDECOP4_AltGF				_MB(2,6,4,1,0)
+#define StMDECOP2_VPM			_MB(2,6,2,1,0)
+#define StMDECOP3_GF			_MB(2,6,3,1,0)
+#define StMDECOP4_AltGF			_MB(2,6,4,1,0)
 #define StMDECOP5_LASTSTOP		_MB(2,6,5,1,0)
+#define StMDECOP6_VPMTable		_MB(2,6,6,1,0)
 
 #define StMDECOP7_ActiveGF		_MB(2,6,7,1,0)
 #define StMDECOP8_ActiveVPM		_MB(2,6,8,1,0)
@@ -267,6 +273,7 @@
 
 #define StMHARD1_Bluetooth			_MB(2,7,1,1,0)
 
+#define StMHARD2_Compass				_MB(2,7,2,0,0)
 #define StMHARD2_Compass_SetCourse		_MB(2,7,2,2,0)
 #define StMHARD2_Compass_ResetCourse	_MB(2,7,2,3,0)
 #define StMHARD2_Compass_Calibrate		_MB(2,7,2,4,0)
@@ -303,13 +310,16 @@
 #define StMSYS		_MB(2,8,0,0,0)
 
 /* PAGE 8 EDIT FIELD CONTENT */
-#define StMSYS1_Date		_MB(2,8,1,1,0)
-#define StMSYS1_Time		_MB(2,8,1,2,0)
-#define StMSYS1_DDMMYY	_MB(2,8,1,3,0)
-#define StMSYS1_MMDDYY	_MB(2,8,1,4,0)
-#define StMSYS1_YYMMDD	_MB(2,8,1,5,0)
-#define StMSYS1_DST			_MB(2,8,1,6,0)
-#define StMSYS1_12HR    _MB(2,8,1,7,0)
+#define StMSYS1_DateTime _MB(2,8,1,0,0)
+#define StMSYS1_Date	_MB(2,8,1,1,0)
+#define StMSYS1_Time	_MB(2,8,1,2,0)
+#define StMSYS1_FORMAT	_MB(2,8,1,3,0)
+#define StMSYS1_DDMMYY	_MB(2,8,1,3,1)
+#define StMSYS1_MMDDYY	_MB(2,8,1,3,2)
+#define StMSYS1_YYMMDD	_MB(2,8,1,3,3)
+#define StMSYS1_12HR    _MB(2,8,1,4,0)
+#define StMSYS1_GNSSDT  _MB(2,8,1,5,0)
+#define StMSYS1_ZONE	_MB(2,8,1,6,0)
 
 #define StMSYS_Timer	_MB(2,8,2,1,0)
 
@@ -339,6 +349,7 @@
 #define StMSYS5_SetFactoryBC	_MB(2,8,6,11,0)
 #define StMSYS5_ResetBluetooth	_MB(2,8,6,12,0)
 #define StMSYS5_SetSampleIndx   _MB(2,8,6,13,0)
+#define StMSYS5_AdjustSurfPres  _MB(2,8,6,14,0)
 
 #define StMSYS_Custom0			_MB(2,8,1,0,0)
 #define StMSYS_Custom1			_MB(2,8,2,0,0)
@@ -357,8 +368,9 @@
 #define StMCustom1_CViewTimeout		_MB(2,9,1,1,0)
 #define StMCustom1_CViewStandard	_MB(2,9,1,2,0)
 #define StMCustom1_CViewStandardBF	_MB(2,9,1,3,0)
-#define StMCustom1_CornerTimeout	_MB(2,9,1,4,0)
-#define StMCustom1_CornerStandard	_MB(2,9,1,5,0)
+#define StMCustom1_CViewAutoFocusBF	_MB(2,9,1,4,0)
+#define StMCustom1_CornerTimeout	_MB(2,9,1,5,0)
+#define StMCustom1_CornerStandard	_MB(2,9,1,6,0)
 
 #define StMCustom2_BFSelection		_MB(2,9,2,1,0)
 
@@ -371,12 +383,16 @@
 
 #define StMCustom4_CViewSelection1	_MB(2,9,4,1,0)
 
+#ifdef ENABLE_MOTION_CONTROL
 #define StMCustom5_CViewPortCalib	_MB(2,9,5,1,0)
 #define StMCustom5_CViewPortSpotSize _MB(2,9,5,2,0)
 #define StMCustom5_CViewPortLayout	_MB(2,9,5,3,0)
 #define StMCustom5_CViewPortAmbient	_MB(2,9,5,4,0)
 #define StMCustom5_CViewPortControl	_MB(2,9,5,5,0)
-
+#endif
+#ifdef ENABLE_GPIO_V2
+#define StMCustom5_CViewWarningBuz	_MB(2,9,5,1,0)
+#endif
 
 /* PAGE 10 */
 #define StMPLAN		_MB(2,10,0,0,0)

@@ -51,7 +51,6 @@
  } chargerState_t;
 
 
-uint8_t get_charge_status(void);
 void init_battery_charger_status(void);
 void set_charge_state(chargerState_t newState);
 uint8_t get_charge_state(void);

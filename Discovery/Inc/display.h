@@ -29,8 +29,12 @@
 
 void display_power_on__1_of_2__pre_RGB(void);
 void display_power_on__2_of_2__post_RGB(void);
-
 void display_power_off(void);
+void display_1_brightness_max(void);
+void display_1_brightness_high(void);
+void display_1_brightness_std(void);
+void display_1_brightness_eco(void);
+void display_1_brightness_cave(void);
 
 void display_sleep(void);
 void display_sleep_release(void);

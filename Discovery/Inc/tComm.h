@@ -42,9 +42,35 @@ typedef enum
 		BM_CONFIG_BAUD,
 		BM_CONFIG_SILENCE,
 		BM_CONFIG_DONE,
-		BM_CONFIG_RETRY
+		BM_CONFIG_RETRY,
+		BM_INIT_TRIGGER_ON = 100,
+		BM_INIT_TRIGGER_OFF,
+		BM_INIT_ECHO,
+		BM_INIT_FACTORY,
+		BM_INIT_MODE,
+		BM_INIT_BLE,
+		BM_INIT_NAME,
+		BM_INIT_SSP_IDO_OFF,
+		BM_INIT_SSP_IDO_ON,
+		BM_INIT_SSP_ID1_OFF,
+		BM_INIT_SSP_ID1_ON,
+		BM_INIT_STORE,
+		BM_INIT_RESTART,
+		BM_INIT_DONE
 } BlueModTmpConfig_t;
 
+
+typedef enum
+{
+	BT_CMD_ECHO,
+	BT_CMD_ESCAPE_DELAY,
+	BT_CMD_SIGNAL_POLL,
+	BT_CMD_BAUDRATE_115,
+	BT_CMD_BAUDRATE_460,
+	BT_CMD_SILENCE,
+	BT_CMD_NAME,
+	BT_CMD_EXIT_CMD
+} BTCmd;
 /* Exported functions --------------------------------------------------------*/
 
 void tComm_init(void);
@@ -53,6 +79,7 @@ void tComm_refresh(void);
 void tComm_exit(void);
 void tComm_verlauf(uint8_t percentage_complete);
 uint8_t tComm_Set_Bluetooth_Name(uint8_t force);
+void tComm_StartBlueModBaseInit(void);
 void tComm_StartBlueModConfig(void);
 void tComm_RequestBluetoothStrength(void);
 

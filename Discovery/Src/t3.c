@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "t3.h"
 
@@ -40,6 +41,8 @@
 #include "unit.h"
 #include "motion.h"
 #include "logbook_miniLive.h"
+#include "tMenuEditCustom.h"
+#include "gfx_engine.h"
 
 
 #define CV_PROFILE_WIDTH		(600U)
@@ -61,31 +64,19 @@ GFX_DrawCfgWindow	t3c2;
 
 uint8_t t3_selection_customview = CVIEW_noneOrDebug;
 
+static uint8_t AF_lastDecoDepth = 0;
+static uint16_t AF_lastTTS = 0;
+
+
 /* TEM HAS TO MOVE TO GLOBAL--------------------------------------------------*/
 
 /* Private types -------------------------------------------------------------*/
 #define TEXTSIZE 16
-#define NUMBER_OF_VIEWS 7	/* number of views defined in the array below */
 
-const uint8_t t3_customviewsStandard[] =
-{
-    CVIEW_T3_Decostop,
-    CVIEW_sensors,
-    CVIEW_Compass,
-    CVIEW_T3_MaxDepth,
-    CVIEW_T3_StopWatch,
-    CVIEW_T3_TTS,
-    CVIEW_T3_ppO2andGas,
-	CVIEW_T3_GasList,
-	CVIEW_T3_Navigation,
-	CVIEW_T3_DepthData,
-	CVIEW_noneOrDebug,
-	CVIEW_T3_DecoTTS,
-#ifdef ENABLE_T3_PROFILE_VIEW
-	CVIEW_T3_Profile,
-#endif
-    CVIEW_T3_END
-};
+/* defines for autofocus of compass */
+#define AF_COMPASS_ACTIVATION_ANGLE	(10.0f)	/* angle for pitch and roll. Compass gets activated in case the value is smaller (OSTC4 hold in horitontal position */
+#define AF_COMPASS_DEBOUNCE			(10u)	/* debouncing value to avoid compass activation during normal movement */
+
 
 /* Private function prototypes -----------------------------------------------*/
 void t3_refresh_divemode(void);
@@ -93,6 +84,8 @@ void t3_refresh_divemode(void);
 uint8_t t3_test_customview_warnings(void);
 void t3_refresh_customview(float depth);
 void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t ActualHeading, uint16_t UserSetHeading);
+uint8_t t3_EvaluateAFCondition(uint8_t T3CView);
+uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl1, GFX_DrawCfgWindow* tXr1);  /* this function is only called if diver is below last last stop depth */
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -101,7 +94,7 @@ void t3_init(void)
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
 
-    t3_selection_customview = t3_customviewsStandard[0];
+    t3_selection_customview = cv_changelist_BS[0];
 
     t3screen.FBStartAdress = 0;
     t3screen.ImageHeight = 480;
@@ -172,6 +165,8 @@ void t3_init(void)
     t3c2.WindowY0 = t3c1.WindowY0;
     t3c2.WindowY1 = t3c1.WindowY1;
     t3c2.WindowTab = 600;
+
+    t3_EvaluateAFCondition(CVIEW_T3_END);		/* reset debounce counters */
 }
 
 void t3_select_customview(uint8_t selectedCustomview)
@@ -396,14 +391,27 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
 {
     char text[256];
     uint8_t textPointer;
-    uint8_t color;
+    uint8_t color = 0;
     uint8_t depthChangeRate;
     uint8_t depthChangeAscent;
     point_t start, stop, startZeroLine;
     SDivetime Divetime = {0,0,0,0};
+    uint16_t 	nextstopLengthSeconds = 0;
+    uint8_t 	nextstopDepthMeter = 0;
 
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
+
+	const SDecoinfo * pDecoinfo = getDecoInfo();
+	if(pDecoinfo->output_time_to_surface_seconds)
+	{
+	    tHome_findNextStop(pDecoinfo->output_stop_length_seconds, &nextstopDepthMeter, &nextstopLengthSeconds);
+	}
+	else
+	{
+	    nextstopDepthMeter = 0;
+	    nextstopLengthSeconds = 0;
+	}
 
     start.x = 0;
     stop.x = 799;
@@ -417,7 +425,6 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     	GFX_draw_line(tXscreen, start, stop, CLUT_Font020);
     }
 
-
     start.y = BigFontSeperationTopBottom;
     stop.y = 479;
 
@@ -430,39 +437,6 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     {
     	GFX_draw_line(tXscreen, start, stop, CLUT_Font020);
     }
-
-    /* depth */
-    float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
-
-    if(depth <= 0.3f)
-        depth = 0;
-
-    if(settingsGetPointer()->nonMetricalSystem)
-        snprintf(text,TEXTSIZE,"\032\f[feet]");
-    else
-        snprintf(text,TEXTSIZE,"\032\f%c",TXT_Depth);
-    GFX_write_string(&FontT42,tXl1,text,0);
-
-    if(			((mode == DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 4) || (stateUsed->lifeData.ascent_rate_meter_per_min < -4 )))
-            || 	((mode != DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 8) || (stateUsed->lifeData.ascent_rate_meter_per_min < -10)))
-        )
-    {
-        snprintf(text,TEXTSIZE,"\f\002%.0f %c%c/min  "
-            , unit_depth_float(stateUsed->lifeData.ascent_rate_meter_per_min)
-            , unit_depth_char1()
-            , unit_depth_char2()
-        );
-        GFX_write_string(&FontT42,tXl1,text,0);
-    }
-
-    if( depth < 100)
-        snprintf(text,TEXTSIZE,"\020\003\016%01.1f",depth);
-    else
-        snprintf(text,TEXTSIZE,"\020\003\016%01.0f",depth);
-
-    t3_basics_colorscheme_mod(text);
-    GFX_write_string(&FontT105,tXl1,text,1);
-
 
     /* ascentrate graph */
     if(mode == DIVEMODE_Apnea)
@@ -561,69 +535,109 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     }
     else
     {
-        /* ascentrate graph -standard mode */
-        if(stateUsed->lifeData.ascent_rate_meter_per_min > 0)
-        {
-        	 if(!pSettings->FlipDisplay)
-        	 {
-        		 start.y = tXl1->WindowY0 - 1;
-        	 }
-        	 else
-        	 {
-        		 start.y = tXl1->WindowY1 + 1;
-        	 }
+    	color = 0xff;
+    	if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
+    	{
+    		color = t3_drawSlowExitGraph(tXscreen, tXl1, tXr1);
+    	}
+    	if(color == 0xff)	/* no slow exit => continue with common ascent graph */
+    	{
+			if(stateUsed->lifeData.ascent_rate_meter_per_min > 0) /* ascentrate graph -standard mode */
+			{
+				 if(!pSettings->FlipDisplay)
+				 {
+					 start.y = tXl1->WindowY0 - 1;
+				 }
+				 else
+				 {
+					 start.y = tXl1->WindowY1 + 1;
+				 }
 
-            for(int i = 0; i<4;i++)
-            {
-                start.y += 5*8;
-                stop.y = start.y;
-                if(!pSettings->FlipDisplay)
-                {
-                	start.x = tXl1->WindowX1 - 1;
-                }
-                else
-                {
-                	start.x = tXr1->WindowX1 - 1;
-                }
-                stop.x = start.x - 17;
-                GFX_draw_line(tXscreen, start, stop, 0);
-            }
-            // new thick bar design Sept. 2015
-            if(!pSettings->FlipDisplay)
-            {
-            	start.x = tXl1->WindowX1 - 3 - 5;
-            }
-            else
-            {
-            	start.x = tXr1->WindowX1 - 3 - 5;
-            }
+				for(int i = 0; i<4;i++)
+				{
+					start.y += 5*8;
+					stop.y = start.y;
+					if(!pSettings->FlipDisplay)
+					{
+						start.x = tXl1->WindowX1 - 1;
+					}
+					else
+					{
+						start.x = tXr1->WindowX1 + 3;
+					}
+					stop.x = start.x - 17;
+					GFX_draw_line(tXscreen, start, stop, 0);
+				}
+				// new thick bar design Sept. 2015
+				if(!pSettings->FlipDisplay)
+				{
+					start.x = tXl1->WindowX1 - 3 - 5;
+				}
+				else
+				{
+					start.x = tXr1->WindowX1 - 3 - 5;
+				}
 
-            stop.x = start.x;
-            if(!pSettings->FlipDisplay)
-            {
-            	start.y = tXl1->WindowY0 - 1;
-            }
-            else
-            {
-            	start.y = tXl1->WindowY1 + 1;
-            }
+				stop.x = start.x;
+				if(!pSettings->FlipDisplay)
+				{
+					start.y = tXl1->WindowY0 - 1;
+				}
+				else
+				{
+					start.y = tXl1->WindowY1 + 1;
+				}
 
-            stop.y = start.y + (uint16_t)(stateUsed->lifeData.ascent_rate_meter_per_min * 8);
-            stop.y -= 3; // wegen der Liniendicke von 12 anstelle von 9
-            if(stop.y >= 470)
-                stop.y = 470;
-            start.y += 7; // starte etwas weiter oben
-            if(stateUsed->lifeData.ascent_rate_meter_per_min <= 10)
-                color = CLUT_EverythingOkayGreen;
-            else
-            if(stateUsed->lifeData.ascent_rate_meter_per_min <= 15)
-                color = CLUT_WarningYellow;
-            else
-                color = CLUT_WarningRed;
+				stop.y = start.y + (uint16_t)(stateUsed->lifeData.ascent_rate_meter_per_min * 8);
+				stop.y -= 3; // wegen der Liniendicke von 12 anstelle von 9
+				if(stop.y >= 470)
+					stop.y = 470;
+				start.y += 7; // starte etwas weiter oben
+				if(stateUsed->lifeData.ascent_rate_meter_per_min <= 10)
+					color = CLUT_EverythingOkayGreen;
+				else
+				if(stateUsed->lifeData.ascent_rate_meter_per_min <= 15)
+					color = CLUT_WarningYellow;
+				else
+					color = CLUT_WarningRed;
 
-            GFX_draw_thick_line(12,tXscreen, start, stop, color);
-        }
+				GFX_draw_thick_line(12,tXscreen, start, stop, color);
+			}
+   	    color = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
+    	}
     }
+    /* depth */
+    float depth = unit_depth_float(stateUsed->lifeData.depth_meter);
+
+    if(depth <= 0.3f)
+        depth = 0;
+
+    if(settingsGetPointer()->nonMetricalSystem)
+        snprintf(text,TEXTSIZE,"\032\f[feet]");
+    else
+        snprintf(text,TEXTSIZE,"\032\f%c",TXT_Depth);
+    GFX_write_string(&FontT42,tXl1,text,0);
+
+    if(			((mode == DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 4) || (stateUsed->lifeData.ascent_rate_meter_per_min < -4 )))
+            || 	((mode != DIVEMODE_Apnea) && ((stateUsed->lifeData.ascent_rate_meter_per_min > 8) || (stateUsed->lifeData.ascent_rate_meter_per_min < -10)))
+        )
+    {
+        snprintf(text,TEXTSIZE,"\f\002%.0f %c%c/min  "
+            , unit_depth_float(stateUsed->lifeData.ascent_rate_meter_per_min)
+            , unit_depth_char1()
+            , unit_depth_char2()
+        );
+        GFX_write_string(&FontT42,tXl1,text,0);
+    }
+
+    if( depth < 100)
+        snprintf(text,TEXTSIZE,"\020\003\016%01.1f",depth);
+    else
+        snprintf(text,TEXTSIZE,"\020\003\016%01.0f",depth);
+
+    Gfx_colorsscheme_mod(text,color);
+    GFX_write_string(&FontT105,tXl1,text,1);
+
 
     // divetime
     if(mode == DIVEMODE_Apnea)
@@ -655,7 +669,7 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
             else
                 snprintf(text,TEXTSIZE,"\020\003\002\016%u'",Divetime.Minutes);
         }
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXr1,text,1);
     }
     else
@@ -726,7 +740,7 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
 							else
 								snprintf(text,TEXTSIZE,"\020\003\002\016%u'",Divetime.Minutes);
 
-						    t3_basics_colorscheme_mod(text);
+						    Gfx_colorsscheme_mod(text,0);
 						    GFX_write_string(&FontT105,tXr1,text,1);
 				break;
     	}
@@ -749,10 +763,14 @@ void t3_refresh_divemode(void)
         customview_warnings = t3_test_customview_warnings();
 
     if(customview_warnings && warning_count_high_time)
+    {
         t3_basics_show_customview_warnings(&t3c1);
+    }
     else
+    {
         t3_refresh_customview(depth_meter);
-
+        requestBuzzerActivation(0);
+    }
     if(stateUsed->warnings.lowBattery)
         t3_basics_battery_low_customview_extra(&t3r1); //t3c1);
 }
@@ -831,7 +849,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
         else
             text[textpointer++] = 'F';
         text[textpointer++] = 0;
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,1);
         break;
 
@@ -858,7 +876,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
         }
 
         snprintf(text,TEXTSIZE,"\020\016%u:%02u",LastDivetime.Minutes, LastDivetime.Seconds);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,0);
 
         if(pSettings->FlipDisplay)
@@ -880,7 +898,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
         }
 
         snprintf(text,TEXTSIZE,"\020\016%u:%02u",TotalDivetime.Minutes, TotalDivetime.Seconds);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,0);
 
         snprintf(text,TEXTSIZE,"\032\002%c%c",TXT_2BYTE, TXT2BYTE_ApneaTotal);
@@ -902,7 +920,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
 
 void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXc1, GFX_DrawCfgWindow* tXc2, uint8_t mode)
 {
-	static uint8_t last_customview = CVIEW_END;
+	static uint8_t last_customview = CVIEW_T3_END;
 
     char text[30];
     uint16_t textpointer = 0;
@@ -971,7 +989,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
     {
     	heading = (uint16_t)stateUsed->lifeData.compass_heading;
     }
-	if(last_customview != tX_selection_customview)		/* check if current selection is disabled and should be skipped */
+	if((last_customview != tX_selection_customview)	&& (settingsGetPointer()->design == 3))	/* check if current selection is disabled and should be skipped */
 	{
 		if(t3_customview_disabled(tX_selection_customview))
 		{
@@ -997,7 +1015,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         }
 
         snprintf(text,TEXTSIZE,"\020\016%01.1f",unit_depth_float(stateUsed->lifeData.apnea_last_max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         
         if(!pSettings->FlipDisplay)
         {
@@ -1012,7 +1030,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 
 
         snprintf(text,TEXTSIZE,"\020\016%01.1f",unit_depth_float(stateUsed->lifeData.apnea_total_max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         if(!pSettings->FlipDisplay)
         {
 		    GFX_write_string(&FontT105,tXc1,text,0);
@@ -1202,7 +1220,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 			, unit_depth_char1_T105()
 			, unit_depth_char2_T105()
 			, (nextstopLengthSeconds+59)/60);
-			t3_basics_colorscheme_mod(text);
+			Gfx_colorsscheme_mod(text,0);
 			GFX_write_string(&FontT105,tXc1,text,0);
         }
         else if(SafetyStopTime.Total && (depth > timer_Safetystop_GetDepthUpperLimit()))
@@ -1213,7 +1231,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 
             textpointer = 0;
             snprintf(&text[textpointer],TEXTSIZE,"\020\003\016%u:%02u",SafetyStopTime.Minutes,SafetyStopTime.Seconds);
-            t3_basics_colorscheme_mod(text);
+            Gfx_colorsscheme_mod(text,0);
             GFX_write_string(&FontT105,tXc1,text,0);
         }
         else if(pDecoinfo->output_ndl_seconds) // NDL
@@ -1224,7 +1242,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
                 snprintf(text,TEXTSIZE,"\020\003%i'",pDecoinfo->output_ndl_seconds/60);
             else
                 snprintf(text,TEXTSIZE,"\020\003%ih",pDecoinfo->output_ndl_seconds/3600);
-            t3_basics_colorscheme_mod(text);
+            Gfx_colorsscheme_mod(text,0);
             GFX_write_string(&FontT105,tXc1,text,0);
         }
 
@@ -1240,7 +1258,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 						snprintf(text,TEXTSIZE,"\020\003\002%i'",(pDecoinfo->output_time_to_surface_seconds + 59)/ 60);
 					else
 						snprintf(text,TEXTSIZE,"\020\003\002%ih",(pDecoinfo->output_time_to_surface_seconds + 59)/ 3600);
-					t3_basics_colorscheme_mod(text);
+					Gfx_colorsscheme_mod(text,0);
 					GFX_write_string(&FontT105,tXc1,text,0);
 				}
             }
@@ -1249,13 +1267,13 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
             	snprintf(text,TEXTSIZE,"\002\032\f%c",TXT_ActualGradient);
 				GFX_write_string(&FontT42,tXc1,text,0);
                 snprintf(text,TEXTSIZE,"\020\003\002%.0f\016\016%%\017",100 * pDecoinfo->super_saturation);
-                t3_basics_colorscheme_mod(text);
+                Gfx_colorsscheme_mod(text,0);
                 GFX_write_string(&FontT105,tXc1,text,0);
             }
         }
         break;
 
-    case CVIEW_sensors:
+    case CVIEW_T3_sensors:
         snprintf(text,TEXTSIZE,"\032\f%c%c",TXT_2BYTE,TXT2BYTE_O2monitor);
         GFX_write_string(&FontT42,tXc1,text,0);
 
@@ -1295,6 +1313,26 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
             }
             GFX_write_string(&FontT105,tXc1,text,0);
 
+            if((pSettings->co2_sensor_active) && isLoopMode(pSettings->dive_mode))
+            {
+            	snprintf(text,TEXTSIZE,"\032\001\f%c",TXT_CO2Sensor);
+                GFX_write_string(&FontT42,tXc1,text,0);
+                textpointer = 0;
+                if(stateUsed->lifeData.CO2_data.CO2_ppm < CO2_WARNING_LEVEL_PPM)
+                {
+                	text[textpointer++] = '\020';
+                }
+                else if(stateUsed->lifeData.CO2_data.CO2_ppm < CO2_ALARM_LEVEL_PPM)
+                {
+                	text[textpointer++] = '\024';	/* yellow */
+                }
+                else
+                {
+                	text[textpointer++] = '\025'; 	/* red */
+                }
+                snprintf(&text[textpointer],TEXTSIZE,"\001%5ld",stateUsed->lifeData.CO2_data.CO2_ppm);
+                GFX_write_string(&FontT105,tXc1,text,1);
+            }
 
             if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && isLoopMode(pSettings->dive_mode))
             {
@@ -1303,7 +1341,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
 
                 textpointer = 0;
                 text[textpointer++] = '\002';
-                textpointer += printScrubberText(&text[textpointer], 10, pSettings);
+                textpointer += printScrubberText(&text[textpointer], 10, stateUsed->scrubberDataDive, pSettings);
                 GFX_write_string(&FontT105,tXc1,text,1);
             }
         }
@@ -1327,7 +1365,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         	GFX_write_string(&FontT42,tXc1,text,0);
         }
         snprintf(text,TEXTSIZE,"\020\003\016%01.1f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         if(pSettings->FlipDisplay)
         {
         	if(mode == DIVEMODE_Apnea)
@@ -1354,7 +1392,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
                 snprintf(text,TEXTSIZE,"\020\003\002%i'",(pDecoinfo->output_time_to_surface_seconds + 59)/ 60);
             else
                 snprintf(text,TEXTSIZE,"\020\003\002%ih",(pDecoinfo->output_time_to_surface_seconds + 59)/ 3600);
-            t3_basics_colorscheme_mod(text);
+            Gfx_colorsscheme_mod(text,0);
             GFX_write_string(&FontT105,tXc1,text,0);
         }
         break;
@@ -1363,7 +1401,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         snprintf(text,TEXTSIZE,"\032\f%c",TXT_ppO2);
         GFX_write_string(&FontT42,tXc1,text,0);
         snprintf(text,TEXTSIZE,"\020\003%01.2f",stateUsed->lifeData.ppO2);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT105,tXc1,text,0);
 
         textpointer = 0;
@@ -1375,7 +1413,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         text[textpointer++] = '\002';
         tHome_gas_writer(oxygen_percentage,stateUsed->lifeData.actualGas.helium_percentage,&text[textpointer]);
         //textpointer = snprintf(&text[textpointer],TEXTSIZE,"\020\002%02u/%02u",oxygen_percentage, stateUsed->lifeData.actualGas.helium_percentage);
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         GFX_write_string(&FontT48,tXc1,text,0);
         break;
 
@@ -1441,7 +1479,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         	GFX_write_string(&FontT42,tXc1,text,0);
         }
         snprintf(text,TEXTSIZE,"\020\003\016%01.1f",unit_depth_float(stateUsed->lifeData.max_depth_meter));
-        t3_basics_colorscheme_mod(text);
+        Gfx_colorsscheme_mod(text,0);
         if(pSettings->FlipDisplay)
         {
         	if(mode == DIVEMODE_Apnea)
@@ -1501,6 +1539,9 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
 {
     char text[256], textMain[256];
     uint8_t textpointer, textpointerMain, lineFree, more;
+#ifdef HAVE_DEBUG_WARNINGS
+    uint8_t index = 0;
+#endif
 
     snprintf(text,TEXTSIZE,"\025\f%c",TXT_Warning);
     GFX_write_string(&FontT42,&t3c1,text,0);
@@ -1622,7 +1663,19 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
             more++;
         }
     }
-
+#ifdef HAVE_DEBUG_WARNINGS
+    if(lineFree && stateUsed->warnings.debug)
+    {
+	    for(index=0; index<3; index++)
+	    {
+        	if(((stateUsed->lifeData.extIf_sensor_map[index] == SENSOR_DIGO2M) && (((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status & DVO2_FATAL_ERROR)))
+        	{
+        		textpointer += snprintf(&text[textpointer],32,"\001Debug: %lx\n",((SSensorDataDiveO2*)(stateUsed->lifeData.extIf_sensor_data[index]))->status);
+        	}
+	    }
+        lineFree--;
+    }
+#endif
     text[textpointer] = 0;
     textMain[textpointerMain] = 0;
 
@@ -1634,6 +1687,7 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
     {
         GFX_write_string(&FontT48,&t3c2,text,0);
     }
+    requestBuzzerActivation(1);
 }
 
 uint8_t t3_customview_disabled(uint8_t view)
@@ -1655,7 +1709,7 @@ uint8_t t3_customview_disabled(uint8_t view)
          i++;
     }
 
-    if (((view == CVIEW_sensors) || (view == CVIEW_sensors_mV)) &&
+    if ((view == CVIEW_T3_sensors) &&
        	((stateUsed->diveSettings.ppo2sensors_deactivated == 0x07) || (stateUsed->diveSettings.ccrOption == 0) || stateUsed->warnings.fallback))
     {
       	cv_disabled = 1;
@@ -1667,7 +1721,7 @@ uint8_t t3_customview_disabled(uint8_t view)
 uint8_t t3_change_customview(uint8_t action)
 {
 
-    t3_basics_change_customview(&t3_selection_customview, t3_customviewsStandard, action);
+    t3_basics_change_customview(&t3_selection_customview, cv_changelist_BS, action);
     return t3_selection_customview;
 }
 
@@ -1688,6 +1742,7 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     	if (tX_customviews[index] == *tX_selection_customview)
     	{
     		curViewIdx = index;
+    		break;
     	}
     	index++;
     }
@@ -1731,7 +1786,7 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     			break;
 		}
 
-		if(t3_customview_disabled(tX_customviews[index]))
+		if((tX_customviews == cv_changelist_BS) && (t3_customview_disabled(tX_customviews[index])))
 		{
 			iterate = 1;
 			if(*tX_selection_customview == tX_customviews[index])
@@ -1787,16 +1842,6 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     	*tX_selection_customview = tX_customviews[index];
     }
 }
-
-
-void t3_basics_colorscheme_mod(char *text)
-{
-    if((text[0] == '\020') && !GFX_is_colorschemeDiveStandard())
-    {
-        text[0] = '\027';
-    }
-}
-
 
 point_t t3_compass_circle(uint8_t id, uint16_t degree, point_t center)
 {
@@ -1931,7 +1976,7 @@ uint8_t t3_GetEnabled_customviews()
 	uint8_t increment = 1;
     uint8_t enabledViewCnt = 0;
 
-    pViews = (uint8_t*)t3_customviewsStandard;
+    pViews = (uint8_t*)cv_changelist_BS;
     while((*pViews != CVIEW_T3_END))
     {
     	increment = 1;
@@ -1951,9 +1996,9 @@ uint8_t t3_getCustomView(void)
     return t3_selection_customview;
 }
 
-int printScrubberText(char *text, size_t size, SSettings *settings)
+int printScrubberText(char *text, size_t size, const SScrubberData *scrubberData, SSettings *settings)
 {
-    int16_t currentTimerMinutes = settings->scrubberData[settings->scubberActiveId].TimerCur;
+    int16_t currentTimerMinutes = scrubberData[settings->scubberActiveId].TimerCur;
     char colour = '\020';
     if (currentTimerMinutes <= 0) {
         colour = '\025';
@@ -1966,4 +2011,233 @@ int printScrubberText(char *text, size_t size, SSettings *settings)
     } else {
         return snprintf(text, size, "%c%u\016\016%%\017", colour, currentTimerMinutes * 100 / settingsGetPointer()->scrubberData[settings->scubberActiveId].TimerMax);
     }
+}
+
+void t3_AF_updateBorderConditions()
+{
+	uint16_t 	nextstopLengthSeconds = 0;
+	uint8_t 	nextstopDepthMeter = 0;
+
+	tHome_findNextStop(getDecoInfo()->output_stop_length_seconds, &nextstopDepthMeter, &nextstopLengthSeconds);
+	AF_lastDecoDepth = nextstopDepthMeter;
+	AF_lastTTS = (getDecoInfo()->output_time_to_surface_seconds / 60) / 10;
+}
+
+uint8_t t3_CheckAfCondition(uint8_t T3CView)
+{
+	uint8_t retVal = 0;
+
+	float pitch = stateRealGetPointer()->lifeData.compass_pitch;
+	float roll = stateRealGetPointer()->lifeData.compass_roll;
+
+    uint16_t 	nextstopLengthSeconds = 0;
+    uint8_t 	nextstopDepthMeter = 0;
+
+	switch (T3CView)
+	{
+		case  CVIEW_T3_GasList: retVal = (stateUsed->warnings.betterGas) /* switch if better gas is available or depending on ppo2 if in OC mode */
+										|| ((stateUsed->diveSettings.diveMode == DIVEMODE_OC) && ((stateUsed->warnings.ppO2Low) || (stateUsed->warnings.ppO2High)));
+
+			break;
+		case CVIEW_T3_Navigation: retVal = (pitch > -AF_COMPASS_ACTIVATION_ANGLE) && (pitch < AF_COMPASS_ACTIVATION_ANGLE)
+											&& (roll > -AF_COMPASS_ACTIVATION_ANGLE) && (roll < AF_COMPASS_ACTIVATION_ANGLE);
+
+			break;
+		case CVIEW_T3_DecoTTS:		tHome_findNextStop(getDecoInfo()->output_stop_length_seconds, &nextstopDepthMeter, &nextstopLengthSeconds);
+								/* A new deco step is added to the plan */
+									if(nextstopDepthMeter > AF_lastDecoDepth)
+									{
+										retVal = 1;
+									}
+
+								/* Close to the next deco step or missed deco step */
+									if((abs(stateUsed->lifeData.depth_meter - nextstopDepthMeter) < 2) || (stateUsed->warnings.decoMissed))
+									{
+										retVal = 1;
+									}
+								/* Another 10 minutes to surface */
+									if((getDecoInfo()->output_time_to_surface_seconds) && ((uint16_t)((getDecoInfo()->output_time_to_surface_seconds / 60) / 10) > AF_lastTTS))
+									{
+										retVal = 1;
+									}
+			break;
+		default: break;
+	}
+
+	return retVal;
+}
+
+uint8_t t3_EvaluateAFCondition(uint8_t T3CView)
+{
+	static uint8_t debounce[CVIEW_T3_END];
+	static uint8_t lastState[CVIEW_T3_END];
+	uint8_t detectionState = AF_VIEW_NOCHANGE;
+	uint8_t cnt = 0;
+
+	if(T3CView <= CVIEW_T3_END)
+	{
+		if(T3CView == CVIEW_T3_END)
+		{
+			for(cnt = 0; cnt < CVIEW_T3_END; cnt++)
+			{
+				debounce[cnt] = 0;
+				lastState[cnt] = AF_VIEW_NOCHANGE;
+			}
+		}
+		if(t3_CheckAfCondition(T3CView))
+		{
+			if(debounce[T3CView] < 10)
+			{
+				debounce[T3CView]++;
+			}
+			else
+			{
+				detectionState = AF_VIEW_ACTIVATED;
+			}
+		}
+		else
+		{
+			if(debounce[T3CView] > 0)
+			{
+				debounce[T3CView]--;
+			}
+			else
+			{
+				detectionState = AF_VIEW_DEACTIVATED;
+			}
+		}
+		if(detectionState)	/* no state change => return 0 */
+		{
+			if((detectionState == lastState[T3CView]))
+			{
+				detectionState = AF_VIEW_NOCHANGE;
+			}
+			else
+			{
+				lastState[T3CView] = detectionState;
+			}
+		}
+	}
+	return detectionState;
+}
+
+void t3_handleAutofocus(void)
+{
+	static uint8_t returnView = CVIEW_T3_END;
+
+	uint8_t runningT3CView = 0;
+
+	for (runningT3CView = 0; runningT3CView < CVIEW_T3_END; runningT3CView++)
+	{
+		if(stateUsed->diveSettings.activeAFViews & (1 << runningT3CView))
+		{
+			switch(t3_EvaluateAFCondition(runningT3CView))
+			{
+				case AF_VIEW_ACTIVATED:	returnView = t3_selection_customview;
+										t3_select_customview(runningT3CView);
+										t3_AF_updateBorderConditions();
+					break;
+				case AF_VIEW_DEACTIVATED: if((returnView != CVIEW_T3_END) && (t3_selection_customview == runningT3CView))
+											{
+												if(runningT3CView != CVIEW_T3_DecoTTS)	/* some view does not switch back */
+												{
+													t3_select_customview(returnView);
+												}
+												returnView = CVIEW_T3_END;
+											}
+							break;
+						default:
+							break;
+			}
+		}
+	}
+}
+
+#define ASCENT_GRAPH_YPIXEL 220
+uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl1, GFX_DrawCfgWindow* tXr1)  /* this function is only called if diver is below last last stop depth */
+{
+	static uint16_t countDownSec = 0;
+	uint8_t drawingMeterStep;
+	static float exitDepthMeter = 0.0;
+
+
+	uint8_t index = 0;
+	uint8_t color = 0;
+	point_t start, stop;
+
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+
+	if(calculateSlowExit(&countDownSec, &exitDepthMeter, &color))	/* graph to be drawn? */
+	{
+	 	 if(!pSettings->FlipDisplay)
+	 	 {
+	 		 start.y = tXl1->WindowY0 - 1;
+	 	 }
+	 	 else
+	 	 {
+	 		 start.y = tXl1->WindowY1 + 1;
+	 	 }
+
+		drawingMeterStep = ASCENT_GRAPH_YPIXEL / pSettings->last_stop_depth_meter;		/* based on 120 / 4 = 30 of standard ascent graph */
+
+		for(index = 0; index < pSettings->last_stop_depth_meter; index++)	/* draw meter indicators */
+	     {
+	         start.y += drawingMeterStep;
+	         stop.y = start.y;
+	         if(!pSettings->FlipDisplay)
+	         {
+	         	start.x = tXl1->WindowX1 - 1;
+	         }
+	         else
+	         {
+	        	start.x = tXr1->WindowX1 + 3;
+	         }
+	         stop.x = start.x - 43;
+	         GFX_draw_line(tXscreen, start, stop, 0);
+	     }
+
+		/* draw cntdown bar */
+
+		if(!pSettings->FlipDisplay)
+		{
+			start.x -= 20;
+			start.y = tXl1->WindowY0 + ASCENT_GRAPH_YPIXEL + 2;
+		}
+		else
+		{
+			start.x -= 25;
+			start.y = tXl1->WindowY1 + ASCENT_GRAPH_YPIXEL + 5;
+		}
+		stop.x = start.x;
+		stop.y = start.y - countDownSec * (ASCENT_GRAPH_YPIXEL / (float)(pSettings->slowExitTime * 60.0));
+		if(stop.y >= 470) stop.y = 470;
+		if(!pSettings->FlipDisplay)
+		{
+			stop.y += 5;
+		}
+		GFX_draw_thick_line(15,tXscreen, start, stop, 3);
+		/* mark diver depth */
+		if(!pSettings->FlipDisplay)
+		{
+			start.x = tXl1->WindowX1 - 32;
+			stop.x = start.x + 24;
+		}
+		else
+		{
+		   	start.x = tXr1->WindowX1 - 33;
+		   	stop.x = start.x + 24;
+		}
+
+
+		start.y = start.y - (stateUsed->lifeData.depth_meter * (ASCENT_GRAPH_YPIXEL) / pSettings->last_stop_depth_meter);
+		stop.y = start.y;
+		GFX_draw_thick_line(10,tXscreen, start, stop, 9);
+	}
+	else
+	{
+		color = 0xff;
+	}
+	return color;
 }

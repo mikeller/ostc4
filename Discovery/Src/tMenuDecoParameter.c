@@ -147,7 +147,7 @@ uint32_t tMDecoParameters_refresh(uint8_t line, char *text, uint16_t *tab, char 
 
         textPointer += snprintf(&text[textPointer], 60,\
             "%c"
-            "\t"
+            "\t          "
             "%c"
             , TXT_DecoAlgorithm
             , decotypeTxtId
@@ -160,7 +160,7 @@ uint32_t tMDecoParameters_refresh(uint8_t line, char *text, uint16_t *tab, char 
     {
         textPointer += snprintf(&text[textPointer], 60,\
             "VPM"
-            "\t"
+        	"\t          "
             "+"
             "%u"
             , VpmConsveratism
@@ -176,7 +176,7 @@ uint32_t tMDecoParameters_refresh(uint8_t line, char *text, uint16_t *tab, char 
             "\016\016"
             "low/high"
             "\017"
-            "\t"
+        	"\t          "
             "%u"
             "/"
             "%u"
@@ -193,7 +193,7 @@ uint32_t tMDecoParameters_refresh(uint8_t line, char *text, uint16_t *tab, char 
             "\016\016"
             "low/high"
             "\017"
-            "\t"
+            "\t          "
             "%u"
             "/"
             "%u"
@@ -207,7 +207,7 @@ uint32_t tMDecoParameters_refresh(uint8_t line, char *text, uint16_t *tab, char 
     {
         textPointer += snprintf(&text[textPointer], 60,\
             "%c"
-            "\t"
+            "\t          "
             "%u"
             "\016\016"
             " %c%c"
@@ -217,6 +217,17 @@ uint32_t tMDecoParameters_refresh(uint8_t line, char *text, uint16_t *tab, char 
             , unit_depth_char1()
             , unit_depth_char2()
         );
+    }
+    strcpy(&text[textPointer],"\n\r");
+    textPointer += 2;
+    if((line == 0) || (line == 6))
+    {
+    	textPointer+= snprintf(&text[textPointer], 60, "%c%c\t          ",TXT_2BYTE,TXT2BYTE_VpmTable);
+        if(settingsGetPointer()->VPM_conservatism.ub.alternative)
+            text[textPointer++] = '\005';
+        else
+            text[textPointer++] = '\006';
+        text[textPointer] = 0;
     }
     strcpy(&text[textPointer],"\n\r");
     textPointer += 2;

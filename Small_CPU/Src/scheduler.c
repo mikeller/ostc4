@@ -21,8 +21,6 @@
   */ 
 	
 	
-//#define DEBUGMODE
-
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "baseCPU2.h"
@@ -37,12 +35,18 @@
 #include "rtc.h"
 #include "dma.h"
 #include "adc.h"
+#include "gpio.h"
 #include "calc_crush.h"
 #include "stm32f4xx_hal_rtc_ex.h"
 #include "decom.h"
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "uart_Internal.h"
+#include "GNSS.h"
+#include "uartProtocol_GNSS.h"
+#include "math.h"
+#include "configuration.h"
 
 /* uncomment to enable restoting of last known date in case of a power loss (RTC looses timing data) */
 /* #define RESTORE_LAST_KNOWN_DATE */
@@ -50,6 +54,14 @@
 #define INVALID_PREASURE_VALUE 			(0.0f)
 #define START_DIVE_MOUNTAIN_MODE_BAR	(0.88f)
 #define START_DIVE_IMMEDIATLY_BAR		(1.16f)
+
+/* Ascent rate calculation */
+typedef enum
+{
+	ASCENT_NONE = 0,
+	ASCENT_RISING,
+	ASCENT_FALLING,
+} AscentStates_t;
 
 /* Private types -------------------------------------------------------------*/
 const SGas Air = {79,0,0,0,0};
@@ -92,7 +104,9 @@ void copyDeviceData(void);
 void copyPICdata(void);
 void copyExtADCdata();
 void copyExtCO2data();
+void copyGNSSdata(void);
 static void schedule_update_timer_helper(int8_t thisSeconds);
+static void evaluateAscentSpeed(void);
 uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow);
 
 void scheduleSetDate(SDeviceLine *line);
@@ -142,7 +156,7 @@ void initGlobals(void)
 
 	global.dataSendToMaster.RTE_VERSION_high = firmwareVersionHigh();//RTE_VERSION_HIGH;;
 	global.dataSendToMaster.RTE_VERSION_low = firmwareVersionLow();//RTE_VERSION_LOW;;
-	global.dataSendToMaster.chargeStatus = 0;
+	global.dataSendToMaster.chargeStatus = CHARGER_off;
 	
 	global.dataSendToMaster.power_on_reset = 0;
 	global.dataSendToMaster.header.checkCode[0] = 0xA1;
@@ -155,12 +169,17 @@ void initGlobals(void)
 	global.dataSendToMaster.footer.checkCode[0] = 0xE1;
 	global.dataSendToMaster.sensorErrors = 0;
 
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = 0.0;
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = 0.0;
+	global.dataSendToMaster.data[0].gnssInfo.fixType = 0;
+	global.dataSendToMaster.data[0].gnssInfo.numSat = 0;
+
 	global.sync_error_count = 0;
 	global.check_sync_not_running = 0;
 
 	global.deviceDataSendToMaster.RTE_VERSION_high = firmwareVersionHigh();//RTE_VERSION_HIGH;
 	global.deviceDataSendToMaster.RTE_VERSION_low = firmwareVersionLow();//RTE_VERSION_LOW;
-	global.deviceDataSendToMaster.chargeStatus = 0;
+	global.deviceDataSendToMaster.chargeStatus = CHARGER_off;
 
 	global.deviceDataSendToMaster.power_on_reset = 0;
 	global.deviceDataSendToMaster.header.checkCode[0] = 0xDF;
@@ -323,6 +342,9 @@ void scheduleSpecial_Evaluate_DataSendToSlave(void)
 	{
 		externalInterface_ExecuteCmd(global.dataSendToSlave.data.externalInterface_Cmd);
 	}
+#ifdef ENABLE_GPIO_V2
+	GPIO_HandleBuzzer();
+#endif
 
 
 #if 0
@@ -482,7 +504,6 @@ void scheduleDiveMode(void)
 	uint32_t lasttick = 0;
 	uint8_t extAdcChannel = 0;
 	uint8_t counterAscentRate = 0;
-	float lastPressure_bar = 0.0f;
 	global.dataSendToMaster.mode = MODE_DIVE;
 	global.deviceDataSendToMaster.mode = MODE_DIVE;
 	uint8_t counter_exit = 0;
@@ -512,6 +533,9 @@ void scheduleDiveMode(void)
 		ticksdiff = time_elapsed_ms(Scheduler.tickstart,lasttick);
 
 		externalInterface_HandleUART();
+#ifdef ENABLE_GPIO_V2
+		UART6_HandleUART();
+#endif
 		if(ticksdiff >= Scheduler.counterSPIdata100msec * 100 + 10)
 		{
 			if(SPI_Evaluate_RX_Data()!=0) /* did we receive something ? */
@@ -552,18 +576,12 @@ void scheduleDiveMode(void)
 						global.lifeData.counterSecondsShallowDepth = (global.settings.timeoutDiveReachedZeroDepth - 10);
 				}
 #endif
-				
-				//Calc ascentrate every two second (20 * 100 ms)
+
 				counterAscentRate++;
-				if(counterAscentRate == 20)
+				if(counterAscentRate == 4)
 				{
 					global.lifeData.pressure_ambient_bar = get_pressure_mbar() / 1000.0f;
-					if(lastPressure_bar >= 0)
-					{
-							//2 seconds * 30 == 1 minute, bar * 10 = meter
-							global.lifeData.ascent_rate_meter_per_min = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * 30 * 10;
-					}
-					lastPressure_bar = global.lifeData.pressure_ambient_bar;
+					evaluateAscentSpeed();
 					counterAscentRate = 0;
 				}
 				copyPressureData();
@@ -601,7 +619,7 @@ void scheduleDiveMode(void)
 
 
 				/** counter_exit allows safe exit via button for testing
-					* and demo_mode is exited too if aplicable.
+					* and demo_mode is exited too if applicable.
 					*/
 				if(global.dataSendToMaster.mode == MODE_ENDDIVE)
 				{
@@ -615,6 +633,7 @@ void scheduleDiveMode(void)
 
 				if(is_ambient_pressure_close_to_surface(&global.lifeData))
 				{
+
 					global.lifeData.counterSecondsShallowDepth++;
 					if((global.lifeData.counterSecondsShallowDepth >= global.settings.timeoutDiveReachedZeroDepth) || ((global.lifeData.dive_time_seconds < 60) && (global.demo_mode == 0))
 							|| (ManualExitDiveCounter))
@@ -652,6 +671,7 @@ void scheduleDiveMode(void)
 				// surface break
 				if(is_ambient_pressure_close_to_surface(&global.lifeData))
 				{
+					global.lifeData.ascent_rate_meter_per_min = 0;
 					global.lifeData.counterSecondsShallowDepth++;
 					if(global.lifeData.counterSecondsShallowDepth > 3) // time for main cpu to copy to apnea_last_dive_time_seconds
 					{
@@ -818,6 +838,9 @@ void scheduleSurfaceMode(void)
 		}
 
 		externalInterface_HandleUART();
+#ifdef ENABLE_GPIO_V2
+		UART6_HandleUART();
+#endif
 
 		/* Evaluate received data at 10 ms, 110 ms, 210 ms,... duration ~<1ms */
 		if(ticksdiff >= Scheduler.counterSPIdata100msec * 100 + 10)
@@ -869,6 +892,10 @@ void scheduleSurfaceMode(void)
 		{
 			adc_ambient_light_sensor_get_data();
 			copyAmbientLightData();
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+			copyGNSSdata();
+#endif
 			Scheduler.counterAmbientLight100msec++;
 		}
 
@@ -1083,7 +1110,11 @@ void scheduleSleepMode(void)
 	global.dataSendToMaster.mode = 0;
 	global.deviceDataSendToMaster.mode = 0;
 	secondsCount = 0;
-	
+#ifdef ENABLE_GPIO_V2
+	uint16_t deepSleepCntDwn = 21600; 	/* 12 hours in 2 second steps */
+	uint8_t deepSleep = 0;
+	GPIO_InitTypeDef GPIO_InitStruct;
+#endif
 	/* prevent button wake up problem while in sleep_prepare
 	 * sleep prepare does I2C_DeInit()
 	 */
@@ -1094,13 +1125,11 @@ void scheduleSleepMode(void)
 	{
 		I2C_DeInit();
 
-#ifdef DEBUGMODE
+#ifdef ENABLE_SLEEP_DEBUG
 		HAL_Delay(2000);
 #else
 		RTC_StopMode_2seconds();
 #endif
-		
-
 		
 		if(global.mode == MODE_SLEEP)
 			secondsCount += 2;
@@ -1162,6 +1191,34 @@ void scheduleSleepMode(void)
 			global.mode = MODE_BOOT;
 		}
 		scheduleUpdateLifeData(2000);
+#ifdef ENABLE_GPIO_V2
+		if(deepSleepCntDwn)
+		{
+			deepSleepCntDwn--;
+			if(deepSleepCntDwn == 0)
+			{
+				deepSleep = 1;
+				GPIO_GPS_OFF();
+				GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+				GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+				GPIO_InitStruct.Pull = GPIO_NOPULL;
+				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN);
+				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+				uartGnss_SetState(UART_GNSS_INIT);
+			}
+		}
+		else
+		{
+			if((deepSleep = 1) && (global.lifeData.battery_voltage < 3.5))	/* switch off backup voltage if battery gets low */
+			{
+				deepSleep = 2;
+				GPIO_GPS_BCKP_OFF();
+				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_BCKP_CONTROL_PIN);
+				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+				__HAL_RCC_GPIOB_CLK_DISABLE();
+			}
+		}
+#endif
 	}
 	while(global.mode == MODE_SLEEP);
 	/* new section for system after Standby */
@@ -1170,6 +1227,12 @@ void scheduleSleepMode(void)
 	setButtonsNow = 0;
 	reinitGlobals();
 	ReInit_battery_charger_status_pins();
+#ifdef ENABLE_GPIO_V2
+	if(deepSleep != 0)
+	{
+		GPIO_GNSS_Init();
+	}
+#endif
 }
 
 
@@ -1729,6 +1792,44 @@ void copyExtCO2data()
 	global.dataSendToMaster.boolADCO2Data |= boolCO2Buffer;
 }
 
+void copyGNSSdata(void)
+{
+	RTC_TimeTypeDef sTimeNow;
+
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.fLat;
+	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.fLon;
+	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
+	global.dataSendToMaster.data[0].gnssInfo.numSat = GNSS_Handle.numSat;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.year = (uint8_t) (GNSS_Handle.year - 2000);
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.month = GNSS_Handle.month;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.day = GNSS_Handle.day;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.hour = GNSS_Handle.hour;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.min = GNSS_Handle.min;
+	global.dataSendToMaster.data[0].gnssInfo.DateTime.sec = GNSS_Handle.sec;
+
+	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
+
+	if(( GNSS_Handle.fixType < 2) && (GNSS_Handle.alive & GNSS_ALIVE_BACKUP_POS))		/* fallback to last known position ? */
+	{
+		RTC_GetTime(&sTimeNow);
+		if(GNSS_Handle.last_hour > sTimeNow.Hours)
+		{
+			sTimeNow.Hours += 24;	/* compensate date change */
+		}
+		if(sTimeNow.Hours - GNSS_Handle.last_hour > 2)
+		{
+			GNSS_Handle.alive &= ~GNSS_ALIVE_BACKUP_POS;		/* position outdated */
+		}
+		else
+		{
+			global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.last_fLat;
+			global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.last_fLon;
+		}
+	}
+	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
+}
+
+
 typedef enum 
 {
   SPI3_OK      = 0x00,
@@ -1809,6 +1910,78 @@ _Bool is_ambient_pressure_close_to_surface(SLifeData *lifeData)
 	return retval;
 }
 
+void evaluateAscentSpeed()
+{
+	static uint32_t lastPressureTick = 0;
+	static float lastPressure_bar = 0.0f;
+	static AscentStates_t ascentState = ASCENT_NONE;
+	static uint8_t ascentStableCnt = 0;
+	uint32_t tickPressureDiff = 0;
+	uint32_t lasttick = HAL_GetTick();
+	float localAscentRate = 0.0;
+
+	tickPressureDiff = time_elapsed_ms(lastPressureTick,lasttick); /* Calculate ascent rate every 400ms use timer to take care for small time shifts */
+	if(tickPressureDiff != 0)
+	{
+		if(lastPressure_bar >= 0)
+		{
+			localAscentRate = (lastPressure_bar - global.lifeData.pressure_ambient_bar)  * (60000.0 / tickPressureDiff) * 10; /* bar * 10 = meter */
+			if((fabs(localAscentRate) < 1.0) || (global.lifeData.pressure_ambient_bar < START_DIVE_IMMEDIATLY_BAR))
+			{
+				ascentState = ASCENT_NONE;
+				ascentStableCnt = 0;
+			}
+			else if(localAscentRate > 0.0)
+			{
+				if(ascentState != ASCENT_FALLING)
+				{
+					if(ascentStableCnt < 5)
+					{
+						ascentStableCnt++;
+					}
+					else
+					{
+						ascentState = ASCENT_RISING;
+					}
+				}
+				else
+				{
+					ascentState = ASCENT_NONE;
+					ascentStableCnt = 0;
+				}
+			}
+			else	/* must be falling */
+			{
+				if(ascentState != ASCENT_RISING)
+				{
+					if(ascentStableCnt < 5)
+					{
+						ascentStableCnt++;
+					}
+					else
+					{
+							ascentState = ASCENT_FALLING;
+					}
+				}
+				else
+				{
+					ascentState = ASCENT_NONE;
+					ascentStableCnt = 0;
+				}
+			}
+			if(ascentState != ASCENT_NONE)
+			{
+				global.lifeData.ascent_rate_meter_per_min = localAscentRate;
+			}
+			else
+			{
+				global.lifeData.ascent_rate_meter_per_min = 0;
+			}
+		}
+	}
+	lastPressure_bar = global.lifeData.pressure_ambient_bar;
+	lastPressureTick = lasttick;
+}
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/
 

@@ -46,13 +46,14 @@ UART_HandleTypeDef UartPiezoTxHandle;
 UART_HandleTypeDef UartIR_HUD_Handle;
 
 __IO ITStatus UartReady = RESET;
+__IO ITStatus UartReadyHUD = RESET;
 
 /* Private types -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
 
 /* Private variables with external access via get_xxx() function -------------*/
-
+static uint8_t	hardwareDisplay = 0;		//< either OSTC4 LCD (=0) or new Screen (=1)
 /* Private function prototypes -----------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
@@ -91,6 +92,42 @@ void MX_SPI_Init(void)
     HAL_SPI_Init(&cpu2DmaSpi);
 }
 
+
+void MX_GPIO_Backlight_max_static_only_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+    TIM_BACKLIGHT_GPIO_ENABLE();
+
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;//GPIO_PULLUP; /* should be normally high */
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+
+    GPIO_InitStruct.Pin = TIM_BACKLIGHT_PIN;
+    HAL_GPIO_Init(TIM_BACKLIGHT_GPIO_PORT, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(TIM_BACKLIGHT_GPIO_PORT,TIM_BACKLIGHT_PIN,GPIO_PIN_SET);
+}
+
+
+void MX_GPIO_One_Button_only_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+    BUTTON_NEXT_GPIO_ENABLE();
+
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;//GPIO_PULLUP; /* should be normally high */
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+
+    GPIO_InitStruct.Pin = BUTTON_NEXT_PIN;
+    HAL_GPIO_Init(BUTTON_NEXT_GPIO_PORT, &GPIO_InitStruct);
+}
+
+
+GPIO_PinState MX_GPIO_Read_The_One_Button(void)
+{
+    return HAL_GPIO_ReadPin(BUTTON_NEXT_GPIO_PORT, BUTTON_NEXT_PIN);
+}
+
 void MX_GPIO_Init(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct;
@@ -101,6 +138,7 @@ void MX_GPIO_Init(void)
     SMALLCPU_CSB_GPIO_ENABLE();
     OSCILLOSCOPE_GPIO_ENABLE();
     OSCILLOSCOPE2_GPIO_ENABLE();
+    BLE_UBLOX_DSR_GPIO_ENABLE();
 
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
@@ -193,6 +231,13 @@ void MX_Bluetooth_PowerOn(void)
     GPIO_InitStruct.Pin = BLE_NENABLE_PIN;
     HAL_GPIO_Init(BLE_NENABLE_GPIO_PORT, &GPIO_InitStruct);
     HAL_GPIO_WritePin(BLE_NENABLE_GPIO_PORT,BLE_NENABLE_PIN,GPIO_PIN_RESET);
+
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    GPIO_InitStruct.Pin = BLE_UBLOX_DSR_PIN;
+    HAL_GPIO_Init(BLE_UBLOX_DSR_GPIO_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
 }
 
 
@@ -203,6 +248,7 @@ void MX_Bluetooth_PowerOff(void)
     GPIO_InitStruct.Pin = BLE_NENABLE_PIN;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(BLE_NENABLE_GPIO_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
 }
 
 
@@ -228,6 +274,26 @@ void MX_SmallCPU_Reset_To_Boot(void)
 #endif
 }
 
+
+void MX_SmallCPU_NO_Reset_Helper(void)
+{
+#ifdef SMALLCPU_NRESET_PIN
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+
+    SMALLCPU_NRESET_GPIO_ENABLE();
+    HAL_GPIO_Init(SMALLCPU_NRESET_GPIO_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(SMALLCPU_NRESET_GPIO_PORT,SMALLCPU_NRESET_PIN,GPIO_PIN_SET);
+//	HAL_Delay(100);
+//  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+//  HAL_GPIO_Init(SMALLCPU_NRESET_GPIO_PORT, &GPIO_InitStruct);
+#endif
+}
+
+
 void MX_SmallCPU_Reset_To_Standard(void)
 {
 #ifdef SMALLCPU_NRESET_PIN
@@ -247,6 +313,23 @@ void MX_SmallCPU_Reset_To_Standard(void)
     HAL_GPIO_Init(SMALLCPU_NRESET_GPIO_PORT, &GPIO_InitStruct);
 #endif
 }
+
+
+uint8_t MX_UART_ButtonAdjust(uint8_t *array)
+{
+#ifdef USART_PIEZO
+    uint8_t answer[4];
+    HAL_UART_Transmit(&UartPiezoTxHandle,array,4,1000);
+    HAL_UART_Receive(&UartPiezoTxHandle,answer,4,2000);
+    if(	(answer[0] == array[0])
+        &&(answer[1] == array[1])
+        &&(answer[2] == array[2])
+        &&(answer[3] == array[3]))
+    return 1;
+#endif
+    return 0;
+}
+
 
 void MX_UART_Init(void)
 {
@@ -311,7 +394,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else
     if(huart == &UartIR_HUD_Handle)
     {
+#ifndef BOOTLOADER_STANDALONE
     	tCCR_SetRXIndication();
+#endif
+		UartReadyHUD = SET;
     }
 }
 
@@ -336,7 +422,22 @@ void MX_tell_reset_logik_alles_ok(void)
     HAL_GPIO_Init(RESET_LOGIC_ALLES_OK_GPIO_PORT, &GPIO_InitStruct);
 #endif
 }
-
+void SetDisplayVersion(uint8_t version)
+{
+	if(version < 2)
+	{
+		hardwareDisplay = version;
+	}
+}
+uint8_t isNewDisplay()
+{
+	uint8_t ret = 0;
+	if(hardwareDisplay == DISPLAY_VERSION_NEW)
+	{
+		ret = 1;
+	}
+	return ret;
+}
 
 #ifndef BOOTLOADER_STANDALONE
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)

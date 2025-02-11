@@ -58,6 +58,7 @@ void tInfo_write_field_toggle(uint32_t editID, uint16_t XleftGimpStyle, uint16_t
 void tInfo_write_field_on_off(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint8_t int1);
 
 void tInfo_write_buttonTextline(GFX_DrawCfgScreen *screenPtr, uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode);
+void tInfo_write_buttonTextline_simple(uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode);
 
 void tInfo_setEvent(uint32_t inputEventID, uint32_t inputFunctionCall);
 

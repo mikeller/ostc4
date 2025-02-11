@@ -14,7 +14,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 heinrichs weikamp</center></h2>
+  * COPYRIGHT(c) 2014 heinrichs weikamp
   *
   ******************************************************************************
   */
@@ -25,35 +25,35 @@
 /* Exported variables --------------------------------------------------------*/
 
 /*
-	0x0000FF00,   gr�n
-	0x00FF0000,    rot
-	0x000000FF,   blau
-	0x00FFFF00,   gelb
+	0x0000FF00,   green
+	0x00FF0000,    red
+	0x000000FF,   blue
+	0x00FFFF00,   yellow
 	0x0000FFFF,   cyan
 	0x00000000,  black
-	0x000092D0,  hw hellblau f�r Beschriftun
+	0x000092D0,  hw light blue
 */
 
 
 uint32_t ColorLUT[] =
 {
 	// ARGB
-	0x00FFFFFF, // \020 wei�
+	0x00FFFFFF, // \020 white
 	0x00333333, // \021 dark grey
 	0x0050FF50, // \022 units
-	0x003060FF, // \023 blau
+	0x003060FF, // \023 blue
 	0x00FFFF00, // \024 + CLUT_WarningYellow
 	0x00FF0000, // \025 + CLUT_WarningRed
 	0x0000FF00, // \026 + CLUT_NiceGreen
 	0x00FFFFFF, // \027 DIVE_MainColorIfNotWhite\020
 	0x00FFFFFF, // \030 DIVE_PluginBoxMainColor
-	0x00777777, // \031 DIVE_PluginBoxGrey also used to display deactivation
+	0x00AAAAAA, // \031 DIVE_PluginBoxGrey also used to display deactivation
 	0x0050FF50, // \032 DIVE_LabelColor
 	0x00FFFFFF, // CLUT_DIVE_FieldSeperatorLines
 	0x0050FF50, // CLUT_DIVE_pluginbox // old pink 0x00FF20FF
 	0x00FF00FF, // CLUT_NiceBlue descent graph (apnoe)
 	0x00FFFFFF, // CLUT_DIVE_SPARE22 - UNUSED
-	0x0000FF00, // CLUT_DiveMainLabel - fast nur Debugmode
+	0x0000FF00, // CLUT_DiveMainLabel - mainly Debug mode
 	0x00555555, // CLUT_pluginboxSurface
 	0x00101010, // CLUT_MenuLineUnselected
 	0x00000000, // CLUT_MenuLineUnselectedSeperator
@@ -142,7 +142,7 @@ uint32_t ColorLUT[] =
 	0x00FF8000, // CLUT_BatteryProblem
 	0x00FFFFFF, // \027 CLUT_MainColor ---------- colorscheme 0
 	0x00FFFFFF, // \030 DIVE_PluginBoxMainColor	 	colorscheme 0
-	0x00777777, // \031 DIVE_PluginBoxGrey				colorscheme 0
+	0x00AAAAAA, // \031 DIVE_PluginBoxGrey				colorscheme 0
 	0x0050FF50, // \032 DIVE_LabelColor 					colorscheme 0
 	0x00FFFFFF, // CLUT_DIVE_FieldSeperatorLines	colorscheme 0
 	0x0050FF50, // CLUT_DIVE_pluginbox						colorscheme 0
@@ -166,7 +166,7 @@ uint32_t ColorLUT[] =
 	0x00FFFFFF, // CLUT_DIVE_SPARE22							colorscheme 2
 	0x0033A1D6, // CLUT_MainColor --------------- colorscheme 3
 	0x00FFFFFF, // \030 DIVE_PluginBoxMainColor	 	colorscheme 3
-	0x00777777, // \031 DIVE_PluginBoxGrey				colorscheme 3
+	0x00AAAAAA, // \031 DIVE_PluginBoxGrey				colorscheme 3
 	0x000000FF, // \032 DIVE_LabelColor 					colorscheme 3
 	0x0033A1D6, // CLUT_DIVE_FieldSeperatorLines	colorscheme 3
 	0x000000FF, // CLUT_DIVE_pluginbox						colorscheme 3

@@ -87,6 +87,7 @@ void unblock_diluent_page(void);
 
 void selectPage(uint32_t selection);
 
+uint8_t getLineMask(uint32_t lineId);
 void resetLineMask(uint32_t lineId);
 void disableLine(uint32_t lineId);
 void enableLine(uint32_t lineId);

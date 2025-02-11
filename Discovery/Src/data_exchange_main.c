@@ -72,6 +72,8 @@
 #include "timer.h"
 #include "buehlmann.h"
 #include "externLogbookFlash.h"
+#include "vpm.h"
+#include "check_warning.h"
 
 /* #define TESTBENCH */
 
@@ -410,6 +412,10 @@ void DateEx_copy_to_dataOut(void)
 				break;
 			case SENSOR_CO2:	SensorActive[SENSOR_CO2] = 1;
 				break;
+#if defined ENABLE_GPIO_V2 || defined ENABLE_GNSS_SUPPORT
+			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;
+				break;
+#endif
 #ifdef ENABLE_SENTINEL_MODE
 			case SENSOR_SENTINEL:	SensorActive[SENSOR_SENTINEL] = 1;
 				break;
@@ -423,20 +429,23 @@ void DateEx_copy_to_dataOut(void)
 	{
 		externalInterface_Cmd |= EXT_INTERFACE_ADC_ON | EXT_INTERFACE_33V_ON;
 	}
-	if(SensorActive[SENSOR_DIGO2])
+	if((SensorActive[SENSOR_DIGO2]) || (SensorActive[SENSOR_CO2])|| (SensorActive[SENSOR_GNSS]))
 	{
-		externalInterface_Cmd |= EXT_INTERFACE_33V_ON | EXT_INTERFACE_UART_O2;
-	}
-	else if(SensorActive[SENSOR_CO2])		/* TODO: at the moment only one serial sensor is supported => else condition. to be changed once multiplexing is available */
-	{
-		externalInterface_Cmd |= EXT_INTERFACE_33V_ON | EXT_INTERFACE_UART_CO2;		/* CO2 sensor has to be activated via auto detection */
+		externalInterface_Cmd |= EXT_INTERFACE_33V_ON;
 	}
 
 #ifdef ENABLE_SENTINEL_MODE
 	if(SensorActive[SENSOR_SENTINEL])
 	{
-			externalInterface_Cmd |= EXT_INTERFACE_33V_ON | EXT_INTERFACE_UART_SENTINEL;
+			externalInterface_Cmd |= EXT_INTERFACE_33V_ON;
 			externalInterface_Cmd &= (~EXT_INTERFACE_ADC_ON);
+	}
+#endif
+
+#ifdef ENABLE_GPIO_V2
+	if(getBuzzerActivationState())
+	{
+		externalInterface_Cmd |= EXT_INTERFACE_BUZZER_ON;
 	}
 #endif
 
@@ -473,7 +482,7 @@ void DateEx_copy_to_dataOut(void)
 		
 		settingsHelperButtonSens_keepPercentageValues(settingsGetPointerStandard()->ButtonResponsiveness[3], settings->ButtonResponsiveness);
 		setButtonResponsiveness(settings->ButtonResponsiveness);
-		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP);
+		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP, 0);
 	}
 }
 
@@ -483,16 +492,17 @@ void DataEX_copy_to_deco(void)
 	if(decoLock == DECO_CALC_running)
         return;
 
-		if(decoLock == DECO_CALC_init_as_is_start_of_dive)
-		{
+	if(decoLock == DECO_CALC_init_as_is_start_of_dive)
+	{
+		vpm_table_init();
 	    vpm_init(&stateUsedWrite->vpm,  stateUsedWrite->diveSettings.vpm_conservatism, 0, 0);
 	    buehlmann_init();
 	    timer_init();
 	    resetEvents(stateUsedWrite);
 	    stateUsedWrite->diveSettings.internal__pressure_first_stop_ambient_bar_as_upper_limit_for_gf_low_otherwise_zero = 0;
-		}
+	}
 
-		if(decoLock == DECO_CALC_FINSHED_Buehlmann)
+	if(decoLock == DECO_CALC_FINSHED_Buehlmann)
     {
 
     }
@@ -534,6 +544,7 @@ void DataEX_copy_to_deco(void)
     //Copy Inputdata from stateReal to stateDeco
     memcpy(&stateDeco.lifeData,&stateUsedWrite->lifeData,sizeof(SLifeData));
     memcpy(&stateDeco.diveSettings,&stateUsedWrite->diveSettings,sizeof(SDiveSettings));
+    memcpy(&stateDeco.decolistVPM,&stateUsedWrite->decolistVPM,sizeof(SDecoinfo));
 
     stateDeco.vpm.deco_zone_reached = stateUsedWrite->vpm.deco_zone_reached;
     // memcpy(&stateDeco.vpm,&pStateUsed->vpm,sizeof(SVpm));
@@ -544,7 +555,7 @@ void DataEX_copy_to_deco(void)
         stateDeco.vpm.adjusted_critical_radius_he[i] = stateUsedWrite->vpm.adjusted_critical_radius_he[i];
         stateDeco.vpm.adjusted_critical_radius_n2[i] = stateUsedWrite->vpm.adjusted_critical_radius_n2[i];
     }
-		decoLock = DECO_CALC_ready;
+	decoLock = DECO_CALC_ready;
 }
 
 
@@ -580,13 +591,16 @@ static void DataEX_helper_set_Unknown_Date_deviceData(SDeviceLine *lineWrite)
 	RTC_DateTypeDef sdatestructure;
 	RTC_TimeTypeDef stimestructure;
 
+	const SFirmwareData *pFirmwareInfo;
+    pFirmwareInfo = firmwareDataGetPointer();
+
 	stimestructure.Hours = UNKNOWN_TIME_HOURS;
 	stimestructure.Minutes = UNKNOWN_TIME_MINUTES;
 	stimestructure.Seconds = UNKNOWN_TIME_SECOND;
 
 	sdatestructure.Date = UNKNOWN_DATE_DAY;
 	sdatestructure.Month = UNKNOWN_DATE_MONTH;
-	sdatestructure.Year = UNKNOWN_DATE_YEAR;
+	sdatestructure.Year =  pFirmwareInfo->release_year;
 	setWeekday(&sdatestructure);
 
 	DataEX_helper_SetTime(stimestructure, &lineWrite->time_rtc_tr);
@@ -1010,6 +1024,8 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 	
 		pStateReal->lifeData.dateBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_dr;
 		pStateReal->lifeData.timeBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_tr;
+
+		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
 	}
 
 	if(pStateReal->data_old__lost_connection_to_slave == 0)
@@ -1033,6 +1049,8 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			//Init dive Mode
 			decoLock = DECO_CALC_init_as_is_start_of_dive;
 			pStateReal->lifeData.boolResetAverageDepth = 1;
+
+			memcpy(pStateReal->scrubberDataDive, pSettings->scrubberData, sizeof(pStateReal->scrubberDataDive));
 		}
 
 		pStateReal->lifeData.cns = dataIn.data[dataIn.boolToxicData].cns;
@@ -1060,6 +1078,8 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			}
 			if(pStateReal->warnings.decoMissed)
 				dataOut.setAccidentFlag += ACCIDENT_DECOSTOP;
+
+			memcpy(pSettings->scrubberData, pStateReal->scrubberDataDive, sizeof(pStateReal->scrubberDataDive)); /* Store value of current usage */
 		}
 		pStateReal->mode = dataIn.mode;
 		pStateReal->chargeStatus = dataIn.chargeStatus;
@@ -1159,7 +1179,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		pStateReal->sensorErrorsRTE = dataIn.sensorErrors;
 
 		/* data from CO2 sensor */
-		pStateReal->lifeData.CO2_data.CO2_ppm = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_CO2)].CO2_ppm * 10;	/* Scale factor depends on sensor */
+		pStateReal->lifeData.CO2_data.CO2_ppm = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_CO2)].CO2_ppm;
 		pStateReal->lifeData.CO2_data.signalStrength = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_CO2)].CO2_signalStrength;
 
 #ifdef ENABLE_EXTERNAL_PRESSURE
@@ -1343,9 +1363,14 @@ uint8_t DataEX_external_ADC_Present(void)
 	return retval;
 }
 
-void DataEX_setExtInterface_Cmd(uint16_t Cmd)
+void DataEX_setExtInterface_Cmd(uint16_t Cmd, uint8_t sensorId)
 {
-	externalInterface_Cmd = Cmd;
+	if(sensorId < EXT_INTERFACE_SENSOR_CNT - 1)
+	{
+		externalInterface_Cmd |= Cmd;
+		externalInterface_Cmd |= sensorId << 8;
+	}
+
 	return;
 }
 

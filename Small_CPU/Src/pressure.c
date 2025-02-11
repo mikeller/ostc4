@@ -49,7 +49,6 @@
 /* remove comment to use a predefined profile for pressure changes instead of real world data */
 /* #define SIMULATE_PRESSURE */
 
-
 #define PRESSURE_SURFACE_MAX_MBAR			(1060.0f)		/* It is unlikely that pressure at surface is greater than this value => clip to it */
 
 #define PRESSURE_MINIMUM					(0.0f)
@@ -130,6 +129,7 @@ void init_surface_ring(uint8_t force)
 		for(int i=0; i<PRESSURE_SURFACE_QUE; i++)
 			surface_ring_mbar[i] = ambient_pressure_mbar;
 		surface_pressure_mbar = ambient_pressure_mbar;
+		surface_pressure_stable_value = surface_pressure_mbar;
 		surface_pressure_writeIndex = 0;			/* index of the oldest value in the ring buffer */
 	}
 }
@@ -236,8 +236,9 @@ void update_surface_pressure(uint8_t call_rhythm_seconds)
 
 			secondCounterSurfaceRing = 0;
 			avgCount = 1;	/* use the current value as starting point but restart the weight decrement of the measurements */
+
+			evaluate_surface_pressure();
 		}
-		evaluate_surface_pressure();
 	}
 }
 
@@ -529,12 +530,17 @@ HAL_StatusTypeDef  pressure_sensor_get_temperature_raw(void)
 
 
 #ifdef SIMULATE_PRESSURE
+
+#define SECDIV		10		/* update every 100ms */
+
 void pressure_simulation()
 {
 	static uint32_t tickstart = 0;
 	static float pressure_sim_mbar = 0;
 	static uint32_t passedSecond = 0;
 	static uint32_t secondtick = 0;
+	static uint32_t lastsecondtick = 0;
+	static float delta_mbar = 0.0;
 
 	uint32_t lasttick = 0;
 
@@ -548,11 +554,16 @@ void pressure_simulation()
 	}
 
 	lasttick = HAL_GetTick();
-	if(time_elapsed_ms(secondtick,lasttick) > 1000) /* one second passed since last tick */
+	if(time_elapsed_ms(secondtick,lasttick) >= (1000 / SECDIV)) /* one second passed since last tick */
 	{
+		if(time_elapsed_ms(lastsecondtick,lasttick) > 1000)
+		{
+			passedSecond++;
+			lastsecondtick = lasttick;
+		}
 		secondtick = lasttick;
-		passedSecond++;
 
+#define DIVE_EASY 1
 #ifdef DIVE_AFTER_LANDING
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	 /* stay stable for 10 seconds */
 		else if(passedSecond < 300) pressure_sim_mbar -= 1.0; /* decrease pressure in 5 minutes target 770mbar => delta 330 */
@@ -563,7 +574,34 @@ void pressure_simulation()
 		else if(passedSecond < 2300) pressure_sim_mbar += 0.0;  /* stay on depth */
 		else if(passedSecond < 2500) pressure_sim_mbar -= 10.0; /* return to surface */
 		else pressure_sim_mbar = 1000.0;					/* final state */
-#else	/* short dive */
+#endif
+#ifdef DIVE_EASY
+		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	 /* stay stable for 10 seconds */
+		else if(passedSecond < 120) pressure_sim_mbar += 1.0; /* decrease pressure in 2 minutes */
+		else if(passedSecond < 240) pressure_sim_mbar += 0.0;	/*stay stable 2 minutes*/
+		else if(passedSecond < 360) pressure_sim_mbar -= 1.0;	/* return to 1 bar in 2 Minutes*/
+		else pressure_sim_mbar = 1000.0;					/* final state */
+#endif
+#if DIVE_AT_SPEED
+		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	   /* stay stable for 10 seconds */
+		else if(passedSecond < 20) delta_mbar = 200.0 / SECDIV; /* Start dive */
+		else if(passedSecond < 30) delta_mbar = 0.0;	/*stay on depth*/
+		else if(passedSecond < 45) delta_mbar -= 0.2 / SECDIV;	/* return to surface */
+		else if(passedSecond < 40) delta_mbar -= 0.4 / SECDIV;   /* stay */
+		else if(passedSecond < 50) delta_mbar += 0.3 / SECDIV; /* get ready for second dive */
+		else if(passedSecond < 60) delta_mbar -= 0.4;	/*stay on depth*/
+		else if(passedSecond < 70) delta_mbar = 0.2;
+		else if(passedSecond < 1060) pressure_sim_mbar -= 10.0/ SECDIV;	/* return to surface */
+		else if(passedSecond < 1200) pressure_sim_mbar += 0.0;   /* stay */
+		else { pressure_sim_mbar = 1000.0;	delta_mbar = 0.0;}				/* final state */
+
+		pressure_sim_mbar += delta_mbar;
+		if(pressure_sim_mbar < surface_pressure_mbar)
+		{
+			pressure_sim_mbar = surface_pressure_mbar;
+		}
+#endif
+#ifdef SHORTDIVE	/* short dive */
 		if(passedSecond < 10) pressure_sim_mbar = 1000.0;	   /* stay stable for 10 seconds */
 		else if(passedSecond < 180) pressure_sim_mbar += 10.0; /* Start dive */
 		else if(passedSecond < 300) pressure_sim_mbar += 0.0;	/*stay on depth*/
@@ -685,7 +723,7 @@ static void pressure_calculation_AN520_004_mod_MS5803_30BA__09_2015(void)
 
 	if(ambient_pressure_mbar < PRESSURE_MINIMUM)
 	{
-		ambient_pressure_mbar = 1000.0;
+		ambient_pressure_mbar = 1000.0 + pressure_offset;
 	}
 }
 

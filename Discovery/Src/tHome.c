@@ -65,6 +65,7 @@ const uint8_t cv_changelist_BS[] = {CVIEW_T3_Decostop, CVIEW_sensors, CVIEW_Comp
 #ifdef ENABLE_T3_PROFILE_VIEW
 									CVIEW_T3_Profile,
 #endif
+									CVIEW_T3_Temperature,
 									CVIEW_T3_END};
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,10 +79,6 @@ void set_globalState_tHome(void)
 {
     if(stateUsed->mode == MODE_DIVE)
     {
-    	if(settingsGetPointer()->extraDisplay == EXTRADISPLAY_BFACTIVE)
-    	{
-    		settingsGetPointer()->design = 3;
-    	}
         set_globalState(StD);
     }
     else
@@ -235,6 +232,10 @@ void tHomeDiveMenuControl(uint8_t sendAction)
             		case CVIEW_T3_GasList: if(stateUsed->warnings.betterGas)
             								{
                         						set_globalState(StDMGAS);
+            								}
+            								else
+            								{
+            									set_globalState(StDMENU);
             								}
             			break;
 #ifdef ENABLE_T3_PPO_SIM

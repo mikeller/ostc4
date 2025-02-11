@@ -43,13 +43,20 @@
 #define OLED_POWER_SET					0x23		// VC1OUT = VCI X 0.98 (default) = 0x00
 #define OLED_POWER_SET2					0x24		// VREG2OUT = 5,4V, VREG1OUT = 4,2V =0x77
 #define OLED_DISPLAY_CONDITION_SET_26h	0x26		// 0x00A0
-#define	OLED_STB_BY_OFF					0x1D		// 00A0 + 300ms wait
-#define	OLED_DDISP_ON					0x14		// 0003
+#define	OLED_STB_BY_OFF_1Dh				0x1D		// 00A0 + 300ms wait
+#define	OLED_DDISP_ON_14h				0x14		// 0003
 
 static void Display_Error_Handler(void);
 static void display_power_on__2_of_2__post_RGB_display0(void);
 static void display_power_on__2_of_2__post_RGB_display1(void);
+void display_1_brightness_max(void);
+void display_1_brightness_high(void);
+void display_1_brightness_std(void);
+void display_1_brightness_eco(void);
+void display_1_brightness_cave(void);
+
 static uint8_t receive_screen();
+uint8_t brightness_screen1;
 
 void display_power_on__1_of_2__pre_RGB(void)
 {
@@ -61,13 +68,22 @@ void display_power_on__1_of_2__pre_RGB(void)
 	HAL_Delay(10);
 	HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_SET);
 	HAL_Delay(25);
+
 	// check for new screen
-	hardwareDisplay=0;		// default is old screen
 	aTxBuffer[0] = 0x71;	// Read internal register
 	if (receive_screen((uint8_t*)aTxBuffer) == 0x27)		// chip Index (=0x27 for new screen)
-		{
-		hardwareDisplay=1;
-		}
+	{
+		SetDisplayVersion(DISPLAY_VERSION_NEW);
+	}
+	else
+	{	// re-reset the screen to be sure the 0x71 command did nothing
+		HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_RESET);
+		HAL_Delay(10);
+		HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_SET);
+		HAL_Delay(25);
+
+		SetDisplayVersion(DISPLAY_VERSION_LCD);
+	}
 
 	/* RGB signals should be now for 2 frames or more (datasheet) */
 }
@@ -150,9 +166,38 @@ static uint16_t convert8to9to8(uint8_t *pInput, uint8_t *pOutput,uint16_t inputl
 	return outputlength;
 }
 
+void display_power_off(void)
+{
+	if (isNewDisplay())
+		{
+		uint8_t aTxBuffer[3];
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = OLED_DDISP_ON_14h;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x00;
+		send((uint8_t*)aTxBuffer, 2);
+		HAL_Delay(25);
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = OLED_STB_BY_OFF_1Dh;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0xA1;
+		send((uint8_t*)aTxBuffer, 2);
+		HAL_Delay(200);
+		HAL_GPIO_WritePin(DISPLAY_RESETB_GPIO_PORT,DISPLAY_RESETB_PIN,GPIO_PIN_RESET);
+		}
+	else
+	{
+		// display 0
+	}
+}
+
+
 void display_power_on__2_of_2__post_RGB(void)
 {
-	if (hardwareDisplay == 1)
+	if (isNewDisplay())
 		{
 		display_power_on__2_of_2__post_RGB_display1();
 		}
@@ -320,13 +365,14 @@ void display_power_on__2_of_2__post_RGB_display1(void)
 	aTxBuffer[1] = 0x08;//8
 	send((uint8_t*)aTxBuffer, 2);
 
-	//debug read
+	/*//debug read
 	aTxBuffer[0] = 0x70;
 	aTxBuffer[1] = OLED_SCTE_SET_31h;
 	send((uint8_t*)aTxBuffer, 2);
 	aTxBuffer[0] = 0x73;	// Read internal register
 	aTxBuffer[1] = 0x00;	// Dummy write - reads out 0x08 (The just-set OLED_SCTE_SET value)
 	send((uint8_t*)aTxBuffer, 2);
+	*/
 
 	aTxBuffer[0] = 0x70;
 	aTxBuffer[1] = OLED_WCWE_SET_32h;
@@ -437,7 +483,272 @@ void display_power_on__2_of_2__post_RGB_display1(void)
 	aTxBuffer[1] = 0x44;//44
 	send((uint8_t*)aTxBuffer, 2);
 
-	// GAMMA L=250
+
+	display_1_brightness_std();			// boot brightness
+
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_BOOSTING_FREQ;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x22;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_AMP_SET_18h;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x22;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_GAMMA_AMP_19h;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x02;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_POWER_CONTROL2_1Ah;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	/*
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_POWER_CONTROL2_1Bh;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x4B;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_POWER_CONTROL2_1Ch;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x05;
+	send((uint8_t*)aTxBuffer, 2);
+	*/
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_INTERNAL_LOGIC_VOLTAGE;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0xA2;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_POWER_SET;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_POWER_SET2;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x77;
+	send((uint8_t*)aTxBuffer, 2);
+
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_DISPLAY_CONDITION_SET_26h;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0xA0;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_STB_BY_OFF_1Dh;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0xA0;
+	send((uint8_t*)aTxBuffer, 2);
+
+	HAL_Delay(250);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = OLED_DDISP_ON_14h;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x03;
+	send((uint8_t*)aTxBuffer, 2);
+}
+
+void display_1_brightness_max(void)
+{
+	uint8_t aTxBuffer[3];
+
+	if (brightness_screen1 == 4)
+	{
+		// do nothing
+	}
+	else
+	{
+		// GAMMA L=250
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x40;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x00;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x41;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x3F;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x42;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x2A;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x43;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x27;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x44;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x27;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x45;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x1F;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x46;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x44;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x50;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x00;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x51;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x00;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x52;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x17;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x53;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x24;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x54;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x26;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x55;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x1F;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x56;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x43;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x60;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x00;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x61;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x3F;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x62;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x2A;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x63;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x25;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x64;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x24;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x65;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x1B;
+		send((uint8_t*)aTxBuffer, 2);
+
+		aTxBuffer[0] = 0x70;
+		aTxBuffer[1] = 0x66;
+		send((uint8_t*)aTxBuffer, 2);
+		aTxBuffer[0] = 0x72;
+		aTxBuffer[1] = 0x5C;
+		send((uint8_t*)aTxBuffer, 2);
+
+		brightness_screen1=4;
+	}
+}
+
+void display_1_brightness_high(void)
+{
+	uint8_t aTxBuffer[3];
+	if (brightness_screen1 == 3)
+	{
+		// do nothing
+	}
+	else
+	{
+	// GAMMA L=200
 	aTxBuffer[0] = 0x70;
 	aTxBuffer[1] = 0x40;
 	send((uint8_t*)aTxBuffer, 2);
@@ -585,7 +896,21 @@ void display_power_on__2_of_2__post_RGB_display1(void)
 	aTxBuffer[1] = 0x5C;
 	send((uint8_t*)aTxBuffer, 2);
 
-	/*
+	brightness_screen1=3;
+	}
+}
+
+
+void display_1_brightness_std(void)
+{
+	uint8_t aTxBuffer[3];
+
+	if (brightness_screen1 == 2)
+	{
+		// do nothing
+	}
+	else
+	{
 	// GAMMA L=150
 	aTxBuffer[0] = 0x70;
 	aTxBuffer[1] = 0x40;
@@ -733,97 +1058,333 @@ void display_power_on__2_of_2__post_RGB_display1(void)
 	aTxBuffer[0] = 0x72;
 	aTxBuffer[1] = 0x4A;
 	send((uint8_t*)aTxBuffer, 2);
-	*/
 
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_BOOSTING_FREQ;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x22;
-	send((uint8_t*)aTxBuffer, 2);
+	brightness_screen1=2;
+	}
+}
 
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_AMP_SET_18h;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x22;
-	send((uint8_t*)aTxBuffer, 2);
+void display_1_brightness_eco(void)
+{
+	uint8_t aTxBuffer[3];
 
+	if (brightness_screen1 == 1)
+	{
+		// do nothing
+	}
+	else
+	{
+	// GAMMA L=100
 	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_GAMMA_AMP_19h;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x02;
-	send((uint8_t*)aTxBuffer, 2);
-
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_POWER_CONTROL2_1Ah;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x00;
-	send((uint8_t*)aTxBuffer, 2);
-
-	/*
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_POWER_CONTROL2_1Bh;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x4B;
-	send((uint8_t*)aTxBuffer, 2);
-
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_POWER_CONTROL2_1Ch;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x05;
-	send((uint8_t*)aTxBuffer, 2);
-	*/
-
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_INTERNAL_LOGIC_VOLTAGE;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0xA2;
-	send((uint8_t*)aTxBuffer, 2);
-
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_POWER_SET;
+	aTxBuffer[1] = 0x40;
 	send((uint8_t*)aTxBuffer, 2);
 	aTxBuffer[0] = 0x72;
 	aTxBuffer[1] = 0x00;
 	send((uint8_t*)aTxBuffer, 2);
 
 	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_POWER_SET2;
+	aTxBuffer[1] = 0x41;
 	send((uint8_t*)aTxBuffer, 2);
 	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x77;
-	send((uint8_t*)aTxBuffer, 2);
-
-
-	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_DISPLAY_CONDITION_SET_26h;
-	send((uint8_t*)aTxBuffer, 2);
-	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0xA0;
+	aTxBuffer[1] = 0x3F;
 	send((uint8_t*)aTxBuffer, 2);
 
 	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_STB_BY_OFF;
+	aTxBuffer[1] = 0x42;
 	send((uint8_t*)aTxBuffer, 2);
 	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0xA0;
+	aTxBuffer[1] = 0x30;
 	send((uint8_t*)aTxBuffer, 2);
-
-	HAL_Delay(250);
 
 	aTxBuffer[0] = 0x70;
-	aTxBuffer[1] = OLED_DDISP_ON;
+	aTxBuffer[1] = 0x43;
 	send((uint8_t*)aTxBuffer, 2);
 	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x03;
+	aTxBuffer[1] = 0x2A;
 	send((uint8_t*)aTxBuffer, 2);
 
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x44;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2B;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x45;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x24;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x46;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2F;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x50;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x51;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x52;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x53;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x25;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x54;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x29;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x55;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x24;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x56;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2E;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x60;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x61;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x3F;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x62;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2F;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x63;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x29;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x64;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x29;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x65;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x21;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x66;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x3F;
+	send((uint8_t*)aTxBuffer, 2);
+
+	brightness_screen1=1;
+	}
+}
+
+void display_1_brightness_cave(void)
+{
+	uint8_t aTxBuffer[3];
+
+	if (brightness_screen1 == 0)
+	{
+		// do nothing
+	}
+	else
+	{
+	// GAMMA L=50
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x40;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x41;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x3F;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x42;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x3C;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x43;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2C;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x44;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2D;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x45;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x27;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x46;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x24;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x50;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x51;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x52;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x53;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x22;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x54;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2A;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x55;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x27;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x56;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x23;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x60;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x00;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x61;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x3F;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x62;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x3B;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x63;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2C;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x64;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x2B;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x65;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x24;
+	send((uint8_t*)aTxBuffer, 2);
+
+	aTxBuffer[0] = 0x70;
+	aTxBuffer[1] = 0x66;
+	send((uint8_t*)aTxBuffer, 2);
+	aTxBuffer[0] = 0x72;
+	aTxBuffer[1] = 0x31;
+	send((uint8_t*)aTxBuffer, 2);
+
+	brightness_screen1=0;
+	}
 }
 
 static void Display_Error_Handler(void)

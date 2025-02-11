@@ -37,6 +37,7 @@
 //#include "tInfoSurface.h"
 #include "tInfoCompass.h"
 #include "tInfoSensor.h"
+#include "tInfoPreDive.h"
 #include "tMenu.h"
 #include "tMenuEdit.h"
 
@@ -222,6 +223,11 @@ void tInfo_refresh(void)
     							infoColor = CLUT_MenuPageHardware;
     							refreshInfo_Sensor(tIscreen);
     				break;
+    		case StIPREDIVE: 	tIscreen.FBStartAdress = getFrame(14);
+    							infoColor = CLUT_MenuPageGasCC;
+    							refreshInfo_PreDive(tIscreen);
+    				break;
+
     		default:
     				break;
     	}
@@ -306,13 +312,25 @@ void tInfo_write_content_simple(uint16_t XleftGimpStyle, uint16_t XrightGimpStyl
     hgfx.WindowNumberOfTextLines = 1;
     hgfx.WindowLineSpacing = 0;
     hgfx.WindowTab = 400;
-    hgfx.WindowX0 = XleftGimpStyle;
-    hgfx.WindowX1 = XrightGimpStyle;
-    hgfx.WindowY1 = 479 - YtopGimpStyle;
-    if(hgfx.WindowY1 < Font->height)
-        hgfx.WindowY0 = 0;
+
+    if(!settingsGetPointer()->FlipDisplay)
+    {
+        hgfx.WindowX0 = XleftGimpStyle;
+        hgfx.WindowX1 = XrightGimpStyle;
+
+    	hgfx.WindowY1 = 479 - YtopGimpStyle;
+    	if(hgfx.WindowY1 < Font->height)
+    	        hgfx.WindowY0 = 0;
+    	    else
+    	        hgfx.WindowY0 = hgfx.WindowY1 - Font->height;
+    }
     else
-        hgfx.WindowY0 = hgfx.WindowY1 - Font->height;
+    {
+		hgfx.WindowX0 = 800 - XrightGimpStyle;
+		hgfx.WindowX1 = 800 - XleftGimpStyle;
+    	hgfx.WindowY0 = YtopGimpStyle;
+    	hgfx.WindowY1 = YtopGimpStyle + Font->height;
+    }
 
     GFX_write_string_color(Font, &hgfx, text, 0, color);
 }
@@ -806,5 +824,35 @@ void tInfo_write_buttonTextline(GFX_DrawCfgScreen *screenPtr, uint8_t left2ByteC
         localtext[2] = right2ByteCode;
         localtext[3] = 0;
         write_content_simple(screenPtr, 0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
+    }
+}
+void tInfo_write_buttonTextline_simple(uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode)
+{
+    char localtext[32];
+
+    if(left2ByteCode)
+    {
+        localtext[0] = TXT_2BYTE;
+        localtext[1] = left2ByteCode;
+        localtext[2] = 0;
+        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
+    }
+
+    if(middle2ByteCode)
+    {
+        localtext[0] = '\001';
+        localtext[1] = TXT_2BYTE;
+        localtext[2] = middle2ByteCode;
+        localtext[3] = 0;
+        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
+    }
+
+    if(right2ByteCode)
+    {
+        localtext[0] = '\002';
+        localtext[1] = TXT_2BYTE;
+        localtext[2] = right2ByteCode;
+        localtext[3] = 0;
+        tInfo_write_content_simple(0, 800, 480-24, &FontT24,localtext,CLUT_ButtonSurfaceScreen);
     }
 }

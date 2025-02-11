@@ -121,6 +121,7 @@ extern const tText text_array2[];
 		TXT_Apnoe,
 		TXT_Gauge,
 		TXT_PSClosedCircuit,
+		TXT_PreDive,
 		TXT_Sensor,
 		TXT_FixedSP,
 		TXT_Decoparameters,
@@ -212,6 +213,7 @@ extern const tText text_array2[];
 		TXT2BYTE_CompassCalib,
 		TXT2BYTE_CompassInertia,
 		TXT2BYTE_CompassDeclination,
+		TXT2BYTE_Autofocus,
 		TXT2BYTE_UseSensor,
 		TXT2BYTE_AutomaticSP,
 		/* */
@@ -319,6 +321,7 @@ extern const tText text_array2[];
 		TXT2BYTE_Sensor,
 		TXT2BYTE_Maintenance,
 		TXT2BYTE_SetBatteryCharge,
+		TXT2BYTE_AdjustAmbPressure,
 		TXT2BYTE_SetFactoryDefaults,
 		TXT2BYTE_ResetBluetooth,
 		TXT2BYTE_SetSampleIndex,
@@ -343,6 +346,7 @@ extern const tText text_array2[];
 		TXT2BYTE_Navigation,
 		TXT2BYTE_DepthData,
 		TXT2BYTE_DecoTTS,
+		TXT2BYTE_SlowExit,
 
 		TXT2BYTE_Minimum,
 		TXT2BYTE_Normal,
@@ -370,11 +374,27 @@ extern const tText text_array2[];
         TXT2BYTE_Clear,
         TXT2BYTE_Reset,
 
+		TXT2BYTE_CounterLung,
+		TXT2BYTE_Pressure,
+
         TXT2BYTE_Timer,
         TXT2BYTE_Starting,
         TXT2BYTE_Finished,
 
+		TXT2BYTE_Position,
+		TXT2BYTE_VpmTable,
         TXT2BYTE_Page,
+
+        TXT2BYTE_Current,
+        TXT2BYTE_Log,
+        TXT2BYTE_Reverse,
+
+		TXT2BYTE_DDMMYY,
+		TXT2BYTE_MMDDYY,
+		TXT2BYTE_YYMMDD,
+		TXT2BYTE_TIMEZONE,
+
+		TXT2BYTE_BUZZER,
 
 		TXT2BYTE_END,
 };

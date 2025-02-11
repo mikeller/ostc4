@@ -242,6 +242,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     GPIO_InitStruct.Pin = GPIO_PIN_10;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_NVIC_SetPriority(USART1_IRQn, 1, 3);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
   }
 }
 

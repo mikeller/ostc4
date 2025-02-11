@@ -43,7 +43,7 @@ static SSettingsStatus SettingsStatus;  /* Structure containing number of correc
 SSettings Settings;
 
 const uint8_t RTErequiredHigh = 3;
-const uint8_t RTErequiredLow = 2;
+const uint8_t RTErequiredLow = 4;
 
 const uint8_t FONTrequiredHigh = 1;
 const uint8_t FONTrequiredLow =	0;
@@ -62,15 +62,15 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
 {
     .versionFirst   = 1,
     .versionSecond 	= 6,
-    .versionThird   = 5,
+    .versionThird   = 9,
     .versionBeta    = 0,
 
     /* 4 bytes with trailing 0 */
     .signature = "mh",
 
-    .release_year = 23,
-    .release_month = 8,
-    .release_day = 26,
+    .release_year = 25,
+    .release_month = 1,
+    .release_day = 18,
     .release_sub = 0,
 
     /* max 48 with trailing 0 */
@@ -89,7 +89,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF0028,
+    .header = 0xFFFF002C,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -339,6 +339,11 @@ const SSettings SettingsStandard = {
     .compassDeclinationDeg = 0,
     .delaySetpointLow = false,
     .timerDurationS = 180,
+	.cvAutofocus = 0,
+	.slowExitTime = 0,
+	.timeZone.hours = 0,
+	.timeZone.minutes = 0,
+	.warningBuzzer = 0
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -581,7 +586,33 @@ void set_new_settings_missing_in_ext_flash(void)
     	pSettings->cv_config_BigScreen = pSettings->cv_config_BigScreen >> (LEGACY_T3_START_ID_PRE_TIMER - 3);
     	pSettings->cv_config_BigScreen &= ~0x00000007;		/* just to be sure: clear lower three bits */
     	pSettings->cv_config_BigScreen |= tmp;
-
+    	// no break;
+    case 0xFFFF0028:
+#ifdef ENABLE_DECOCALC_OPTION
+    	/* In previous version deco gases were automatically used for deco calculation */
+        for(tmp=1; tmp<=2*NUM_GASES; tmp++) /* This is now handled by an additional parameter. Set it to true to maintain same behavior as before */
+        {
+            if(Settings.gas[tmp].note.ub.deco)
+            {
+            	Settings.gas[tmp].note.ub.decocalc = 1;
+            }
+            else
+            {
+            	Settings.gas[tmp].note.ub.decocalc = 0;
+            }
+        }
+#endif
+    	// no break;
+    case 0xFFFF0029:
+    	Settings.cvAutofocus = 0;
+    	// no break;
+    case 0xFFFF002A:
+    	Settings.slowExitTime = 0;
+    	// no break;
+    case 0xFFFF002B:
+    	Settings.timeZone.hours = 0;
+    	Settings.timeZone.minutes = 0;
+    	Settings.warningBuzzer = 0;
     	// no break;
     default:
         pSettings->header = pStandard->header;
@@ -1284,6 +1315,23 @@ uint8_t check_and_correct_settings(void)
         setFirstCorrection(parameterId);
     }
     parameterId++;
+    if(Settings.slowExitTime > 9)
+    {
+        Settings.divetimeToCreateLogbook = 0;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++;
+
+    if(Settings.warningBuzzer > 1)
+    {
+    	Settings.warningBuzzer = 0;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++;
+
+
 /*	uint8_t serialHigh;
  */
 
@@ -1821,6 +1869,21 @@ uint8_t check_and_correct_settings(void)
         setFirstCorrection(parameterId);
     }
     parameterId++;
+    if(Settings.cvAutofocus > 1)
+    {
+    	 corrections++;
+    	 Settings.cvAutofocus = 0;
+    }
+    parameterId++;
+    if((Settings.timeZone.hours > 14)
+    		|| (Settings.timeZone.hours < -12)
+			|| (Settings.timeZone.minutes > 45))
+    {
+    	Settings.timeZone.hours = 0;
+    	Settings.timeZone.minutes = 0;
+    	 corrections++;
+    }
+	parameterId++;
     if(corrections)
     {
     	settingsWarning = 1;
@@ -1836,7 +1899,7 @@ uint8_t check_and_correct_settings(void)
     return (uint8_t)corrections;
 }
 
-
+#ifndef BOOTLOADER_STANDALONE
 /* always at 0x8080000, do not move -> bootloader access */
 const SFirmwareData* firmwareDataGetPointer(void)
 {
@@ -1850,7 +1913,7 @@ const SHardwareData* hardwareDataGetPointer(void)
     return (SHardwareData *)HARDWAREDATA_ADDRESS;
 }
 #endif
-
+#endif
 const SSettings* settingsGetPointerStandard(void)
 {
     return &SettingsStandard;
@@ -2989,7 +3052,7 @@ void setActualRTEversion(uint8_t high, uint8_t low)
     RTEactualLow = low;
 }
 
-
+#ifndef BOOTLOADER_STANDALONE
 void getActualRTEandFONTversion(uint8_t *RTEhigh, uint8_t *RTElow, uint8_t *FONThigh, uint8_t *FONTlow)
 {
     if(RTEhigh && RTElow)
@@ -3009,7 +3072,7 @@ uint8_t getLicence(void)
 {
     return hardwareDataGetPointer()->primaryLicence;
 }
-
+#endif
 
 void firmwareGetDate(RTC_DateTypeDef *SdateOutput)
 {

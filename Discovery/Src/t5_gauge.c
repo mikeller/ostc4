@@ -63,8 +63,8 @@ uint8_t t5_selection_customview = 0;
 
 const uint8_t t5_customviewsStandard[] =
 {
-    CVIEW_sensors,
-    CVIEW_Compass,
+	CVIEW_T3_sensors,
+    CVIEW_T3_Compass,
     CVIEW_T3_MaxDepth,
     CVIEW_T3_StopWatch,
     CVIEW_T3_Temperature,

@@ -72,6 +72,8 @@
 #include "tCCR.h"
 #include "crcmodel.h"
 #include "configuration.h"
+#include "tHome.h"
+#include "t3.h"
 
 static SDiveState stateReal = { 0 };
 SDiveState stateSim = { 0 };
@@ -345,6 +347,7 @@ void createDiveSettings(void)
 	stateReal.diveSettings.input_next_stop_increment_depth_bar = ((float)pSettings->stop_increment_depth_meter) / 10.0f;
 	stateReal.diveSettings.last_stop_depth_bar = ((float)pSettings->last_stop_depth_meter) / 10.0f;
 	stateReal.diveSettings.vpm_conservatism = pSettings->VPM_conservatism.ub.standard;
+	stateReal.diveSettings.vpm_tableMode = pSettings->VPM_conservatism.ub.alternative;
 	stateReal.diveSettings.deco_type.uw = pSettings->deco_type.uw;
 	stateReal.diveSettings.fallbackOption = pSettings->fallbackToFixedSetpoint;
 	stateReal.diveSettings.ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;
@@ -374,6 +377,20 @@ void createDiveSettings(void)
 			 stateReal.diveSettings.input_second_to_last_stop_depth_bar = stateReal.diveSettings.input_next_stop_increment_depth_bar * i;
 			 break;
 		}
+	}
+	/* generate Bitfield of active T3 views */
+	stateReal.diveSettings.activeAFViews = 0;
+	if(t3_customview_disabled(CVIEW_T3_Navigation) == 0)
+	{
+		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_Navigation);
+	}
+	if(t3_customview_disabled(CVIEW_T3_GasList) == 0)
+	{
+		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_GasList);
+	}
+	if(t3_customview_disabled(CVIEW_T3_DecoTTS) == 0)
+	{
+		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_DecoTTS);
 	}
 }
 
@@ -875,13 +892,38 @@ bool isCompassCalibrated(void)
     return stateUsed->lifeData.compass_heading != -1;
 }
 
+static void internalLogCompassHeading(uint16_t heading, bool applyHeading, bool clearHeading)
+{
+    uint16_t compassHeading = 0;
+    if (clearHeading) {
+        compassHeading |= 0x8000;
+    } else {
+        compassHeading = heading & 0x1FF;
+    }
+    if (applyHeading) {
+        compassHeading |= 0x4000;
+    }
+
+    stateUsedWrite->events.compassHeadingUpdate = 1;
+    stateUsedWrite->events.info_compassHeadingUpdate = compassHeading;
+}
+
+void logCompassHeading(uint16_t heading) {
+    internalLogCompassHeading(heading, false, false);
+}
+
+void clearCompassHeading(void) {
+    uint16_t clearHeading = 0;
+    stateUsedWrite->diveSettings.compassHeading = clearHeading;
+
+    internalLogCompassHeading(clearHeading, true, true);
+}
 
 void setCompassHeading(uint16_t heading)
 {
+    stateUsedWrite->diveSettings.compassHeading = ((heading - 360) % 360) + 360;
 
-    // if heading == 0 set compassHeading to 360, because compassHeading == 0 means 'off'
-
-    stateUsedWrite->diveSettings.compassHeading =  ((heading - 360) % 360) + 360;
+    internalLogCompassHeading(heading, true, false);
 }
 
 
@@ -901,4 +943,183 @@ const SDecoinfo *getDecoInfo(void)
 void disableTimer(void)
 {
     stateUsedWrite->timerState = TIMER_STATE_OFF;
+}
+
+#define SPEED_SLOW		(5.1f)
+#define SPEED_MEDIUM	(10.1f)
+#define SPEED_HIGH		(15.1f)
+#define SPEED_HYSTERESE (1.0f)
+
+uint8_t drawingColor_from_ascentspeed(float speed)
+{
+	static uint8_t lastColor = 0;
+
+	uint8_t color = CLUT_Font020;
+
+    if((speed >= SPEED_HIGH) || ((lastColor == CLUT_WarningRed) && (speed >= SPEED_HIGH - SPEED_HYSTERESE)))
+    {
+    	color = CLUT_WarningRed;
+    }
+    else if((speed >= SPEED_MEDIUM) || ((lastColor == CLUT_WarningYellow) && (speed >= SPEED_MEDIUM - SPEED_HYSTERESE)))
+    {
+    	color = CLUT_WarningYellow;
+    }
+    else if((speed >= SPEED_SLOW) || ((lastColor == CLUT_NiceGreen) && (speed >= SPEED_SLOW - SPEED_HYSTERESE)))
+    {
+    	color = CLUT_NiceGreen;
+    }
+    lastColor = color;
+    return color;
+}
+
+/* returns the date in the order defined by the settings DDMMYY => X */
+void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year)
+{
+	if(strLen > 10)
+	{
+		switch(settingsGetPointer()->date_format)
+		{
+			default:
+			case DDMMYY: snprintf(pString,strLen,"%02d.%02d.%02d",day,month,year);
+				break;
+			case MMDDYY: snprintf(pString,strLen,"%02d.%02d.%02d",month,day,year);
+				break;
+			case YYMMDD: snprintf(pString,strLen,"%02d.%02d.%02d",year,month,day);
+				break;
+		}
+	}
+}
+/* returns the format in the order defined by the settings DDMMYY => X */
+void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen)
+{
+	if(strLen > 10)
+	{
+		switch(settingsGetPointer()->date_format)
+		{
+			default:
+			case DDMMYY: snprintf(pString,strLen,"%c%c",TXT_2BYTE,TXT2BYTE_DDMMYY);
+				break;
+			case MMDDYY:  snprintf(pString,strLen,"%c%c",TXT_2BYTE,TXT2BYTE_MMDDYY);
+				break;
+			case YYMMDD:  snprintf(pString,strLen,"%c%c",TXT_2BYTE,TXT2BYTE_YYMMDD);
+				break;
+		}
+	}
+}
+
+uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8_t* pColor)  /* this function is only called if diver is below last last stop depth */
+{
+	static SSlowExitState slowExitState = SE_END;
+	static uint16_t countDownSec = 0;
+	static float exitDepthMeter = 0.0;
+	static uint32_t exitSecTick = 0;
+	static uint32_t lastSecTick = 0;
+	static uint8_t color = 0;
+	static uint8_t drawingActive = 0;
+
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+	if((stateUsed->lifeData.max_depth_meter < pSettings->last_stop_depth_meter)	/* start of dive => reinit timer */
+			|| (slowExitState == SE_REINIT))
+	{
+		if(slowExitState != SE_INIT)
+		{
+			countDownSec = pSettings->slowExitTime * 60;
+			slowExitState = SE_INIT;
+			exitDepthMeter =  pSettings->last_stop_depth_meter;
+			color = 0;
+			drawingActive = 0;
+		}
+	}
+	else
+	{
+		if(slowExitState != SE_END)
+		{
+			if((slowExitState == SE_INIT) && (stateUsed->lifeData.dive_time_seconds > 900)) /* min 15min divetime */
+			{
+				slowExitState = SE_ACTIVE;
+				exitSecTick = HAL_GetTick();
+				lastSecTick = exitSecTick;
+			}
+			else if(slowExitState == SE_ACTIVE)
+			{
+				if(time_elapsed_ms(lastSecTick, HAL_GetTick()) > 60000) /* restart timer if diver go below exit zone */
+				{
+					slowExitState = SE_REINIT;
+				}
+				else if(time_elapsed_ms(exitSecTick, HAL_GetTick()) > 1000)
+				{
+					exitSecTick = HAL_GetTick();
+					lastSecTick = exitSecTick;
+					/* select depth digit color */
+					if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) < 0.5 )
+					{
+						color = CLUT_NiceGreen;
+					}
+					else if(fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.5)
+					{
+						color = CLUT_WarningYellow;
+					}
+					else if(stateUsed->lifeData.depth_meter - exitDepthMeter < -1.5 )
+					{
+						color = CLUT_WarningRed;
+					}
+					else
+					{
+						color = 0;
+					}
+
+					if((fabsf(stateUsed->lifeData.depth_meter - exitDepthMeter) <= 1.6 ) /* only decrease counter if diver is close to target depth */
+							|| (color == CLUT_WarningRed))								 /* or if diver is far ahead */
+					{
+						countDownSec--;
+						if(countDownSec == 0)
+						{
+							slowExitState = SE_END;
+							color = 0;
+							exitDepthMeter = 0;
+						}
+						else
+						{
+							exitDepthMeter -=  (pSettings->last_stop_depth_meter / (float)(pSettings->slowExitTime * 60));
+						}
+					}
+					drawingActive = 1;
+				}
+			}
+		}
+	}
+	*pCountDownSec = countDownSec;
+	*pExitDepthMeter = exitDepthMeter;
+	*pColor = color;
+	return drawingActive;
+}
+
+void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHours, uint8_t* pLocalMinutes)
+{
+    int8_t localHours = 0;
+    int8_t localMinutes = 0;
+    SSettings* pSettings = settingsGetPointer();
+
+	localHours = utcHours + pSettings->timeZone.hours;
+	if(localHours < 0)
+	{
+		localHours += 24;
+	}
+	if(localHours > 24)
+	{
+		localHours -= 24;
+	}
+	localMinutes = utcMinutes + pSettings->timeZone.minutes;
+	if(localMinutes < 0)
+	{
+		localMinutes += 60;
+	}
+	if(localMinutes > 60)
+	{
+		localMinutes -= 60;
+	}
+	*pLocalHours = localHours;
+	*pLocalMinutes = localMinutes;
 }

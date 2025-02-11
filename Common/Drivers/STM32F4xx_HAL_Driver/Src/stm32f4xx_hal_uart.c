@@ -182,8 +182,6 @@ static void UART_EndTxTransfer(UART_HandleTypeDef *huart);
 static void UART_EndRxTransfer(UART_HandleTypeDef *huart);
 static void UART_DMATransmitCplt(DMA_HandleTypeDef *hdma);
 static void UART_DMAReceiveCplt(DMA_HandleTypeDef *hdma);
-static void UART_DMATxHalfCplt(DMA_HandleTypeDef *hdma);
-static void UART_DMARxHalfCplt(DMA_HandleTypeDef *hdma);
 static void UART_DMAError(DMA_HandleTypeDef *hdma); 
 static void UART_DMAAbortOnError(DMA_HandleTypeDef *hdma);
 static void UART_DMATxAbortCallback(DMA_HandleTypeDef *hdma);
@@ -896,7 +894,7 @@ HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef *huart, uint8_t *pDat
     huart->hdmatx->XferCpltCallback = UART_DMATransmitCplt;
 
     /* Set the UART DMA Half transfer complete callback */
-    huart->hdmatx->XferHalfCpltCallback = UART_DMATxHalfCplt;
+    huart->hdmatx->XferHalfCpltCallback = NULL;
 
     /* Set the DMA error callback */
     huart->hdmatx->XferErrorCallback = UART_DMAError;
@@ -960,7 +958,7 @@ HAL_StatusTypeDef HAL_UART_Receive_DMA(UART_HandleTypeDef *huart, uint8_t *pData
     huart->hdmarx->XferCpltCallback = UART_DMAReceiveCplt;
     
     /* Set the UART DMA Half transfer complete callback */
-    huart->hdmarx->XferHalfCpltCallback = UART_DMARxHalfCplt;
+    huart->hdmarx->XferHalfCpltCallback = NULL;
     
     /* Set the DMA error callback */
     huart->hdmarx->XferErrorCallback = UART_DMAError;
@@ -2012,6 +2010,7 @@ static void UART_DMATransmitCplt(DMA_HandleTypeDef *hdma)
   }
 }
 
+#ifdef HALF_COMPLETE_NEEDED
 /**
   * @brief DMA UART transmit process half complete callback 
   * @param  hdma pointer to a DMA_HandleTypeDef structure that contains
@@ -2024,7 +2023,7 @@ static void UART_DMATxHalfCplt(DMA_HandleTypeDef *hdma)
 
   HAL_UART_TxHalfCpltCallback(huart);
 }
-
+#endif
 /**
   * @brief  DMA UART receive process complete callback. 
   * @param  hdma DMA handle
@@ -2058,12 +2057,14 @@ static void UART_DMAReceiveCplt(DMA_HandleTypeDef *hdma)
   *                the configuration information for the specified DMA module.
   * @retval None
   */
+#if 0
 static void UART_DMARxHalfCplt(DMA_HandleTypeDef *hdma)
 {
   UART_HandleTypeDef* huart = (UART_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
 
   HAL_UART_RxHalfCpltCallback(huart); 
 }
+#endif
 
 /**
   * @brief  DMA UART communication error callback.

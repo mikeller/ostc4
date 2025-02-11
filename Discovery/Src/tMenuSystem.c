@@ -30,6 +30,7 @@
 #include "tMenu.h"
 #include "tMenuSystem.h"
 #include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
+#include "t7.h"
 
 static uint8_t customviewsSubpage = 0;
 
@@ -48,7 +49,6 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
     SSettings *data;
     int i;
     uint8_t textPointer;
-    uint8_t dateFormat;
     uint8_t RTEhigh, RTElow;
     RTC_DateTypeDef Sdate;
     RTC_TimeTypeDef Stime;
@@ -58,6 +58,7 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
     textPointer = 0;
     *tab = 300;
     *subtext = 0;
+    char tmpString[15];
 
     resetLineMask(StMSYS);
 
@@ -127,49 +128,11 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         translateDate(pStateReal->lifeData.dateBinaryFormat, &Sdate);
         translateTime(pStateReal->lifeData.timeBinaryFormat, &Stime);
 
-        dateFormat = data->date_format;
-
-        textPointer += snprintf(&text[textPointer], 40,
-            "Date"
-            "\016\016"
-            " "
-        );
-
-        if(dateFormat == DDMMYY)
-        {
-            textPointer += snprintf(&text[textPointer], 40,
-                "DDMMYY"
-                "\017"
-                "\t"
-                "%02d-%02d-%02d"
-                "  "
-                , Sdate.Date, Sdate.Month, 2000 + Sdate.Year
-            );
-        }
-        else
-        if(dateFormat == MMDDYY)
-        {
-            textPointer += snprintf(&text[textPointer], 40,
-                "MMDDYY"
-                "\017"
-                "\t"
-                "%02d-%02d-%02d"
-                "  "
-                ,Sdate.Month, Sdate.Date, 2000 + Sdate.Year
-            );
-        }
-        else
-        if(dateFormat == YYMMDD)
-        {
-            textPointer += snprintf(&text[textPointer], 40,
-                "YYMMDD"
-                "\017"
-                "\t"
-                "%02d-%02d-%02d"
-                "  "
-                , 2000 + Sdate.Year, Sdate.Month, Sdate.Date
-            );
-        }
+        text[textPointer++] = TXT_Date;
+        getStringOfFormat_DDMMYY(tmpString,15);
+        textPointer += snprintf(&text[textPointer], 40,"\016\016 %s ",tmpString);
+       convertStringOfDate_DDMMYY(tmpString,15,Sdate.Date, Sdate.Month, Sdate.Year);
+        textPointer += snprintf(&text[textPointer], 40,"\017\t%s   ",tmpString);
 
         textPointer += snprintf(&text[textPointer], 60,
             "%02d:%02d:%02d"
@@ -183,9 +146,21 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         textPointer += 2;
     }
 
-    if (line == 0 || line == 2) {
-        textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-    } else {
+    if (line == 0 || line == 2)
+    {
+    	if(t7_customview_disabled(CVIEW_Timer))
+    	{
+    		text[textPointer++] = '\031';		/* change text color */
+    	    textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
+    	    disableLine(StMSYS_Timer);
+            text[textPointer++] = '\020';		/* restore text color */
+    	}
+    	else
+    	{
+    		textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
+    	}
+    } else
+    {
         textPointer += snprintf(&text[textPointer], 3, "\n\r");
     }
 
@@ -303,6 +278,19 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
 
     return StMSYS;
 }
+void tMSystem_checkLineStatus(void)
+{
+	uint8_t localLineMask = 0;
+	uint8_t lineMask = getLineMask(StMSYS);
 
+	if(t7_customview_disabled(CVIEW_Timer))
+    {
+    	localLineMask |= 1 << 2;
+    }
+	if(lineMask != localLineMask)
+	{
+		updateMenu();
+	}
+}
 
 /* Private functions ---------------------------------------------------------*/

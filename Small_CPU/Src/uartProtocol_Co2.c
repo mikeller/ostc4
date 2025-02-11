@@ -24,10 +24,9 @@
 #include "uart.h"
 #include "externalInterface.h"
 
-
 #ifdef ENABLE_CO2_SUPPORT
 static uint8_t CO2Connected = 0;						/* Binary indicator if a sensor is connected or not */
-static receiveState_t rxState = RX_Ready;
+static receiveStateCO2_t rxState = CO2RX_Ready;
 
 
 
@@ -84,7 +83,8 @@ void uartCo2_Control(void)
 	{
 		CO2Connected = 0;
 		externalInterface_SetCO2Scale(0.0);
-		UART_StartDMA_Receiption();
+		UART_ReadData(SENSOR_CO2, 1);	/* flush buffer */
+		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_CO2_SETUP;
 	}
 	if(localComState == UART_CO2_SETUP)
@@ -110,8 +110,16 @@ void uartCo2_Control(void)
 			//if(cmdLength == 0)							/* poll data */
 			if(localComState == UART_CO2_IDLE)
 			{
-				uartCo2_SendCmd(CO2CMD_GETDATA, cmdString, &cmdLength);
-				localComState = UART_CO2_OPERATING;
+				if(externalInterface_GetCO2Scale() == 0.0)
+				{
+					uartCo2_SendCmd(CO2CMD_GETSCALE, cmdString, &cmdLength);
+					localComState = UART_CO2_SETUP;
+				}
+				else
+				{
+					uartCo2_SendCmd(CO2CMD_GETDATA, cmdString, &cmdLength);
+					localComState = UART_CO2_OPERATING;
+				}
 			}
 			else											/* resend last command */
 			{
@@ -122,7 +130,7 @@ void uartCo2_Control(void)
 		else
 		{
 			localComState = UART_CO2_OPERATING;					/* sensor in streaming mode if not connected to mux => operating */
-			UART_StartDMA_Receiption();
+			UART_StartDMA_Receiption(&Uart1Ctrl);
 		}
 	}
 	lastComState = localComState;
@@ -137,7 +145,7 @@ void uartCo2_ProcessData(uint8_t data)
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 	uartCO2Status_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
 
-	if(rxState == RX_Ready)		/* identify data content */
+	if(rxState == CO2RX_Ready)		/* identify data content */
 	{
 		switch(data)
 		{
@@ -146,7 +154,7 @@ void uartCo2_ProcessData(uint8_t data)
 			case 'D':
 			case 'Z':
 			case '.':			dataType = data;
-								rxState = RX_Data0;
+								rxState = CO2RX_Data0;
 								dataValue = 0;
 				break;
 			case '?':			localComState = UART_CO2_ERROR;
@@ -157,26 +165,26 @@ void uartCo2_ProcessData(uint8_t data)
 	}
 	else if((data >= '0') && (data <= '9'))
 	{
-		if((rxState >= RX_Data0) && (rxState <= RX_Data4))
+		if((rxState >= CO2RX_Data0) && (rxState <= CO2RX_Data4))
 		{
 			dataValue = dataValue * 10 + (data - '0');
 			rxState++;
-			if(rxState == RX_Data5)
+			if(rxState == CO2RX_Data5)
 			{
-				rxState = RX_DataComplete;
+				rxState = CO2RX_DataComplete;
 			}
 		}
 		else	/* protocol error data has max 5 digits */
 		{
-			if(rxState != RX_DataComplete)	/* commands will not answer with number values */
+			if(rxState != CO2RX_DataComplete)	/* commands will not answer with number values */
 			{
-				rxState = RX_Ready;
+				rxState = CO2RX_Ready;
 			}
 		}
 	}
-	if((data == ' ') || (data == '\n'))	/* Abort data detection */
+	else if((data == ' ') || (data == '\n'))	/* Abort data detection */
 	{
-		if(rxState == RX_DataComplete)
+		if(rxState == CO2RX_DataComplete)
 		{
 			CO2Connected = 1;
 			if(localComState == UART_CO2_SETUP)
@@ -204,13 +212,21 @@ void uartCo2_ProcessData(uint8_t data)
 					break;
 				case '.':			externalInterface_SetCO2Scale(dataValue);
 					break;
-				default:			rxState = RX_Ready;
+				default:			rxState = CO2RX_Ready;
 					break;
 			}
+			rxState = CO2RX_Ready;
 		}
-		if(rxState != RX_Data0)	/* reset state machine because message in wrong format */
+		if(rxState != CO2RX_Data0)	/* reset state machine because message in wrong format */
 		{
-			rxState = RX_Ready;
+			rxState = CO2RX_Ready;
+		}
+	}
+	else
+	{
+		if((rxState >= CO2RX_Data0) && (rxState <= CO2RX_Data4))
+		{
+			rxState = CO2RX_Ready; /* numerical data expected => abort */
 		}
 	}
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);

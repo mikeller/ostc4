@@ -33,6 +33,5 @@
 
 void openEdit_Xtra(uint8_t line);
 void refresh_CompassHeading(void);
-void refresh_CO2Data(void);
 
 #endif /* TMENU_EDIT_XTRA_H */

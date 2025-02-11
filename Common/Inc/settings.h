@@ -120,7 +120,10 @@ uint8_t first:1;
 uint8_t deco:1;
 uint8_t travel:1;
 uint8_t off:1;
-uint8_t spare:3;
+#ifdef ENABLE_DECOCALC_OPTION
+uint8_t decocalc:1;
+#endif
+uint8_t spare:2;
 } gasubit8_t;
 
 typedef union{
@@ -182,6 +185,14 @@ typedef struct
 	uint8_t FirstCorrection;
 	uint8_t Corrections;
 } SSettingsStatus;
+
+
+typedef struct
+{
+	int8_t hours;
+	uint8_t minutes;
+} StimeZone;
+
 
 /* SSettings
 	 * gas[0] and setpoint[0] are the special ones configurable during the dive
@@ -311,6 +322,11 @@ typedef struct
 	uint16_t scrubTimerCur_Obsolete;	/* have been replaced with new scrubber data format */
 	uint8_t scrubTimerMode;
 	uint8_t ext_sensor_map[8];		/* redefined in 0xFFFF0027 */
+	uint8_t cvAutofocus;
+	uint8_t slowExitTime;
+	/* new in 0xFFFF002c */
+	StimeZone timeZone;
+	uint8_t warningBuzzer;
 } SSettings;
 
 typedef struct

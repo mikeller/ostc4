@@ -102,15 +102,14 @@ uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
             sensorStatusColor[0] = '\020';
             sensorStatusColor[1] = '\020';
             sensorStatusColor[2] = '\020';
-            if(stateUsed->diveSettings.ppo2sensors_deactivated)
-            {
-                if(stateUsed->diveSettings.ppo2sensors_deactivated & 1)
+
+            if((stateUsed->diveSettings.ppo2sensors_deactivated & 1) || (data->ext_sensor_map[0] > SENSOR_DIGO2M))
                     sensorStatusColor[0] = '\031';
-                if(stateUsed->diveSettings.ppo2sensors_deactivated & 2)
+            if((stateUsed->diveSettings.ppo2sensors_deactivated & 2) || (data->ext_sensor_map[1] > SENSOR_DIGO2M))
                     sensorStatusColor[1] = '\031';
-                if(stateUsed->diveSettings.ppo2sensors_deactivated & 4)
+            if((stateUsed->diveSettings.ppo2sensors_deactivated & 4) || (data->ext_sensor_map[1] > SENSOR_DIGO2M))
                     sensorStatusColor[2] = '\031';
-            }
+
             textPointer += snprintf(&text[textPointer],20,"%c%01.1f  %c%01.1f  %c%01.1f\020"
                 ,sensorStatusColor[0], stateUsed->lifeData.ppO2Sensor_bar[0]
                 ,sensorStatusColor[1], stateUsed->lifeData.ppO2Sensor_bar[1]

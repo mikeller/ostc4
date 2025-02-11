@@ -41,6 +41,7 @@
 #include "tMenuEditCustom.h"
 #include "motion.h"
 #include "t7.h"
+#include "math.h"
 
 
 /*#define HAVE_DEBUG_VIEW */
@@ -48,10 +49,12 @@ static uint8_t infoPage = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_DateTime(void);
+void openEdit_DateFormat(void);
 void openEdit_Language(void);
 void openEdit_Design(void);
 void openEdit_Information(void);
 void openEdit_Reset(void);
+void openEdit_Maintenance(void);
 //void openEdit_ShowDebugInfo(void);
 //void openEdit_Salinity(void);
 
@@ -59,10 +62,13 @@ void openEdit_Reset(void);
 uint8_t OnAction_Date					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Time					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_12HR				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_Format				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_DDMMYY				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_MMDDYY				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_YYMMDD				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_DST					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_UTC				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_SetGnss			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_English			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_German				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_French				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -78,6 +84,7 @@ uint8_t OnAction_DebugInfo		(uint32_t editId, uint8_t blockNumber, uint8_t digit
 
 uint8_t OnAction_Exit					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Confirm			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_Maintenance			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_RebootRTE				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ResetDeco		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ResetAll			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -87,6 +94,7 @@ uint8_t OnAction_Nothing			(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 uint8_t OnAction_LogbookOffset(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetFactoryDefaults(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetBatteryCharge(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_AdjustSurfacePressure		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #ifdef ENABLE_ANALYSE_SAMPLES
 uint8_t OnAction_RecoverSampleIdx(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #endif
@@ -230,18 +238,24 @@ void openEdit_System(uint8_t line)
 /* Private functions ---------------------------------------------------------*/
 
 
-void openEdit_DateTime(void)
+void refresh_DateTime()
 {
     RTC_DateTypeDef Sdate;
     RTC_TimeTypeDef Stime;
-    uint8_t day,month,year,hour,minute, dateFormat, ddmmyy, mmddyy, yymmdd;
+    uint8_t day,month,year,hour,minute;
     char text[32];
+    char formatStr[20];
     SSettings *pSettings;
     const SFirmwareData *pFirmwareInfo;
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+    uint8_t localHours = 0;
+    uint8_t localMinutes = 0;
+#endif
     pFirmwareInfo = firmwareDataGetPointer();
     const SDiveState * pStateReal = stateRealGetPointer();
 
     pSettings = settingsGetPointer();
+
     translateDate(pStateReal->lifeData.dateBinaryFormat, &Sdate);
     translateTime(pStateReal->lifeData.timeBinaryFormat, &Stime);
     year = Sdate.Year;
@@ -259,19 +273,7 @@ void openEdit_DateTime(void)
     if(day < 1)
         day = 1;
 
-//	daylightsaving = Stime.DayLightSaving;
-    dateFormat = pSettings->date_format;
-    ddmmyy = 0;
-    mmddyy = 0;
-    yymmdd = 0;
-
-    if(dateFormat == DDMMYY)
-        ddmmyy = 1;
-    else
-    if(dateFormat == MMDDYY)
-        mmddyy = 1;
-    else
-        yymmdd = 1;
+    getStringOfFormat_DDMMYY(formatStr, 20);
 
     text[0] = '\001';
     text[1] = TXT_DateAndTime;
@@ -282,26 +284,131 @@ void openEdit_DateTime(void)
     write_label_fix(  20, 340, ME_Y_LINE1, &FontT42, TXT_TimeConfig);
     write_label_fix(  20, 340, ME_Y_LINE2, &FontT42, TXT_Format);
     write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
-    write_label_var( 600, 800, ME_Y_LINE4, &FontT48, "\016\016DDMMYY\017");
-    write_label_fix(  20, 790, ME_Y_LINE5, &FontT42, TXT_Format);
-//	write_label_fix( 350 ,580, 250, &FontT42, TXT_Daylightsaving);
+    write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+    write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
+    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
+    write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+#endif
+
+
+    tMenuEdit_newInput(StMSYS1_Time, hour, minute, 0, 0);
+    tMenuEdit_set_on_off(StMSYS1_12HR, pSettings->amPMTime);
+
+    switch(pSettings->date_format)
+    {
+    	default:
+    	case DDMMYY:  tMenuEdit_newInput(StMSYS1_Date, day, month, year, 0);
+    		break;
+    	case MMDDYY:  tMenuEdit_newInput(StMSYS1_Date, month, day, year, 0);
+    		break;
+    	case YYMMDD:  tMenuEdit_newInput(StMSYS1_Date, year, month, day, 0);
+    		break;
+    }
+    tMenuEdit_newButtonText(StMSYS1_FORMAT, formatStr);
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+    if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
+    {
+        convertUTCToLocal(pStateReal->lifeData.gnssData.DateTime.hour, pStateReal->lifeData.gnssData.DateTime.min, &localHours, &localMinutes);
+        convertStringOfDate_DDMMYY(formatStr, 20, pStateReal->lifeData.gnssData.DateTime.day
+        										, pStateReal->lifeData.gnssData.DateTime.month
+    											, pStateReal->lifeData.gnssData.DateTime.year);
+        snprintf(text, 32, "%02d:%02d - %s", localHours, localMinutes, formatStr);
+        tMenuEdit_newButtonText(StMSYS1_GNSSDT, text);
+    }
+    else
+    {
+    	snprintf(text, 32, "--:--");
+    	write_label_var(  320, 790, ME_Y_LINE5, &FontT42, text);
+    }
+    tMenuEdit_newInput(StMSYS1_ZONE, pSettings->timeZone.hours, pSettings->timeZone.minutes, 0, 0);
+#endif
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+void openEdit_DateTime(void)
+{
+    RTC_DateTypeDef Sdate;
+    RTC_TimeTypeDef Stime;
+    uint8_t day,month,year,hour,minute;
+    char text[32];
+    char formatStr[20];
+    SSettings *pSettings;
+    const SFirmwareData *pFirmwareInfo;
+
+    pFirmwareInfo = firmwareDataGetPointer();
+    const SDiveState * pStateReal = stateRealGetPointer();
+
+    pSettings = settingsGetPointer();
+
+    set_globalState(StMSYS1_DateTime);
+	resetMenuEdit(CLUT_MenuPageSystem);
+
+    translateDate(pStateReal->lifeData.dateBinaryFormat, &Sdate);
+    translateTime(pStateReal->lifeData.timeBinaryFormat, &Stime);
+    year = Sdate.Year;
+    month = Sdate.Month;
+    day = Sdate.Date;
+    hour = Stime.Hours;
+    minute= Stime.Minutes;
+
+    if(year < pFirmwareInfo->release_year)
+        year = pFirmwareInfo->release_year;
+
+    if(month < 1)
+        month = 1;
+
+    if(day < 1)
+        day = 1;
+
+    getStringOfFormat_DDMMYY(formatStr, 20);
+
+    text[0] = '\001';
+    text[1] = TXT_DateAndTime;
+    text[2] = 0;
+
+    write_topline(text);
+
+    write_label_fix(  20, 340, ME_Y_LINE1, &FontT42, TXT_TimeConfig);
+    write_label_fix(  20, 340, ME_Y_LINE2, &FontT42, TXT_Format);
+    write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
+    write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+    write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
+    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
+    write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+#endif
 
     write_field_2digit(StMSYS1_Time,		320, 780, ME_Y_LINE1,  &FontT48, "##:##", (uint32_t)hour, (uint32_t)minute, 0, 0);
-    write_field_on_off(StMSYS1_12HR,			320, 790, ME_Y_LINE2,  &FontT48, "12 HR", pSettings->amPMTime);
-    write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "##-##-20##", (uint32_t)day, (uint32_t)month, (uint32_t)year, 0);
-    write_field_on_off(StMSYS1_DDMMYY,	320, 790, ME_Y_LINE4,  &FontT48, "DDMMYY", ddmmyy);
-    write_field_on_off(StMSYS1_MMDDYY,	320, 790, ME_Y_LINE5,  &FontT48, "MMDDYY", mmddyy);
-    write_field_on_off(StMSYS1_YYMMDD,	320, 790, ME_Y_LINE6,  &FontT48, "YYMMDD", yymmdd);
-//	write_field_on_off(StMSYS1_DST,			350, 580, 310,  &FontT48, "Active", daylightsaving);
+    write_field_on_off(StMSYS1_12HR,		320, 790, ME_Y_LINE2,  &FontT48, "12 HR", pSettings->amPMTime);
+
+    switch(pSettings->date_format)
+    {
+    	default:
+    	case DDMMYY:  write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "##-##-20##", (uint32_t)day, (uint32_t)month, (uint32_t)year, 0);
+    		break;
+    	case MMDDYY:  write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "##-##-20##", (uint32_t)month, (uint32_t)day, (uint32_t)year, 0);
+    		break;
+    	case YYMMDD:  write_field_2digit(StMSYS1_Date,		320, 780, ME_Y_LINE3,  &FontT48, "20##-##-##", (uint32_t)year, (uint32_t)month, (uint32_t)day, 0);
+    		break;
+    }
+
+    write_field_button(StMSYS1_FORMAT, 320, 790, ME_Y_LINE4,  &FontT48, formatStr);
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+	snprintf(text, 32, "--:--");
+	write_field_button(StMSYS1_GNSSDT, 320, 790, ME_Y_LINE5,  &FontT48, text);
+    write_field_sdigit(StMSYS1_ZONE, 320, 780, ME_Y_LINE6,  &FontT48, "UTC: ###:###", pSettings->timeZone.hours, pSettings->timeZone.minutes,0,0);
+#endif
 
     setEvent(StMSYS1_Date, 		(uint32_t)OnAction_Date);
     setEvent(StMSYS1_Time, 		(uint32_t)OnAction_Time);
     setEvent(StMSYS1_12HR,      (uint32_t)OnAction_12HR);
-    setEvent(StMSYS1_DDMMYY,	(uint32_t)OnAction_DDMMYY);
-    setEvent(StMSYS1_MMDDYY,	(uint32_t)OnAction_MMDDYY);
-    setEvent(StMSYS1_YYMMDD,	(uint32_t)OnAction_YYMMDD);
-//	setEvent(StMSYS1_DST,			(uint32_t)OnAction_DST);
-
+    setEvent(StMSYS1_FORMAT,	(uint32_t)OnAction_Format);
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+   	setEvent(StMSYS1_GNSSDT, (uint32_t)OnAction_SetGnss);
+	setEvent(StMSYS1_ZONE,		(uint32_t)OnAction_UTC);
+#endif
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
@@ -315,13 +422,41 @@ uint8_t OnAction_Date(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber,
     const SFirmwareData *pFirmwareInfo;
     pFirmwareInfo = firmwareDataGetPointer();
 
+    uint8_t mapDMY[3];
+    switch(settingsGetPointer()->date_format)
+    {
+    	default:
+    	case DDMMYY: mapDMY[0] = 0;
+    				 mapDMY[1] = 1;
+    				 mapDMY[2] = 2;
+    		break;
+    	case MMDDYY: mapDMY[0] = 1;
+		 	 	 	 mapDMY[1] = 0;
+		 	 	 	 mapDMY[2] = 2;
+    		break;
+    	case YYMMDD: mapDMY[0] = 2;
+ 	 	 	 	 	 mapDMY[1] = 1;
+ 	 	 	 	 	 mapDMY[2] = 0;
+    	break;
+    }
+
     if(action == ACTION_BUTTON_ENTER)
     {
         return digitContent;
     }
     if(action == ACTION_BUTTON_ENTER_FINAL)
     {
-        evaluateNewString(editId, &newDay, &newMonth, &newYear, 0);
+    	switch(settingsGetPointer()->date_format)
+    	    {
+    	    	default:
+    	    	case DDMMYY: evaluateNewString(editId, &newDay, &newMonth, &newYear, 0);
+    	    		break;
+    	    	case MMDDYY: evaluateNewString(editId, &newMonth, &newDay, &newYear, 0);
+    	    		break;
+    	    	case YYMMDD: evaluateNewString(editId, &newYear, &newMonth, &newDay, 0);
+    	    		break;
+    	    }
+
         if(newDay == 0)
             newDay = 1;
         if(newDay > 31)
@@ -346,29 +481,52 @@ uint8_t OnAction_Date(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber,
 
         setDate(sdatestructure);
 
-        tMenuEdit_newInput(editId, newDay, newMonth, newYear, 0);
+        switch(settingsGetPointer()->date_format)
+        {
+           	default:
+           	case DDMMYY: tMenuEdit_newInput(editId, newDay, newMonth, newYear, 0);
+          		break;
+           	case MMDDYY: tMenuEdit_newInput(editId, newMonth, newDay, newYear, 0);
+           		break;
+           	case YYMMDD: tMenuEdit_newInput(editId, newYear, newMonth, newDay, 0);
+           		break;
+        }
+
         return UNSPECIFIC_RETURN;
     }
     if(action == ACTION_BUTTON_NEXT)		/* clip values to a specific range e.g. 12 months */
     {
         digitContentNew = digitContent + 1;
-        if((blockNumber == 0) && (digitContentNew > '0' + 31))
+
+        if((blockNumber == mapDMY[0]) && (digitContentNew > '0' + 31))
+        {
             digitContentNew = '1';
-        if((blockNumber == 1) && (digitContentNew > '0' + 12))
+        }
+        if((blockNumber == mapDMY[1]) && (digitContentNew > '0' + 12))
+        {
             digitContentNew = '1';
-        if((blockNumber == 2) && (digitContentNew > '0' + pFirmwareInfo->release_year + 10))
+        }
+        if((blockNumber == mapDMY[2]) && (digitContentNew > '0' + pFirmwareInfo->release_year + 10))
+        {
             digitContentNew = '0' + pFirmwareInfo->release_year;
+        }
         return digitContentNew;
     }
     if(action == ACTION_BUTTON_BACK)		/* clip values to a specific range e.g. 12 months */
     {
         digitContentNew = digitContent - 1;
-        if((blockNumber == 0) && (digitContentNew < '1'))
+        if((blockNumber == mapDMY[0]) && (digitContentNew < '1'))
+        {
             digitContentNew = '0' + 31;
-        if((blockNumber == 1) && (digitContentNew < '1'))
+        }
+        if((blockNumber ==  mapDMY[1]) && (digitContentNew < '1'))
+        {
             digitContentNew = '0' + 12;
-        if((blockNumber == 2) && (digitContentNew < '0' + pFirmwareInfo->release_year))
+        }
+        if((blockNumber ==  mapDMY[2]) && (digitContentNew < '0' + pFirmwareInfo->release_year))
+        {
             digitContentNew = '0' + pFirmwareInfo->release_year + 10;
+        }
         return digitContentNew;
     }
 /*
@@ -487,6 +645,85 @@ uint8_t OnAction_12HR(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber,
     return UNSPECIFIC_RETURN;
 }
 
+uint8_t OnAction_SetGnss(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    RTC_DateTypeDef sdatestructure;
+    RTC_TimeTypeDef stimestructure;
+    uint8_t localHours = 0;
+    uint8_t localMinutes = 0;
+
+    const SDiveState * pStateReal = stateRealGetPointer();
+
+    if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
+    {
+        convertUTCToLocal(pStateReal->lifeData.gnssData.DateTime.hour, pStateReal->lifeData.gnssData.DateTime.min, &localHours, &localMinutes);
+        stimestructure.Hours = localHours;
+        stimestructure.Minutes = localMinutes;
+        stimestructure.Seconds = 0;
+        setTime(stimestructure);
+
+        sdatestructure.Date = pStateReal->lifeData.gnssData.DateTime.day;
+        sdatestructure.Month = pStateReal->lifeData.gnssData.DateTime.month;
+        sdatestructure.Year = pStateReal->lifeData.gnssData.DateTime.year;
+        setWeekday(&sdatestructure);
+        setDate(sdatestructure);
+    }
+    return UNSPECIFIC_RETURN;
+}
+
+void openEdit_DateFormat(void)
+{
+    char text[32];
+    SSettings *pSettings;
+
+    uint8_t ddmmyy = 0;
+    uint8_t mmddyy= 0;
+    uint8_t yymmdd = 0;
+
+    pSettings = settingsGetPointer();
+
+
+    set_globalState(StMSYS1_FORMAT);
+	resetMenuEdit(CLUT_MenuPageSystem);
+	setBackMenu((uint32_t)openEdit_DateTime,0,4);
+
+    switch(pSettings->date_format)
+    {
+    	default:
+    	case DDMMYY: ddmmyy = 1;
+    		break;
+    	case MMDDYY: mmddyy = 1;
+    		break;
+    	case YYMMDD: yymmdd = 1;
+    	    break;
+    };
+
+    text[0] = '\001';
+    text[1] = TXT_Format;
+    text[2] = 0;
+
+    write_topline(text);
+
+    write_label_fix(  20, 790, ME_Y_LINE2, &FontT42, TXT_Format);
+
+    write_field_on_off(StMSYS1_DDMMYY,  320, 790, ME_Y_LINE1,  &FontT48, "DDMMYY", ddmmyy);
+    write_field_on_off(StMSYS1_MMDDYY,	320, 790, ME_Y_LINE2,  &FontT48, "MMDDYY", mmddyy);
+    write_field_on_off(StMSYS1_YYMMDD,	320, 790, ME_Y_LINE3,  &FontT48, "YYMMDD", yymmdd);
+
+    setEvent(StMSYS1_DDMMYY,	(uint32_t)OnAction_DDMMYY);
+    setEvent(StMSYS1_MMDDYY,	(uint32_t)OnAction_MMDDYY);
+    setEvent(StMSYS1_YYMMDD,	(uint32_t)OnAction_YYMMDD);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+uint8_t OnAction_Format(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	openEdit_DateFormat();
+
+    return UNSPECIFIC_RETURN;
+}
+
 uint8_t OnAction_DDMMYY(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     SSettings *pSettings;
@@ -528,6 +765,81 @@ uint8_t OnAction_YYMMDD(uint32_t editId, uint8_t blockNumber, uint8_t digitNumbe
     tMenuEdit_set_on_off(StMSYS1_MMDDYY, 0);
     tMenuEdit_set_on_off(StMSYS1_DDMMYY, 0);
 
+    return UNSPECIFIC_RETURN;
+}
+
+uint8_t OnAction_UTC(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *settings = settingsGetPointer();
+    const SDiveState * pStateReal = stateRealGetPointer();
+    int32_t utcHour;
+    uint32_t utcMinutes;
+    uint8_t digitContentNew;
+    uint8_t localHours = 0;
+    uint8_t localMinutes = 0;
+    char text[32];
+    char timeStr[20];
+
+    switch (action) {
+    case ACTION_BUTTON_ENTER:
+
+        return digitContent;
+    case ACTION_BUTTON_ENTER_FINAL:
+        {
+
+            evaluateNewString(editId, (uint32_t *)&utcHour, &utcMinutes, NULL, NULL);
+
+            if (utcHour > 14) {
+            	utcHour = 14;
+            } else if (utcHour < -12) {
+            	utcHour = -12;
+            }
+
+            if (utcMinutes % 15 != 0)
+            {
+            	utcMinutes = (utcMinutes / 15) * 15;
+            }
+            if(utcMinutes > 45)
+            {
+            	utcMinutes = 45;
+            } else if (utcMinutes < 0) {
+            	utcMinutes = 0;
+            }
+            settings->timeZone.hours = utcHour;
+            settings->timeZone.minutes = utcMinutes;
+
+            tMenuEdit_newInput(editId, ((input_u)utcHour).uint32, utcMinutes, 0, 0);
+            convertUTCToLocal(pStateReal->lifeData.gnssData.DateTime.hour, pStateReal->lifeData.gnssData.DateTime.min, &localHours, &localMinutes);
+            convertStringOfDate_DDMMYY(timeStr, 20, pStateReal->lifeData.gnssData.DateTime.day
+            										, pStateReal->lifeData.gnssData.DateTime.month
+        											, pStateReal->lifeData.gnssData.DateTime.year);
+            snprintf(text, 32, "%2d:%2d - %s", localHours, localMinutes, timeStr);
+            tMenuEdit_newButtonText(StMSYS1_GNSSDT, text);
+        }
+
+        break;
+    case ACTION_BUTTON_NEXT:
+        if ((blockNumber == 0) && (digitNumber == 0)) {
+            digitContentNew = togglePlusMinus(digitContent);
+        } else {
+            digitContentNew = digitContent + 1;
+            if (digitContentNew > '9') {
+                digitContentNew = '0';
+            }
+        }
+
+        return digitContentNew;
+    case ACTION_BUTTON_BACK:
+    	if ((blockNumber == 0) && (digitNumber == 0)) {
+            digitContentNew = togglePlusMinus(digitContent);
+        } else {
+            digitContentNew = digitContent - 1;
+            if (digitContentNew < '0') {
+                digitContentNew = '9';
+            }
+        }
+        return digitContentNew;
+    }
     return UNSPECIFIC_RETURN;
 }
 
@@ -734,7 +1046,7 @@ void refresh_Design(void)
     write_content( 30, 700, ME_Y_LINE4 + 30 + 70, &FontT48, "___________", CLUT_DIVE_FieldSeperatorLines);
     write_content(280, 700, ME_Y_LINE4 + 30 + 70 - 3, &FontT48, "|", CLUT_DIVE_pluginbox);
     write_content(290, 700, ME_Y_LINE4 + 30 + 70 - 37, &FontT48, "_______________", CLUT_DIVE_pluginbox);
-    write_content( 30, 700, ME_Y_LINE4 + 30, &FontT144, "24.7", CLUT_Font027);
+    write_content( 30, 700, ME_Y_LINE4 + 42, &FontT144, "24.7", CLUT_Font027);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
@@ -835,6 +1147,7 @@ void openEdit_Information(void)
     write_field_button(StMSYS4_Info, 30, 800, ME_Y_LINE6,  &FontT48, text);
 
     setEvent(StMSYS4_Info, (uint32_t)OnAction_Information);
+    tMenuEdit_select(StMSYS4_Info);
 }
 
 
@@ -1075,7 +1388,7 @@ void openEdit_Reset(void)
     setEvent(StMSYS5_ResetAll, 			(uint32_t)OnAction_Confirm);
     setEvent(StMSYS5_ResetDeco, 		(uint32_t)OnAction_Confirm);
     setEvent(StMSYS5_Reboot, 				(uint32_t)OnAction_Confirm);
-    setEvent(StMSYS5_Maintenance,		(uint32_t)OnAction_Confirm);
+    setEvent(StMSYS5_Maintenance,		(uint32_t)OnAction_Maintenance);
 #ifndef RESETLOGBLOCK
     setEvent(StMSYS5_ResetLogbook,	(uint32_t)OnAction_Confirm);
 #else
@@ -1150,64 +1463,92 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
         setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
         setEvent(editIdOfCaller, (uint32_t)OnAction_ResetLogbook);
         break;
-
-    case StMSYS5_Maintenance:
-    case StMSYS5_SetBattCharge:
-    case StMSYS5_SetSampleIndx:
-        text[0] = TXT_2BYTE;
-        text[1] = TXT2BYTE_SetFactoryDefaults;
-        text[2] = 0;
-        write_field_button(StMSYS5_SetFactoryBC,			30, 800, ME_Y_LINE2,  &FontT48, text);
-
-#ifdef ENABLE_ANALYSE_SAMPLES
-        text[0] = TXT_2BYTE;
-        text[1] = TXT2BYTE_SetSampleIndex;
-        text[2] = 0;
-        write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE3,  &FontT48, text);
-#endif
-
-
-        if(stateRealGetPointer()->lifeData.battery_charge <= 0)
-        {
-            text[0] = TXT_2BYTE;
-            text[1] = TXT2BYTE_SetBatteryCharge;
-            text[2] = 0;
-            snprintf(&text[2],10,": %u%%",settingsGetPointer()->lastKnownBatteryPercentage);
-#ifdef ENABLE_ANALYSE_SAMPLES
-            write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE4,  &FontT48, text);
-#else
-            write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE3,  &FontT48, text);
-#endif
-
-            setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-            setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
-#ifdef ENABLE_ANALYSE_SAMPLES
-            setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
-#endif
-            setEvent(StMSYS5_SetBattCharge, (uint32_t)OnAction_SetBatteryCharge);
-        }
-        else
-        {
-            setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-            setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
-#ifdef ENABLE_ANALYSE_SAMPLES
-            setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
-#endif
-        }
-//		write_field_button(StMSYS5_ScreenTest,			30, 800, ME_Y_LINE3,  &FontT48, "Screen Test");
-//		setEvent(StMSYS5_ScreenTest, (uint32_t)OnAction_ScreenTest);
-
-        text[0] = TXT_2BYTE;
-        text[1] = TXT2BYTE_WarnBatteryLow;
-        text[2] = 0;
-        snprintf(&text[2],10,": %01.2fV",stateRealGetPointer()->lifeData.battery_voltage);
-        write_label_var(  30, 800, ME_Y_LINE5, &FontT42, text);
-        
-        snprintf(&text[0],30,"Code: %X",getLicence());
-        write_label_var(  30, 800, ME_Y_LINE6, &FontT42, text);
-        break;
-
     }
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+void openEdit_Maintenance(void)
+{
+    char text[32];
+    unsigned char index = 0;
+    SSettings *pSettings = settingsGetPointer();
+    SSensorDataDiveO2* pDiveO2Data = NULL;
+
+    resetMenuEdit(CLUT_MenuPageSystem);
+
+    text[0] = '\001';
+    text[1] = TXT_2BYTE;
+    text[2] = TXT2BYTE_Maintenance;
+    text[3] = 0;
+    write_topline(text);
+
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_SetFactoryDefaults;
+    text[2] = 0;
+    write_field_button(StMSYS5_SetFactoryBC,			30, 800, ME_Y_LINE1,  &FontT48, text);
+
+
+    if(stateRealGetPointer()->lifeData.battery_charge <= 0)
+    {
+        text[0] = TXT_2BYTE;
+        text[1] = TXT2BYTE_SetBatteryCharge;
+        text[2] = 0;
+        snprintf(&text[2],10,": %u%%",pSettings->lastKnownBatteryPercentage);
+        write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE2,  &FontT48, text);
+    }
+
+    if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
+    {
+    	for (index = 0; index < 3; index++)
+    	{
+    		if(pSettings->ext_sensor_map[index] == SENSOR_DIGO2M)
+    		{
+    			pDiveO2Data = (SSensorDataDiveO2*)stateRealGetPointer()->lifeData.extIf_sensor_data[index];
+    			if(pDiveO2Data->pressure != 0)
+    			{
+					snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),
+																stateRealGetPointer()->lifeData.pressure_surface_bar);
+
+					write_field_button(StMSYS5_AdjustSurfPres,			30, 800, ME_Y_LINE4,  &FontT48, text);
+    			}
+     			break;
+    		}
+    	}
+    }
+
+#ifdef ENABLE_ANALYSE_SAMPLES
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_SetSampleIndex;
+    text[2] = 0;
+    write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE4,  &FontT48, text);
+#endif
+
+    setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
+    if(stateRealGetPointer()->lifeData.battery_charge <= 0)
+    {
+    	setEvent(StMSYS5_SetBattCharge, (uint32_t)OnAction_SetBatteryCharge);
+    }
+    if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
+    {
+    	if(pDiveO2Data != NULL)
+    	{
+    		setEvent(StMSYS5_AdjustSurfPres, (uint32_t)OnAction_AdjustSurfacePressure);
+    	}
+    }
+#ifdef ENABLE_ANALYSE_SAMPLES
+    setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
+#endif
+
+
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_WarnBatteryLow;
+    text[2] = 0;
+    snprintf(&text[2],10,": %01.2fV",stateRealGetPointer()->lifeData.battery_voltage);
+    write_label_var(  30, 800, ME_Y_LINE5, &FontT42, text);
+
+    snprintf(&text[0],30,"Code: %X",getLicence());
+    write_label_var(  30, 800, ME_Y_LINE6, &FontT42, text);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
@@ -1260,6 +1601,12 @@ uint8_t OnAction_Exit					(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 uint8_t OnAction_Confirm				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     openEdit_ResetConfirmation(editId);
+    return UNSPECIFIC_RETURN;
+}
+
+uint8_t OnAction_Maintenance			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	openEdit_Maintenance();
     return UNSPECIFIC_RETURN;
 }
 
@@ -1334,6 +1681,54 @@ uint8_t OnAction_SetBatteryCharge(uint32_t editId, uint8_t blockNumber, uint8_t 
 //	setBatteryPercentage(100);
     return EXIT_TO_MENU;
 }
+
+uint8_t OnAction_AdjustSurfacePressure		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSensorDataDiveO2* pDiveO2Data;
+    const SDiveState* pDiveState = stateRealGetPointer();
+    SSettings* pSettings = settingsGetPointer();
+    uint8_t index = 0;
+    float orgpressure_surface_mbar;
+    float DiveO2_mbar;
+    int8_t newOffset_mbar = 0;
+
+
+    char text[32];
+
+
+
+    for (index = 0; index < 3; index++)
+    {
+    	if(settingsGetPointer()->ext_sensor_map[index] == SENSOR_DIGO2M)
+    	{
+    		pDiveO2Data = (SSensorDataDiveO2*)stateRealGetPointer()->lifeData.extIf_sensor_data[index];
+    		DiveO2_mbar = (pDiveO2Data->pressure/1000.0);
+
+    		orgpressure_surface_mbar = (pDiveState->lifeData.pressure_surface_bar * 1000) - (settingsGetPointer()->offsetPressure_mbar);
+    		newOffset_mbar = DiveO2_mbar - orgpressure_surface_mbar;
+
+    		if(fabs(orgpressure_surface_mbar + ((float)newOffset_mbar) - DiveO2_mbar) > 0.5) /* there might be a rounding difference => compensate */
+			{
+    			if((orgpressure_surface_mbar + ((float)newOffset_mbar)) - (pDiveO2Data->pressure/1000.0) > 0.0)
+				{
+    				newOffset_mbar -=1;
+				}
+				else
+				{
+					newOffset_mbar +=1;
+				}
+			}
+
+    		pSettings->offsetPressure_mbar = newOffset_mbar;
+    		snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),	(orgpressure_surface_mbar + pSettings->offsetPressure_mbar) / 1000.0);
+    		tMenuEdit_newButtonText(StMSYS5_AdjustSurfPres,text);
+    		break;
+    	}
+    }
+
+    return UNSPECIFIC_RETURN;
+}
+
 
 #ifdef SCREENTEST
 uint8_t OnAction_ScreenTest		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)

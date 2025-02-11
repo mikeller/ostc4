@@ -135,6 +135,7 @@
 #include "spi.h"
 #include "rtc.h"
 #include "adc.h"
+#include "gpio.h"
 #include "compass.h"
 #include "pressure.h"
 #include "batteryGasGauge.h"
@@ -143,6 +144,11 @@
 #include "tm_stm32f4_otp.h"
 #include "externalInterface.h"
 #include "uart.h"
+#include "uart_Internal.h"
+#include "uartProtocol_GNSS.h"
+#include "GNSS.h"
+#include "configuration.h"
+
 
 // From Common/Inc:
 #include "calc_crush.h"
@@ -150,8 +156,8 @@
 #include "FirmwareData.h"
 
 // From Common/Drivers/
-#include "stm32f4xx_hal.h"
 #include <stdio.h>
+
 
 uint8_t coldstart __attribute__((section (".noinit")));
 
@@ -166,16 +172,16 @@ uint8_t hasExternalClock(void) {
 // See CPU2-RTE.ld
 const SFirmwareData cpu2_FirmwareData __attribute__(( section(".firmware_data") ))= {
 		.versionFirst = 3,
-		.versionSecond = 2,
+		.versionSecond = 4,
 		.versionThird = 0,
 		.versionBeta = 0,
 
 /* 4 bytes with trailing 0 */
 		.signature = "mh",
 
-		.release_year = 23,
-		.release_month = 9,
-		.release_day = 14,
+		.release_year = 25,
+		.release_month = 1,
+		.release_day = 18,
 		.release_sub = 0,
 
 		/* max 48 with trailing 0 */
@@ -212,28 +218,6 @@ uint8_t firmwareVersionLow(void) {
 #define BUTTON_OSTC_HAL_RCC_GPIO_CLK_ENABLE()					__HAL_RCC_GPIOA_CLK_ENABLE()
 #define BUTTON_OSTC_IRQn              EXTI0_IRQn
 
-#define BUTTON_TEST_GPIO_PIN          GPIO_PIN_3
-#define BUTTON_TEST_GPIO_PORT        	GPIOA
-#define BUTTON_TEST_GPIO_CLK_ENABLE()	__GPIOA_CLK_ENABLE()
-#define BUTTON_TEST_IRQn              EXTI3_IRQn
-
-#define WIRELSS_RISING_GPIO_PIN       GPIO_PIN_1
-#define WIRELSS_RISING_GPIO_PORT      GPIOA
-#define WIRELSS_RISING_HAL_RCC_GPIO_CLK_ENABLE()		 __HAL_RCC_GPIOA_CLK_ENABLE()
-#define WIRELSS_RISING_IRQn						EXTI1_IRQn
-
-#define WIRELSS_FALLING_GPIO_PIN      GPIO_PIN_2
-#define WIRELSS_FALLING_GPIO_PORT     GPIOA
-#define WIRELSS_FALLING_HAL_RCC_GPIO_CLK_ENABLE()		 __HAL_RCC_GPIOA_CLK_ENABLE()
-#define WIRELSS_FALLING_IRQn					EXTI2_IRQn
-
-#define WIRELSS_POWER_GPIO_PIN      	GPIO_PIN_12
-#define WIRELSS_POWER_GPIO_PORT     	GPIOB
-#define WIRELSS_POWER_HAL_RCC_GPIO_CLK_ENABLE()		 __HAL_RCC_GPIOB_CLK_ENABLE()
-
-
-#define LED_CONTROL_PIN          		GPIO_PIN_3		/* PortC */
-#define MAINCPU_CONTROL_PIN				GPIO_PIN_0		/* PortC */
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -244,14 +228,6 @@ SBackup backup;
 /* Private function prototypes -----------------------------------------------*/
 static void EXTI_Wakeup_Button_Init(void);
 static void EXTI_Wakeup_Button_DeInit(void);
-
-static void EXTI_Test_Button_Init(void);
-static void EXTI_Test_Button_DeInit(void);
-
-static void GPIO_LED_Init(void);
-static void GPIO_Power_MainCPU_Init(void);
-static void GPIO_Power_MainCPU_ON(void);
-static void GPIO_Power_MainCPU_OFF(void);
 
 #ifdef DEBUG_I2C_LINES
 void GPIO_test_I2C_lines(void);
@@ -298,6 +274,9 @@ int main(void) {
     uint8_t lastsecond = 0xFF;
 #endif
 
+    uint8_t extInterfaceActive = 0;
+    uint32_t shutdownTick = 0;
+
 	HAL_Init();
 	SystemClock_Config();
 
@@ -306,7 +285,8 @@ int main(void) {
 	HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
 	MX_RTC_init();
-	GPIO_LED_Init();
+	GPIO_LEDs_VIBRATION_Init();
+	GPIO_GNSS_Init();
 	GPIO_new_DEBUG_Init(); // added 170322 hw
 	initGlobals();
 
@@ -403,6 +383,12 @@ int main(void) {
 	GPIO_Power_MainCPU_Init();
 	global.mode = MODE_TEST;
 #endif
+
+	GNSS_Handle.alive = 0;			/* only init at startup (outside init function) */
+	GNSS_Handle.last_fLat = 0.0;
+	GNSS_Handle.last_fLon = 0.0;
+	GNSS_Handle.last_hour = 0;
+
 	while (1) {
 /*		printf("Global mode = %d\n", global.mode); */
 
@@ -416,15 +402,47 @@ int main(void) {
 
 			if (global.mode == MODE_BOOT) {
 				GPIO_Power_MainCPU_OFF();
+#ifdef ENABLE_GPIO_V2
+				GPIO_LED_GREEN_ON();
+#endif
 				HAL_Delay(100); // for GPIO_Power_MainCPU_ON();
 				GPIO_Power_MainCPU_ON();
+#ifdef ENABLE_GPIO_V2
+				GPIO_LED_GREEN_OFF();
+
+				GPIO_LED_RED_ON();
+				GPIO_VIBRATION_ON();
+#endif
+				HAL_Delay(100);
+#ifdef ENABLE_GPIO_V2
+				GPIO_LED_RED_OFF();
+				GPIO_VIBRATION_OFF();
+#endif
 			}
+#ifdef ENABLE_GPIO_V2
+			GPIO_LED_RED_OFF();
+			GPIO_LED_GREEN_OFF();
+			GPIO_VIBRATION_OFF();
+#endif
 			SPI_synchronize_with_Master();
 			MX_DMA_Init();
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master(); /* be prepared for the first data exchange */
 			Scheduler_Request_sync_with_SPI(SPI_SYNC_METHOD_HARD);
-			EXTI_Test_Button_Init();
+
+#ifdef ENABLE_GPIO_V2
+			// GNSS tests
+			GNSS_IO_init();
+			GPIO_GPS_ON();
+			GPIO_GPS_BCKP_ON();
+			MX_USART6_UART_Init();
+			GNSS_Init(&GNSS_Handle, &huart6);
+#else
+#ifdef  ENABLE_GNSS_SUPPORT
+			GNSS_Init(&GNSS_Handle, &huart1);
+#endif
+#endif
+
 			global.mode = MODE_SURFACE;
 			break;
 
@@ -448,6 +466,9 @@ int main(void) {
             global.no_fly_time_minutes = 0;
             global.lifeData.dive_time_seconds = 0;
             global.lifeData.dive_time_seconds_without_surface_time = 0;
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+            uartGnss_ReqPowerDown(1);
+#endif
             scheduleDiveMode();
             // done now in scheduler prior to change mode: global.seconds_since_last_dive = 1;
 
@@ -473,39 +494,56 @@ int main(void) {
 
             backup.no_fly_time_minutes = 0;
             backup.seconds_since_last_dive = 0;
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+            uartGnss_ReqPowerDown(0);
+#endif
 			break;
 
 		case MODE_SHUTDOWN:
 			HAL_Delay(200);
-			global.mode = MODE_SLEEP;
+
 			MX_SPI3_Init();
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+			if(shutdownTick == 0)
+			{
+				shutdownTick = HAL_GetTick();
+				uartGnss_ReqPowerDown(1);
+			}
+#ifdef ENABLE_GNSS_SUPPORT
+			externalInterface_HandleUART();
+#else
+			UART6_HandleUART();
+#endif
+			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 3000))
+			{
+				global.mode = MODE_SLEEP;
+				uartGnss_ReqPowerDown(0);	/* release power down request */
+			}
+#else
+			global.mode = MODE_SLEEP;
+#endif
+
+
 			break;
 
 		case MODE_SLEEP:
-			/*
-			 sleep_prepare();
-			 scheduleSleepMode_test();
-			 */
-			/*
-			 GPIO_Power_MainCPU_OFF();
-			 EXTI_Test_Button_DeInit();
-			 EXTI_Wakeup_Button_Init();
-			 NOT_USED_AT_THE_MOMENT_scheduleSleepMode();
-			 */
-
-			EXTI_Test_Button_DeInit();
-			externalInterface_SwitchUART(0);
+			extInterfaceActive = externalInterface_isEnabledPower33();
+			externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
 			externalInterface_SwitchPower33(false);
 			if (hasExternalClock())
 				SystemClock_Config_HSI();
+			GPIO_LEDs_VIBRATION_Init();
 			sleep_prepare();
 
-			GPIO_LED_Init();
-
+			while(time_elapsed_ms(shutdownTick,HAL_GetTick()) < 1000 )	/* delay shutdown till shutdown animation is finished */
+			{
+				HAL_Delay(10);
+			}
+			shutdownTick = 0;
 			scheduleSleepMode();
 			if (hasExternalClock())
 				SystemClock_Config_HSE();
-			GPIO_LED_Init();
 			EXTI_Wakeup_Button_DeInit();
 			ADCx_Init();
 			GPIO_Power_MainCPU_Init();
@@ -517,7 +555,7 @@ int main(void) {
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master();
 
-			if(externalInterface_isEnabledPower33())
+			if(extInterfaceActive)
 			{
 				externalInterface_SwitchPower33(true);
 			}
@@ -561,16 +599,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 	else
-	if (GPIO_Pin == BUTTON_TEST_GPIO_PIN) {
-		if (!global.demo_mode && (global.mode == MODE_SURFACE)) {
-			global.demo_mode = 1;
-			global.mode = MODE_DIVE;
-		} else if (global.demo_mode && (global.mode == MODE_DIVE)
-				&& (global.lifeData.dive_time_seconds > 10)) {
-			global.demo_mode = 0;
-			global.dataSendToMaster.mode = MODE_ENDDIVE;
-			global.deviceDataSendToMaster.mode = MODE_ENDDIVE;
-		}
+	{
+
 	}
 }
 
@@ -613,7 +643,7 @@ void SystemClock_Config_HSE(void) {
 
 	__PWR_CLK_ENABLE(); // is identical to __HAL_RCC_PWR_CLK_ENABLE();
 
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
 	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE; //|RCC_OSCILLATORTYPE_LSE;
 	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -656,7 +686,7 @@ void SystemClock_Config_HSI(void) {
 	/* The voltage scaling allows optimizing the power consumption when the device is
 	 clocked below the maximum system frequency, to update the voltage scaling value
 	 regarding system frequency refer to product datasheet.  */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
 	/* Enable HSI Oscillator and activate PLL with HSI as source */
 	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
@@ -680,44 +710,7 @@ void SystemClock_Config_HSI(void) {
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 	HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 }
-/*	
- RCC_OscInitTypeDef RCC_OscInitStruct;
- RCC_ClkInitTypeDef RCC_ClkInitStruct;
- 
- __HAL_RCC_PWR_CLK_ENABLE();
 
- //__PWR_CLK_ENABLE();
-
- __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
-
- RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSE;
- RCC_OscInitStruct.LSEState = RCC_LSE_ON;
- RCC_OscInitStruct.HSIState = RCC_HSI_ON;
- RCC_OscInitStruct.HSICalibrationValue = 16;
- RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
- RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
- RCC_OscInitStruct.PLL.PLLM = 16;
- RCC_OscInitStruct.PLL.PLLN = 320;
- RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
- RCC_OscInitStruct.PLL.PLLQ = 4;
- HAL_RCC_OscConfig(&RCC_OscInitStruct);
-
- RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_PCLK1;
- RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
- RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
- RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
- RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
- HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
- }
-
- static void RtcClock_Config(void)
- {
- RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
- PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
- PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
- HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
- }
- */
 
 /**
  * @brief  Configures system clock after wake-up from STOP: enable HSI, PLL
@@ -811,17 +804,6 @@ void HAL_SYSTICK_Callback(void) {
  }
  */
 
-static void GPIO_LED_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	__GPIOC_CLK_ENABLE();
-	GPIO_InitStructure.Pin = LED_CONTROL_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
-	HAL_GPIO_Init( GPIOC, &GPIO_InitStructure);
-}
-
 void GPIO_new_DEBUG_Init(void) {
 #ifdef DEBUG_PIN_ACTIVE
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -845,25 +827,6 @@ void GPIO_new_DEBUG_HIGH(void) {
 #ifdef DEBUG_PIN_ACTIVE
 	HAL_GPIO_WritePin(GPIOC,LED_CONTROL_PIN,GPIO_PIN_SET);
 #endif
-}
-
-static void GPIO_Power_MainCPU_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-	__GPIOC_CLK_ENABLE();
-	GPIO_InitStructure.Pin = MAINCPU_CONTROL_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	HAL_GPIO_Init( GPIOC, &GPIO_InitStructure);
-	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
-static void GPIO_Power_MainCPU_ON(void) {
-	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
-}
-
-static void GPIO_Power_MainCPU_OFF(void) {
-	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_SET);
 }
 
 /**
@@ -897,40 +860,6 @@ static void EXTI_Wakeup_Button_DeInit(void) {
 	HAL_GPIO_Init( BUTTON_OSTC_GPIO_PORT, &GPIO_InitStructure);
 	HAL_NVIC_DisableIRQ( BUTTON_OSTC_IRQn);
 }
-
-static void EXTI_Test_Button_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	BUTTON_TEST_GPIO_CLK_ENABLE();
-	GPIO_InitStructure.Pin = BUTTON_TEST_GPIO_PIN;
-	GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
-	GPIO_InitStructure.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init( BUTTON_TEST_GPIO_PORT, &GPIO_InitStructure);
-	HAL_NVIC_SetPriority( BUTTON_TEST_IRQn, 0x0F, 0);
-	HAL_NVIC_EnableIRQ( BUTTON_TEST_IRQn);
-}
-
-static void EXTI_Test_Button_DeInit(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-
-	GPIO_InitStructure.Pin = BUTTON_TEST_GPIO_PIN;
-	HAL_GPIO_Init( BUTTON_TEST_GPIO_PORT, &GPIO_InitStructure);
-	HAL_NVIC_DisableIRQ( BUTTON_TEST_IRQn);
-}
-
-/* NUCLEO C 13
- KEY_BUTTON_GPIO_CLK_ENABLE();
- GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
- GPIO_InitStructure.Pull = GPIO_NOPULL;
- GPIO_InitStructure.Pin = KEY_BUTTON_PIN;
- HAL_GPIO_Init(KEY_BUTTON_GPIO_PORT, &GPIO_InitStructure);
- HAL_NVIC_SetPriority(KEY_BUTTON_EXTI_IRQn, 2, 0);
- HAL_NVIC_EnableIRQ(KEY_BUTTON_EXTI_IRQn);
- */
 
 /**
  * @brief  Wake Up Timer callback
@@ -979,23 +908,24 @@ void sleep_prepare(void) {
 	__HAL_RCC_GPIOH_CLK_ENABLE();
 
 	GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+	GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Pin = GPIO_PIN_All;
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
-#ifdef DEBUGMODE
+#ifdef ENABLE_SLEEP_DEBUG
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_3 | GPIO_PIN_8 | GPIO_PIN_9); /* debug */
 #endif
-	HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin =
-			GPIO_PIN_All
-					^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | CHARGE_IN_PIN | EXT33V_CONTROL_PIN | LED_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
+/*
+	GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
+	HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+*/
+	GPIO_InitStruct.Pin =  GPIO_PIN_All ^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | EXT33V_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
 
 	HAL_GPIO_Init( GPIOC, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0);
-#ifdef DEBUGMODE
+	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | VIBRATION_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN);
+#ifdef ENABLE_SLEEP_DEBUG
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | GPIO_PIN_13 | GPIO_PIN_14); /* wake up button & debug */
 #endif
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStruct);
@@ -1004,13 +934,21 @@ void sleep_prepare(void) {
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
 
 	GPIO_Power_MainCPU_OFF();
+#ifdef ENABLE_GPIO_V2
+	GPIO_LED_GREEN_OFF();
+	GPIO_LED_RED_OFF();
+	GPIO_VIBRATION_OFF();
+	GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
+/*	GPIO_GPS_OFF();				will be done in transition sleep => deep sleep */
 
-#ifndef DEBUGMODE
+	MX_USART6_UART_DeInit();
+#endif
+#ifndef ENABLE_SLEEP_DEBUG
+/*
 	__HAL_RCC_GPIOB_CLK_DISABLE();
+*/
 #endif
 	__HAL_RCC_GPIOH_CLK_DISABLE();
-
-	HAL_Delay(1000);
 }
 
 /*

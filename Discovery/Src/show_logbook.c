@@ -444,6 +444,10 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
     int16_t tempdata[1000] = { 0 };
     uint16_t tankdata[1000] = { 0 };
 
+    SGnssCoord posCoord;
+    posCoord.fLat = 0.0;
+    posCoord.fLon = 0.0;
+
 #ifdef ENABLE_BOTTLE_SENSOR
     uint16_t bottlePressureStart = 0;
     uint16_t bottlePressureEnd = 0;
@@ -451,7 +455,7 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
 #endif
 
     uint16_t dataLength = 0;
-    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, tempdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, tankdata,NULL);
+    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, tempdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, tankdata, &posCoord, NULL);
 
     //Print Date
     uint8_t year = logbookHeader.dateYear;
@@ -461,6 +465,14 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
     snprintf(text, 20, "20%02i-%02i-%02i", year, month, day);
 
     Gfx_write_label_var(hgfx, 30, 250,10, &FontT42,CLUT_GasSensor1,text);
+
+#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+    if((posCoord.fLat != 0.0) || (posCoord.fLon != 0.0))
+    {
+    	snprintf(text, 20, "%2.4f - %2.4f", posCoord.fLat, posCoord.fLon );
+    	Gfx_write_label_var(hgfx, 300, 500,10, &FontT42,CLUT_GasSensor1,text);
+    }
+#endif
 
 
     // Print logbook number with offset
@@ -740,7 +752,7 @@ static void show_logbook_logbook_show_log_page2(GFX_DrawCfgScreen *hgfx, uint8_t
     uint16_t decoDepthdata[1000];
     uint16_t *pDecoDepthData = 0;
 
-    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, tempdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, decoDepthdata, NULL, NULL);
+    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, tempdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, decoDepthdata, NULL, NULL, NULL);
 
         for(int i = 0; i<dataLength; i++)
         {
@@ -905,7 +917,7 @@ static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t
     uint16_t dataLength = 0;
     uint16_t depthdata[1000];
     uint8_t  gasdata[1000];
-    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
     char msg[15];
     char gas_name[15];
@@ -1035,15 +1047,15 @@ static void show_logbook_logbook_show_log_page4(GFX_DrawCfgScreen *hgfx, uint8_t
 
 
         if(!isLoopMode(logbookHeader.diveMode))
-            dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, ppO2data, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+            dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, ppO2data, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
         else
         {
         	switch(logbookHeader.CCRmode)
         	{
         		case CCRMODE_FixedSetpoint:
-        		default:				dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata, gasdata, NULL, NULL, setpoint, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+        		default:				dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata, gasdata, NULL, NULL, setpoint, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
         				break;
-        		case CCRMODE_Sensors:	dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata, gasdata, NULL, NULL, NULL, sensor1, sensor2, sensor3, NULL, NULL, NULL, NULL, NULL);
+        		case CCRMODE_Sensors:	dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata, gasdata, NULL, NULL, NULL, sensor1, sensor2, sensor3, NULL, NULL, NULL, NULL, NULL, NULL);
         								if(!check_data_array_empty(sensor1))
         								{
         									sensorDataAvailable[0] = 1;
@@ -1060,22 +1072,22 @@ static void show_logbook_logbook_show_log_page4(GFX_DrawCfgScreen *hgfx, uint8_t
         								{
         									if(sensorDataAvailable[0] == 0)
         									{
-        										logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, sensor1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+        										logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, sensor1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
         										sensorDataAvailable[0] = 1;
         									}
         									else if(sensorDataAvailable[1] == 0)
         									{
-        										logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, sensor2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+        										logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, sensor2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
         										sensorDataAvailable[1] = 1;
         									}
         									else if(sensorDataAvailable[2] == 0)
         									{
-        										logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, sensor3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+        										logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, sensor3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
         										sensorDataAvailable[2] = 1;
         									}
         								}
         		    	break;
-        		case CCRMODE_Simulation: dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, ppO2data, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+        		case CCRMODE_Simulation: dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, ppO2data, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
         				break;
         	}
         }

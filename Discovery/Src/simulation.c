@@ -51,7 +51,12 @@ static float sim_aim_depth_meter;
 static float sim_aim_time_minutes;
 static _Bool sim_heed_decostops = 1;
 
-static const float sim_descent_rate_meter_per_min = 20;
+static float sim_descent_rate_meter_per_min = 20;
+
+static uint16_t* pReplayData; /* pointer to source dive data */
+static uint8_t simReplayActive = 0;
+
+static uint16_t simScrubberTimeoutCount = 0;
 
 
 //Private functions
@@ -83,13 +88,20 @@ void simulation_set_heed_decostops(_Bool heed_decostops_while_ascending)
   */
 void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 {
+    uint16_t replayDataLength = 0;
+    uint8_t* pReplayMarker;
+    uint16_t max_depth = 10;
+    uint16_t diveMinutes = 0;
+
 	copyDiveSettingsToSim();
     copyVpmRepetetiveDataToSim();
+
   //vpm_init(&stateSimGetPointerWrite()->vpm,  stateSimGetPointerWrite()->diveSettings.vpm_conservatism, 0, 0);
     stateSimGetPointerWrite()->lifeData.counterSecondsShallowDepth = 0;
     stateSimGetPointerWrite()->mode = MODE_DIVE;
     if(aim_depth <= 0)
         aim_depth = 20;
+    sim_descent_rate_meter_per_min = 20;
     simulation_set_aim_depth(aim_depth);
     sim_aim_time_minutes = aim_time_minutes;
     timer_init();
@@ -98,7 +110,14 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
     decoLock = DECO_CALC_init_as_is_start_of_dive;
 
     stateSim.lifeData.apnea_total_max_depth_meter = 0;
+
+    memcpy(stateSim.scrubberDataDive, settingsGetPointer()->scrubberData, sizeof(stateSim.scrubberDataDive));
     memset(simSensmVOffset,0,sizeof(simSensmVOffset));
+   	if(getReplayOffset() != 0xFFFF)
+   	{
+   		simReplayActive = 1;
+		getReplayInfo(&pReplayData, &pReplayMarker, &replayDataLength, &max_depth, &diveMinutes);
+   	}
 }
 
 /**
@@ -137,7 +156,11 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     static _Bool two_second = 0;
     static float lastPressure_bar = 0;
 
-    if (sim_aim_time_minutes && sim_aim_time_minutes * 60 <= pDiveState->lifeData.dive_time_seconds) {
+    pSettings = settingsGetPointer();
+
+    if ((sim_aim_time_minutes && sim_aim_time_minutes * 60 <= pDiveState->lifeData.dive_time_seconds)
+    		&& (!simReplayActive))
+    {
         simulation_set_aim_depth(0);
     }
 
@@ -146,25 +169,42 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
 
     if(checkOncePerSecond)
     {
+        int now =  current_second();
+        if( last_second == now)
+                return;
+        last_second = now;
 
-        pSettings = settingsGetPointer();
+        if(!two_second)
+            two_second = 1;
+        else
+        {
+            two_second = 0;
+        }
+
         for(index = 0; index < 3; index++)
         {
-        	localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index];
-        	if(localCalibCoeff[index] < 0.01)
+        	if(pDiveState->lifeData.extIf_sensor_map[index] == SENSOR_DIGO2M)
         	{
-        		for(index2 = 0; index2 < 3; index2++)		/* no valid coeff => check other entries */
-        		{
-        			if(pSettings->ppo2sensors_calibCoeff[index2] > 0.01)
-        			{
-        				localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index2];
-        				break;
-        			}
-        			if(index2 == 3)		/* no coeff at all => use default */
-        			{
-        				localCalibCoeff[index] = 0.02;
-        			}
-        		}
+        		localCalibCoeff[index] = 0.01;
+        	}
+        	else
+        	{
+				localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index];
+				if(localCalibCoeff[index] < 0.01)
+				{
+					for(index2 = 0; index2 < 3; index2++)		/* no valid coeff => check other entries */
+					{
+						if(pSettings->ppo2sensors_calibCoeff[index2] > 0.01)
+						{
+							localCalibCoeff[index] = pSettings->ppo2sensors_calibCoeff[index2];
+							break;
+						}
+						if(index2 == 3)		/* no coeff at all => use default */
+						{
+							localCalibCoeff[index] = 0.02;
+						}
+					}
+				}
         	}
         }
 
@@ -183,29 +223,48 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
         pDiveState->lifeData.bottle_bar[pDiveState->lifeData.actualGas.GasIdInSettings] = pRealState->lifeData.bottle_bar[pRealState->lifeData.actualGas.GasIdInSettings];
         pDiveState->lifeData.bottle_bar_age_MilliSeconds[pDiveState->lifeData.actualGas.GasIdInSettings] = pRealState->lifeData.bottle_bar_age_MilliSeconds[pRealState->lifeData.actualGas.GasIdInSettings];
 #endif
-        int now =  current_second();
-        if( last_second == now)
-                return;
-        last_second = now;
-
-        if(!two_second)
-            two_second = 1;
-        else
-        {
-            two_second = 0;
-            if(lastPressure_bar >= 0)
-            {
-                //2 seconds * 30 == 1 minute, bar * 10 = meter
-                pDiveState->lifeData.ascent_rate_meter_per_min = (lastPressure_bar - pDiveState->lifeData.pressure_ambient_bar)  * 30 * 10;
-            }
-            lastPressure_bar = pDiveState->lifeData.pressure_ambient_bar;
-        }
     }
     else if(pDiveState->lifeData.depth_meter <= (float)(decom_get_actual_deco_stop(pDiveState) + 0.001))
-      sim_reduce_deco_time_one_second(pDiveState);
+    {
+    	if(decoLock == DECO_CALC_FINSHED_vpm)
+    	{
+    		sim_reduce_deco_time_one_second(&stateDeco);
+    	}
+    	else
+    	{
+    		sim_reduce_deco_time_one_second(pDiveState);
+    	}
+    }
 
     pDiveState->lifeData.dive_time_seconds += 1;
     pDiveState->lifeData.pressure_ambient_bar = sim_get_ambient_pressure(pDiveState);
+    if(pDiveState->lifeData.depth_meter < 1.5)
+    {
+    	lastPressure_bar = 0;
+    	pDiveState->lifeData.ascent_rate_meter_per_min = 0;
+    }
+
+    if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && (isLoopMode(pSettings->dive_mode)) && (pDiveState->mode == MODE_DIVE) && isLoopMode(pDiveState->diveSettings.diveMode))
+    {
+    	simScrubberTimeoutCount++;
+    	if(simScrubberTimeoutCount >= 60)		/* resolution is minutes */
+    	{
+    		simScrubberTimeoutCount = 0;
+    		if(pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur > MIN_SCRUBBER_TIME)
+    		{
+    			pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur--;
+    		}
+            translateDate(stateUsed->lifeData.dateBinaryFormat, &pDiveState->scrubberDataDive[pSettings->scubberActiveId].lastDive);
+    	}
+    }
+
+
+    if(lastPressure_bar > 0)
+     {
+         //1 second * 60 == 1 minute, bar * 10 = meter
+         pDiveState->lifeData.ascent_rate_meter_per_min = (lastPressure_bar - pDiveState->lifeData.pressure_ambient_bar)  * 600.0;
+     }
+     lastPressure_bar = pDiveState->lifeData.pressure_ambient_bar;
 
     pDiveState->lifeData.sensorVoltage_mV[0] = pRealState->lifeData.sensorVoltage_mV[0] + simSensmVOffset[0];
     if(pDiveState->lifeData.sensorVoltage_mV[0] < 0.0) { pDiveState->lifeData.sensorVoltage_mV[0] = 0.0; }
@@ -349,6 +408,35 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     uint8_t actual_deco_stop = decom_get_actual_deco_stop(pDiveState);
     float depth_meter = pDiveState->lifeData.depth_meter;
     float surface_pressure_bar = pDiveState->lifeData.pressure_surface_bar;
+    static uint8_t sampleToggle = 0;
+	static float sim_ascent_rate_meter_per_min_local = 0;
+	uint8_t sampleTime = getReplayDataResolution();
+
+    if(simReplayActive) /* precondition: function is called once per second, sample rate is a multiple of second */
+    {
+    	if(sampleToggle == 0)
+    	{
+    		sampleToggle = sampleTime - 1;
+    		sim_aim_depth_meter = (float)(*pReplayData++/100.0);
+    		if(sim_aim_depth_meter > depth_meter)
+    		{
+    			sim_descent_rate_meter_per_min = (sim_aim_depth_meter - depth_meter) * (60 / sampleTime);
+    		}
+    		else
+    		{
+    			sim_ascent_rate_meter_per_min_local = (depth_meter - sim_aim_depth_meter) * (60 / sampleTime);
+    		}
+    	}
+    	else
+    	{
+    		sampleToggle--;
+    	}
+    }
+    else
+    {
+    	sim_ascent_rate_meter_per_min_local = pDiveState->diveSettings.ascentRate_meterperminute;
+    }
+
     if(depth_meter < sim_aim_depth_meter)
     {
         depth_meter = depth_meter + sim_descent_rate_meter_per_min / 60;
@@ -358,16 +446,16 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     else if(depth_meter > sim_aim_depth_meter)
     {
 
-        depth_meter -=  pDiveState->diveSettings.ascentRate_meterperminute / 60;
+        depth_meter -=  sim_ascent_rate_meter_per_min_local / 60;
         if(depth_meter < sim_aim_depth_meter)
             depth_meter = sim_aim_depth_meter;
 
         if(sim_heed_decostops && depth_meter < actual_deco_stop)
         {
-            if(actual_deco_stop < (depth_meter +  pDiveState->diveSettings.ascentRate_meterperminute / 60))
+            if(actual_deco_stop < (depth_meter +  sim_ascent_rate_meter_per_min_local / 60))
                  depth_meter = actual_deco_stop;
             else
-                depth_meter +=  pDiveState->diveSettings.ascentRate_meterperminute / 60;
+                depth_meter += sim_ascent_rate_meter_per_min_local / 60;
         }
 
    }
@@ -387,31 +475,53 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
 static void sim_reduce_deco_time_one_second(SDiveState* pDiveState)
 {
     SDecoinfo* pDecoinfo;
+    int8_t index = 0;
+
+
     if(pDiveState->diveSettings.deco_type.ub.standard == GF_MODE)
         pDecoinfo = &pDiveState->decolistBuehlmann;
     else
         pDecoinfo = &pDiveState->decolistVPM;
 
     //Reduce deco time of deepest stop by one second
-    for(int i = DECOINFO_STRUCT_MAX_STOPS -1 ;i >= 0; i--)
+    for(index = DECOINFO_STRUCT_MAX_STOPS -1 ;index >= 0; index--)
     {
-        if(pDecoinfo->output_stop_length_seconds[i] > 0)
+        if(pDecoinfo->output_stop_length_seconds[index] > 0)
         {
-            pDecoinfo->output_stop_length_seconds[i]--;
+            pDecoinfo->output_stop_length_seconds[index]--;
             break;
         }
+    }
+    /* update TTS */
+    if(pDecoinfo->output_time_to_surface_seconds)
+    {
+    	pDecoinfo->output_time_to_surface_seconds--;
     }
 }
 
 SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, uint8_t *gasChangeListDepthGas20x2)
 {
     uint8_t ptrGasChangeList = 0; // new hw 160704
-
+#ifdef ENABLE_DECOCALC_OPTION
+    uint8_t index = 0;
+#endif
     for (int i = 0; i < 40; i++)
     	gasChangeListDepthGas20x2[i] = 0;
 
     SDiveState * pDiveState = &stateSim;
     copyDiveSettingsToSim();
+
+#ifdef ENABLE_DECOCALC_OPTION
+    /* activate deco calculation for all deco gases */
+    for(index = 0; index < 1 + (2*NUM_GASES); index++)
+    {
+    	if(pDiveState->diveSettings.gas[index].note.ub.deco)
+    	{
+    		pDiveState->diveSettings.gas[index].note.ub.decocalc = 1;
+    	}
+    }
+#endif
+
     vpm_init(&pDiveState->vpm,  pDiveState->diveSettings.vpm_conservatism, 0, 0);
     //buehlmann_init();
     //timer_init();
@@ -466,7 +576,11 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
         // ascend (deco) gases
         for(int i=1; i<=5;i++)
         {
-            if(pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+            if((pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
+#ifdef ENABLE_DECOCALC_OPTION
+            		|| (pDiveState->diveSettings.gas[pDiveState->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0)
+#endif
+					)
                 break;
             gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
             gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].GasIdInSettings;
@@ -487,6 +601,11 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
         /* this does modify the cns now 11.06.2015 */
         vpm_calc(&pDiveState->lifeData,&pDiveState->diveSettings,&pDiveState->vpm,&pDiveState->decolistVPM, DECOSTOPS);
         pDiveState->lifeData.cns += vpm_get_CNS();
+
+        while(decoLock == DECO_CALC_FINSHED_vpm)
+        {
+        	HAL_Delay(2);	/* The deco data is copied during the timer ISR => wait till this has happened */
+        }
         return &pDiveState->decolistVPM;
     }
 }
@@ -639,24 +758,14 @@ void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t de
     outputSummary->timeToFirstStop = (uint16_t)timeSummary;
     outputSummary->depthMeterFirstStop = actualDepthPoint;
 
-    //ascent
-    nextDepthPoint = 0;
-    timeThis = 0;
-    if(actualDepthPoint > nextDepthPoint) // only if deco
+    if(decoInfoInput->output_time_to_surface_seconds)
     {
-        // ascent time
-        timeThis = ((float)(actualDepthPoint - nextDepthPoint)) / sim_ascent_rate_meter_per_min_local;
-
-        // deco stop time
-        for(ptrDecoInfo=0;ptrDecoInfo < DECOINFO_STRUCT_MAX_STOPS; ptrDecoInfo++)
-        {
-            timeThis += decoInfoInput->output_stop_length_seconds[ptrDecoInfo] / 60;
-            if(!decoInfoInput->output_stop_length_seconds[ptrDecoInfo]) break;
-        }
+    	outputSummary->timeToSurface = outputSummary->timeAtBottom + (decoInfoInput->output_time_to_surface_seconds / 60);
     }
-    timeSummary += timeThis;
-    outputSummary->timeToSurface = (uint16_t)timeSummary;
-
+    else
+    {
+    	outputSummary->timeToSurface = outputSummary->timeToFirstStop;
+    }
 }
 
 

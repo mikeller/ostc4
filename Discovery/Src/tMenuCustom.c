@@ -118,6 +118,26 @@ uint32_t tMCustom_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
 	strcpy(&text[textPointer],"\n\r");
 	textPointer += 2;
 #endif
+
+#ifdef ENABLE_GPIO_V2
+    if((line == 0) || (line == 5))
+    {
+    /* MotionCtrl */
+		text[textPointer++] = TXT_2BYTE;
+		text[textPointer++] = TXT2BYTE_BUZZER;
+		text[textPointer++] = ' ';
+		text[textPointer++] = TXT_Warning;
+		text[textPointer++] = '\t';
+	    if(settingsGetPointer()->warningBuzzer)
+	            text[textPointer++] = '\005';
+	        else
+	            text[textPointer++] = '\006';
+    }
+
+	strcpy(&text[textPointer],"\n\r");
+	textPointer += 2;
+#endif
+
     return StMCustom;
 }
 

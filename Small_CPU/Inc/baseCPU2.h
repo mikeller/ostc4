@@ -39,8 +39,6 @@
 #ifndef BASE_CPU2_H
 #define BASE_CPU2_H
 
-//#define DEBUGMODE
-
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 #include "settings.h"

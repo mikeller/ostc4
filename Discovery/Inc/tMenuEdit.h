@@ -40,6 +40,7 @@
 #define ME_Y_LINE5					(ME_Y_LINE1 + (4 * ME_Y_LINE_STEP))
 #define ME_Y_LINE6					(ME_Y_LINE1 + (5 * ME_Y_LINE_STEP))
 
+#define EXIT_TO_INFO_PREDIVE 		(245)
 #define EXIT_TO_NEXT_MENU   		(246)
 #define EXIT_TO_INFO_SENSOR 		(247)
 #define EXIT_TO_INFO_COMPASS 		(248)
@@ -59,6 +60,8 @@ typedef union {
 void sendActionToMenuEdit(uint8_t sendAction);
 
 void tMenuEdit_init(void);
+void resetMenuContentStructure();
+void resetMenuStructure(uint8_t color);
 void resetMenuEdit(uint8_t color);
 void tMenuEdit_refresh_live_content(void);
 void tMenuEdit_refresh_field(uint32_t editID);
@@ -75,6 +78,7 @@ void write_label_var(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t
 void clean_content(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle,  const tFont *Font);
 void write_content(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle,  const tFont *Font, const char *text, uint8_t color);
 
+uint8_t togglePlusMinus(uint8_t input);
 void write_topline( char *text);
 void write_buttonTextline( uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode);
 void write_field_udigit(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint32_t int1,  uint32_t int2,  uint32_t int3,  uint32_t int4);

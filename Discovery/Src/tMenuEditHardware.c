@@ -159,17 +159,6 @@ void openEdit_FlipDisplay(void)
     exitMenuEdit_to_Home();
 }
 
-
-static uint8_t togglePlusMinus(uint8_t input)
-{
-    if (input == '+') {
-        return '-';
-    } else {
-        return '+';
-    }
-}
-
-
 static uint8_t OnAction_CompassDeclination(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     SSettings *settings = settingsGetPointer();
@@ -285,6 +274,10 @@ void openEdit_Compass(void)
     char text[10];
     uint8_t textIndex = 0;
 
+
+    set_globalState(StMHARD2_Compass);
+    resetMenuEdit(CLUT_MenuPageHardware);
+
     text[textIndex++] = '\001';
     text[textIndex++] = TXT_2BYTE;
     text[textIndex++] = TXT2BYTE_Compass;
@@ -319,6 +312,8 @@ void openEdit_Compass(void)
     setEvent(StMHARD2_Compass_Calibrate,		(uint32_t)OnAction_Compass);
     setEvent(StMHARD2_Compass_Inertia,	(uint32_t)OnAction_InertiaLevel);
     setEvent(StMHARD2_Compass_Declination, (uint32_t)OnAction_CompassDeclination);
+
+    tMenuEdit_select(StMHARD2_Compass_SetCourse);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
@@ -389,9 +384,9 @@ void refresh_O2Sensors(void)
 	{
 		memcpy(pSettings->ext_sensor_map, pStateReal->lifeData.extIf_sensor_map, EXT_INTERFACE_SENSOR_CNT);
 		pSettings->ppo2sensors_deactivated = 0x0;	/* deactivation will be done by openEditO2Sensor if need */
-
+		pSettings->co2_sensor_active = 0;
 		pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_OPTIC;
-		for(index = 0; index < 3; index++)
+		for(index = 0; index < EXT_INTERFACE_SENSOR_CNT - 1; index++)
 		{
 				switch(pSettings->ext_sensor_map[index])
 				{
@@ -415,8 +410,12 @@ void refresh_O2Sensors(void)
 											pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_DIGITAL;
 										}
 									break;
+					case SENSOR_CO2:
+					case SENSOR_CO2M:	pSettings->co2_sensor_active = 1;
+						break;
 #ifdef ENABLE_SENTINEL_MODE
-					case SENSOR_SENTINEL:	pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_SENTINEL;
+					case SENSOR_SENTINEL:
+					case SENSOR_SENTINELM:	pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_SENTINEL;
 									break;
 #endif
 					default:
@@ -461,10 +460,16 @@ void refresh_O2Sensors(void)
 				case SENSOR_CO2:
 				case SENSOR_CO2M: strSensorId[3] = 'C';
 								 strSensorId[4] = 'O';
+								 strSensorId[5] = '2';
 								break;
-				case SENSOR_SENTINEL: strSensorId[3] = 'S';
-				 	 	 	 	 	  strSensorId[4] = 'e';
+				case SENSOR_SENTINEL:
+				case SENSOR_SENTINELM: strSensorId[3] = 'S';
+				 	 	 	 	 	   strSensorId[4] = 'e';
 				 	 	 	 	break;
+				case SENSOR_GNSS:
+				case SENSOR_GNSSM:		strSensorId[3] = 'G';
+	 	 	 	   	   	   	   	   	    strSensorId[4] = 'N';
+					break;
 				default:
 									  strSensorId[5] = 0;
 					break;
@@ -524,15 +529,15 @@ void refresh_O2Sensors(void)
 		write_label_var(  30, 340, ME_Y_LINE6, &FontT48, strSensorId);
    	}
 
-	if((pSettings->ext_sensor_map[0] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[0] < SENSOR_TYPE_O2_END))
+	if((pSettings->ext_sensor_map[0] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[0] < SENSOR_MUX))
 	{
 		tMenuEdit_refresh_field(StMHARD3_O2_Sensor1);
 	}
-	if((pSettings->ext_sensor_map[1] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[1] < SENSOR_TYPE_O2_END))
+	if((pSettings->ext_sensor_map[1] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[1] < SENSOR_MUX))
 	{
 		tMenuEdit_refresh_field(StMHARD3_O2_Sensor2);
 	}
-	if((pSettings->ext_sensor_map[2] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[2] < SENSOR_TYPE_O2_END))
+	if((pSettings->ext_sensor_map[2] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[2] < SENSOR_MUX))
 	{
 		tMenuEdit_refresh_field(StMHARD3_O2_Sensor3);
 	}
@@ -554,6 +559,7 @@ void openEdit_O2Sensors(void)
     uint8_t sensorActive[3];
     uint8_t index = 0;
     char text[3];
+    uint32_t firstSensorId = 0;
 
     set_globalState(StMHARD3_Sensors);
 	resetMenuEdit(CLUT_MenuPageHardware);
@@ -573,26 +579,50 @@ void openEdit_O2Sensors(void)
 	if(((pSettings->ext_sensor_map[0] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[0] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 1;
+		if(pSettings->ext_sensor_map[0] == SENSOR_CO2M)
+		{
+			write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", pSettings->co2_sensor_active);
+		}
 	}
 	else
 	{
 		write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", sensorActive[0]);
+		if(firstSensorId == 0)
+		{
+			firstSensorId = StMHARD3_O2_Sensor1;
+		}
 	}
 	if(((pSettings->ext_sensor_map[1] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[1] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 2;
+		if(pSettings->ext_sensor_map[1] == SENSOR_CO2M)
+		{
+			write_field_on_off(StMHARD3_O2_Sensor2,	 30, 95, ME_Y_LINE2,  &FontT48, "", pSettings->co2_sensor_active);
+		}
 	}
 	else
 	{
 		 write_field_on_off(StMHARD3_O2_Sensor2,	 30, 95, ME_Y_LINE2,  &FontT48, "", sensorActive[1]);
+		 if(firstSensorId == 0)
+		 {
+		 	firstSensorId = StMHARD3_O2_Sensor2;
+		 }
 	}
 	if(((pSettings->ext_sensor_map[2] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[2] >= SENSOR_TYPE_O2_END)))
 	{
 		pSettings->ppo2sensors_deactivated |= 4;
+		if(pSettings->ext_sensor_map[2] == SENSOR_CO2M)
+		{
+			write_field_on_off(StMHARD3_O2_Sensor3,	 30, 95, ME_Y_LINE3,  &FontT48, "", pSettings->co2_sensor_active);
+		}
 	}
 	else
 	{
 		write_field_on_off(StMHARD3_O2_Sensor3,	 30, 95, ME_Y_LINE3,  &FontT48, "", sensorActive[2]);
+		if(firstSensorId == 0)
+		{
+			firstSensorId = StMHARD3_O2_Sensor3;
+		}
 	}
 
 	stateRealGetPointerWrite()->diveSettings.ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;
@@ -627,15 +657,15 @@ void openEdit_O2Sensors(void)
 		write_field_button(StMHARD3_Sensor_Detect,	 30, 800, ME_Y_LINE6,  &FontT48, text);
    	}
 
-    if((pSettings->ext_sensor_map[0] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[0] < SENSOR_TYPE_O2_END))
+    if((pSettings->ext_sensor_map[0] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[0] < SENSOR_MUX))
 	{
 			setEvent(StMHARD3_O2_Sensor1, (uint32_t)OnAction_Sensor1);
 	}
-    if((pSettings->ext_sensor_map[1] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[1] < SENSOR_TYPE_O2_END))
+    if((pSettings->ext_sensor_map[1] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[1] < SENSOR_MUX))
 	{
 			setEvent(StMHARD3_O2_Sensor2, (uint32_t)OnAction_Sensor2);
 	}
-    if((pSettings->ext_sensor_map[2] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[2] < SENSOR_TYPE_O2_END))
+    if((pSettings->ext_sensor_map[2] >= SENSOR_OPTIC) && (pSettings->ext_sensor_map[2] < SENSOR_MUX))
 	{
 			setEvent(StMHARD3_O2_Sensor3, (uint32_t)OnAction_Sensor3);
 	}
@@ -654,6 +684,15 @@ void openEdit_O2Sensors(void)
    		setEvent(StMHARD3_Sensor_Detect, (uint32_t)OnAction_Sensor_Detect);
    	}
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+
+    switch(firstSensorId)
+    {
+    	case StMHARD3_O2_Sensor2: tMenuEdit_select(StMHARD3_O2_Sensor2);
+    		break;
+    	case StMHARD3_O2_Sensor3: tMenuEdit_select(StMHARD3_O2_Sensor3);
+    		break;
+    	default: break;
+    }
 }
 
 
@@ -661,7 +700,7 @@ uint8_t OnAction_Sensor1(uint32_t editId, uint8_t blockNumber, uint8_t digitNumb
 {
 	const SDiveState *pStateReal = stateRealGetPointer();
 
-	if(pStateReal->lifeData.extIf_sensor_map[0] == SENSOR_DIGO2M)
+	if((pStateReal->lifeData.extIf_sensor_map[0] == SENSOR_DIGO2M) || (pStateReal->lifeData.extIf_sensor_map[0] == SENSOR_CO2M))
 	{
 		return EXIT_TO_INFO_SENSOR;
 	}
@@ -687,7 +726,7 @@ uint8_t OnAction_Sensor2(uint32_t editId, uint8_t blockNumber, uint8_t digitNumb
 {
 	const SDiveState *pStateReal = stateRealGetPointer();
 
-	if(pStateReal->lifeData.extIf_sensor_map[1] == SENSOR_DIGO2M)
+	if((pStateReal->lifeData.extIf_sensor_map[1] == SENSOR_DIGO2M) || (pStateReal->lifeData.extIf_sensor_map[1] == SENSOR_CO2M))
 	{
 		return EXIT_TO_INFO_SENSOR;
 	}
@@ -712,7 +751,7 @@ uint8_t OnAction_Sensor3(uint32_t editId, uint8_t blockNumber, uint8_t digitNumb
 {
 	const SDiveState *pStateReal = stateRealGetPointer();
 
-	if(pStateReal->lifeData.extIf_sensor_map[2] == SENSOR_DIGO2M)
+	if((pStateReal->lifeData.extIf_sensor_map[2] == SENSOR_DIGO2M) || (pStateReal->lifeData.extIf_sensor_map[2] == SENSOR_CO2M))
 	{
 		return EXIT_TO_INFO_SENSOR;
 	}
@@ -805,7 +844,7 @@ uint8_t OnAction_Sensor_Info(uint32_t editId, uint8_t blockNumber, uint8_t digit
 
 uint8_t OnAction_Sensor_Detect(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	DataEX_setExtInterface_Cmd(EXT_INTERFACE_AUTODETECT);
+	DataEX_setExtInterface_Cmd(EXT_INTERFACE_AUTODETECT, 0);
 	return UNSPECIFIC_RETURN;
 }
 
@@ -895,7 +934,7 @@ void openEdit_ButtonSens(void)
     }
 
     snprintf(text,32,"%c",TXT_ButtonLock);
-    write_field_on_off(StMHARD5_ButtonLock,	 30, 95, ME_Y_LINE5,  &FontT48, text, settingsGetPointer()->buttonLockActive);
+    write_field_on_off(StMHARD5_ButtonLock,	 30, 700, ME_Y_LINE5,  &FontT48, text, settingsGetPointer()->buttonLockActive);
 
     setEvent(StMHARD5_Button1, (uint32_t)OnAction_Button);
 
@@ -934,7 +973,7 @@ void refresh_ButtonValuesFromPIC(void)
         sens[i] = settingsHelperButtonSens_translate_hwOS_values_to_percentage(stateRealGetPointer()->lifeData.buttonPICdata[i]);
     }
     snprintf(text,64,"\020\016\016%c%c \017 (%03u  %03u  %03u)",TXT_2BYTE,TXT2BYTE_LowerIsLess,sens[2],sens[1],sens[0]);
-    write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+    write_label_var(  20, 700, ME_Y_LINE6, &FontT42, text);
 
     tMenuEdit_refresh_field(StMHARD5_Button1);
     tMenuEdit_refresh_field(StMHARD5_ButtonBalance1);

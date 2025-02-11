@@ -213,6 +213,7 @@
 #include "tInfo.h"
 #include "tInfoLog.h"
 #include "tInfoSensor.h"
+#include "tInfoPreDive.h"
 #include "tMenu.h"
 #include "tMenuEdit.h"
 #include "tMenuEditGasOC.h"
@@ -297,6 +298,14 @@ static uint8_t DoDisplayRefresh = 0;			/* trigger to refresh display data */
 static uint8_t DoHousekeeping = 0;				/* trigger to cleanup the frame buffers */
 static SButtonLock ButtonLockState = LOCK_OFF;  /* Used for button unlock sequence */
 
+#ifdef T7_DEBUG_RUNTIME
+static uint32_t startTimeMainLoop = 0;
+static uint32_t startTimeDecoLoop = 0;
+static uint32_t startTimeGfxLoop = 0;
+static uint32_t timeMainLoop = 0;
+static uint32_t timeDecoLoop = 0;
+static uint32_t timeGfxLoop = 0;
+#endif
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
@@ -486,6 +495,9 @@ int main(void)
      */
     while( 1 )
     {
+#ifdef T7_DEBUG_RUNTIME
+    	startTimeMainLoop = HAL_GetTick();
+#endif
         if( bootToBootloader )
             resetToFirmwareUpdate();
 
@@ -530,8 +542,13 @@ int main(void)
             }
             check_warning();
             updateMiniLiveLogbook(1);
-
+#ifdef T7_DEBUG_RUNTIME
+            startTimeGfxLoop = HAL_GetTick();
+#endif
         	RefreshDisplay();
+#ifdef T7_DEBUG_RUNTIME
+        	timeGfxLoop = time_elapsed_ms(startTimeGfxLoop, HAL_GetTick());
+#endif
         	TimeoutControl();							/* exit menus if needed */
 
 #ifdef ENABLE_MOTION_CONTROL
@@ -544,14 +561,21 @@ int main(void)
         		HandleMotionDetection();
         	}
 #endif
-
+		/* Autofocus for T3 view */
+        	if((settingsGetPointer()->cvAutofocus) && (settingsGetPointer()->design == 3) && (get_globalState() == StD) && (stateUsed->mode == MODE_DIVE))
+        	{
+        		t3_handleAutofocus();
+        	}
 #ifdef SIM_WRITES_LOGBOOK
         if(stateUsed == stateSimGetPointer())
             logbook_InitAndWrite(stateUsed);
 #endif
         	if(stateUsed == stateRealGetPointer())	/* Handle log entries while in dive mode*/
-                logbook_InitAndWrite(stateUsed);
+                logbook_InitAndWrite((SDiveState*)stateUsed);
         }
+#ifdef T7_DEBUG_RUNTIME
+    	timeMainLoop = time_elapsed_ms(startTimeMainLoop, HAL_GetTick());
+#endif
     }
 }
 
@@ -894,6 +918,8 @@ static void TriggerButtonAction()
 								break;
 							case InfoPageSensor: 	sendActionToInfoSensor(action);
 								break;
+							case InfoPagePreDive: 	sendActionToInfoPreDive(action);
+								break;
 							default:				sendActionToInfo(action);
 								break;
 						}
@@ -995,7 +1021,8 @@ static void gotoSleep(void)
 {
     /* not at the moment of testing */
 //	ext_flash_erase_firmware_if_not_empty();
-    GFX_logoAutoOff();
+	GFX_logoAutoOff();
+	display_power_off();
     ext_flash_write_devicedata(true);	/* write data at default position */
     ext_flash_write_settings(true);		/* write data at default position */
     set_globalState(StStop);
@@ -1250,10 +1277,12 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
         case 0: /* Cave */
             levelMax = 3000;/* max 25 % (x2) */
             levelMin = 1500;
+            if( isNewDisplay()) display_1_brightness_cave();
             break;
         case 1: /* Eco */
             levelMax = 6000;/* max 50 % (x2) */
             levelMin = 3000;
+            if ( isNewDisplay()) display_1_brightness_eco();
             break;
         case 2: /* Std */
             levelAmbient += 1000;
@@ -1261,6 +1290,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 4500;
             levelUpStep_100ms += levelUpStep_100ms/2; // 4500 instead of 3000
             levelDnStep_100ms += levelDnStep_100ms/2;
+            if ( isNewDisplay()) display_1_brightness_std();
             break;
         case 3: /* High */
         default:
@@ -1269,6 +1299,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 6000;
             levelUpStep_100ms += levelUpStep_100ms; // 6000 instead of 3000
             levelDnStep_100ms += levelDnStep_100ms;
+            if ( isNewDisplay()) display_1_brightness_high();
             break;
         case 4: /* New Max */
             levelAmbient = 12000;
@@ -1276,6 +1307,7 @@ static uint32_t TIM_BACKLIGHT_adjust(void)
             levelMin = 12000;
             levelUpStep_100ms += 12000;
             levelDnStep_100ms += 0;
+            if ( isNewDisplay()) display_1_brightness_max();
             break;
         }
 
@@ -1338,7 +1370,7 @@ static void TIM_BACKLIGHT_init(void)
     sConfig.OCMode     = TIM_OCMODE_PWM1;
     sConfig.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfig.OCFastMode = TIM_OCFAST_DISABLE;
-    sConfig.Pulse = 100; /* Initial brigthness of display */
+    sConfig.Pulse = 100; /* Initial brightness of display */
 
     HAL_TIM_PWM_ConfigChannel(&TimBacklightHandle, &sConfig, TIM_BACKLIGHT_CHANNEL);
     HAL_TIM_PWM_Start(&TimBacklightHandle, TIM_BACKLIGHT_CHANNEL);
@@ -1709,7 +1741,13 @@ static void deco_loop(void)
     switch(what)
     {
 		case CALC_VPM:
+#ifdef T7_DEBUG_RUNTIME
+            startTimeDecoLoop = HAL_GetTick();
+#endif
 				vpm_calc(&stateDeco.lifeData,&stateDeco.diveSettings,&stateDeco.vpm,&stateDeco.decolistVPM, DECOSTOPS);
+#ifdef T7_DEBUG_RUNTIME
+				timeDecoLoop = time_elapsed_ms(startTimeDecoLoop, HAL_GetTick());
+#endif
 				decoLock = DECO_CALC_FINSHED_vpm;
 				return;
 		 case CALC_VPM_FUTURE:
@@ -1903,6 +1941,21 @@ static void TimeoutControl(void)
 	}
 	RequestModeChange = 0;
 }
+
+#ifdef T7_DEBUG_RUNTIME
+uint32_t getMainLoopTime()
+{
+	return timeMainLoop;
+}
+uint32_t getDecoLoopTime()
+{
+	return timeDecoLoop;
+}
+uint32_t getGfxLoopTime()
+{
+	return timeGfxLoop;
+}
+#endif
 // debugging by https://blog.feabhas.com/2013/02/developing-a-generic-hard-fault-handler-for-arm-cortex-m3cortex-m4/
 
 /*

@@ -39,7 +39,7 @@
 	==============================================================================
 
 	151130	hw	sleep on button3
-								(MX_tell_reset_logik_alles_ok() + DataEX_call() in endlos loop)
+								(MX_tell_reset_logik_alles_ok() + DataEX_call() in endless loop)
 
 	==============================================================================
 							##### bootloader specific #####
@@ -89,7 +89,7 @@
 	==============================================================================
 							##### MainTask #####
 	==============================================================================
-	[..] For everthing slow without importance to be 'in time'.
+	[..] For everything slow without importance to be 'in time'.
 			 Like VPM and Buehlmann.
 			 No sprintf and probably no GFX_SetFramesTopBottom() stuff neither.
 			 If sprintf is called while sprintf is executed it blows up everything.
@@ -99,7 +99,7 @@
 	==============================================================================
 	[..] The SDRAM is handled by getFrame() and releaseFrame().
 			 Each frame with 800*480*2 Bytes.
-			 Be carefull to release every frame
+			 Be careful to release every frame
 			 otherwise there will be a memory leakage over time.
 			 housekeepingFrame() in the MainTask takes care of cleaning the frames.
 			 All frames are filled with 0x00. This will be transparent with color of
@@ -127,7 +127,7 @@
 						GFX_SetFrameTop() + GFX_SetFrameBottom()
 						Those do not change anything on the display but give commands to..
 				(#) GFX_change_LTDC()	The only place that changes the pointer.
-															This prevents erratic behaviour if several changes
+															This prevents erratic behavior if several changes
 															are made within one refresh rate of the screen.
 															Is called in IRQ by PD4 and HAL_GPIO_EXTI_IRQHandler
 															from VSYNC signal.
@@ -142,7 +142,7 @@
 										with automatic language switch by
 										selected_language in SSettings
 										see openEdit_Language() in tMenuEditSystem.c
-										Therefore there are differnent functions
+										Therefore there are different functions
 										for example:
 										write_label_fix() for single char multilanguage
 										write_label_var() for strings that could include
@@ -223,6 +223,19 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
+#ifdef BOOTLOADER_STANDALONE
+#include "Fonts/Font_T144_plus.h"
+#include "Fonts/Font_T84.h"
+#include "Fonts/Font_T105.h"
+#include "Fonts/Font_T54.h"
+#include "Fonts/Font_T48_plus.h"
+#include "Fonts/Font_T24.h"
+#include "Fonts/Font_T42.h"
+#include "Fonts/image_battery.h"
+#include "Fonts/image_heinrichs_weikamp.h"
+#include "Fonts/image_ostc.h"
+#endif
+
 // From Discovery/Inc (shall be shared...)
 #include "data_exchange_main.h"
 #include "display.h"
@@ -252,11 +265,11 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 		.versionBeta    = 1,
 
 	/* 4 bytes with trailing 0 */
-	.signature = "cw",
+	.signature = "mh",
 
-	.release_year   = 16,
-	.release_month  = 4,
-	.release_day    = 8,
+	.release_year   = 25,
+	.release_month  = 1,
+	.release_day    = 13,
 	.release_sub    = 0,
 
 	/* max 48 with trailing 0 */
@@ -269,24 +282,29 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 	.magic[3] = FIRMWARE_MAGIC_END
 };
 
-
-const SHardwareData HardwareData __attribute__((at(HARDWAREDATA_ADDRESS))) = {
+const SHardwareData HardwareData __attribute__((section(".bootloader_hardware_data"))) =
+{
 
 	// first 52 bytes
 	.primarySerial = 0xFFFF,
-	.primaryLicence	= 0xFF,
-	.revision8bit = 0xFF,
-	.production_year = 0xFF,
-	.production_month = 0xFF,
-	.production_day = 0xFF,
+	.primaryLicence	= 0x00,
+	.revision8bit = 0x02,
+	.production_year = 0x19,
+	.production_month = 0x01,
+	.production_day = 0x10,
 	.production_bluetooth_name_set = 0xFF,
 
 	.production_info = {
-		0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+		0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x4F,0x53,0x54,0x43,
+		0x20,0x35,0x20,0x65,0x6E,0x64,0x2D,0x32,0x30,0x32,0x34,
+		0x20,0x68,0x61,0x72,0x64,0x77,0x61,0x72,0x65,0x20,0x20,
+		0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20},
+
+/*		0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 		0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 		0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 		0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF},
-
+*/
 	// other 12 bytes (64 in total)
 	.secondarySerial = 0xFFFF,
 	.secondaryLicence = 0xFF,
@@ -418,16 +436,15 @@ GPIO_test_I2C_lines();
 	uint8_t ptr;
 	uint32_t pOffset;
 
+	const SHardwareData* HardwareData = hardwareDataGetPointer();
+
 	set_globalState(StBoot0);
 
 	HAL_Init();
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_2);
+	SystemClock_Config();
 
-	/* feedback for the user
-	 * aber sehr unschï¿½n beim Warmstart
-	 * da das letzte Bild noch lange nachleuchtet */
-//	MX_GPIO_Backlight_max_static_only_Init();
-
+	MX_GPIO_Init();
 
 	/* button press is only 40 to 50 us low */
 	MX_GPIO_One_Button_only_Init();
@@ -442,8 +459,8 @@ GPIO_test_I2C_lines();
 	}
 	else
 	if(			(firmware_MainCodeIsProgammed() == 0)
-			||	(hardwareDataGetPointer()->primarySerial == 0xFFFF)
-			||	(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF))
+			||	(HardwareData->primarySerial == 0xFFFF)
+			||	(HardwareData->production_bluetooth_name_set == 0xFF))
 	{
 		i = 1;
 	}
@@ -495,10 +512,6 @@ GPIO_test_I2C_lines();
 	if((i == 0) && (callForUpdate == 0))
 		firmware_JumpTo_Application();
 
-	SystemClock_Config();
-
-	MX_GPIO_Init();
-	MX_Bluetooth_PowerOn();
 	MX_SPI_Init();
 	SDRAM_Config();
 	HAL_Delay(100);
@@ -574,7 +587,7 @@ GPIO_test_I2C_lines();
 	/* here comes the variable upper firmware loader */
 	if((i == 0) && (status == HAL_OK))
 	{
-		tInfo_newpage("load firmware2 data");
+		tInfo_newpage("load fontpack data");
 		uint8_t* pBuffer = (uint8_t*)((uint32_t)0xD0000000); /* blocked via  GFX_init1_no_DMA */
 		firmware_load_result = ext_flash_read_firmware2(&pOffset, pBuffer,768000*2,0,0);
 
@@ -646,16 +659,16 @@ GPIO_test_I2C_lines();
 
 	if((i == 0) && (status == HAL_OK))
 	{
-		tInfo_newpage("Done.");
-		tInfo_write("Cleaning.");
+		tInfo_newpage("done.");
+		tInfo_write("cleaning.");
 		ext_flash_erase_firmware_if_not_empty();
 		ext_flash_erase_firmware2_if_not_empty();
-		tInfo_write("Reset device.");
+		tInfo_write("reset device.");
 		reset_to_firmware_using_Watchdog();
 	}
 
 	ptr = 0;
-	textVersion[ptr++] = '\021';
+	textVersion[ptr++] = '\020';
 	textVersion[ptr++] = 's';
 	textVersion[ptr++] = 'e';
 	textVersion[ptr++] = 'r';
@@ -663,7 +676,7 @@ GPIO_test_I2C_lines();
 	textVersion[ptr++] = 'a';
 	textVersion[ptr++] = 'l';
 	textVersion[ptr++] = ' ';
-	if(HardwareData.primarySerial == 0xFFFF)
+	if(HardwareData->primarySerial == 0xFFFF)
 	{
 		textVersion[ptr++] = 'n';
 		textVersion[ptr++] = 'o';
@@ -673,36 +686,51 @@ GPIO_test_I2C_lines();
 		textVersion[ptr++] = 'e';
 		textVersion[ptr++] = 't';
 	}
-	else if(HardwareData.secondarySerial == 0xFFFF)
+	else if(HardwareData->secondarySerial == 0xFFFF)
 	{
 		textVersion[ptr++] = '#';
-		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData.primarySerial);
+		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData->primarySerial);
 	}
 	else
 	{
 		textVersion[ptr++] = '#';
-		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData.secondarySerial);
+		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData->secondarySerial);
 		textVersion[ptr++] = ' ';
 		textVersion[ptr++] = '(';
-		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData.primarySerial);
+		ptr += gfx_number_to_string(5,1,&textVersion[ptr],HardwareData->primarySerial);
 		textVersion[ptr++] = ')';
 	}
 	textVersion[ptr++] = '\020';
 	textVersion[ptr] = 0;
 
-	tInfo_button_text("Exit","","Sleep");
-	tInfo_newpage("Bootloader 160602");
-	tInfo_write("start bluetooth");
-	tInfo_write("");
-	tInfo_write(textVersion);
-	tInfo_write("");
-
 	TIM_init();
 	MX_UART_Init();
 	MX_Bluetooth_PowerOn();
-	tComm_Set_Bluetooth_Name(0);
-
 	tComm_init();
+
+	tInfo_button_text("exit","","sleep");
+	tInfo_newpage("bootloader 250113");
+	tInfo_write("start bluetooth");
+	tInfo_write("");
+	tInfo_write(textVersion);
+	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
+	{
+		tInfo_write("init bluetooth");
+		if(isNewDisplay())
+		{
+			tComm_StartBlueModBaseInit();
+		}
+		else
+		{
+			tComm_StartBlueModConfig();
+		}
+	}
+	else
+	{
+		tInfo_write("bluetooth set");
+		tComm_StartBlueModConfig();
+	}
+
 	set_globalState_Base();
 
 	GFX_start_VSYNC_IRQ();
@@ -753,7 +781,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		tComm_exit();
 		returnFromCommCleanUpRequest = 0;
 		GFX_hwBackgroundOn();
-		tInfo_button_text("Exit","","Sleep");
+		tInfo_button_text("exit","","sleep");
 		tInfo_newpage("bluetooth disonnected");
 		tInfo_write("");
 		tInfo_write("");
@@ -799,13 +827,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if(GFX_logoStatus() != 0)
 		return;
 
-	if(GPIO_Pin == BUTTON_BACK_PIN) // links
+	if(GPIO_Pin == BUTTON_BACK_PIN) // left
 		action = ACTION_BUTTON_BACK;
 	else
-	if(GPIO_Pin == BUTTON_ENTER_PIN) // mitte
+	if(GPIO_Pin == BUTTON_ENTER_PIN) // center
 		action = ACTION_BUTTON_ENTER;
 	else
-	if(GPIO_Pin == BUTTON_NEXT_PIN) // rechts
+	if(GPIO_Pin == BUTTON_NEXT_PIN) // right
 		action = ACTION_BUTTON_NEXT;
 #ifdef BUTTON_CUSTOM_PIN
 	else
@@ -816,42 +844,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		action = 0;
 	get_globalStateList(&status);
 
-	switch(status.base)
+	if(status.base == BaseComm)
 	{
-		case BaseComm:
 			if(action == ACTION_BUTTON_BACK)
 			{
 				reset_to_firmware_using_Watchdog();
 			}
-		 break;
-
-		default:
-			if((action == ACTION_BUTTON_NEXT) && (counterToPreventSleep == 255) && (get_globalState() == StS))
-			{
-				while(1)
-				{
-					MX_tell_reset_logik_alles_ok();
-					DataEX_call();
-					HAL_Delay(100);
-				}
-			}
-			else
-			if(action == ACTION_BUTTON_BACK)
-			{
-				reset_to_firmware_using_Watchdog();
-			}
-			else
-			if(action == ACTION_BUTTON_CUSTOM)
-			{
-				if(get_globalState() == StS)
-					gotoSleep();
-			}
-			else
-			if(action == ACTION_BUTTON_ENTER)
-			{
-				reset_to_update_using_system_reset();
-			}
-			break;
+	}
+	else
+	{
+		switch (action)
+		{
+			case ACTION_BUTTON_NEXT: if((counterToPreventSleep == 255) && (get_globalState() == StS))
+										{
+											while(1)
+											{
+												MX_tell_reset_logik_alles_ok();
+												DataEX_call();
+												HAL_Delay(100);
+											}
+										}
+				break;
+			case ACTION_BUTTON_BACK:	reset_to_firmware_using_Watchdog();
+				break;
+			case ACTION_BUTTON_CUSTOM:	if(get_globalState() == StS)
+										{
+											gotoSleep();
+										}
+				break;
+			case ACTION_BUTTON_ENTER:	/* reset_to_update_using_system_reset(); old function */
+										tComm_StartBlueModBaseInit(); /* new: factory reset bluetooth */
+				break;
+			default:
+				break;
+		}
 	}
 }
 
@@ -1153,54 +1179,65 @@ static void EXTILine_Buttons_Config(void)
 	*/
 static void SystemClock_Config(void)
 {
-	RCC_ClkInitTypeDef RCC_ClkInitStruct;
-	RCC_OscInitTypeDef RCC_OscInitStruct;
-	RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct;
+    /* Enable Power Control clock */
+    __PWR_CLK_ENABLE();
 
-	/* Enable Power Control clock */
-	__PWR_CLK_ENABLE();
+    /* The voltage scaling allows optimizing the power consumption when the device is
+     clocked below the maximum system frequency, to update the voltage scaling value
+     regarding system frequency refer to product datasheet.  */
+    __HAL_PWR_VOLTAGESCALING_CONFIG( PWR_REGULATOR_VOLTAGE_SCALE1 );
 
-	/* The voltage scaling allows optimizing the power consumption when the device is
-		 clocked below the maximum system frequency, to update the voltage scaling value
-		 regarding system frequency refer to product datasheet.  */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
-	/*##-1- System Clock Configuration #########################################*/
-	/* Enable HSE Oscillator and activate PLL with HSE as source */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLM = 8;
-	RCC_OscInitStruct.PLL.PLLN = 336;//360;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-	RCC_OscInitStruct.PLL.PLLQ = 7;
-	HAL_RCC_OscConfig(&RCC_OscInitStruct);
+    /*##-1- System Clock Configuration #########################################*/
+    /* Enable HighSpeed Oscillator and activate PLL with HSE/HSI as source */
+    RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+#ifdef DISC1_BOARD
+    // Use High Speed Internal (HSI) oscillator, running at 16MHz.
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState       = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = 0x10;
+    RCC_OscInitStruct.PLL.PLLSource  = RCC_PLLSOURCE_HSI;
+    RCC_OscInitStruct.PLL.PLLM       = 16;				// HSI/16 is 1Mhz.
+#else
+    // Use High Speed External oscillator, running at 8MHz
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState       = RCC_HSE_ON;
+    RCC_OscInitStruct.PLL.PLLSource  = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM       = 8;               // HSE/8 is 1Mhz.
+#endif
+    // System clock = PLL (1MHz) * N/p = 180 MHz.
+    RCC_OscInitStruct.PLL.PLLN = 360;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+    RCC_OscInitStruct.PLL.PLLQ = 7;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    HAL_RCC_OscConfig( &RCC_OscInitStruct );
 
 //  HAL_PWREx_ActivateOverDrive();
-HAL_PWREx_DeactivateOverDrive();
-	/* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
-		 clocks dividers */
-	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
-	HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_8);//FLASH_LATENCY_5);
+    HAL_PWREx_DeactivateOverDrive();
 
-	/*##-2- LTDC Clock Configuration ###########################################*/
-	/* LCD clock configuration */
-	/* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
-	/* PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz */
-	/* PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/4 = 48 Mhz */
-	/* LTDC clock frequency = PLLLCDCLK / RCC_PLLSAIDIVR_8 = 48/8 = 6 Mhz */
+    /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+                                                            | RCC_CLOCKTYPE_PCLK1  | RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+    HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_8 );	//FLASH_LATENCY_5);
 
-	/* neu: 8MHz/8*300/5/8 = 7,5 MHz = 19,5 Hz bei 800 x 480 */
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-	PeriphClkInitStruct.PLLSAI.PLLSAIN = 300;//192;
-	PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;//4;
-	PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_8;//RCC_PLLSAIDIVR_4;// RCC_PLLSAIDIVR_2; // RCC_PLLSAIDIVR_8
-	HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+    /*##-2- LTDC Clock Configuration ###########################################*/
+    /* LCD clock configuration */
+    /* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
+    /* PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz */
+    /* PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/4 = 48 Mhz */
+    /* LTDC clock frequency = PLLLCDCLK / RCC_PLLSAIDIVR_8 = 48/8 = 6 Mhz */
+
+    /* neu: 8MHz/8*300/5/8 = 7,5 MHz = 19,5 Hz bei 800 x 480 */
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+    PeriphClkInitStruct.PLLSAI.PLLSAIN = 300;				//192;
+    PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;				//4;
+    PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_8;//RCC_PLLSAIDIVR_4;// RCC_PLLSAIDIVR_2; // RCC_PLLSAIDIVR_8
+    HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
 }
 
 
@@ -1219,7 +1256,7 @@ static void Error_Handler(void)
 }
 
 /**
-	* @brief  Perform the SDRAM exernal memory inialization sequence
+	* @brief  Perform the SDRAM external memory initialization sequence
 	* @param  hsdram: SDRAM handle
 	* @param  Command: Pointer to SDRAM command structure
 	* @retval None
@@ -1283,7 +1320,7 @@ static void SDRAM_Initialization_Sequence(SDRAM_HandleTypeDef *hsdram, FMC_SDRAM
 static void DualBoot(void)
 {
 		// Set BFB2 bit to enable boot from Flash Bank2
-		// Allow Access to Flash control registers and user Falsh
+		// Allow Access to Flash control registers and user Flash
 		HAL_FLASH_Unlock();
 
 		// Allow Access to option bytes sector
@@ -1333,7 +1370,7 @@ static void DualBoot(void)
 
 /**
 	* @brief DMA2D configuration.
-	* @note  This function Configure tha DMA2D peripheral :
+	* @note  This function Configure the DMA2D peripheral :
 	*        1) Configure the transfer mode : memory to memory W/ pixel format conversion
 	*        2) Configure the output color mode as ARGB4444
 	*        3) Configure the output memory address at SRAM memory
@@ -1503,7 +1540,7 @@ void reset_to_firmware_using_Watchdog(void)
 	WwdgHandle.Init.Counter   = 127;
 
 	HAL_WWDG_Init(&WwdgHandle);
-	HAL_WWDG_Start(&WwdgHandle);
+/*	HAL_WWDG_Start(&WwdgHandle);	has been removed from HAL library starting_V120 */
 	while(1);
 }
 

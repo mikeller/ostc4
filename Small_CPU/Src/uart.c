@@ -22,38 +22,63 @@
 #include "uart.h"
 #include "uartProtocol_O2.h"
 #include "uartProtocol_Co2.h"
+#include "uartProtocol_Sentinel.h"
+#include "uartProtocol_GNSS.h"
 #include "externalInterface.h"
 #include "data_exchange.h"
 #include <string.h>	/* memset */
 
+#ifdef ENABLE_GPIO_V2
+extern UART_HandleTypeDef huart6;
+extern sUartComCtrl Uart6Ctrl;
+#endif
+
 /* Private variables ---------------------------------------------------------*/
 
+DMA_HandleTypeDef  hdma_usart1_rx, hdma_usart1_tx;
+
+uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
+uint8_t txBuffer[TX_BUF_SIZE];							/* tx uses less bytes */
+uint8_t txBufferQue[TX_BUF_SIZE];						/* In MUX mode command may be send shortly after each other => allow q 1 entry que */
 
 
-#define CHUNK_SIZE				(25u)		/* the DMA will handle chunk size transfers */
-#define CHUNKS_PER_BUFFER		(5u)
+static uint8_t lastCmdIndex;							/* Index of last command which has not been completely received */
 
-UART_HandleTypeDef huart1;
+sUartComCtrl Uart1Ctrl;
+static  sUartComCtrl* pGnssCtrl = NULL;
 
-DMA_HandleTypeDef  hdma_usart1_rx;
-
-uint8_t rxBuffer[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow fariations in buffer read time */
-static uint8_t rxWriteIndex;							/* Index of the data item which is analysed */
-static uint8_t rxReadIndex;								/* Index at which new data is stared */
-static uint8_t lastCmdIndex;							/* Index of last command which has not been completly received */
-static uint8_t dmaActive;								/* Indicator if DMA reception needs to be started */
-
-
-static uint8_t SentinelConnected = 0;					/* Binary indicator if a sensor is connected or not */
-
+static uint32_t LastCmdRequestTick = 0;					/* Used by ADC handler to avoid interferance with UART communication */
 
 /* Exported functions --------------------------------------------------------*/
 
 
+void UART_SetGnssCtrl(sUartComCtrl* pTarget)
+{
+	pGnssCtrl = pTarget;
+}
+
+sUartComCtrl* UART_GetGnssCtrl()
+{
+	return pGnssCtrl;
+}
+
+
+void UART_clearRxBuffer(sUartComCtrl* pUartCtrl)
+{
+	uint16_t index = 0;
+	do
+	{
+		pUartCtrl->pRxBuffer[index++] = BUFFER_NODATA_LOW;
+		pUartCtrl->pRxBuffer[index++] = BUFFER_NODATA_HIGH;
+	} while (index < sizeof(rxBuffer));
+
+	pUartCtrl->rxReadIndex = 0;
+	pUartCtrl->rxWriteIndex = 0;
+}
+
 void MX_USART1_UART_Init(void)
 {
 /* regular init */	
-
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 19200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
@@ -67,22 +92,35 @@ void MX_USART1_UART_Init(void)
 
   MX_USART1_DMA_Init();
 
-  memset(rxBuffer,BUFFER_NODATA,sizeof(rxBuffer));
-  rxReadIndex = 0;
+  UART_clearRxBuffer(&Uart1Ctrl);
   lastCmdIndex = 0;
-  rxWriteIndex = 0;
-  dmaActive = 0;
 
-  SentinelConnected = 0;
+  Uart1Ctrl.pHandle = &huart1;
+  Uart1Ctrl.rxWriteIndex = 0;
+  Uart1Ctrl.rxReadIndex = 0;
+  Uart1Ctrl.dmaRxActive = 0;
+  Uart1Ctrl.dmaTxActive = 0;
+  Uart1Ctrl.pRxBuffer = rxBuffer;
+  Uart1Ctrl.pTxBuffer = txBuffer;
+  Uart1Ctrl.txBufferQueLen = 0;
 
+#ifndef ENABLE_GPIO_V2
+  UART_SetGnssCtrl(&Uart1Ctrl);
+#endif
 }
+
+
 
 void MX_USART1_UART_DeInit(void)
 {
 	HAL_DMA_Abort(&hdma_usart1_rx);
 	HAL_DMA_DeInit(&hdma_usart1_rx);
+	HAL_DMA_Abort(&hdma_usart1_tx);
+	HAL_DMA_DeInit(&hdma_usart1_tx);
 	HAL_UART_DeInit(&huart1);
-	dmaActive = 0;
+	Uart1Ctrl.dmaRxActive = 0;
+	Uart1Ctrl.dmaTxActive = 0;
+	Uart1Ctrl.txBufferQueLen = 0;
 }
 
 void  MX_USART1_DMA_Init()
@@ -105,12 +143,29 @@ void  MX_USART1_DMA_Init()
 
   __HAL_LINKDMA(&huart1,hdmarx,hdma_usart1_rx);
 
+  hdma_usart1_tx.Instance = DMA2_Stream7;
+  hdma_usart1_tx.Init.Channel = DMA_CHANNEL_4;
+  hdma_usart1_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+  hdma_usart1_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+  hdma_usart1_tx.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_usart1_tx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_usart1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_usart1_tx.Init.Mode = DMA_NORMAL;
+  hdma_usart1_tx.Init.Priority = DMA_PRIORITY_LOW;
+  hdma_usart1_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+  HAL_DMA_Init(&hdma_usart1_tx);
+
+  __HAL_LINKDMA(&huart1,hdmatx,hdma_usart1_tx);
+
+
   /* DMA interrupt init */
-  HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 2, 2);
   HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 2, 1);
+  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 }
 
-void  UART_MUX_SelectAddress(uint8_t muxAddress)
+void UART_MUX_SelectAddress(uint8_t muxAddress)
 {
 	uint8_t indexstr[4];
 
@@ -120,8 +175,24 @@ void  UART_MUX_SelectAddress(uint8_t muxAddress)
 		indexstr[1] = muxAddress;
 		indexstr[2] = 0x0D;
 		indexstr[3] = 0x0A;
-
-		HAL_UART_Transmit(&huart1,indexstr,4,10);
+		if(!Uart1Ctrl.dmaTxActive)
+		{
+			memcpy(txBuffer, indexstr, 4);
+			 Uart1Ctrl.dmaTxActive = 0;
+			if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,4))
+			{
+				 Uart1Ctrl.dmaTxActive = 1;
+				while(Uart1Ctrl.dmaTxActive)
+				{
+					HAL_Delay(1);
+				}
+			}
+		}
+		else
+		{
+			memcpy(txBufferQue, indexstr, 4);
+			Uart1Ctrl.txBufferQueLen = 4;
+		}
 	}
 }
 
@@ -130,13 +201,65 @@ void UART_SendCmdString(uint8_t *cmdString)
 {
 	uint8_t cmdLength = strlen((char*)cmdString);
 
-	if(cmdLength < 20)		/* A longer string is an indication for a missing 0 termination */
+	if(Uart1Ctrl.dmaTxActive == 0)
 	{
-		if(dmaActive == 0)
+		if(cmdLength < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 		{
-			UART_StartDMA_Receiption();
+			if(Uart1Ctrl.dmaRxActive == 0)
+			{
+				UART_StartDMA_Receiption(&Uart1Ctrl);
+			}
+			memcpy(txBuffer, cmdString, cmdLength);
+			if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,cmdLength))
+			{
+				Uart1Ctrl.dmaTxActive = 1;
+				LastCmdRequestTick = HAL_GetTick();
+			}
 		}
-		HAL_UART_Transmit(&huart1,cmdString,cmdLength,10);
+	}
+	else
+	{
+		memcpy(txBufferQue, cmdString, cmdLength);
+		Uart1Ctrl.txBufferQueLen = cmdLength;
+	}
+}
+
+void UART_AddFletcher(uint8_t* pBuffer, uint8_t length)
+{
+	uint8_t ck_A = 0;
+	uint8_t ck_B = 0;
+	uint8_t index = 0;
+
+
+	pBuffer += 2; /* skip sync chars */
+	for(index = 2; index < length; index++)
+	{
+		ck_A += *pBuffer++;
+		ck_B += ck_A;
+	}
+	*pBuffer++ = ck_A;
+	*pBuffer++ = ck_B;
+}
+
+void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
+{
+	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
+	{
+		if(pGnssCtrl != NULL)
+		{
+			if(pGnssCtrl->dmaRxActive == 0)
+			{
+				UART_StartDMA_Receiption(pGnssCtrl);
+			}
+			memcpy(pGnssCtrl->pTxBuffer, cmd, len);
+			UART_AddFletcher(pGnssCtrl->pTxBuffer, len);
+			len += 2;
+			if(HAL_OK == HAL_UART_Transmit_DMA(pGnssCtrl->pHandle,pGnssCtrl->pTxBuffer,len))
+			{
+				pGnssCtrl->dmaTxActive = 1;
+				LastCmdRequestTick = HAL_GetTick();
+			}
+		}
 	}
 }
 
@@ -166,281 +289,219 @@ void StringToUInt64(char *pstr, uint64_t *puint64)
 	}
 	*puint64 = result;
 }
-void ConvertByteToHexString(uint8_t byte, char* str)
-{
-	uint8_t worker = 0;
-	uint8_t digit = 0;
-	uint8_t digitCnt = 1;
 
-	worker = byte;
-	while((worker!=0) && (digitCnt != 255))
-	{
-		digit = worker % 16;
-		if( digit < 10)
-		{
-			digit += '0';
-		}
-		else
-		{
-			digit += 'A' - 10;
-		}
-		str[digitCnt--]= digit;
-		worker = worker / 16;
-	}
-}
-
-void UART_StartDMA_Receiption()
+void UART_StartDMA_Receiption(sUartComCtrl* pUartCtrl)
 {
-	if(dmaActive == 0)
+	if(pUartCtrl->dmaRxActive == 0)
 	{
-		if(HAL_OK == HAL_UART_Receive_DMA (&huart1, &rxBuffer[rxWriteIndex], CHUNK_SIZE))
-		{
-			dmaActive = 1;
-		}
+    	if(((pUartCtrl->rxWriteIndex / CHUNK_SIZE) != (pUartCtrl->rxReadIndex / CHUNK_SIZE)) || ((UART_isEndIndication(pUartCtrl, pUartCtrl->rxWriteIndex)) && (UART_isEndIndication(pUartCtrl, pUartCtrl->rxWriteIndex + 1))))	/* start next transfer if we did not catch up with read index */
+    	{
+			if(HAL_OK == HAL_UART_Receive_DMA (pUartCtrl->pHandle, &pUartCtrl->pRxBuffer[pUartCtrl->rxWriteIndex], CHUNK_SIZE))
+			{
+				pUartCtrl->dmaRxActive = 1;
+			}
+    	}
 	}
 }
 
 void UART_ChangeBaudrate(uint32_t newBaudrate)
 {
-	uint8_t dmaWasActive = dmaActive;
-//	HAL_DMA_Abort(&hdma_usart1_rx);
-		MX_USART1_UART_DeInit();
-		//HAL_UART_Abort(&huart1);
-		//HAL_DMA_DeInit(&hdma_usart1_rx);
-
-
-//	huart1.Instance->BRR = UART_BRR_SAMPLING8(HAL_RCC_GetPCLK2Freq()/2, newBaudrate);
+	MX_USART1_UART_DeInit();
 	huart1.Init.BaudRate = newBaudrate;
 	HAL_UART_Init(&huart1);
 	MX_USART1_DMA_Init();
-	if(dmaWasActive)
-	{
-		memset(rxBuffer,BUFFER_NODATA,sizeof(rxBuffer));
-		rxReadIndex = 0;
-		rxWriteIndex = 0;
-		dmaActive = 0;
-		UART_StartDMA_Receiption();
-	}
+	HAL_NVIC_SetPriority(USART1_IRQn, 1, 3);
+	HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+	UART_clearRxBuffer(&Uart1Ctrl);
+	Uart1Ctrl.rxReadIndex = 0;
+	Uart1Ctrl.rxWriteIndex = 0;
+	Uart1Ctrl.dmaRxActive = 0;
+	Uart1Ctrl.dmaTxActive = 0;
+	Uart1Ctrl.txBufferQueLen = 0;
 }
 
-#ifdef ENABLE_SENTINEL_MODE
-void UART_HandleSentinelData(void)
+void UART_HandleRxComplete(sUartComCtrl* pUartCtrl)
 {
-	uint8_t localRX = rxReadIndex;
-	static uint8_t dataType = 0;
-	static uint32_t dataValue[3];
-	static uint8_t dataValueIdx = 0;
-	static receiveState_t rxState = RX_Ready;
-	static uint32_t lastReceiveTick = 0;
-	static uint8_t lastAlive = 0;
-	static uint8_t curAlive = 0;
-	static uint8_t checksum = 0;
-	static char checksum_str[]="00";
-
-	while((rxBuffer[localRX]!=0))
+	pUartCtrl->dmaRxActive = 0;
+	pUartCtrl->rxWriteIndex+=CHUNK_SIZE;
+	if(pUartCtrl->rxWriteIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
 	{
-		lastReceiveTick = HAL_GetTick();
-
-		switch(rxState)
-		{
-			case RX_Ready:	if((rxBuffer[localRX] >= 'a') && (rxBuffer[localRX] <= 'z'))
-							{
-								rxState = RX_DetectStart;
-								curAlive = rxBuffer[localRX];
-								checksum = 0;
-							}
-					break;
-
-			case RX_DetectStart: 	checksum += rxBuffer[localRX];
-									if(rxBuffer[localRX] == '1')
-								 	{
-								 		rxState = RX_SelectData;
-								 		dataType = 0xFF;
-
-								 	}
-									else
-									{
-										rxState = RX_Ready;
-									}
-					break;
-
-			case RX_SelectData:		checksum += rxBuffer[localRX];
-									switch(rxBuffer[localRX])
-									{
-										case 'T':	dataType = rxBuffer[localRX];
-											break;
-										case '0': 	if(dataType != 0xff)
-													{
-														rxState = RX_Data0;
-														dataValueIdx = 0;
-														dataValue[0] = 0;
-
-													}
-													else
-													{
-														rxState = RX_Ready;
-													}
-											break;
-										default:	rxState = RX_Ready;
-									}
-					break;
-
-			case RX_Data0:
-			case RX_Data1:
-			case RX_Data2:
-			case RX_Data4:
-			case RX_Data5:
-			case RX_Data6:
-			case RX_Data8:
-			case RX_Data9:
-			case RX_Data10: checksum += rxBuffer[localRX];
-							if((rxBuffer[localRX] >= '0') && (rxBuffer[localRX] <= '9'))
-							{
-								dataValue[dataValueIdx] = dataValue[dataValueIdx] * 10 + (rxBuffer[localRX] - '0');
-								rxState++;
-							}
-							else
-							{
-								rxState = RX_Ready;
-							}
-					break;
-
-			case RX_Data3:
-			case RX_Data7:	checksum += rxBuffer[localRX];
-							if(rxBuffer[localRX] == '0')
-							{
-								rxState++;
-								dataValueIdx++;
-								dataValue[dataValueIdx] = 0;
-							}
-							else
-							{
-								rxState = RX_Ready;
-							}
-					break;
-			case RX_Data11: rxState = RX_DataComplete;
-							ConvertByteToHexString(checksum,checksum_str);
-							if(rxBuffer[localRX] == checksum_str[0])
-							{
-								rxState = RX_DataComplete;
-							}
-							else
-							{
-								rxState = RX_Ready;
-							}
-
-				break;
-
-			case RX_DataComplete:	if(rxBuffer[localRX] == checksum_str[1])
-									{
-										setExternalInterfaceChannel(0,(float)(dataValue[0] / 10.0));
-										setExternalInterfaceChannel(1,(float)(dataValue[1] / 10.0));
-										setExternalInterfaceChannel(2,(float)(dataValue[2] / 10.0));
-										SentinelConnected = 1;
-									}
-									rxState = RX_Ready;
-				break;
-
-
-			default:				rxState = RX_Ready;
-				break;
-
-		}
-		localRX++;
-		rxReadIndex++;
-		if(rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-		{
-			localRX = 0;
-			rxReadIndex = 0;
-		}
+		pUartCtrl->rxWriteIndex = 0;
 	}
-
-	if(time_elapsed_ms(lastReceiveTick,HAL_GetTick()) > 4000)	/* check for communication timeout */
-	{
-		if(curAlive == lastAlive)
-		{
-			setExternalInterfaceChannel(0,0.0);
-			setExternalInterfaceChannel(1,0.0);
-			setExternalInterfaceChannel(2,0.0);
-			SentinelConnected = 0;
-		}
-		lastAlive = curAlive;
-	}
-
-	if((dmaActive == 0)	&& (externalInterface_isEnabledPower33()))	/* Should never happen in normal operation => restart in case of communication error */
-	{
-		UART_StartDMA_Receiption();
-	}
+	UART_StartDMA_Receiption(pUartCtrl);
 }
-#endif
-
-
-
-uint8_t UART_isSentinelConnected()
-{
-	return SentinelConnected;
-}
-
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if(huart == &huart1)
-    {
-    	dmaActive = 0;
-    	rxWriteIndex+=CHUNK_SIZE;
-    	if(rxWriteIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-    	{
-    		rxWriteIndex = 0;
-    	}
-    	if((rxWriteIndex / CHUNK_SIZE) != (rxReadIndex / CHUNK_SIZE) || (rxWriteIndex == rxReadIndex))	/* start next transfer if we did not catch up with read index */
-    	{
-			UART_StartDMA_Receiption();
-    	}
-    }
-}
-
-void UART_ReadData(uint8_t sensorType)
-{
-	uint8_t localRX = rxReadIndex;
-
-	while((rxBuffer[localRX]!=BUFFER_NODATA))
+	if(huart == &huart1)
 	{
-		switch (sensorType)
-		{
-			case SENSOR_MUX:
-			case SENSOR_DIGO2:	uartO2_ProcessData(rxBuffer[localRX]);
-				break;
-#ifdef ENABLE_CO2_SUPPORT
-			case SENSOR_CO2:	uartCo2_ProcessData(rxBuffer[localRX]);
-				break;
+		UART_HandleRxComplete(&Uart1Ctrl);
+	}
+#ifdef ENABLE_GPIO_V2
+	if(huart == &huart6)
+	{
+		UART_HandleRxComplete(&Uart6Ctrl);
+	}
 #endif
-			default:
-				break;
-		}
-
-		rxBuffer[localRX] = BUFFER_NODATA;
-		localRX++;
-		rxReadIndex++;
-		if(rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
-		{
-			localRX = 0;
-			rxReadIndex = 0;
-		}
-	}
 }
 
-void UART_FlushRxBuffer(void)
+void UART_HandleTxComplete(sUartComCtrl* pUartCtrl)
 {
-	while(rxBuffer[rxReadIndex] != BUFFER_NODATA)
+	pUartCtrl->dmaTxActive = 0;
+	UART_WriteData(pUartCtrl);
+	if(pUartCtrl->txBufferQueLen)
 	{
-		rxBuffer[rxReadIndex] = BUFFER_NODATA;
-		rxReadIndex++;
-		if(rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+		memcpy(pUartCtrl->pTxBuffer, pUartCtrl->pTxQue, pUartCtrl->txBufferQueLen);
+		HAL_UART_Transmit_DMA(pUartCtrl->pHandle,pUartCtrl->pTxBuffer,pUartCtrl->txBufferQueLen);
+		pUartCtrl->dmaTxActive = 1;
+		pUartCtrl->txBufferQueLen = 0;
+	}
+}
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart == &huart1)
+	{
+		UART_HandleTxComplete(&Uart1Ctrl);
+	}
+#ifdef ENABLE_GPIO_V2
+	if(huart == &huart6)
+	{
+		UART_HandleTxComplete(&Uart6Ctrl);
+	}
+#endif
+}
+
+uint8_t UART_isEndIndication(sUartComCtrl* pCtrl, uint8_t index)
+{
+	uint8_t ret = 0;
+	if(index % 2)
+	{
+		if(pCtrl->pRxBuffer[index] == BUFFER_NODATA_HIGH)
 		{
-			rxReadIndex = 0;
+			ret = 1;
 		}
+	}
+	else
+	{
+		if(pCtrl->pRxBuffer[index] == BUFFER_NODATA_LOW)
+		{
+			ret = 1;
+		}
+	}
+
+	return ret;
+}
+void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips processing of data => data is discarded */
+{
+	uint8_t localRX;
+	uint8_t futureIndex;
+	uint8_t moreData = 0;
+
+	sUartComCtrl* pUartCtrl;
+
+	if(sensorType == SENSOR_GNSS)
+	{
+#ifdef ENABLE_GPIO_V2
+		pUartCtrl = &Uart6Ctrl;
+#else
+		pUartCtrl = &Uart1Ctrl;
+#endif
+	}
+	else
+	{
+		pUartCtrl = &Uart1Ctrl;
+	}
+	localRX = pUartCtrl->rxReadIndex;
+	futureIndex = pUartCtrl->rxReadIndex + 1;
+	if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+	{
+		futureIndex = 0;
+	}
+
+	if(!UART_isEndIndication(pUartCtrl, futureIndex))
+	{
+		moreData = 1;
+	}
+	
+	if((!UART_isEndIndication(pUartCtrl, localRX)) || (moreData))
+	do
+	{
+		while((!UART_isEndIndication(pUartCtrl, localRX)) || (moreData))
+		{
+			moreData = 0;
+			switch (sensorType)
+			{
+				case SENSOR_MUX:
+				case SENSOR_DIGO2:	uartO2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+					break;
+	#ifdef ENABLE_CO2_SUPPORT
+				case SENSOR_CO2:	uartCo2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+					break;
+	#endif
+	#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+					case SENSOR_GNSS:	uartGnss_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+							break;
+	#endif
+	#ifdef ENABLE_SENTINEL_MODE
+				case SENSOR_SENTINEL:	uartSentinel_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+					break;
+	#endif
+				default:
+					break;
+			}
+			if(localRX % 2)
+			{
+				pUartCtrl->pRxBuffer[localRX] = BUFFER_NODATA_HIGH;
+			}
+			else
+			{
+				pUartCtrl->pRxBuffer[localRX] = BUFFER_NODATA_LOW;
+			}
+
+			localRX++;
+			pUartCtrl->rxReadIndex++;
+			if(pUartCtrl->rxReadIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+			{
+				localRX = 0;
+				pUartCtrl->rxReadIndex = 0;
+			}
+			futureIndex++;
+			if(futureIndex >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+			{
+				futureIndex = 0;
+			}
+		}
+		if(!UART_isEndIndication(pUartCtrl, futureIndex))
+		{
+			moreData = 1;
+		}
+	} while(moreData);
+}
+
+void UART_WriteData(sUartComCtrl* pUartCtrl)
+{
+	if(pUartCtrl->pHandle->hdmatx->State == HAL_DMA_STATE_READY)
+	{
+		pUartCtrl->pHandle->gState = HAL_UART_STATE_READY;
+		pUartCtrl->dmaTxActive = 0;
+	}
+	if(pUartCtrl->pHandle->hdmarx->State == HAL_DMA_STATE_READY)
+	{
+		pUartCtrl->pHandle->RxState = HAL_UART_STATE_READY;
+		pUartCtrl->dmaRxActive = 0;
 	}
 }
 
+uint8_t UART_isComActive(uint8_t sensorId)
+{
+	uint8_t active = 1;
+
+	if(time_elapsed_ms(LastCmdRequestTick, HAL_GetTick()) > 300) /* UART activity should be inactive 300ms after last command */
+	{
+		active = 0;
+	}
+	return active;
+}
 
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/
