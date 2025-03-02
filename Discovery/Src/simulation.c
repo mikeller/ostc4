@@ -499,28 +499,17 @@ static void sim_reduce_deco_time_one_second(SDiveState* pDiveState)
     }
 }
 
-SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, uint8_t *gasChangeListDepthGas20x2)
+SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, SgasChangeList *pGasChangeList)
 {
-    uint8_t ptrGasChangeList = 0; // new hw 160704
-#ifdef ENABLE_DECOCALC_OPTION
-    uint8_t index = 0;
-#endif
-    for (int i = 0; i < 40; i++)
-    	gasChangeListDepthGas20x2[i] = 0;
+    uint8_t GasChangeIndex = 0;
 
+    for (GasChangeIndex = 0; GasChangeIndex < GAS_CHANGE_LIST_ITEMS; GasChangeIndex++)
+    {
+    	pGasChangeList[GasChangeIndex].depth = 0;
+    	pGasChangeList[GasChangeIndex].gasId = 0;
+    }
     SDiveState * pDiveState = &stateSim;
     copyDiveSettingsToSim();
-
-#ifdef ENABLE_DECOCALC_OPTION
-    /* activate deco calculation for all deco gases */
-    for(index = 0; index < 1 + (2*NUM_GASES); index++)
-    {
-    	if(pDiveState->diveSettings.gas[index].note.ub.deco)
-    	{
-    		pDiveState->diveSettings.gas[index].note.ub.decocalc = 1;
-    	}
-    }
-#endif
 
     vpm_init(&pDiveState->vpm,  pDiveState->diveSettings.vpm_conservatism, 0, 0);
     //buehlmann_init();
@@ -538,12 +527,13 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
     //Switch to first Gas
     setActualGasFirst(&pDiveState->lifeData);
 
-    // new hw 160704
-    if(gasChangeListDepthGas20x2)
+    GasChangeIndex = 0;
+
+    if(pGasChangeList)
     {
-        gasChangeListDepthGas20x2[ptrGasChangeList++] = 0;
-        gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->lifeData.actualGas.GasIdInSettings;
-        gasChangeListDepthGas20x2[0] =0; // depth zero
+    	pGasChangeList[GasChangeIndex].depth = 0;
+    	pGasChangeList[GasChangeIndex].gasId = pDiveState->lifeData.actualGas.GasIdInSettings;
+    	GasChangeIndex++;
     }
 
     //Going down / descent
@@ -556,36 +546,35 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
         if(pDiveState->warnings.betterGas)
         {
             setActualGas(&pDiveState->lifeData,actualBetterGasId(),pDiveState->lifeData.actualGas.setPoint_cbar);
-            if(gasChangeListDepthGas20x2 && (pDiveState->diveSettings.diveMode == DIVEMODE_OC))
+            if(pGasChangeList && (pDiveState->diveSettings.diveMode == DIVEMODE_OC))
             {
-                gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->lifeData.depth_meter;
-                gasChangeListDepthGas20x2[ptrGasChangeList++] = actualBetterGasId();
+            	pGasChangeList[GasChangeIndex].depth = pDiveState->lifeData.depth_meter;
+            	pGasChangeList[GasChangeIndex].gasId = actualBetterGasId();
+            	GasChangeIndex++;
             }
         }
     }
 
     decom_CreateGasChangeList(&pDiveState->diveSettings, &pDiveState->lifeData); // was there before and needed for buehlmann_calc_deco and vpm_calc
 
-    // new hw 160704
-    if(gasChangeListDepthGas20x2 && (pDiveState->diveSettings.diveMode == DIVEMODE_OC))
+    if(pGasChangeList && (pDiveState->diveSettings.diveMode == DIVEMODE_OC))
     {
         // change direction from better gas to deco gas
-        gasChangeListDepthGas20x2[ptrGasChangeList++] = 255;
-        gasChangeListDepthGas20x2[ptrGasChangeList++] = 255;
+    	pGasChangeList[GasChangeIndex].depth = 255;
+    	pGasChangeList[GasChangeIndex].gasId = 255;
+    	GasChangeIndex++;
 
         // ascend (deco) gases
         for(int i=1; i<=5;i++)
         {
-            if((pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-#ifdef ENABLE_DECOCALC_OPTION
-            		|| (pDiveState->diveSettings.gas[pDiveState->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0)
-#endif
-					)
-                break;
-            gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
-            gasChangeListDepthGas20x2[ptrGasChangeList++] = pDiveState->diveSettings.decogaslist[i].GasIdInSettings;
+            if((pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero != 0)
+            		&& (pDiveState->diveSettings.gas[pDiveState->diveSettings.decogaslist[i].GasIdInSettings].note.ub.deco))
+            {
+               pGasChangeList[GasChangeIndex].depth = pDiveState->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
+               pGasChangeList[GasChangeIndex].gasId = pDiveState->diveSettings.decogaslist[i].GasIdInSettings;
+               GasChangeIndex++;
+            }
         }
-        gasChangeListDepthGas20x2[0] = 0;
     }
 
     // deco and ascend calc
@@ -627,136 +616,177 @@ static float sGChelper_bar(uint16_t depth_meter)
     return ambient;
 }
 
-
-/**
-  ******************************************************************************
-  * @brief  simulation_helper_change_points
-  ******************************************************************************
-    * @param
-  * @return void
-  */
-void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, const uint8_t *gasChangeListDepthGas20x2)
+void getNextDecoDepthAndTime(uint8_t* pDepth, uint16_t* pTime, uint8_t currentDepth, SDecoinfo *decoInfoInput)
 {
-    uint8_t ptrDecoInfo = 0;
-    uint16_t actualDepthPoint = 0;
-    uint16_t nextDepthPoint = 0;
-    uint8_t actualConsumGasId = 0;
-    uint8_t nextGasChangeMeter = 0;
-    uint8_t ptrChangeList = 0;
+    uint8_t depthLast, depthSecond, depthInc;
+    uint8_t decoIndex = 0;
 
-    float timeThis = 0;
-    float timeSummary = 0;
-    float	sim_descent_rate_meter_per_min_local = 10;
-    float	sim_ascent_rate_meter_per_min_local = 10;
+    depthLast 		= (uint8_t)(stateUsed->diveSettings.last_stop_depth_bar * 10);
+    depthSecond 	= (uint8_t)(stateUsed->diveSettings.input_second_to_last_stop_depth_bar * 10);
+    depthInc 			= (uint8_t)(stateUsed->diveSettings.input_next_stop_increment_depth_bar * 10);
+
+    if(currentDepth > depthLast)
+    {
+		 for(decoIndex = DECOINFO_STRUCT_MAX_STOPS-1; decoIndex > 0; decoIndex--)
+		 {
+			 if(decoInfoInput->output_stop_length_seconds[decoIndex])
+			 {
+				 *pDepth = depthSecond + ( decoIndex - 1 ) * depthInc;
+				 if(*pDepth < currentDepth)
+				 {
+					 break;
+				 }
+			 }
+		 }
+
+		 if(decoIndex == 0)
+		 {
+			 *pDepth = depthLast;
+		 }
+		 *pTime = decoInfoInput->output_stop_length_seconds[decoIndex];
+    }
+    else
+    {
+    	*pDepth = 0;
+    	*pTime = 0;
+    }
+}
+
+void simulation_evaluate_profil(uint16_t *outputConsumptionList,
+								SSimDataSummary *outputSummary,
+								uint16_t depth_meter, uint16_t dive_time_minutes,uint8_t gasConsumTravelInput, uint8_t gasConsumDecoInput,
+								SDecoinfo *decoInfoInput,
+								const SgasChangeList *pGasChangeList)
+{
+    uint16_t nextDecoTime = 0;
+    uint8_t nextDecoDepth = 0;
+
+    uint8_t currentConsumGasId = 0;
+    uint8_t nextGasChangeMeter = 0;
+    uint8_t nextGasChangeGasId = 0;
+    uint8_t ChangeListIndex = 0;
+    uint8_t firstDecoGasIndex = 0;
+    float outputConsumptionTempFloat[6];
+
+    float	sim_descent_rate_meter_per_sec_local = 10.0;
+    float	sim_ascent_rate_meter_per_sec_local = 10.0;
+
+    float currentDepth_m = 0.0;
+    uint16_t  currentTime_sec = 0;
+    float currentGasConsumption = 0.0;
 
     SDiveState * pDiveState = &stateSim;
 
-    uint8_t depthDecoNext, depthLast, depthSecond, depthInc;
+    for(ChangeListIndex = 0; ChangeListIndex < 6; ChangeListIndex++)
+    {
+    	outputConsumptionTempFloat[ChangeListIndex] = 0.0;
+    }
 
     if(pDiveState->diveSettings.deco_type.ub.standard == GF_MODE)
     {
-        sim_descent_rate_meter_per_min_local = sim_descent_rate_meter_per_min; // const float
-        sim_ascent_rate_meter_per_min_local = pDiveState->diveSettings.ascentRate_meterperminute;
+        sim_descent_rate_meter_per_sec_local = sim_descent_rate_meter_per_min / 60.0;
+        sim_ascent_rate_meter_per_sec_local = pDiveState->diveSettings.ascentRate_meterperminute / 60.0;
     }
     else
     {
-        sim_descent_rate_meter_per_min_local = sim_descent_rate_meter_per_min; // const float
-        sim_ascent_rate_meter_per_min_local = 10;// fix in vpm_calc_deco();
+        sim_descent_rate_meter_per_sec_local = sim_descent_rate_meter_per_min / 60.0;
+        sim_ascent_rate_meter_per_sec_local = 10.0 / 60.0; // fix in vpm_calc_deco();
     }
 
-    outputSummary->descentRateMeterPerMinute = sim_descent_rate_meter_per_min_local;
-    outputSummary->ascentRateMeterPerMinute = sim_ascent_rate_meter_per_min_local;
+    outputSummary->descentRateMeterPerMinute = sim_descent_rate_meter_per_sec_local * 60;
+    outputSummary->ascentRateMeterPerMinute = sim_ascent_rate_meter_per_sec_local * 60;
+    outputSummary->timeToBottom = 0;
+    outputSummary->timeToFirstStop = 0;
+    outputSummary->depthMeterFirstStop = 0;
+    outputSummary->timeAtBottom = 0;
+    outputSummary->timeToSurface = 0;
 
-    // bottom gas ppO2
-    if(gasChangeListDepthGas20x2)
+    currentConsumGasId = pGasChangeList[0].gasId;
+
+    /* ascent + at depth loop at the moment work gas does not support change depth => no need to check */
+    while(currentTime_sec < dive_time_minutes * 60)
     {
-        nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-        actualConsumGasId = gasChangeListDepthGas20x2[ptrChangeList++];
-        nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-
-        while(actualDepthPoint < depth_meter)
-        {
-            if(nextGasChangeMeter && (nextGasChangeMeter < depth_meter) && (gasChangeListDepthGas20x2[ptrChangeList] != 255))  // list has 255,255 for turn from travel to deco
-            {
-                nextDepthPoint = nextGasChangeMeter;
-            }
-            else
-            {
-                nextDepthPoint = depth_meter;
-            }
-
-            if(actualConsumGasId > 5) // safety first
-                actualConsumGasId = 0;
-
-            actualDepthPoint = nextDepthPoint;
-
-            if(actualDepthPoint != depth_meter)
-            {
-                actualConsumGasId = gasChangeListDepthGas20x2[ptrChangeList++];
-                nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-            }
-        }
+    	if(currentDepth_m < depth_meter)
+    	{
+    		currentDepth_m += sim_descent_rate_meter_per_sec_local;
+    		currentGasConsumption = ((float)gasConsumTravelInput) * sGChelper_bar(currentDepth_m ) / 60.0;
+    	}
+    	else
+    	{
+    		if(outputSummary->timeToBottom == 0)
+    		{
+    			currentDepth_m = depth_meter;
+    			outputSummary->timeToBottom = currentTime_sec / 60;
+    		    outputSummary->ppO2AtBottom = (sGChelper_bar(depth_meter) - WATER_VAPOUR_PRESSURE) * pDiveState->diveSettings.gas[currentConsumGasId].oxygen_percentage / 100.0f;
+    		}
+    	}
+    	currentTime_sec++;
+    	outputConsumptionTempFloat[currentConsumGasId] += currentGasConsumption;
     }
-    else
+
+    outputSummary->timeAtBottom = (currentTime_sec / 60);		/*  - outputSummary->timeToBottom; */
+
+    /* move forward to deco gas section (behind 255 entry) */
+    for(ChangeListIndex = 0; ChangeListIndex < GAS_CHANGE_LIST_ITEMS; ChangeListIndex++)
     {
-        actualConsumGasId = pDiveState->lifeData.actualGas.GasIdInSettings;
-        nextGasChangeMeter = 0;
+    	if(pGasChangeList[ChangeListIndex].depth == 255)
+    	{
+    		ChangeListIndex++;
+    		firstDecoGasIndex = ChangeListIndex;
+    		nextGasChangeMeter = pGasChangeList[firstDecoGasIndex].depth;
+    		nextGasChangeGasId = pGasChangeList[firstDecoGasIndex].gasId;
+    	}
+    	if((firstDecoGasIndex != 0) && (pGasChangeList[ChangeListIndex].depth > nextGasChangeMeter) /* find deepest gas switch */
+    			&& (pGasChangeList[ChangeListIndex].depth < currentDepth_m))
+    	{
+    		nextGasChangeMeter = pGasChangeList[ChangeListIndex].depth;
+    		nextGasChangeGasId = pGasChangeList[ChangeListIndex].gasId;
+    	}
     }
-    outputSummary->ppO2AtBottom = (sGChelper_bar(depth_meter) - WATER_VAPOUR_PRESSURE) * pDiveState->diveSettings.gas[actualConsumGasId].oxygen_percentage / 100.0f;
 
-
-    // going down
-    actualDepthPoint = 0;
-    nextDepthPoint = depth_meter;
-
-    timeThis = ((float)(nextDepthPoint - actualDepthPoint)) / sim_descent_rate_meter_per_min_local;
-    timeSummary += timeThis;
-    outputSummary->timeToBottom = (uint16_t)timeThis;
-
-    // bottom time
-    timeThis = ((float)dive_time_minutes) - timeSummary;
-    timeSummary += timeThis;
-    outputSummary->timeAtBottom = (uint16_t)timeSummary;
-
-
-    // ascend to first deco stop
-    actualDepthPoint = depth_meter; // that is where we are
-    timeThis = 0;
-
-    if(!decoInfoInput->output_stop_length_seconds[0]) // NDL dive
+    /* do ascent with stops */
+    getNextDecoDepthAndTime(&nextDecoDepth, &nextDecoTime, currentDepth_m, decoInfoInput);
+    while(currentDepth_m > 0)
     {
-        depthLast = 0;
-        ptrDecoInfo = 0;
-        depthDecoNext = 0;
+    	if(currentDepth_m > nextDecoDepth)
+    	{
+    		currentDepth_m -= sim_ascent_rate_meter_per_sec_local;
+    		currentGasConsumption = ((float)gasConsumDecoInput) * sGChelper_bar(currentDepth_m ) / 60.0;
+    	}
+    	else
+    	{
+    		if(outputSummary->timeToFirstStop == 0)
+    		{
+    			currentDepth_m = nextDecoDepth;
+    			outputSummary->timeToFirstStop = currentTime_sec / 60;
+    			outputSummary->depthMeterFirstStop = nextDecoDepth;
+    		}
+    		if(nextDecoTime)
+    		{
+    			nextDecoTime--;
+    		}
+    		else
+    		{
+    			 getNextDecoDepthAndTime(&nextDecoDepth, &nextDecoTime, currentDepth_m, decoInfoInput);
+    		}
+    	}
+    	if(currentDepth_m <= nextGasChangeMeter)	/* switch gas ? */
+    	{
+    		nextGasChangeMeter = 0;
+    		currentConsumGasId = nextGasChangeGasId;
+    		for(ChangeListIndex = firstDecoGasIndex; ChangeListIndex < GAS_CHANGE_LIST_ITEMS; ChangeListIndex++)
+    		{
+    		   	if((pGasChangeList[ChangeListIndex].depth > nextGasChangeMeter) 			/* find deepest gas switch */
+    		    	&& (pGasChangeList[ChangeListIndex].depth < currentDepth_m))
+    		    {
+    		    		nextGasChangeMeter = pGasChangeList[ChangeListIndex].depth;
+    		    		nextGasChangeGasId = pGasChangeList[ChangeListIndex].gasId;
+    		    }
+    		}
+    	}
+    	currentTime_sec++;
+    	outputConsumptionTempFloat[currentConsumGasId] += currentGasConsumption;
     }
-    else
-    {
-        // prepare deco stop list
-        depthLast 		= (uint8_t)(stateUsed->diveSettings.last_stop_depth_bar * 10);
-        depthSecond 	= (uint8_t)(stateUsed->diveSettings.input_second_to_last_stop_depth_bar * 10);
-        depthInc 			= (uint8_t)(stateUsed->diveSettings.input_next_stop_increment_depth_bar * 10);
-
-        for(ptrDecoInfo=DECOINFO_STRUCT_MAX_STOPS-1; ptrDecoInfo>0; ptrDecoInfo--)
-            if(decoInfoInput->output_stop_length_seconds[ptrDecoInfo]) break;
-
-        if(ptrDecoInfo == 0)
-        {
-            depthDecoNext = depthLast;
-        }
-        else
-            depthDecoNext = depthSecond + (( ptrDecoInfo - 1 )* depthInc);
-    }
-
-    nextDepthPoint = depthDecoNext;
-    if(actualDepthPoint > nextDepthPoint)
-    {
-        // flip signs! It's going up
-        timeThis = ((float)(actualDepthPoint - nextDepthPoint)) / sim_ascent_rate_meter_per_min_local;
-        actualDepthPoint = nextDepthPoint; // that is where we are
-    }
-    timeSummary += timeThis;
-    outputSummary->timeToFirstStop = (uint16_t)timeSummary;
-    outputSummary->depthMeterFirstStop = actualDepthPoint;
 
     if(decoInfoInput->output_time_to_surface_seconds)
     {
@@ -764,222 +794,15 @@ void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t de
     }
     else
     {
-    	outputSummary->timeToSurface = outputSummary->timeToFirstStop;
+    	outputSummary->timeToSurface = currentTime_sec / 60;
+    }
+
+    for(ChangeListIndex = 0; ChangeListIndex < 6; ChangeListIndex++)
+    {
+    	outputConsumptionList[ChangeListIndex] = (uint16_t)outputConsumptionTempFloat[ChangeListIndex];
     }
 }
 
-
-/**
-  ******************************************************************************
-  * @brief  simulation_gas_consumption
-  ******************************************************************************
-  * @note called by openEdit_PlanResult() in tMenuEditPlanner.c
-  * @note the ascend and descend time is taken from pDiveState->lifeData.ascent_rate_meter_per_min and const float sim_descent_rate_meter_per_min
-  * @param  outputConsumptionList list from 1 to 5 for gas 1 to 5
-  * @param  depth_meter for descend
-  * @param  dive_time_minutes for descend and bottom time
-  * @param  the calculated deco list
-    * @param  gasConsumTravelInput: how many l/min for all but deco stops
-    * @param  gasConsumDecoInput: how many l/min for deco stops only
-  * @return void
-  */
-
-void simulation_gas_consumption(uint16_t *outputConsumptionList, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, uint8_t gasConsumTravelInput, uint8_t gasConsumDecoInput, const uint8_t *gasChangeListDepthGas20x2)
-{
-    uint8_t ptrDecoInfo = 0;
-    uint8_t ptrChangeList = 0;
-    uint8_t actualConsumGasId = 0;
-    uint8_t nextGasChangeMeter = 0;
-    uint16_t actualDepthPoint = 0;
-    uint16_t nextDepthPoint = 0;
-    uint16_t inBetweenDepthPoint = 0;
-    float timeThis = 0;
-    float consumThis = 0;
-    float timeSummary = 0;
-    float outputConsumptionTempFloat[6];
-    float	sim_descent_rate_meter_per_min_local = 10;
-    float	sim_ascent_rate_meter_per_min_local = 10;
-
-    SDiveState * pDiveState = &stateSim;
-
-    uint8_t depthDecoNext = 0;
-    uint8_t depthLast = 0;
-    uint8_t depthSecond = 0;
-	uint8_t depthInc = 0;
-
-    for(int i = 1; i < 6; i++)
-        outputConsumptionTempFloat[i] = 0;
-
-    if(gasChangeListDepthGas20x2)
-    {
-        nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-        actualConsumGasId = gasChangeListDepthGas20x2[ptrChangeList++];
-        nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-    }
-    else
-    {
-        actualConsumGasId = pDiveState->lifeData.actualGas.GasIdInSettings;
-        nextGasChangeMeter = 0;
-    }
-
-    if(pDiveState->diveSettings.deco_type.ub.standard == GF_MODE)
-    {
-        sim_descent_rate_meter_per_min_local = sim_descent_rate_meter_per_min; // const float
-        sim_ascent_rate_meter_per_min_local = pDiveState->diveSettings.ascentRate_meterperminute;
-    }
-    else
-    {
-        sim_descent_rate_meter_per_min_local = sim_descent_rate_meter_per_min; // const float
-        sim_ascent_rate_meter_per_min_local = 10;// fix in vpm_calc_deco();
-    }
-
-//	while((nextGasChangeMeter < depth_meter) && (actualDepthPoint < depth_meter))
-    while(actualDepthPoint < depth_meter)
-    {
-        if(nextGasChangeMeter && (nextGasChangeMeter < depth_meter) && (gasChangeListDepthGas20x2[ptrChangeList] != 255))  // list has 255,255 for turn from travel to deco
-        {
-            nextDepthPoint = nextGasChangeMeter;
-        }
-        else
-        {
-            nextDepthPoint = depth_meter;
-        }
-
-        if(actualConsumGasId > 5) // safety first
-            actualConsumGasId = 0;
-
-        timeThis = ((float)(nextDepthPoint - actualDepthPoint)) / sim_descent_rate_meter_per_min_local;
-        if(actualDepthPoint) // not if on surface
-        {
-            consumThis = ((float)gasConsumTravelInput) * sGChelper_bar(actualDepthPoint) * timeThis;
-        }
-        consumThis += ((float)gasConsumTravelInput) * sGChelper_bar(nextDepthPoint -actualDepthPoint) * timeThis / 2;
-        outputConsumptionTempFloat[actualConsumGasId] += consumThis;
-        timeSummary += timeThis;
-
-        actualDepthPoint = nextDepthPoint;
-
-        if(actualDepthPoint != depth_meter)
-        {
-            actualConsumGasId = gasChangeListDepthGas20x2[ptrChangeList++];
-            nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-        }
-    }
-
-    // bottom Time
-    timeThis = ((float)dive_time_minutes) - timeSummary;
-
-    if(timeThis > 0)
-    {
-        consumThis = ((float)gasConsumTravelInput) * sGChelper_bar(depth_meter) * timeThis;
-        outputConsumptionTempFloat[actualConsumGasId] += consumThis;
-    }
-
-    // ascend with deco stops prepare
-    if(gasChangeListDepthGas20x2)
-    {
-        ptrChangeList++;// gasChangeListDepthGas20x2[ptrChangeList++]; // should be the 255
-        nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-    }
-    else
-    {
-        nextGasChangeMeter = 0;
-    }
-
-
-    if(!decoInfoInput->output_stop_length_seconds[0]) // NDL dive
-    {
-        depthLast = 0;
-        ptrDecoInfo = 0;
-    }
-    else
-    {
-        // prepare deco stop list
-        depthLast 		= (uint8_t)(stateUsed->diveSettings.last_stop_depth_bar * 10);
-        depthSecond 	= (uint8_t)(stateUsed->diveSettings.input_second_to_last_stop_depth_bar * 10);
-        depthInc 			= (uint8_t)(stateUsed->diveSettings.input_next_stop_increment_depth_bar * 10);
-
-        for(ptrDecoInfo=DECOINFO_STRUCT_MAX_STOPS-1; ptrDecoInfo>0; ptrDecoInfo--)
-            if(decoInfoInput->output_stop_length_seconds[ptrDecoInfo]) break;
-    }
-
-    actualDepthPoint = depth_meter; // that is where we are
-
-    // ascend with deco stops
-    while(actualDepthPoint)
-    {
-        if(ptrDecoInfo == 0)
-        {
-            depthDecoNext = depthLast;
-        }
-        else
-            depthDecoNext = depthSecond + (( ptrDecoInfo - 1 )* depthInc);
-
-        if(nextGasChangeMeter && (nextGasChangeMeter > depthDecoNext))
-        {
-            nextDepthPoint = nextGasChangeMeter;
-        }
-        else
-        {
-            nextDepthPoint = depthDecoNext;
-        }
-
-        if(actualConsumGasId > 5) // safety first
-            actualConsumGasId = 0;
-
-        if(actualDepthPoint > nextDepthPoint)
-        {
-            // flip signs! It's going up
-            timeThis = ((float)(actualDepthPoint - nextDepthPoint)) / sim_ascent_rate_meter_per_min_local;
-            inBetweenDepthPoint = nextDepthPoint + ((actualDepthPoint - nextDepthPoint)/2);
-            consumThis = ((float)gasConsumDecoInput) * sGChelper_bar(inBetweenDepthPoint) * timeThis;
-/*
-            if(nextDepthPoint)
-            {
-                consumThis = ((float)gasConsumDecoInput) * sGChelper_bar(nextDepthPoint) * timeThis;
-            }
-            else
-            {
-                consumThis = 0;
-            }
-            consumThis += ((float)gasConsumDecoInput) * sGChelper_bar(actualDepthPoint - nextDepthPoint) * timeThis / 2;
-*/
-            outputConsumptionTempFloat[actualConsumGasId] += consumThis;
-        }
-
-        if(nextGasChangeMeter && (nextDepthPoint == nextGasChangeMeter))
-        {
-            actualConsumGasId = gasChangeListDepthGas20x2[ptrChangeList++];
-            nextGasChangeMeter = gasChangeListDepthGas20x2[ptrChangeList++];
-        }
-
-        if(actualConsumGasId > 5) // safety first
-            actualConsumGasId = 0;
-
-        if(nextDepthPoint && (nextDepthPoint == depthDecoNext))
-        {
-            if(decoInfoInput->output_stop_length_seconds[ptrDecoInfo])
-            {
-                timeThis = ((float)(decoInfoInput->output_stop_length_seconds[ptrDecoInfo])) / 60.0f;
-                consumThis = ((float)gasConsumDecoInput) * sGChelper_bar(nextDepthPoint) * timeThis;
-                outputConsumptionTempFloat[actualConsumGasId] += consumThis;
-            }
-            if(ptrDecoInfo != 0)
-            {
-                ptrDecoInfo--;
-            }
-            else
-            {
-                depthLast = 0;
-            }
-        }
-        actualDepthPoint = nextDepthPoint;
-    }
-
-    // copy and return
-    for(int i = 1; i < 6; i++)
-        outputConsumptionList[i] = (uint16_t)(outputConsumptionTempFloat[i]);
-}
 
 /**
   ******************************************************************************

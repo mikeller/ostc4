@@ -30,6 +30,13 @@
 #include "stm32f4xx_hal.h"
 #include "data_central.h"
 
+#define GAS_CHANGE_LIST_ITEMS	(10)
+typedef struct
+{
+	uint8_t depth;
+	uint8_t gasId;
+} SgasChangeList;
+
 typedef struct
 {
     uint8_t depthMeterFirstStop;
@@ -52,10 +59,10 @@ void simulation_set_zero_time_descent(void);
 
 uint16_t simulation_get_aim_depth(void);
 _Bool simulation_get_heed_decostops(void);
-SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, uint8_t *gasChangeListDepthGas20x2);
-SDecoinfo* simulation_decoplaner_Bachelorarbeit_VPM(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, uint8_t *gasChangeListDepthGas20x2);
-void simulation_gas_consumption(uint16_t *outputConsumptionList, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, uint8_t gasConsumTravelInput, uint8_t gasConsumDecoInput, const uint8_t *gasChangeListDepthGas20x2);
-void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, const uint8_t *gasChangeListDepthGas20x2);
+SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, SgasChangeList *pGasChangeList);
+SDecoinfo* simulation_decoplaner_Bachelorarbeit_VPM(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, SgasChangeList *pGasChangeList);
+void simulation_gas_consumption(uint16_t *outputConsumptionList, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, uint8_t gasConsumTravelInput, uint8_t gasConsumDecoInput, const SgasChangeList *pGasChangeList);
+void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, const SgasChangeList *pGasChangeList);
 
 
 void Sim_Descend (void);

@@ -53,7 +53,9 @@ extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
 extern uint16_t tMplan_depth_meter, tMplan_intervall_time_minutes, tMplan_dive_time_minutes, tMplan_depth_editor;
 
 /* Private variables ---------------------------------------------------------*/
-uint8_t gasChangeListDepthGasId[40];
+/*uint8_t gasChangeListDepthGasId[40];*/
+SgasChangeList gasChangeList[GAS_CHANGE_LIST_ITEMS];
+
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_PlanInterval(void);
@@ -393,9 +395,14 @@ void openEdit_PlanResult(void)
     uint8_t tMplan_gasConsumDeco = pSettings->gasConsumption_deco_l_min;
 
     resultPage = 0;
-    pDecoinfo = simulation_decoplaner(tMplan_depth_meter, tMplan_intervall_time_minutes, tMplan_dive_time_minutes, gasChangeListDepthGasId);
-    simulation_gas_consumption(tMplan_pGasConsumption, tMplan_depth_meter, tMplan_dive_time_minutes, pDecoinfo, tMplan_gasConsumTravel, tMplan_gasConsumDeco, gasChangeListDepthGasId);
-    simulation_helper_change_points(&tMplan_Summary, tMplan_depth_meter, tMplan_dive_time_minutes, pDecoinfo, gasChangeListDepthGasId);
+    pDecoinfo = simulation_decoplaner(tMplan_depth_meter, tMplan_intervall_time_minutes, tMplan_dive_time_minutes, gasChangeList);
+    simulation_evaluate_profil( &tMplan_pGasConsumption,
+    							&tMplan_Summary,
+								tMplan_depth_meter, tMplan_dive_time_minutes, tMplan_gasConsumTravel, tMplan_gasConsumDeco,
+								pDecoinfo,
+								gasChangeList);
+  //  simulation_gas_consumption(tMplan_pGasConsumption, tMplan_depth_meter, tMplan_dive_time_minutes, pDecoinfo, tMplan_gasConsumTravel, tMplan_gasConsumDeco, gasChangeList);
+ //   simulation_helper_change_points(&tMplan_Summary, tMplan_depth_meter, tMplan_dive_time_minutes, pDecoinfo, gasChangeListDepth);
 
     first = 0;
     while((first < DECOINFO_STRUCT_MAX_STOPS-1) && pDecoinfo->output_stop_length_seconds[first+1])
@@ -450,11 +457,7 @@ void refresh_PlanResult_helper(char *text, int start)
 
     for(int i = 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
     {
-        if((stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-#ifdef ENABLE_DECOCALC_OPTION
-        	|| (stateSimGetPointer()->diveSettings.gas[stateSimGetPointer()->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0)
-#endif
-        )
+        if(stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
                 break;
         depthChange = stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
         if(depthPrev <= depthChange)
@@ -469,11 +472,7 @@ void refresh_PlanResult_helper(char *text, int start)
 
     for(int i = GasIdPrev + 1; i < BUEHLMANN_STRUCT_MAX_GASES; i++)
     {
-            if((stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
-#ifdef ENABLE_DECOCALC_OPTION
-            	|| (stateSimGetPointer()->diveSettings.gas[stateSimGetPointer()->diveSettings.decogaslist[i].GasIdInSettings].note.ub.decocalc == 0)
-#endif
-				)
+            if(stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero == 0)
                     break;
             depthChange = stateSimGetPointer()->diveSettings.decogaslist[i].change_during_ascent_depth_meter_otherwise_zero;
             if((depthChange < depthPrev) && (depthChange >= depthNext))
