@@ -171,6 +171,7 @@ const uint8_t *customviewsSurface	= customviewsSurfaceStandard;
 
 #define SHOW_AMBIENTE_SURFACE_DELTA		(0.02f)
 #define SHOW_AMBIENTE_DEBOUNCE			(0.003f)
+#define SHOW_TEMPERATURE_DEBOUNCE		(0.5f)
 
 #define MAX_NUM_SUMMARY_LINES 6
 
@@ -703,6 +704,7 @@ void t7_refresh_surface(void)
 {
 	static float debounceAmbientPressure = 0;
 	static uint8_t lastChargeStatus = 0;
+	static float lastTemperature = 100.0;
     char text[256];
     char timeSuffix;
     uint8_t hours;
@@ -1026,10 +1028,14 @@ void t7_refresh_surface(void)
 
         GFX_write_string(&FontT48,&t7surfaceL,text,3);
 
+        if(fabsf(stateUsed->lifeData.temperature_celsius - lastTemperature) > SHOW_TEMPERATURE_DEBOUNCE)
+        {
+        	lastTemperature = stateUsed->lifeData.temperature_celsius;
+        }
         if(settingsGetPointer()->nonMetricalSystem)
-            snprintf(text,40,"%01.0f\140\022\016\016 fahrenheit",unit_temperature_float(stateUsed->lifeData.temperature_celsius));
+        	snprintf(text,40,"%01.0f\140\022\016\016 fahrenheit",unit_temperature_float(lastTemperature));
         else
-            snprintf(text,30,"%01.0f\140\022\016\016 celsius",stateUsed->lifeData.temperature_celsius);
+        	snprintf(text,30,"%01.0f\140\022\016\016 celsius",lastTemperature);
         GFX_write_string(&FontT48,&t7surfaceL,text,4);
     }
     else

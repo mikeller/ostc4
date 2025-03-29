@@ -52,7 +52,8 @@
 #define PRESSURE_SURFACE_MAX_MBAR			(1060.0f)		/* It is unlikely that pressure at surface is greater than this value => clip to it */
 
 #define PRESSURE_MINIMUM					(0.0f)
-#define TEMPERATURE_MINIMUM					(-100.0f)
+#define TEMPERATURE_MINIMUM					(-40.0f)
+#define TEMPERATURE_MAXIMUM					(80.0f)
 
 #define PRESSURE_SURFACE_QUE					(30u)			/* history buffer [minutes] for past pressure measurements */
 #define PRESSURE_SURFACE_EVA_WINDOW				(15u)			/* Number of entries evaluated during instability test. Used to avoid detection while dive enters water */
@@ -89,7 +90,7 @@ short C6plus100 = -1;
 static float pressure_offset = 0.0;		/* Offset value which may be specified by the user via PC Software */
 static float temperature_offset = 0.0;	/* Offset value which may be specified by the user via PC Software */
 
-static float ambient_temperature = 0;
+static float ambient_temperature = 20.0;
 static float ambient_pressure_mbar = 1000.0;
 static float surface_pressure_mbar = 1000.0;
 static float surface_ring_mbar[PRESSURE_SURFACE_QUE] = { 0 };
@@ -638,8 +639,12 @@ void pressure_calculation(void)
 
 static void pressure_calculation_AN520_004_mod_MS5803_30BA__09_2015(void)
 {
-	static float runningAvg = 0;
-	static uint8_t avgCnt = 0;
+	static float runningAvgPressure = 0;
+	static uint8_t avgCntPressure = 0;
+	static float runningAvgTemp = 0;
+	static uint8_t avgCntTemp = 0;
+
+	float newTemperature = 0.0;
 
 	uint32_t local_D1; // ADC value of the pressure conversion
 	uint32_t local_D2; // ADC value of the temperature conversion
@@ -703,23 +708,31 @@ static void pressure_calculation_AN520_004_mod_MS5803_30BA__09_2015(void)
 							(((int64_t)((local_D1 * local_SENS) / 2097152)) - local_OFF)
 								/  8192 );//     )) / 10; // pow(2,21), pow(2,13)
 
-	ambient_temperature = ((float)local_Tx100) / 100;
-	ambient_temperature	+= temperature_offset;
+	newTemperature = ((float)local_Tx100) / 100;
+	newTemperature += temperature_offset;
 
-	if(ambient_temperature < TEMPERATURE_MINIMUM)
+	if((newTemperature < TEMPERATURE_MINIMUM) || (newTemperature > TEMPERATURE_MAXIMUM))
 	{
 		ambient_temperature = 20.0;
 	}
 
+	runningAvgTemp = (avgCntTemp * runningAvgTemp + newTemperature) / (avgCntTemp + 1);
+	if (avgCntTemp < 10)
+	{
+		avgCntTemp++;
+	}
+	ambient_temperature = runningAvgTemp;
+
+
 	calc_pressure = ((float)local_Px10) / 10;
 	calc_pressure += pressure_offset;
 
-	runningAvg = (avgCnt * runningAvg + calc_pressure) / (avgCnt + 1);
-	if (avgCnt < 10)	/* build an average considering the last measurements to have a weight "1 of 10" */
-	{					/* Main reason for this is the jitter of up to +-10 HPa in surface mode which is caused */
-		avgCnt++;		/* by the measurement range of the sensor which is focused on under water pressure measurement */
+	runningAvgPressure = (avgCntPressure * runningAvgPressure + calc_pressure) / (avgCntPressure + 1);
+	if (avgCntPressure < 10)	/* build an average considering the last measurements to have a weight "1 of 10" */
+	{							/* Main reason for this is the jitter of up to +-10 HPa in surface mode which is caused */
+		avgCntPressure++;		/* by the measurement range of the sensor which is focused on under water pressure measurement */
 	}
-	ambient_pressure_mbar = runningAvg;
+	ambient_pressure_mbar = runningAvgPressure;
 
 	if(ambient_pressure_mbar < PRESSURE_MINIMUM)
 	{
