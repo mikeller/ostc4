@@ -223,7 +223,6 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
-#ifdef BOOTLOADER_STANDALONE
 #include "Fonts/Font_T144_plus.h"
 #include "Fonts/Font_T84.h"
 #include "Fonts/Font_T105.h"
@@ -234,7 +233,6 @@
 #include "Fonts/image_battery.h"
 #include "Fonts/image_heinrichs_weikamp.h"
 #include "Fonts/image_ostc.h"
-#endif
 
 // From Discovery/Inc (shall be shared...)
 #include "data_exchange_main.h"
@@ -716,14 +714,7 @@ GPIO_test_I2C_lines();
 	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
 	{
 		tInfo_write("init bluetooth");
-		if(isNewDisplay())
-		{
-			tComm_StartBlueModBaseInit();
-		}
-		else
-		{
-			tComm_StartBlueModConfig();
-		}
+		tComm_StartBlueModBaseInit();
 	}
 	else
 	{
