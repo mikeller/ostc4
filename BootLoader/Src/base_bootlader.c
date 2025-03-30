@@ -223,7 +223,7 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
-#include "Fonts/Font_T144_plus.h"
+//#include "Fonts/Font_T144_plus.h"
 #include "Fonts/Font_T84.h"
 #include "Fonts/Font_T105.h"
 #include "Fonts/Font_T54.h"
