@@ -401,7 +401,7 @@ void externalInterface_SwitchUART(uint8_t protocol)
 #ifdef ENABLE_CO2_SUPPORT
 					|| ((externalAutoDetect >= DETECTION_CO2_0) && (externalAutoDetect <= DETECTION_CO2_3))
 #endif
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 					|| ((externalAutoDetect >= DETECTION_GNSS_0) && (externalAutoDetect <= DETECTION_GNSS_3))
 #endif
 
@@ -672,7 +672,7 @@ void externalInterface_AutodetectSensor()
 {
 	static uint8_t sensorIndex = 0;
 	static uint8_t uartMuxChannel = 0;
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 static	uint8_t detectionDelayCnt = 0;
 #endif
 	uint8_t index = 0;
@@ -829,7 +829,7 @@ static	uint8_t detectionDelayCnt = 0;
 			case DETECTION_CO2_3:	if(uartCo2_isSensorConnected())
 									{
 										foundSensorMap[EXT_INTERFACE_MUX_OFFSET + activeUartChannel] = SENSOR_CO2;
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 										externalAutoDetect = DETECTION_GNSS_0;	/* only one CO2 sensor supported */
 #else
 										externalAutoDetect = DETECTION_DONE;	/* only one CO2 sensor supported */
@@ -852,8 +852,8 @@ static	uint8_t detectionDelayCnt = 0;
 									{
 
 
-#if defined ENABLE_SENTINEL_MODE || defined ENABLE_GNSS_SUPPORT
-#ifdef ENABLE_GNSS_SUPPORT
+#if defined ENABLE_SENTINEL_MODE || defined ENABLE_GNSS_EXTERN
+#ifdef ENABLE_GNSS_EXTERN
 										externalAutoDetect = DETECTION_GNSS_0;
 										externalInterface_SwitchUART(EXT_INTERFACE_UART_GNSS);
 #else
@@ -867,7 +867,7 @@ static	uint8_t detectionDelayCnt = 0;
 									}
 #endif
 
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 									if(externalAutoDetect == DETECTION_GNSS_0)
 									{
 										tmpSensorMap[uartMuxChannel + EXT_INTERFACE_MUX_OFFSET] = SENSOR_NONE;
@@ -1251,7 +1251,7 @@ void externalInterface_HandleUART()
 				case SENSOR_CO2:	uartCo2_Control();
 					break;
 #endif
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 				case SENSOR_GNSS:	uartGnss_Control();
 						break;
 #endif

@@ -38,7 +38,7 @@ void GPIO_Power_MainCPU_Init(void);
 void GPIO_Power_MainCPU_ON(void);
 void GPIO_Power_MainCPU_OFF(void);
 
-#ifdef ENABLE_GPIO_V2
+
 void GPIO_LED_RED_OFF(void);
 void GPIO_LED_RED_ON(void);
 void GPIO_LED_GREEN_OFF(void);
@@ -50,11 +50,12 @@ void GPIO_GPS_ON(void);
 void GPIO_GPS_BCKP_OFF(void);
 void GPIO_GPS_BCKP_ON(void);
 
+uint8_t GPIO_GetVersion(void);
+void GPIO_Activate_V2(void);
 void GPIO_HandleBuzzer();
 #endif
 #ifdef __cplusplus
 }
-#endif
 #endif /* GPIO_H */
 
 

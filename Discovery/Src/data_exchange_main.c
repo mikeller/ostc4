@@ -412,7 +412,7 @@ void DateEx_copy_to_dataOut(void)
 				break;
 			case SENSOR_CO2:	SensorActive[SENSOR_CO2] = 1;
 				break;
-#if defined ENABLE_GPIO_V2 || defined ENABLE_GNSS_SUPPORT
+#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
 			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;
 				break;
 #endif
@@ -442,12 +442,10 @@ void DateEx_copy_to_dataOut(void)
 	}
 #endif
 
-#ifdef ENABLE_GPIO_V2
-	if(getBuzzerActivationState())
+	if((isNewDisplay()) && getBuzzerActivationState())
 	{
 		externalInterface_Cmd |= EXT_INTERFACE_BUZZER_ON;
 	}
-#endif
 
 	dataOut.data.externalInterface_Cmd = externalInterface_Cmd;
 	externalInterface_Cmd = 0;
@@ -468,7 +466,11 @@ void DateEx_copy_to_dataOut(void)
 		dataOut.revisionHardware = 0xFF;
 		dataOut.revisionCRCx0x7A = 0xFF;
 	}
-	
+	if(isNewDisplay())
+	{
+		dataOut.displayVersion = 1;
+	}
+
 	if(DataEX_check_header_and_footer_ok() && !told_reset_logik_alles_ok)
 	{
 		MX_tell_reset_logik_alles_ok();

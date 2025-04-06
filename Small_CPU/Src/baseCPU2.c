@@ -402,45 +402,18 @@ int main(void) {
 
 			if (global.mode == MODE_BOOT) {
 				GPIO_Power_MainCPU_OFF();
-#ifdef ENABLE_GPIO_V2
-				GPIO_LED_GREEN_ON();
-#endif
 				HAL_Delay(100); // for GPIO_Power_MainCPU_ON();
 				GPIO_Power_MainCPU_ON();
-#ifdef ENABLE_GPIO_V2
-				GPIO_LED_GREEN_OFF();
-
-				GPIO_LED_RED_ON();
-				GPIO_VIBRATION_ON();
-#endif
 				HAL_Delay(100);
-#ifdef ENABLE_GPIO_V2
-				GPIO_LED_RED_OFF();
-				GPIO_VIBRATION_OFF();
-#endif
 			}
-#ifdef ENABLE_GPIO_V2
-			GPIO_LED_RED_OFF();
-			GPIO_LED_GREEN_OFF();
-			GPIO_VIBRATION_OFF();
-#endif
 			SPI_synchronize_with_Master();
 			MX_DMA_Init();
 			MX_SPI1_Init();
 			SPI_Start_single_TxRx_with_Master(); /* be prepared for the first data exchange */
 			Scheduler_Request_sync_with_SPI(SPI_SYNC_METHOD_HARD);
 
-#ifdef ENABLE_GPIO_V2
-			// GNSS tests
-			GNSS_IO_init();
-			GPIO_GPS_ON();
-			GPIO_GPS_BCKP_ON();
-			MX_USART6_UART_Init();
-			GNSS_Init(&GNSS_Handle, &huart6);
-#else
-#ifdef  ENABLE_GNSS_SUPPORT
+#ifdef  ENABLE_GNSS_EXTERN
 			GNSS_Init(&GNSS_Handle, &huart1);
-#endif
 #endif
 
 			global.mode = MODE_SURFACE;
@@ -466,8 +439,11 @@ int main(void) {
             global.no_fly_time_minutes = 0;
             global.lifeData.dive_time_seconds = 0;
             global.lifeData.dive_time_seconds_without_surface_time = 0;
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
-            uartGnss_ReqPowerDown(1);
+#if defined ENABLE_GNSS_INTERN
+            if(GPIO_GetVersion() > 0)
+            {
+            	uartGnss_ReqPowerDown(1);
+            }
 #endif
             scheduleDiveMode();
             // done now in scheduler prior to change mode: global.seconds_since_last_dive = 1;
@@ -494,8 +470,11 @@ int main(void) {
 
             backup.no_fly_time_minutes = 0;
             backup.seconds_since_last_dive = 0;
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
-            uartGnss_ReqPowerDown(0);
+#if defined ENABLE_GNSS_INTERN
+            if(GPIO_GetVersion() > 0)
+            {
+            	uartGnss_ReqPowerDown(0);
+            }
 #endif
 			break;
 
@@ -504,17 +483,27 @@ int main(void) {
 
 			MX_SPI3_Init();
 
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
-			if(shutdownTick == 0)
+#if defined ENABLE_GNSS_INTERN || ENABLE_GNSS_EXTERN
+			if(GPIO_GetVersion() > 0)
 			{
-				shutdownTick = HAL_GetTick();
-				uartGnss_ReqPowerDown(1);
+				if(shutdownTick == 0)
+				{
+					shutdownTick = HAL_GetTick();
+					uartGnss_ReqPowerDown(1);
+				}
 			}
-#ifdef ENABLE_GNSS_SUPPORT
+#endif
+#ifdef ENABLE_GNSS_EXTERN
 			externalInterface_HandleUART();
 #else
-			UART6_HandleUART();
+#ifdef ENABLE_GNSS_INTERN
+			if(GPIO_GetVersion() > 0)
+			{
+				UART6_HandleUART();
+			}
 #endif
+#endif
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 3000))
 			{
 				global.mode = MODE_SLEEP;
@@ -934,14 +923,20 @@ void sleep_prepare(void) {
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
 
 	GPIO_Power_MainCPU_OFF();
-#ifdef ENABLE_GPIO_V2
-	GPIO_LED_GREEN_OFF();
-	GPIO_LED_RED_OFF();
-	GPIO_VIBRATION_OFF();
-	GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
-/*	GPIO_GPS_OFF();				will be done in transition sleep => deep sleep */
 
-	MX_USART6_UART_DeInit();
+	if(GPIO_GetVersion() > 0)
+	{
+		GPIO_LED_GREEN_OFF();
+		GPIO_LED_RED_OFF();
+		GPIO_VIBRATION_OFF();
+	}
+#ifdef ENABLE_GNSS_INTERN
+	if(GPIO_GetVersion() > 0)
+	{
+		GPIO_GPS_BCKP_ON();			// mH : costs 100µA in sleep - beware
+		/*	GPIO_GPS_OFF();				will be done in transition sleep => deep sleep */
+		MX_USART6_UART_DeInit();
+	}
 #endif
 #ifndef ENABLE_SLEEP_DEBUG
 /*

@@ -342,9 +342,16 @@ void scheduleSpecial_Evaluate_DataSendToSlave(void)
 	{
 		externalInterface_ExecuteCmd(global.dataSendToSlave.data.externalInterface_Cmd);
 	}
-#ifdef ENABLE_GPIO_V2
-	GPIO_HandleBuzzer();
-#endif
+
+	if(GPIO_GetVersion() < global.dataSendToSlave.displayVersion)
+	{
+		GPIO_Activate_V2();
+	}
+
+	if(GPIO_GetVersion() > 0)
+	{
+		GPIO_HandleBuzzer();
+	}
 
 
 #if 0
@@ -533,8 +540,11 @@ void scheduleDiveMode(void)
 		ticksdiff = time_elapsed_ms(Scheduler.tickstart,lasttick);
 
 		externalInterface_HandleUART();
-#ifdef ENABLE_GPIO_V2
-		UART6_HandleUART();
+#ifdef ENABLE_GNSS_INTERN
+		if(GPIO_GetVersion() > 0)
+		{
+			UART6_HandleUART();
+		}
 #endif
 		if(ticksdiff >= Scheduler.counterSPIdata100msec * 100 + 10)
 		{
@@ -838,8 +848,11 @@ void scheduleSurfaceMode(void)
 		}
 
 		externalInterface_HandleUART();
-#ifdef ENABLE_GPIO_V2
-		UART6_HandleUART();
+#ifdef ENABLE_GNSS_INTERN
+		if(GPIO_GetVersion() > 0)
+		{
+			UART6_HandleUART();
+		}
 #endif
 
 		/* Evaluate received data at 10 ms, 110 ms, 210 ms,... duration ~<1ms */
@@ -893,7 +906,7 @@ void scheduleSurfaceMode(void)
 			adc_ambient_light_sensor_get_data();
 			copyAmbientLightData();
 
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 			copyGNSSdata();
 #endif
 			Scheduler.counterAmbientLight100msec++;
@@ -1110,7 +1123,7 @@ void scheduleSleepMode(void)
 	global.dataSendToMaster.mode = 0;
 	global.deviceDataSendToMaster.mode = 0;
 	secondsCount = 0;
-#ifdef ENABLE_GPIO_V2
+#ifdef ENABLE_GNSS_INTERN
 	uint16_t deepSleepCntDwn = 21600; 	/* 12 hours in 2 second steps */
 	uint8_t deepSleep = 0;
 	GPIO_InitTypeDef GPIO_InitStruct;
@@ -1191,31 +1204,34 @@ void scheduleSleepMode(void)
 			global.mode = MODE_BOOT;
 		}
 		scheduleUpdateLifeData(2000);
-#ifdef ENABLE_GPIO_V2
-		if(deepSleepCntDwn)
+#ifdef ENABLE_GNSS_INTER
+		if(GPIO_GetVersion() > 0)
 		{
-			deepSleepCntDwn--;
-			if(deepSleepCntDwn == 0)
+			if(deepSleepCntDwn)
 			{
-				deepSleep = 1;
-				GPIO_GPS_OFF();
-				GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-				GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-				GPIO_InitStruct.Pull = GPIO_NOPULL;
-				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN);
-				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
-				uartGnss_SetState(UART_GNSS_INIT);
+				deepSleepCntDwn--;
+				if(deepSleepCntDwn == 0)
+				{
+					deepSleep = 1;
+					GPIO_GPS_OFF();
+					GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+					GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+					GPIO_InitStruct.Pull = GPIO_NOPULL;
+					GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN);
+					HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+					uartGnss_SetState(UART_GNSS_INIT);
+				}
 			}
-		}
-		else
-		{
-			if((deepSleep = 1) && (global.lifeData.battery_voltage < 3.5))	/* switch off backup voltage if battery gets low */
+			else
 			{
-				deepSleep = 2;
-				GPIO_GPS_BCKP_OFF();
-				GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_BCKP_CONTROL_PIN);
-				HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
-				__HAL_RCC_GPIOB_CLK_DISABLE();
+				if((deepSleep = 1) && (global.lifeData.battery_voltage < 3.5))	/* switch off backup voltage if battery gets low */
+				{
+					deepSleep = 2;
+					GPIO_GPS_BCKP_OFF();
+					GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_BCKP_CONTROL_PIN);
+					HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
+					__HAL_RCC_GPIOB_CLK_DISABLE();
+				}
 			}
 		}
 #endif
@@ -1227,10 +1243,13 @@ void scheduleSleepMode(void)
 	setButtonsNow = 0;
 	reinitGlobals();
 	ReInit_battery_charger_status_pins();
-#ifdef ENABLE_GPIO_V2
-	if(deepSleep != 0)
+#ifdef ENABLE_GNSS_INTERN
+	if(GPIO_GetVersion() > 0)
 	{
-		GPIO_GNSS_Init();
+		if(deepSleep != 0)
+		{
+			GPIO_GNSS_Init();
+		}
 	}
 #endif
 }

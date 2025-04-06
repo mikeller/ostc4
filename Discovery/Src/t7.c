@@ -139,7 +139,7 @@ const uint8_t customviewsSurfaceStandard[] =
 	CVIEW_Charger,
     CVIEW_CcrSummary,
     CVIEW_Timer,
-#if defined ENABLE_GPIO_V2 || defined ENABLE_GNSS_SUPPORT
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 	CVIEW_Position,
 #endif
     CVIEW_END

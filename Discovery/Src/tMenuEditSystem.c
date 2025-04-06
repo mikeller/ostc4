@@ -247,7 +247,7 @@ void refresh_DateTime()
     char formatStr[20];
     SSettings *pSettings;
     const SFirmwareData *pFirmwareInfo;
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
     uint8_t localHours = 0;
     uint8_t localMinutes = 0;
 #endif
@@ -285,7 +285,7 @@ void refresh_DateTime()
     write_label_fix(  20, 340, ME_Y_LINE2, &FontT42, TXT_Format);
     write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
     write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
     write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
     snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
     write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
@@ -307,7 +307,7 @@ void refresh_DateTime()
     }
     tMenuEdit_newButtonText(StMSYS1_FORMAT, formatStr);
 
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
     if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
     {
         convertUTCToLocal(pStateReal->lifeData.gnssData.DateTime.hour, pStateReal->lifeData.gnssData.DateTime.min, &localHours, &localMinutes);
@@ -373,7 +373,7 @@ void openEdit_DateTime(void)
     write_label_fix(  20, 340, ME_Y_LINE2, &FontT42, TXT_Format);
     write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
     write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
     write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
     snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
     write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
@@ -395,7 +395,7 @@ void openEdit_DateTime(void)
 
     write_field_button(StMSYS1_FORMAT, 320, 790, ME_Y_LINE4,  &FontT48, formatStr);
 
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 	snprintf(text, 32, "--:--");
 	write_field_button(StMSYS1_GNSSDT, 320, 790, ME_Y_LINE5,  &FontT48, text);
     write_field_sdigit(StMSYS1_ZONE, 320, 780, ME_Y_LINE6,  &FontT48, "UTC: ###:###", pSettings->timeZone.hours, pSettings->timeZone.minutes,0,0);
@@ -405,7 +405,7 @@ void openEdit_DateTime(void)
     setEvent(StMSYS1_Time, 		(uint32_t)OnAction_Time);
     setEvent(StMSYS1_12HR,      (uint32_t)OnAction_12HR);
     setEvent(StMSYS1_FORMAT,	(uint32_t)OnAction_Format);
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
    	setEvent(StMSYS1_GNSSDT, (uint32_t)OnAction_SetGnss);
 	setEvent(StMSYS1_ZONE,		(uint32_t)OnAction_UTC);
 #endif

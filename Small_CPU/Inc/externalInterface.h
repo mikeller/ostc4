@@ -72,7 +72,7 @@ enum									/* Definitions for supported UART protocols */
 	DETECTION_CO2_2,
 	DETECTION_CO2_3,
 #endif
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 	DETECTION_GNSS_0,			/* check UART channel for connected gnss sensor */
 	DETECTION_GNSS_1,
 	DETECTION_GNSS_2,

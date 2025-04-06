@@ -68,7 +68,7 @@ void UART_HandleCO2Data(void);
 void DigitalCO2_SendCmd(uint8_t CO2Cmd, uint8_t *cmdString, uint8_t *cmdLength);
 #endif
 
-#ifdef ENABLE_GNSS_SUPPORT
+#ifdef ENABLE_GNSS_EXTERN
 void UART_HandleGnssData(void);
 #endif
 #ifdef ENABLE_SENTINEL_MODE

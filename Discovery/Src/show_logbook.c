@@ -466,7 +466,7 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
 
     Gfx_write_label_var(hgfx, 30, 250,10, &FontT42,CLUT_GasSensor1,text);
 
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
     if((posCoord.fLat != 0.0) || (posCoord.fLon != 0.0))
     {
     	snprintf(text, 20, "%2.4f - %2.4f", posCoord.fLat, posCoord.fLon );

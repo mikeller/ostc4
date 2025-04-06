@@ -1361,7 +1361,7 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 				ext_flash_CloseSector();	/* this is just a repair function which invalidates a not used sector in case a log maintenance was called before dive */
 				bDiveMode = 3;
 
-#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 			pStateReal->events.gnssPositionUpdate = 1;
 
 			if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)

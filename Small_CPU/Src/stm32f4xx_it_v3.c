@@ -61,9 +61,11 @@ extern ADC_HandleTypeDef    AdcHandle;
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef  hdma_usart1_rx;
 extern DMA_HandleTypeDef  hdma_usart1_tx;
+#ifdef ENABLE_GNSS_INTERN
 extern UART_HandleTypeDef huart6;
 extern DMA_HandleTypeDef  hdma_usart6_rx;
 extern DMA_HandleTypeDef  hdma_usart6_tx;
+#endif
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -249,7 +251,7 @@ void DMA2_Stream7_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
 }
 
-#ifdef ENABLE_GPIO_V2
+#ifdef ENABLE_GNSS_INTERN
 void DMA2_Stream2_IRQHandler(void)
 {
   HAL_DMA_IRQHandler(&hdma_usart6_rx);
@@ -327,7 +329,7 @@ void USART1_IRQHandler(void)
   HAL_UART_IRQHandler(&huart1);
 }
 
-#ifdef ENABLE_GPIO_V2
+#ifdef ENABLE_GNSS_INTERN
 void USART6_IRQHandler(void)
 {
   HAL_UART_IRQHandler(&huart6);

@@ -28,7 +28,7 @@
 #include "data_exchange.h"
 #include <string.h>	/* memset */
 
-#ifdef ENABLE_GPIO_V2
+#ifdef ENABLE_GNSS_INTERN
 extern UART_HandleTypeDef huart6;
 extern sUartComCtrl Uart6Ctrl;
 #endif
@@ -104,8 +104,10 @@ void MX_USART1_UART_Init(void)
   Uart1Ctrl.pTxBuffer = txBuffer;
   Uart1Ctrl.txBufferQueLen = 0;
 
-#ifndef ENABLE_GPIO_V2
+#ifndef ENABLE_GNSS_INTERN
+#ifdef ENABLE_GNSS_EXTERN
   UART_SetGnssCtrl(&Uart1Ctrl);
+#endif
 #endif
 }
 
@@ -337,10 +339,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	{
 		UART_HandleRxComplete(&Uart1Ctrl);
 	}
-#ifdef ENABLE_GPIO_V2
-	if(huart == &huart6)
+#ifdef ENABLE_GNSS_INTERN
+	if(GPIO_GetVersion() > 0)
 	{
-		UART_HandleRxComplete(&Uart6Ctrl);
+		if(huart == &huart6)
+		{
+			UART_HandleRxComplete(&Uart6Ctrl);
+		}
 	}
 #endif
 }
@@ -363,10 +368,13 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	{
 		UART_HandleTxComplete(&Uart1Ctrl);
 	}
-#ifdef ENABLE_GPIO_V2
-	if(huart == &huart6)
+#ifdef ENABLE_GNSS_INTERN
+	if(GPIO_GetVersion() > 0)
 	{
-		UART_HandleTxComplete(&Uart6Ctrl);
+		if(huart == &huart6)
+		{
+			UART_HandleTxComplete(&Uart6Ctrl);
+		}
 	}
 #endif
 }
@@ -401,10 +409,12 @@ void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips process
 
 	if(sensorType == SENSOR_GNSS)
 	{
-#ifdef ENABLE_GPIO_V2
+#ifdef ENABLE_GNSS_INTERN
 		pUartCtrl = &Uart6Ctrl;
 #else
+#ifdef ENABLE_GNSS_EXTERN
 		pUartCtrl = &Uart1Ctrl;
+#endif
 #endif
 	}
 	else
@@ -438,7 +448,7 @@ void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips process
 				case SENSOR_CO2:	uartCo2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 					break;
 	#endif
-	#if defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+	#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 					case SENSOR_GNSS:	uartGnss_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 							break;
 	#endif

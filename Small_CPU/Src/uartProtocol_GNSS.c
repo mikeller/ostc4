@@ -28,7 +28,7 @@
 #include "externalInterface.h"
 
 
-#if defined ENABLE_GNSS || defined ENABLE_GNSS_SUPPORT || defined ENABLE_GPIO_V2
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 
 static uartGnssStatus_t gnssState = UART_GNSS_INIT;
 static gnssRequest_s activeRequest = {0,0};

@@ -40,6 +40,7 @@
 #include "motion.h"
 #include "tMenu.h"
 #include "tMenuSystem.h"
+#include "ostc.h"
 #include <math.h>
 
 
@@ -379,10 +380,11 @@ void openEdit_Custom(uint8_t line)
     	case 5:		openEdit_ViewPort();
     		break;
 #endif
-#ifdef ENABLE_GPIO_V2
-    	case 5:		openEdit_WarningBuz();
+    	case 5:		if(isNewDisplay())
+    				{
+    					openEdit_WarningBuz();
+    				}
     	    	break;
-#endif
     }
 }
 
@@ -480,6 +482,7 @@ void openEdit_WarningBuz(void)
     if(pSettings->warningBuzzer == 0)
     {
         pSettings->warningBuzzer = 1;
+        requestBuzzerActivation(1);
     }
     else
     {

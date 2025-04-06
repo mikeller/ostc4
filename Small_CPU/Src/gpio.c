@@ -25,10 +25,12 @@
 #include "gpio.h"
 #include "data_exchange.h"
 #include "scheduler.h"
+#include "uart_internal.h"
+#include "GNSS.h"
 
 /* Exported variables --------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-
+static uint8_t GPIO_Version = 0;
 /* Private types -------------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,7 +93,6 @@ void GPIO_Power_MainCPU_Init(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
 }
 
-#ifdef ENABLE_GPIO_V2
 void GPIO_HandleBuzzer()
 {
 	static uint32_t buzzerOnTick = 0;
@@ -124,7 +125,7 @@ void GPIO_HandleBuzzer()
 		buzzerWasOn = 0;
 	}
 }
-#endif
+
 void GPIO_Power_MainCPU_ON(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_RESET);
 }
@@ -133,7 +134,6 @@ void GPIO_Power_MainCPU_OFF(void) {
 	HAL_GPIO_WritePin( GPIOC, MAINCPU_CONTROL_PIN, GPIO_PIN_SET);
 }
 
-#ifdef ENABLE_GPIO_V2
 void GPIO_LED_GREEN_ON(void) {
 	HAL_GPIO_WritePin( GPIOA, LED_CONTROL_PIN_GREEN, GPIO_PIN_RESET);
 }
@@ -173,8 +173,25 @@ void GPIO_GPS_BCKP_ON(void) {
 void GPIO_GPS_BCKP_OFF(void) {
 	HAL_GPIO_WritePin( GPIOB, GPS_BCKP_CONTROL_PIN, GPIO_PIN_RESET);
 }
-#endif
 
+uint8_t GPIO_GetVersion()
+{
+	return GPIO_Version;
+}
+
+void GPIO_Activate_V2(void)
+{
+	GPIO_Version = 1;
+	GPIO_LEDs_VIBRATION_Init();
+
+#ifdef ENABLE_GNSS_INTERN
+	GNSS_IO_init();
+	GPIO_GPS_ON();
+	GPIO_GPS_BCKP_ON();
+	MX_USART6_UART_Init();
+	GNSS_Init(&GNSS_Handle, &huart6);
+#endif
+}
 /* Private functions ---------------------------------------------------------*/
 
 
