@@ -72,8 +72,11 @@
 /* Enable to have CO2 sensor functionality available */
 #define ENABLE_CO2_SUPPORT
 
-/* Enable to have GPS sensor functionality available */
-/* #define ENABLE_GNSS_SUPPORT */
+/* Enable to have external GPS sensor functionality available */
+/* #define ENABLE_GNSS_EXTERN */
+
+/* Enable to have internal (OSTC5) GPS sensor functionality available */
+#define ENABLE_GNSS_INTERN
 
 /* Enable to have Sentinel rebreather interface available */
 /* #define ENABLE_SENTINEL_MODE */
@@ -89,9 +92,6 @@
 
 /* Enable to have a faster transfer speed between bluetooth module and CPU */
 #define ENABLE_FAST_COMM
-
-/* Enable to have position sensor support active */
-/* #define ENABLE_GPIO_V2 */
 
 /* Enable RTE sleep mode debugging */
 /* #define ENABLE_SLEEP_DEBUG */

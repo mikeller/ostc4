@@ -390,9 +390,7 @@
 #define StMCustom5_CViewPortAmbient	_MB(2,9,5,4,0)
 #define StMCustom5_CViewPortControl	_MB(2,9,5,5,0)
 #endif
-#ifdef ENABLE_GPIO_V2
 #define StMCustom5_CViewWarningBuz	_MB(2,9,5,1,0)
-#endif
 
 /* PAGE 10 */
 #define StMPLAN		_MB(2,10,0,0,0)

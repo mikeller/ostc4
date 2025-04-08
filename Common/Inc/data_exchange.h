@@ -339,7 +339,7 @@ typedef struct
 
 	uint8_t revisionHardware;
 	uint8_t revisionCRCx0x7A;
-	uint8_t spare1_3;
+	uint8_t displayVersion;
 	uint8_t spare1_4;
 
 	uint8_t setAccidentFlag;

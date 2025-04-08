@@ -63,7 +63,11 @@ SDecoinfo* simulation_decoplaner(uint16_t depth_meter, uint16_t intervall_time_m
 SDecoinfo* simulation_decoplaner_Bachelorarbeit_VPM(uint16_t depth_meter, uint16_t intervall_time_minutes, uint16_t dive_time_minutes, SgasChangeList *pGasChangeList);
 void simulation_gas_consumption(uint16_t *outputConsumptionList, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, uint8_t gasConsumTravelInput, uint8_t gasConsumDecoInput, const SgasChangeList *pGasChangeList);
 void simulation_helper_change_points(SSimDataSummary *outputSummary, uint16_t depth_meter, uint16_t dive_time_minutes, SDecoinfo *decoInfoInput, const SgasChangeList *pGasChangeList);
-
+void simulation_evaluate_profil(uint16_t *outputConsumptionList,
+								SSimDataSummary *outputSummary,
+								uint16_t depth_meter, uint16_t dive_time_minutes,uint8_t gasConsumTravelInput, uint8_t gasConsumDecoInput,
+								SDecoinfo *decoInfoInput,
+								const SgasChangeList *pGasChangeList);
 
 void Sim_Descend (void);
 void Sim_Ascend (void);
