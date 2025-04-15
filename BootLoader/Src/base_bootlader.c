@@ -417,7 +417,7 @@ void GPIO_test_I2C_lines(void)
 }
 
 
-int main(void)
+int __attribute__((optimize("O0"))) main(void)
 {
 
 /*
@@ -447,7 +447,7 @@ GPIO_test_I2C_lines();
 	/* button press is only 40 to 50 us low */
 	MX_GPIO_One_Button_only_Init();
 
-	uint32_t i = 500000;
+	uint32_t i = 4000000;
 
 	callForUpdate = __HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST);
 
@@ -471,7 +471,7 @@ GPIO_test_I2C_lines();
 		}
 		if(i)
 		{
-			i = 200000;
+			i = 4000000;
 			while(!MX_GPIO_Read_The_One_Button() && i)
 			{
 				i--;
@@ -479,29 +479,11 @@ GPIO_test_I2C_lines();
 			}
 			if(i)
 			{
-				i = 200000;
+				i = 4000000;
 				while(MX_GPIO_Read_The_One_Button() && i)
 				{
 					i--;
 					__NOP();
-				}
-				if(i)
-				{
-					i = 200000;
-					while(!MX_GPIO_Read_The_One_Button() && i)
-					{
-						i--;
-						__NOP();
-					}
-					if(i)
-					{
-						i = 200000;
-						while(MX_GPIO_Read_The_One_Button() && i)
-						{
-							i--;
-							__NOP();
-						}
-					}
 				}
 			}
 		}
