@@ -1785,6 +1785,7 @@ uint8_t tComm_HandleBlueModConfig()
 									if(hardwareDataGetPointer()->primarySerial != 0xFFFF) /* module reinit? => restore old name */
 									{
 										gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
+										hardware_programmPrimaryBluetoothNameSet();
 									}
 								break;
 		case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");    /* Disable SPP Server on ID0 */

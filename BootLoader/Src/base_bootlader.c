@@ -693,7 +693,11 @@ GPIO_test_I2C_lines();
 	tInfo_write("start bluetooth");
 	tInfo_write("");
 	tInfo_write(textVersion);
+#if 0
 	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
+#else
+	if(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF)
+#endif
 	{
 		tInfo_write("init bluetooth");
 		tComm_StartBlueModBaseInit();
