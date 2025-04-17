@@ -34,7 +34,7 @@ endif
 OSTC4_Firmware.elf: $(OBJS) $(USER_OBJS) /home/mikeller/git/ostc4//../ostc4/Common/CPU1-F429.ld
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU GCC Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -nodefaultlibs -L"/home/mikeller/git/ostc4/RefPrj/FontPack/Library" -u _printf_float -T"/home/mikeller/git/ostc4/Common/CPU1-F429.ld" -Wl,-Map=output.map -Wl,--gc-sections -o "OSTC4_Firmware.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lOSTC4_FontPack
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -nodefaultlibs -L"/home/mikeller/git/ostc4/RefPrj/FontPack/Library" -u _printf_float -T"/home/mikeller/git/ostc4/Common/CPU1-F429.ld" -Wl,-Map=output.map -Wl,--gc-sections -Wl,--no-check-sections -o "OSTC4_Firmware.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lOSTC4_FontPack
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
