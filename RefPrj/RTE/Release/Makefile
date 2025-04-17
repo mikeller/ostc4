@@ -34,7 +34,7 @@ endif
 OSTC4_RTE.elf: $(OBJS) $(USER_OBJS) /home/mikeller/git/ostc4/RefPrj/RTE/../../Small_CPU/CPU2-RTE.ld
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU GCC Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Xlinker --print-memory-usage -T"/home/mikeller/git/ostc4/Small_CPU/CPU2-RTE.ld" -Wl,-Map=output.map -Wl,--gc-sections  -o "OSTC4_RTE.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lm
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Xlinker --print-memory-usage -T"/home/mikeller/git/ostc4/Small_CPU/CPU2-RTE.ld" -Wl,-Map=output.map -Wl,--gc-sections -Wl,-z,muldefs -o "OSTC4_RTE.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lm
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
