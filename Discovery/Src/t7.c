@@ -1622,7 +1622,7 @@ void t7_show_customview_warnings(void)
     }
 */
     GFX_write_string(&FontT48,&t7cW,text,1);
-    requestBuzzerActivation(1);
+   	requestBuzzerActivation(REQUEST_BUZZER_CONTINUOUS);
 }
 
 
@@ -3233,7 +3233,7 @@ void t7_refresh_divemode(void)
     else
     {
         t7_refresh_customview();
-        requestBuzzerActivation(0);
+        requestBuzzerActivation(REQUEST_BUZZER_OFF);
     }
 
     /* the frame */

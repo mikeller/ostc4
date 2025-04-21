@@ -79,7 +79,7 @@ static int8_t check_debug(SDiveState * pDiveState);
 #endif
 static uint8_t buzzerOn = 0;			/* current state of the buzzer */
 
-static void setBuzzer(int8_t warningActive);
+static void handleBuzzer(int8_t warningActive);
 /* Exported functions --------------------------------------------------------*/
 
 void requestBuzzerActivation(uint8_t active)
@@ -87,22 +87,39 @@ void requestBuzzerActivation(uint8_t active)
 	buzzerRequestActive = active;
 }
 
+uint8_t getBuzzerActivationRequest()
+{
+	return buzzerRequestActive;
+}
+
 uint8_t getBuzzerActivationState()
 {
 	return buzzerOn;
 }
 
-static void setBuzzer(int8_t warningActive)
+static void handleBuzzer(int8_t warningActive)
 {
 	static uint32_t guiTimeoutCnt = 0;		/* max delay till buzzer will be activated independend from gui request */
 	static uint32_t stateTick = 0;			/* activation tick of current state */
 	static uint8_t lastWarningState = 0;	/* the parameter value of the last call*/
+	static uint8_t lastBuzzerRequest = 0;
+	static uint8_t guiTrigger = 0;
 
 	uint32_t tick =  HAL_GetTick();
 
-	if(warningActive)
+	if(stateUsed->mode == MODE_SURFACE)
 	{
-		if(!lastWarningState)				/* init structures */
+		warningActive = 0;					/* no warning buzzer in surface mode => overwrite value */
+	}
+
+	/* There are two sources for buzzer activation: the warning detection and activation by gui => both need to be merged */
+	if((buzzerRequestActive != REQUEST_BUZZER_OFF) &&  (lastBuzzerRequest == REQUEST_BUZZER_OFF))
+	{
+		guiTrigger = 1;
+	}
+	if((warningActive) || (buzzerRequestActive != REQUEST_BUZZER_OFF))
+	{
+		if((lastWarningState == 0) && (lastBuzzerRequest == REQUEST_BUZZER_OFF))			/* init structures */
 		{
 			guiTimeoutCnt = tick;
 			stateTick = tick;
@@ -111,22 +128,38 @@ static void setBuzzer(int8_t warningActive)
 		{
 			if(time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_STABLE_TIME_MS)	/* buzzer has to be on for a certain time */
 			{
-				if((!buzzerRequestActive) || (time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_ON_TIME_MS))
+				if((buzzerRequestActive == REQUEST_BUZZER_OFF)
+						|| ((buzzerRequestActive == REQUEST_BUZZER_ONCE) && (time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_PING_TIME_MS))
+						||  (time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_ON_TIME_MS))
 				{
 					buzzerOn = 0;
 					stateTick = tick;
 					guiTimeoutCnt = tick;
+					buzzerRequestActive = REQUEST_BUZZER_OFF;
 				}
 			}
 		}
 		else
 		{
-			if(time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_STABLE_TIME_MS)	/* buzzer has to be off for a certain time */
+			if((time_elapsed_ms(stateTick, tick) > EXT_INTERFACE_BUZZER_STABLE_TIME_MS) || ( guiTrigger))	/* buzzer has to be off for a certain time */
 			{
-				if((buzzerRequestActive) || (time_elapsed_ms(guiTimeoutCnt, tick) > EXT_INTERFACE_BUZZER_ON_TIME_MS + GUI_BUZZER_TIMEOUT_MS))
+				if((warningActive) || (buzzerRequestActive != REQUEST_BUZZER_OFF))
 				{
-					buzzerOn = 1;
-					stateTick = tick;
+					if(((stateUsed->mode != MODE_SURFACE) && (time_elapsed_ms(guiTimeoutCnt, tick)) > (EXT_INTERFACE_BUZZER_ON_TIME_MS + GUI_BUZZER_TIMEOUT_MS))
+						|| ( guiTrigger))
+					{
+						buzzerOn = 1;
+						stateTick = tick;
+						guiTrigger = 0;
+						if(buzzerRequestActive == REQUEST_BUZZER_ONCE)
+						{
+							buzzerRequestActive = REQUEST_BUZZER_OFF;
+						}
+					}
+					if((time_elapsed_ms(guiTimeoutCnt, tick)) > (EXT_INTERFACE_BUZZER_ON_TIME_MS + EXT_INTERFACE_BUZZER_STABLE_TIME_MS))  /* timeout request */
+					{
+						buzzerRequestActive = REQUEST_BUZZER_OFF;
+					}
 				}
 			}
 		}
@@ -135,7 +168,14 @@ static void setBuzzer(int8_t warningActive)
 	{
 		buzzerOn = 0;
 	}
+	lastBuzzerRequest = buzzerRequestActive;
 	lastWarningState = warningActive;
+}
+
+void deactivateBuzzer()
+{
+	buzzerRequestActive = REQUEST_BUZZER_OFF;
+	buzzerOn = 0;
 }
 
 void check_warning(void)
@@ -160,7 +200,7 @@ void check_warning2(SDiveState * pDiveState)
 
 	if(settingsGetPointer()->warningBuzzer)
 	{
-		setBuzzer(pDiveState->warnings.numWarnings);
+		handleBuzzer(pDiveState->warnings.numWarnings);
 	}
 
 /* Warnings checked after this line will not cause activation of the buzzer */

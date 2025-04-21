@@ -482,11 +482,12 @@ void openEdit_WarningBuz(void)
     if(pSettings->warningBuzzer == 0)
     {
         pSettings->warningBuzzer = 1;
-        requestBuzzerActivation(1);
+        requestBuzzerActivation(REQUEST_BUZZER_ONCE);
     }
     else
     {
         pSettings->warningBuzzer = 0;
+        deactivateBuzzer();
     }
     exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
 }

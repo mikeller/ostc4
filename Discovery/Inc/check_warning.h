@@ -30,6 +30,12 @@
 #include <stdint.h>
 #include "data_central.h"
 
+
+#define REQUEST_BUZZER_OFF			(0u)
+#define REQUEST_BUZZER_ONCE			(1u)
+#define REQUEST_BUZZER_CONTINUOUS	(2u)
+
+
 /* Exported function prototypes ----------------------------------------------*/
 void check_warning(void);
 void check_warning2(SDiveState *pDiveState);
@@ -46,5 +52,7 @@ uint8_t getSetpointHighId(void);
 uint8_t getSetpointLowId(void);
 uint8_t getSetpointDecoId(void);
 void requestBuzzerActivation(uint8_t active);
+uint8_t getBuzzerActivationRequest();
 uint8_t getBuzzerActivationState();
+void deactivateBuzzer();
 #endif // CHECK_WARNING_H

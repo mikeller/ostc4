@@ -864,7 +864,10 @@ void openMenu(uint8_t freshWithFlipPages)
     if((page == 0) || (line == 0))
         return;
 
-    requestBuzzerActivation(0);
+    if( getBuzzerActivationRequest() != REQUEST_BUZZER_ONCE)
+    {
+    	requestBuzzerActivation(REQUEST_BUZZER_OFF);
+    }
 
     menu.pageMemoryForNavigation = page;
     /* new test for 3button design */

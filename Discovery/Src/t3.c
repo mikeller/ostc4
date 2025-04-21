@@ -769,7 +769,7 @@ void t3_refresh_divemode(void)
     else
     {
         t3_refresh_customview(depth_meter);
-        requestBuzzerActivation(0);
+        requestBuzzerActivation(REQUEST_BUZZER_OFF);
     }
     if(stateUsed->warnings.lowBattery)
         t3_basics_battery_low_customview_extra(&t3r1); //t3c1);
@@ -1687,7 +1687,7 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
     {
         GFX_write_string(&FontT48,&t3c2,text,0);
     }
-    requestBuzzerActivation(1);
+    requestBuzzerActivation(REQUEST_BUZZER_CONTINUOUS);
 }
 
 uint8_t t3_customview_disabled(uint8_t view)
