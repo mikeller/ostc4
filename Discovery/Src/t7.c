@@ -3286,7 +3286,9 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
 
     char  headerText[10];
     char  text[TEXTSIZE];
+    char  tmpString[TEXTSIZE];
     uint8_t textpointer = 0;
+    uint8_t index = 0;
     _Bool tinyHeaderFont = 0;
     uint8_t line = 0;
 #ifdef ENABLE_BOTTLE_SENSOR
@@ -3402,7 +3404,26 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     	tinyHeaderFont = 1;
         headerText[2] = TXT_ScrubTime;
 
-        printScrubberText(text, TEXTSIZE, stateUsed->scrubberDataDive, pSettings);
+        textpointer = printScrubberText(text, TEXTSIZE, stateUsed->scrubberDataDive, pSettings);
+        if (pSettings->scubberActiveId == 3)	/* both timer active */
+        {
+        	snprintf(tmpString,TEXTSIZE,"\016\016%s",text);
+        	for(index = 0; index < textpointer; index++)
+        	{
+        		if(tmpString[index] == '\017')	/* remove switch to normal font */
+        		{
+        			tmpString[index] = ' ';
+        		}
+        		if(tmpString[index] == '|')	/* replace separator with new line */
+        		{
+        			tmpString[index] = '\n';
+        			tmpString[index+1] = '\r';
+        			break;
+        		}
+        	}
+        	line = 1;
+        	strcpy(text,tmpString);
+        }
 
 		break;
 #ifdef ENABLE_PSCR_MODE
@@ -3537,7 +3558,7 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     }
     else
     {
-        	GFX_write_string(&FontT48,&t7l3,text,line);
+        GFX_write_string(&FontT48,&t7l3,text,line);
     }
 #else
     GFX_write_string(&FontT105,&t7l3,text,line);

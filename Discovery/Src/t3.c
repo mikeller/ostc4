@@ -1998,19 +1998,40 @@ uint8_t t3_getCustomView(void)
 
 int printScrubberText(char *text, size_t size, const SScrubberData *scrubberData, SSettings *settings)
 {
-    int16_t currentTimerMinutes = scrubberData[settings->scubberActiveId].TimerCur;
-    char colour = '\020';
-    if (currentTimerMinutes <= 0) {
-        colour = '\025';
-    } else if (currentTimerMinutes <= 30) {
-        colour = '\024';
-    }
+	uint8_t timerId = 0;
+	int16_t currentTimerMinutes = 0;
+	char colour = 0;
+	uint8_t textIndex = 0;
 
-    if (settings->scrubTimerMode == SCRUB_TIMER_MINUTES || currentTimerMinutes < 0) {
-        return snprintf(text, size, "%c%3i'", colour, currentTimerMinutes);
-    } else {
-        return snprintf(text, size, "%c%u\016\016%%\017", colour, currentTimerMinutes * 100 / settingsGetPointer()->scrubberData[settings->scubberActiveId].TimerMax);
-    }
+	for(timerId = 0; timerId < 2; timerId++)
+	{
+		if(settings->scubberActiveId & (1 << timerId))
+		{
+			currentTimerMinutes = scrubberData[timerId].TimerCur;
+			colour = '\020';
+			if (currentTimerMinutes <= 0)
+			{
+				colour = '\025';
+			}
+			else if (currentTimerMinutes <= 30)
+			{
+				colour = '\024';
+			}
+			if (settings->scrubTimerMode == SCRUB_TIMER_MINUTES || currentTimerMinutes < 0)
+			{
+				textIndex += snprintf(&text[textIndex], size, "%c%3i'", colour, currentTimerMinutes);
+			}
+			else
+			{
+				textIndex += snprintf(&text[textIndex], size, "%c%u\016\016%%\017", colour, currentTimerMinutes * 100 / settingsGetPointer()->scrubberData[timerId].TimerMax);
+			}
+			if((settings->scubberActiveId == 3) && (timerId == 0))	/* both timers are active => print separator */
+			{
+				textIndex += snprintf(&text[textIndex], size, " | ");
+			}
+		}
+	}
+	return textIndex;
 }
 
 void t3_AF_updateBorderConditions()

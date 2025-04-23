@@ -322,6 +322,7 @@ void tCCR_init(void)
 void tCCR_tick(void)
 {
 	SSettings* pSettings = settingsGetPointer();
+	uint8_t timerId = 0;
 
 	if(pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_OPTIC)
 	{
@@ -346,11 +347,17 @@ void tCCR_tick(void)
             if(ScrubberTimeoutCount >= 600)		/* resolution is minutes */
             {
                 ScrubberTimeoutCount = 0;
-                if(stateUsed->scrubberDataDive[pSettings->scubberActiveId].TimerCur > MIN_SCRUBBER_TIME)
+                for(timerId = 0; timerId < 2; timerId++)
                 {
-                    stateUsedWrite->scrubberDataDive[pSettings->scubberActiveId].TimerCur--;
+                	if(pSettings->scubberActiveId & (1 << timerId))
+                	{
+						if(stateUsed->scrubberDataDive[timerId].TimerCur > MIN_SCRUBBER_TIME)
+						{
+							stateUsedWrite->scrubberDataDive[timerId].TimerCur--;
+						}
+						translateDate(stateUsed->lifeData.dateBinaryFormat, &stateUsedWrite->scrubberDataDive[timerId].lastDive);
+                	}
                 }
-                translateDate(stateUsed->lifeData.dateBinaryFormat, &stateUsedWrite->scrubberDataDive[pSettings->scubberActiveId].lastDive);
             }
         }
     }

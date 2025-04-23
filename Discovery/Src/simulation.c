@@ -151,6 +151,7 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     SDiveState * pDiveState = &stateSim;
     const SDiveState * pRealState = stateRealGetPointer();
 	SSettings *pSettings;
+	uint8_t timerId = 0;
 
     static int last_second = -1;
     static _Bool two_second = 0;
@@ -250,11 +251,17 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     	if(simScrubberTimeoutCount >= 60)		/* resolution is minutes */
     	{
     		simScrubberTimeoutCount = 0;
-    		if(pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur > MIN_SCRUBBER_TIME)
+    		for(timerId = 0; timerId < 2; timerId++)
     		{
-    			pDiveState->scrubberDataDive[pSettings->scubberActiveId].TimerCur--;
+    		   	if(pSettings->scubberActiveId & (1 << timerId))
+    		   	{
+					if(pDiveState->scrubberDataDive[timerId].TimerCur > MIN_SCRUBBER_TIME)
+					{
+						pDiveState->scrubberDataDive[timerId].TimerCur--;
+					}
+					translateDate(stateUsed->lifeData.dateBinaryFormat, &pDiveState->scrubberDataDive[timerId].lastDive);
+    		   	}
     		}
-            translateDate(stateUsed->lifeData.dateBinaryFormat, &pDiveState->scrubberDataDive[pSettings->scubberActiveId].lastDive);
     	}
     }
 

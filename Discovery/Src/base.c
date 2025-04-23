@@ -384,7 +384,7 @@ int main(void)
     HAL_Delay( 100 );
 
     stateRealGetPointerWrite()->lastKnownBatteryPercentage = 0; // damit das nicht in settings kopiert wird.
-    set_settings_to_Standard();
+    set_settings_to_Standard();									/* initialize setting structure with default value => will be overwritten by flash read operation */
     mod_settings_for_first_start_with_empty_ext_flash();
     ext_flash_read_settings();
     if( newFirmwareVersionCheckViaSettings() ) // test for old firmware version in loaded settings
@@ -392,8 +392,7 @@ int main(void)
         wasFirmwareUpdateCheckBattery = 1;
         set_settings_button_to_factory_with_individual_buttonBalance(); // will adapt individual values
     }
-    //settingsGetPointer()->bluetoothActive = 0; 	/* MX_Bluetooth_PowerOff();  unnecessary as part of MX_GPIO_Init() */
-    //settingsGetPointer()->compassBearing = 0;
+
     set_new_settings_missing_in_ext_flash(); // includes update of firmware version  161121
 
     GFX_init( &pLayerInvisible );
