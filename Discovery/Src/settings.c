@@ -33,6 +33,10 @@
 #include "externLogbookFlash.h" // for SAMPLESTART and SAMPLESTOP
 #include "text_multilanguage.h" // for LANGUAGE_END
 #include "tHome.h" // for CVIEW_END
+#include "tMenu.h"
+#include "tMenuEdit.h"
+#include "tInfo.h"
+#include "tInfoLog.h"
 #include "motion.h"
 #include "t7.h"
 #include "data_central.h"
@@ -351,6 +355,23 @@ uint8_t checkValue(uint8_t value,uint8_t from, uint8_t to);
 
 /* Functions -----------------------------------------------------------------*/
 
+void setFlipDisplay(uint8_t flipDisplay)
+{
+    bool settingChanged = flipDisplay != Settings.FlipDisplay;
+    Settings.FlipDisplay = flipDisplay;
+    if (settingChanged) {
+        // reinit all views
+        tHome_init();
+        tI_init();
+        tM_init();
+        tMenuEdit_init();
+        tInfoLog_init();
+        tM_build_pages();
+        GFX_build_logo_frame();
+        GFX_build_hw_background_frame();
+    }
+}
+
 
 //  ===============================================================================
 //	set_new_settings_missing_in_ext_flash
@@ -476,8 +497,8 @@ void set_new_settings_missing_in_ext_flash(void)
         pSettings->FactoryButtonBalance[2]          = pStandard->FactoryButtonBalance[2];
         // no break
     case 0xFFFF0017:
-    	pSettings->FlipDisplay = 0;
-    	// no break
+        setFlipDisplay(0);
+        // no break
     case 0xFFFF0018:
     	pSettings->cv_configuration = 0xFFFFFFFF;
     	// no break
@@ -1678,12 +1699,11 @@ uint8_t check_and_correct_settings(void)
         setFirstCorrection(parameterId);
     }
     parameterId++;
-    if(Settings.FlipDisplay > 1) /* only boolean values allowed */
-   	{
-    	Settings.FlipDisplay = 0;
+    if(Settings.FlipDisplay > 1) { /* only boolean values allowed */
+        setFlipDisplay(1);
 	    corrections++;
 	    setFirstCorrection(parameterId);
-   	}
+    }
     parameterId++;
 #ifdef ENABLE_MOTION_CONTROL
     if(Settings.MotionDetection >= MOTION_DETECT_END)
@@ -1831,13 +1851,13 @@ uint8_t check_and_correct_settings(void)
         setFirstCorrection(parameterId);
     }
     parameterId++;
-    if (Settings.compassDeclinationDeg > 99) {
-        Settings.compassDeclinationDeg = 99;
+    if (Settings.compassDeclinationDeg > MAX_COMPASS_DECLINATION_DEG) {
+        Settings.compassDeclinationDeg = MAX_COMPASS_DECLINATION_DEG;
 
         corrections++;
         setFirstCorrection(parameterId);
-    } else if (Settings.compassDeclinationDeg < -99) {
-        Settings.compassDeclinationDeg = -99;
+    } else if (Settings.compassDeclinationDeg < -MAX_COMPASS_DECLINATION_DEG) {
+        Settings.compassDeclinationDeg = -MAX_COMPASS_DECLINATION_DEG;
 
         corrections++;
         setFirstCorrection(parameterId);
@@ -2120,6 +2140,13 @@ uint8_t checkValue(uint8_t value,uint8_t from, uint8_t to)
     return 0;
 }
 
+bool checkValueSigned(int8_t value, int8_t from, int8_t to)
+{
+    if(value >= from && value <= to)
+        return true;
+    return false;
+}
+
 uint8_t writeData(uint8_t * data)
 {
         uint32_t newSensitivity;
@@ -2256,7 +2283,11 @@ uint8_t writeData(uint8_t * data)
         Settings.date_format = data[1];
         break;
         case 0x34:
+            if (!checkValueSigned(data[1], -MAX_COMPASS_DECLINATION_DEG, MAX_COMPASS_DECLINATION_DEG))
                 return ERROR_;
+            Settings.compassDeclinationDeg = (int8_t)data[1];
+
+            break;
         case 0x35:
                 if(data[1] & 0x80)
                 {
@@ -2288,7 +2319,11 @@ uint8_t writeData(uint8_t * data)
         Settings.fallbackToFixedSetpoint = data[1];
         break;
         case 0x39:
+            if (!checkValue(data[1], 0, 1))
                 return ERROR_;
+            setFlipDisplay(data[1]);
+
+            break;
         case 0x3A:
         if(!checkValue(data[1],70,110))
             return ERROR_;
@@ -2617,10 +2652,10 @@ uint8_t readDataLimits__8and16BitValues_4and7BytesOutput(uint8_t what, uint8_t *
         break;
 
     case 0x34:
-        data[datacounter++] = PARAM_UNKNOWN ;
-        data[datacounter++] = 0;
-        data[datacounter++] = 0; // compass gain, is unknown,, settingsGetPointerStandard()->;
-        data[datacounter++] = 0;
+        data[datacounter++] = PARAM_SINT;
+        data[datacounter++] = (uint8_t)-MAX_COMPASS_DECLINATION_DEG;
+        data[datacounter++] = (uint8_t)settingsGetPointerStandard()->compassDeclinationDeg;
+        data[datacounter++] = MAX_COMPASS_DECLINATION_DEG;
         break;
 
     case 0x35:
@@ -2660,8 +2695,8 @@ uint8_t readDataLimits__8and16BitValues_4and7BytesOutput(uint8_t what, uint8_t *
     case 0x39:
         data[datacounter++] = PARAM_BOOL;
         data[datacounter++] = 0;
-        data[datacounter++] = 0; // flipscreen, not yet :-) settingsGetPointerStandard()->;
-        data[datacounter++] = 0;
+        data[datacounter++] = settingsGetPointerStandard()->FlipDisplay;
+        data[datacounter++] = 1;
         break;
 
     case 0x3A:
@@ -2921,7 +2956,7 @@ uint8_t readData(uint8_t what, uint8_t * data)
         data[0] = Settings.date_format;
         break;
      case 0x34:
-        data[0] = 7; // gain should be always 7 as far as I understand the code in RTE
+        data[0] = (uint8_t)Settings.compassDeclinationDeg;
         break;
      case 0x35:
         data[0] = Settings.offsetPressure_mbar;
@@ -2939,7 +2974,7 @@ uint8_t readData(uint8_t what, uint8_t * data)
         data[0] = Settings.fallbackToFixedSetpoint;
         break;
      case 0x39:
-        data[0] = 0; // flip screen
+        data[0] = Settings.FlipDisplay;
         break;
      case 0x3A:
         data[0] = Settings.ButtonResponsiveness[3];

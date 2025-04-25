@@ -68,6 +68,7 @@ GFX_DrawCfgScreen * get_PointerMenuCursorDesignSoloScreen(void);
 void nextline(char * text, uint8_t *textPointer);
 
 void tM_init(void);
+void tM_build_pages(void);
 void openMenu(uint8_t freshWithFlipPages);
 void openMenu_first_page_with_OC_gas_update(void);
 void updateMenu(void);

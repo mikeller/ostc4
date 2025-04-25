@@ -34,16 +34,9 @@
 #include "gfx_fonts.h"
 #include "ostc.h"
 #include "tCCR.h"
-#include "tMenuEdit.h"
-#include "tHome.h"
-#include "tInfo.h"
-#include "tInfoLog.h"
-#include "tInfoSensor.h"
 #include "tComm.h"
 #include "data_exchange_main.h"
 
-
-extern void tM_build_pages(void);
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_Bluetooth(void);
@@ -135,25 +128,9 @@ void openEdit_FlipDisplay(void)
 {
 /* does not work like this	resetEnterPressedToStateBeforeButtonAction(); */
 
-    SSettings *pSettings = settingsGetPointer();
+    bool oldValue = settingsGetPointer()->FlipDisplay;
 
-    if(pSettings->FlipDisplay == 0)
-    {
-        pSettings->FlipDisplay = 1;
-    }
-    else
-    {
-        pSettings->FlipDisplay = 0;
-    }
-    /* reinit all views */
-    tHome_init();
-    tI_init();
-    tM_init();
-    tMenuEdit_init();
-    tInfoLog_init();
-    tM_build_pages();
-    GFX_build_logo_frame();
-    GFX_build_hw_background_frame();
+    setFlipDisplay(!oldValue);
 
     exitEditWithUpdate();
     exitMenuEdit_to_Home();
@@ -172,10 +149,10 @@ static uint8_t OnAction_CompassDeclination(uint32_t editId, uint8_t blockNumber,
             int32_t compassDeclinationDeg;
             evaluateNewString(editId, (uint32_t *)&compassDeclinationDeg, NULL, NULL, NULL);
 
-            if (compassDeclinationDeg > 99) {
-                compassDeclinationDeg = 99;
-            } else if (compassDeclinationDeg < -99) {
-                compassDeclinationDeg = -99;
+            if (compassDeclinationDeg > MAX_COMPASS_DECLINATION_DEG) {
+                compassDeclinationDeg = MAX_COMPASS_DECLINATION_DEG;
+            } else if (compassDeclinationDeg < -MAX_COMPASS_DECLINATION_DEG) {
+                compassDeclinationDeg = -MAX_COMPASS_DECLINATION_DEG;
             }
 
             settings->compassDeclinationDeg = compassDeclinationDeg;

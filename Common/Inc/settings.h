@@ -76,6 +76,9 @@
 #define PRESSURE_OFFSET_LIMIT_MBAR	50
 
 #define MAX_COMPASS_COMP 		(2u)
+
+#define MAX_COMPASS_DECLINATION_DEG 99
+
 #define MAX_VIEWPORT_MODE 		(0x7F)
 
 #define MAX_SCRUBBER_TIME 		(999u)
@@ -382,6 +385,7 @@ uint8_t FONTminimum_required_low(void);
 void setActualRTEversion(uint8_t high, uint8_t low);
 void getActualRTEandFONTversion(uint8_t *RTEhigh, uint8_t *RTElow, uint8_t *FONThigh, uint8_t *FONTlow);
 
+void setFlipDisplay(uint8_t flipDisplay);
 void set_new_settings_missing_in_ext_flash(void);
 uint8_t check_and_correct_settings(void);
 uint8_t newFirmwareVersionCheckViaSettings(void);
