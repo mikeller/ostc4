@@ -25,7 +25,7 @@
 #include "gpio.h"
 #include "data_exchange.h"
 #include "scheduler.h"
-#include "uart_internal.h"
+#include "uart_Internal.h"
 #include "GNSS.h"
 
 /* Exported variables --------------------------------------------------------*/

@@ -897,6 +897,7 @@ void show_logbook_exit(void)
     releaseFrame(17,tLOGbackground.FBStartAdress);
 }
 
+#define MSG_LENGTH 30
 
 static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t StepBackwards)
 {
@@ -919,7 +920,7 @@ static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t
     uint8_t  gasdata[1000];
     dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
-    char msg[15];
+    char msg[MSG_LENGTH];
     char gas_name[15];
     int j = 0;
 
@@ -979,18 +980,18 @@ static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t
             	if(index < NUM_GASES)		/* Switch to Bailout is not covered by log gas list */
             	{
             		snprintf(gas_name,15,"Bailout");
-            		snprintf(msg,15,"G%d: %s",index +1, gas_name);
+                        snprintf(msg, MSG_LENGTH, "G%d: %s", index +1, gas_name);
             	}
             	else
             	{
             		print_gas_name(gas_name,15,logbookHeader.gasordil[index-NUM_GASES].oxygen_percentage,logbookHeader.gasordil[index-NUM_GASES].helium_percentage);
-            		snprintf(msg,15,"D%d: %s",index +1 - NUM_GASES, gas_name);
+                        snprintf(msg, MSG_LENGTH, "D%d: %s", index + 1 - NUM_GASES, gas_name);
             	}
             }
             else
             {
             	print_gas_name(gas_name,15,logbookHeader.gasordil[index].oxygen_percentage,logbookHeader.gasordil[index].helium_percentage);
-            	snprintf(msg,15,"G%d: %s",index +1, gas_name);
+                snprintf(msg, MSG_LENGTH, "G%d: %s", index + 1, gas_name);
             }
             Gfx_write_label_var(hgfx, winsmal.left, winsmal.right,winsmal.top, &FontT24,color,msg);
         }

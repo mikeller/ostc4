@@ -4648,7 +4648,7 @@ uint16_t LogDeltaCharge(float charge)
 	}
 	else
 	{
-		memcpy (&ChargerLog[0],&ChargerLog[1],sizeof(ChargerLog) - 1);
+		memmove(&ChargerLog[0], &ChargerLog[1], sizeof(ChargerLog) - 1);
 		ChargerLog[curIndex] = level;
 	}
 	if(curIndex > 1)	/* estimate time til charging is complete */

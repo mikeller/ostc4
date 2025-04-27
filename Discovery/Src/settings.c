@@ -463,7 +463,7 @@ void set_new_settings_missing_in_ext_flash(void)
         pSettings->gasConsumption_deco_l_min        = pStandard->gasConsumption_deco_l_min;
         // no break
     case 0xFFFF000C:
-        memcpy(pSettings->customtext, " hwOS 4\n\r" " welcome\n\r", 60);
+        strncpy(pSettings->customtext, " hwOS 4\n\r" " welcome\n\r", sizeof(pSettings->customtext));
         // no break
     case 0xFFFF000D: // nothing to do from 0xFFFF000D to 0xFFFF000E, just about header :-)
     case 0xFFFF000E:

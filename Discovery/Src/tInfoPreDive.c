@@ -70,7 +70,7 @@ static void storePressureValue(int16_t deltapressure_mBar)
 	}
 	else
 	{
-		memcpy (&pressureHistory[0],&pressureHistory[2],sizeof(pressureHistory) - 2);
+		memmove(&pressureHistory[0], &pressureHistory[2], sizeof(pressureHistory) - 2);
 		pressureHistory[pressureHistoryIndex] = newValue;
 	}
 }
@@ -87,7 +87,7 @@ static void storeTemperatureValue(uint16_t temperature)
 	}
 	else
 	{
-		memcpy (&temperatureHistory[0],&temperatureHistory[2],sizeof(temperatureHistory) - 2);
+		memmove(&temperatureHistory[0], &temperatureHistory[2], sizeof(temperatureHistory) - 2);
 		temperatureHistory[temperatureHistoryIndex] = newValue;
 	}
 }
