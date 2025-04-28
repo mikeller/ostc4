@@ -845,6 +845,11 @@ void updateMenu(void)
     	    clean_line_actual_page();
         	update_content_actual_page(text, tabPosition, subtext);
         break;
+    case StMOption:
+    	 	 	 tMCvOption_refresh(line, text, &tabPosition, subtext);
+    	         clean_line_actual_page();
+    	         update_content_actual_page(text, tabPosition, subtext);
+    	break;
     default:
         break;
     }
@@ -958,7 +963,7 @@ static void checkLineStatus()
 {
 	switch(get_globalState())
 	{
-		case StMSYS: tMSystem_checkLineStatus();
+		case StMOption: tMCvOption_checkLineStatus();
 			break;
 		case StMXTRA: tMXtra_checkLineStatus();
 			break;

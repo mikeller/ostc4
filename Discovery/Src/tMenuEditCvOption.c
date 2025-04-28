@@ -280,6 +280,8 @@ static void openEdit_Timer(void)
     snprintf(text, 32, "\001%c%c", TXT_2BYTE, TXT2BYTE_Timer);
     write_topline(text);
 
+    set_globalState(StMOption_Timer);
+
     uint16_t yPos = ME_Y_LINE_BASE + get_globalState_Menu_Line() * ME_Y_LINE_STEP;
     snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Timer);
     write_label_var(30, 299, yPos, &FontT48, text);

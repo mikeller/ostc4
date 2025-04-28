@@ -390,7 +390,7 @@
 #define StMOption_Compass_Inertia		_MB(2,10,1,4,0)
 #define StMOption_Compass_Declination	_MB(2,10,1,5,0)
 
-#define StMOption_Timer					_MB(2,10,2,0,0)
+#define StMOption_Timer					_MB(2,10,2,1,0)
 
 
 /* PAGE 11 */

@@ -38,5 +38,6 @@
 void openEdit_CvOption(uint8_t line);
 void refresh_CompassEdit(void);
 uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);
+void tMCvOption_checkLineStatus(void);
 
 #endif /* TMENU_EDIT_CVOPTION_H */

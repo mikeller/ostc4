@@ -260,19 +260,6 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
 
     return StMSYS;
 }
-void tMSystem_checkLineStatus(void)
-{
-	uint8_t localLineMask = 0;
-	uint8_t lineMask = getLineMask(StMSYS);
 
-	if(t7_customview_disabled(CVIEW_Timer))
-    {
-    	localLineMask |= 1 << 2;
-    }
-	if(lineMask != localLineMask)
-	{
-		updateMenu();
-	}
-}
 
 /* Private functions ---------------------------------------------------------*/

@@ -1781,7 +1781,7 @@ uint8_t check_and_correct_settings(void)
     	corrections++;
     	setFirstCorrection(parameterId);
     }
-    parameterId++;
+    parameterId++; /* 93 */
     if((Settings.scrubberData[1].TimerMax > MAX_SCRUBBER_TIME) || Settings.scrubberData[1].TimerCur < MIN_SCRUBBER_TIME || Settings.scrubberData[1].TimerCur > (int16_t)MAX_SCRUBBER_TIME)
     {
     	Settings.scrubberData[1].TimerMax = 0;

@@ -44,6 +44,5 @@ void set_CustomsviewsSubpage(uint8_t page);
 /* Exported functions --------------------------------------------------------*/
 
 uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);
-void tMSystem_checkLineStatus(void);
 
 #endif /* TMENU_SYSTEM_H */

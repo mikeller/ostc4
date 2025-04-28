@@ -84,20 +84,16 @@ void openEdit_Hardware(uint8_t line)
         openEdit_Bluetooth();
     break;
     case 2:
-    	resetMenuEdit(CLUT_MenuPageHardware);
-        openEdit_Compass();
-    break;
-    case 3:
         openEdit_O2Sensors();
     break;
-    case 4:
+    case 3:
         openEdit_Brightness();
     break;
-    case 5:
+    case 4:
     	resetMenuEdit(CLUT_MenuPageHardware);
         openEdit_ButtonSens();
     break;
-    case 6:
+    case 5:
     	openEdit_FlipDisplay();
     break;
     }

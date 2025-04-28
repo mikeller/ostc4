@@ -82,13 +82,13 @@ uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
 void tMCvOption_checkLineStatus(void)
 {
 	uint8_t localLineMask = 0;
-	uint8_t lineMask = getLineMask(StMSYS);
-#if 0
+	uint8_t lineMask = getLineMask(StMOption);
+
 	if(t7_customview_disabled(CVIEW_Timer))
     {
     	localLineMask |= 1 << 2;
     }
-#endif
+
 	if(lineMask != localLineMask)
 	{
 		updateMenu();
