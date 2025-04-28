@@ -89,8 +89,8 @@ uint32_t ColorLUT[] =
 	0x00AC00ff,//0x00E5AE18, // CLUT_MenuPageHardware
 	0x00ff00ff,//0x00E5AEFF, // CLUT_MenuPageSystem 
 	0x00FF55FF,//0x00FFFF00, // CLUT_MenuPageCustomView
+	0x00FFAAFF, // CLUT_MenuPageCVOption
 	0x00C4EACC, // CLUT_MenuPageDivePlanner
-	0x00000000, // CLUT_MenuPage10 - UNUSED
 	0x00FFFFFF, // CLUT_ButtonSymbols
 	0x000092D0, // CLUT_InfoSurface
 	0x000092D0, // CLUT_InfoDive - UNUSED

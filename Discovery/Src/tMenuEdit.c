@@ -229,7 +229,7 @@ void tMenuEdit_refresh_live_content(void)
 	 	 case (StMHARD3_Sensor_Detect):
 	 	 case (StMHARD3_Sensor_Info):							refreshFct = refresh_O2Sensors;
 	 	 	 break;
-		 case (StMHARD2_Compass & MaskFieldDigit):
+		 case (StMOption_Compass & MaskFieldDigit):
              refreshFct = refresh_CompassEdit;
 			 break;
 		 case (StMXTRA_CompassHeading & MaskFieldDigit):

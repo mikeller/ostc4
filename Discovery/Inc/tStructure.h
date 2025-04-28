@@ -222,10 +222,6 @@
 #define StMXTRA_PSCR_LUNG_RATIO			_MB(2,4,4,2,0)
 #define StMXTRA_Predive_Check			_MB(2,4,5,1,0)
 
-
-
-
-
 /* PAGE 5 */
 #define StMDECO		_MB(2,5,0,0,0)
 
@@ -274,13 +270,6 @@
 
 #define StMHARD1_Bluetooth			_MB(2,7,1,1,0)
 
-#define StMHARD2_Compass				_MB(2,7,2,0,0)
-#define StMHARD2_Compass_SetCourse		_MB(2,7,2,2,0)
-#define StMHARD2_Compass_ResetCourse	_MB(2,7,2,3,0)
-#define StMHARD2_Compass_Calibrate		_MB(2,7,2,4,0)
-#define StMHARD2_Compass_Inertia		_MB(2,7,2,5,0)
-#define StMHARD2_Compass_Declination	_MB(2,7,2,6,0)
-
 //#define StMHARD2_Exit						_MB(2,7,2,2,0)
 
 #define StMHARD3_Sensors			_MB(2,7,3,0,0)
@@ -322,35 +311,33 @@
 #define StMSYS1_GNSSDT  _MB(2,8,1,5,0)
 #define StMSYS1_ZONE	_MB(2,8,1,6,0)
 
-#define StMSYS_Timer	_MB(2,8,2,1,0)
+#define StMSYS2_English	_MB(2,8,2,1,0)
+#define StMSYS2_German	_MB(2,8,2,2,0)
+#define StMSYS2_French	_MB(2,8,2,3,0)
+#define StMSYS2_Italian	_MB(2,8,2,4,0)
+#define StMSYS2_Espanol	_MB(2,8,2,5,0)
 
-#define StMSYS2_English	_MB(2,8,3,1,0)
-#define StMSYS2_German	_MB(2,8,3,2,0)
-#define StMSYS2_French	_MB(2,8,3,3,0)
-#define StMSYS2_Italian	_MB(2,8,3,4,0)
-#define StMSYS2_Espanol	_MB(2,8,3,5,0)
+#define StMSYS3_Units	_MB(2,8,3,1,0)
+#define StMSYS3_Colors	_MB(2,8,3,2,0)
+#define StMSYS3_Debug	_MB(2,8,3,3,0)
 
-#define StMSYS3_Units		_MB(2,8,4,1,0)
-#define StMSYS3_Colors	_MB(2,8,4,2,0)
-#define StMSYS3_Debug		_MB(2,8,4,3,0)
+#define StMSYS4_Info	_MB(2,8,4,1,0)
 
-#define StMSYS4_Info		_MB(2,8,5,1,0)
-
-#define StMSYS5_Exit			_MB(2,8,6,1,0)
-#define StMSYS5_LogbookOffset	_MB(2,8,6,7,0)
-#define StMSYS5_ResetAll		_MB(2,8,6,2,0)
-#define StMSYS5_ResetDeco		_MB(2,8,6,3,0)
-#define StMSYS5_Reboot			_MB(2,8,6,4,0)
-#define StMSYS5_Maintenance		_MB(2,8,6,5,0)
-#define StMSYS5_ResetLogbook	_MB(2,8,6,6,0)
-#define StMSYS5_SetBattCharge	_MB(2,8,6,7,0)
-#define StMSYS5_RebootRTE		_MB(2,8,6,8,0)
-#define StMSYS5_RebootMainCPU	_MB(2,8,6,9,0)
-#define StMSYS5_ScreenTest		_MB(2,8,6,10,0)
-#define StMSYS5_SetFactoryBC	_MB(2,8,6,11,0)
-#define StMSYS5_ResetBluetooth	_MB(2,8,6,12,0)
-#define StMSYS5_SetSampleIndx   _MB(2,8,6,13,0)
-#define StMSYS5_AdjustSurfPres  _MB(2,8,6,14,0)
+#define StMSYS5_Exit			_MB(2,8,5,1,0)
+#define StMSYS5_LogbookOffset	_MB(2,8,5,7,0)
+#define StMSYS5_ResetAll		_MB(2,8,5,2,0)
+#define StMSYS5_ResetDeco		_MB(2,8,5,3,0)
+#define StMSYS5_Reboot			_MB(2,8,5,4,0)
+#define StMSYS5_Maintenance		_MB(2,8,5,5,0)
+#define StMSYS5_ResetLogbook	_MB(2,8,5,6,0)
+#define StMSYS5_SetBattCharge	_MB(2,8,5,7,0)
+#define StMSYS5_RebootRTE		_MB(2,8,5,8,0)
+#define StMSYS5_RebootMainCPU	_MB(2,8,5,9,0)
+#define StMSYS5_ScreenTest		_MB(2,8,5,10,0)
+#define StMSYS5_SetFactoryBC	_MB(2,8,5,11,0)
+#define StMSYS5_ResetBluetooth	_MB(2,8,5,12,0)
+#define StMSYS5_SetSampleIndx   _MB(2,8,5,13,0)
+#define StMSYS5_AdjustSurfPres  _MB(2,8,5,14,0)
 
 #define StMSYS_Custom0			_MB(2,8,1,0,0)
 #define StMSYS_Custom1			_MB(2,8,2,0,0)
@@ -393,15 +380,28 @@
 #endif
 #define StMCustom5_CViewWarningBuz	_MB(2,9,5,1,0)
 
-/* PAGE 10 */
-#define StMPLAN		_MB(2,10,0,0,0)
 
-/* PAGE 10 EDIT FIELD CONTENT */
-#define StMPLAN2_Interval			_MB(2,10,2,1,0)
-#define StMPLAN3_DiveTime			_MB(2,10,3,1,0)
-#define StMPLAN4_MaxDepth			_MB(2,10,4,1,0)
-#define StMPLAN5_ExitResult			_MB(2,10,5,1,0)
-#define StMPLAN4_Settings			_MB(2,10,6,1,0)
+/* Page 10 */
+#define StMOption						_MB(2,10,0,0,0)
+#define StMOption_Compass				_MB(2,10,1,0,0)
+#define StMOption_Compass_SetCourse		_MB(2,10,1,1,0)
+#define StMOption_Compass_ResetCourse	_MB(2,10,1,2,0)
+#define StMOption_Compass_Calibrate		_MB(2,10,1,3,0)
+#define StMOption_Compass_Inertia		_MB(2,10,1,4,0)
+#define StMOption_Compass_Declination	_MB(2,10,1,5,0)
+
+#define StMOption_Timer					_MB(2,10,2,0,0)
+
+
+/* PAGE 11 */
+#define StMPLAN		_MB(2,11,0,0,0)
+
+/* PAGE 11 EDIT FIELD CONTENT */
+#define StMPLAN2_Interval			_MB(2,11,2,1,0)
+#define StMPLAN3_DiveTime			_MB(2,11,3,1,0)
+#define StMPLAN4_MaxDepth			_MB(2,11,4,1,0)
+#define StMPLAN5_ExitResult			_MB(2,11,5,1,0)
+#define StMPLAN4_Settings			_MB(2,11,6,1,0)
 
 
 

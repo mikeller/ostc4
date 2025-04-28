@@ -146,24 +146,6 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         textPointer += 2;
     }
 
-    if (line == 0 || line == 2)
-    {
-    	if(t7_customview_disabled(CVIEW_Timer))
-    	{
-    		text[textPointer++] = '\031';		/* change text color */
-    	    textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-    	    disableLine(StMSYS_Timer);
-            text[textPointer++] = '\020';		/* restore text color */
-    	}
-    	else
-    	{
-    		textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017\n\r", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-    	}
-    } else
-    {
-        textPointer += snprintf(&text[textPointer], 3, "\n\r");
-    }
-
     if((line == 0) || (line == 3))
     {
         text[textPointer++] = TXT_Language;

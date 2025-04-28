@@ -34,9 +34,16 @@
 #include "gfx_fonts.h"
 #include "ostc.h"
 #include "tCCR.h"
+#include "tMenuEdit.h"
+#include "tHome.h"
+#include "tInfo.h"
+#include "tInfoLog.h"
+#include "tInfoSensor.h"
 #include "tComm.h"
 #include "data_exchange_main.h"
 
+
+extern void tM_build_pages(void);
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_Bluetooth(void);
@@ -48,22 +55,15 @@ void openEdit_ButtonSens(void);
 void openEdit_FlipDisplay(void);
 
 /* Announced function prototypes -----------------------------------------------*/
-uint8_t OnAction_Compass		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-uint8_t OnAction_Bearing		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-uint8_t OnAction_BearingClear	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-uint8_t OnAction_InertiaLevel	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-//uint8_t OnAction_ExitHardw	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Sensor1		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Sensor2		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Sensor3		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_O2_Calibrate   (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-//uint8_t OnAction_O2_Source		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Sensor_Info	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Sensor_Detect	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Button			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ButtonBalance	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ButtonLock		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-// not required uint8_t OnAction_Bluetooth				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -135,217 +135,6 @@ void openEdit_FlipDisplay(void)
     exitEditWithUpdate();
     exitMenuEdit_to_Home();
 }
-
-static uint8_t OnAction_CompassDeclination(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-    SSettings *settings = settingsGetPointer();
-    uint8_t digitContentNew;
-    switch (action) {
-    case ACTION_BUTTON_ENTER:
-
-        return digitContent;
-    case ACTION_BUTTON_ENTER_FINAL:
-        {
-            int32_t compassDeclinationDeg;
-            evaluateNewString(editId, (uint32_t *)&compassDeclinationDeg, NULL, NULL, NULL);
-
-            if (compassDeclinationDeg > MAX_COMPASS_DECLINATION_DEG) {
-                compassDeclinationDeg = MAX_COMPASS_DECLINATION_DEG;
-            } else if (compassDeclinationDeg < -MAX_COMPASS_DECLINATION_DEG) {
-                compassDeclinationDeg = -MAX_COMPASS_DECLINATION_DEG;
-            }
-
-            settings->compassDeclinationDeg = compassDeclinationDeg;
-
-            tMenuEdit_newInput(editId, ((input_u)compassDeclinationDeg).uint32, 0, 0, 0);
-        }
-
-        break;
-    case ACTION_BUTTON_NEXT:
-        if (digitNumber == 0) {
-            digitContentNew = togglePlusMinus(digitContent);
-        } else {
-            digitContentNew = digitContent + 1;
-            if (digitContentNew > '9') {
-                digitContentNew = '0';
-            }
-        }
-
-        return digitContentNew;
-    case ACTION_BUTTON_BACK:
-        if (digitNumber == 0) {
-            digitContentNew = togglePlusMinus(digitContent);
-        } else {
-            digitContentNew = digitContent - 1;
-            if (digitContentNew < '0') {
-                digitContentNew = '9';
-            }
-        }
-
-        return digitContentNew;
-    }
-
-    return UNSPECIFIC_RETURN;
-}
-
-
-static void showCompassDeclination(SSettings *settings, bool isRefresh)
-{
-    char text[16];
-    snprintf(text, 16, "%c%c:", TXT_2BYTE, TXT2BYTE_CompassDeclination);
-    write_label_var(30, 800, ME_Y_LINE6, &FontT48, text);
-    if (isRefresh) {
-        tMenuEdit_refresh_field(StMHARD2_Compass_Declination);
-    } else {
-        write_field_sdigit(StMHARD2_Compass_Declination, 500, 800, ME_Y_LINE6, &FontT48, "\034###`", settings->compassDeclinationDeg, 0, 0, 0);
-    }
-}
-
-
-void refresh_CompassEdit(void)
-{
-    SSettings *settings = settingsGetPointer();
-
-    uint16_t heading;
-    char text[32];
-    uint8_t textIndex = 0;
-
-    text[0] = '\001';
-    text[1] = TXT_2BYTE;
-    text[2] = TXT2BYTE_Compass;
-    text[3] = 0;
-    write_topline(text);
-
-    if(settings->compassInertia)
-    {
-    	heading = (uint16_t)compass_getCompensated();
-    }
-    else
-    {
-    	heading = (uint16_t)stateUsed->lifeData.compass_heading;
-    }
-    snprintf(text,32,"\001%03i`",heading);
-    write_label_var(   0, 800, ME_Y_LINE1, &FontT54, text);
-
-    tMenuEdit_refresh_field(StMHARD2_Compass_SetCourse);
-    tMenuEdit_refresh_field(StMHARD2_Compass_Calibrate);
-    tMenuEdit_refresh_field(StMHARD2_Compass_ResetCourse);
-    text[textIndex++] = TXT_2BYTE;
-    text[textIndex++] = TXT2BYTE_CompassInertia;
-    text[textIndex++] = ':';
-    text[textIndex++] = ' ';
-    text[textIndex++] = '0' + settings->compassInertia;
-
-    write_label_var(30, 800, ME_Y_LINE5,  &FontT48, text);
-
-    showCompassDeclination(settings, true);
-
-    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
-}
-
-
-void openEdit_Compass(void)
-{
-    SSettings *settings = settingsGetPointer();
-
-    char text[10];
-    uint8_t textIndex = 0;
-
-
-    set_globalState(StMHARD2_Compass);
-    resetMenuEdit(CLUT_MenuPageHardware);
-
-    text[textIndex++] = '\001';
-    text[textIndex++] = TXT_2BYTE;
-    text[textIndex++] = TXT2BYTE_Compass;
-    text[textIndex++] = 0;
-    write_topline(text);
-
-    text[0] = TXT_2BYTE;
-    text[2] = 0;
-
-    text[1] = TXT2BYTE_SetBearing;
-    write_field_button(StMHARD2_Compass_SetCourse,	 30, 800, ME_Y_LINE2,  &FontT48, text);
-
-    text[1] = TXT2BYTE_ResetBearing;
-    write_field_button(StMHARD2_Compass_ResetCourse, 30, 800, ME_Y_LINE3,  &FontT48, text);
-
-    text[1] = TXT2BYTE_CompassCalib;
-    write_field_button(StMHARD2_Compass_Calibrate,	 30, 800, ME_Y_LINE4,  &FontT48, text);
-
-    text[1] = TXT2BYTE_CompassInertia;
-    textIndex = 2;
-    text[textIndex++] = ':';
-    text[textIndex++] = ' ';
-    text[textIndex++] = '0' + settings->compassInertia;
-    text[textIndex++] = 0;
-
-    write_field_button(StMHARD2_Compass_Inertia, 30, 800, ME_Y_LINE5,  &FontT48, text);
-
-    showCompassDeclination(settings, false);
-
-    setEvent(StMHARD2_Compass_SetCourse,		(uint32_t)OnAction_Bearing);
-    setEvent(StMHARD2_Compass_ResetCourse,	(uint32_t)OnAction_BearingClear);
-    setEvent(StMHARD2_Compass_Calibrate,		(uint32_t)OnAction_Compass);
-    setEvent(StMHARD2_Compass_Inertia,	(uint32_t)OnAction_InertiaLevel);
-    setEvent(StMHARD2_Compass_Declination, (uint32_t)OnAction_CompassDeclination);
-
-    tMenuEdit_select(StMHARD2_Compass_SetCourse);
-
-    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
-}
-
-
-uint8_t OnAction_Compass (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-    calibrateCompass();
-    return EXIT_TO_INFO_COMPASS;
-}
-
-
-uint8_t OnAction_Bearing	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-    if((int16_t)stateUsed->lifeData.compass_heading != -1)
-	{
-		settingsGetPointer()->compassBearing = (int16_t)stateUsed->lifeData.compass_heading;
-	}
-	else
-	{
-		settingsGetPointer()->compassBearing = 0;
-	}
-
-    if(settingsGetPointer()->compassBearing == 0)
-        settingsGetPointer()->compassBearing = 360;
-    return UPDATE_AND_EXIT_TO_MENU;
-}
-
-
-uint8_t OnAction_BearingClear	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-    settingsGetPointer()->compassBearing = 0;
-    return UPDATE_AND_EXIT_TO_MENU;
-}
-
-
-uint8_t OnAction_InertiaLevel	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-	uint8_t newLevel = 0;
-
-	newLevel = settingsGetPointer()->compassInertia + 1;
-	if(newLevel > MAX_COMPASS_COMP)
-	{
-		newLevel = 0;
-	}
-	settingsGetPointer()->compassInertia = newLevel;
-    return UPDATE_DIVESETTINGS;
-}
-
-/*
-uint8_t OnAction_ExitHardw (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-    return EXIT_TO_MENU;
-}
-*/
 
 void refresh_O2Sensors(void)
 {

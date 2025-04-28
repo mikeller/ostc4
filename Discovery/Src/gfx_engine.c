@@ -3828,7 +3828,7 @@ void gfx_write_page_number(GFX_DrawCfgScreen *tMscreen, uint8_t page, uint8_t to
 		hgfx.WindowX1 = 779;
 		if(Font == &FontT24)
 		{
-			hgfx.WindowX0 = hgfx.WindowX1 - (Font->spacesize*3);
+			hgfx.WindowX0 = hgfx.WindowX1 - (Font->spacesize*7);
 		}
 		else
 		{

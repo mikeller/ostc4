@@ -109,87 +109,6 @@ uint8_t OnAction_TestCLog			(uint32_t editId, uint8_t blockNumber, uint8_t digit
 
 /* Exported functions --------------------------------------------------------*/
 
-static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-    SSettings *settings = settingsGetPointer();
-    uint8_t digitContentNew;
-    switch (action) {
-    case ACTION_BUTTON_ENTER:
-
-        return digitContent;
-    case ACTION_BUTTON_ENTER_FINAL:
-        {
-            uint32_t timerM;
-            uint32_t timerS;
-            evaluateNewString(editId, &timerM, &timerS, 0, 0);
-            if (timerM > 9) {
-                timerM = 9;
-            }
-            if (timerS > 59) {
-                timerS = 59;
-            }
-
-            uint16_t timerDurationS = 60 * timerM + timerS;
-
-            if (timerDurationS < 1) {
-                timerDurationS = 1;
-            }
-
-            if (timerDurationS != settings->timerDurationS) {
-                settings->timerDurationS = timerDurationS;
-
-                disableTimer();
-
-                tMenuEdit_newInput(editId, settings->timerDurationS / 60, settings->timerDurationS % 60, 0, 0);
-            }
-
-            return EXIT_TO_MENU;
-        }
-    case ACTION_BUTTON_NEXT:
-        digitContentNew = digitContent + 1;
-        if ((blockNumber == 1 && digitNumber == 0 && digitContentNew > '5') || digitContentNew > '9') {
-            digitContentNew = '0';
-        }
-
-        return digitContentNew;
-    case ACTION_BUTTON_BACK:
-        digitContentNew = digitContent - 1;
-        if (digitContentNew < '0') {
-            if (blockNumber == 1 && digitNumber == 0) {
-                digitContentNew = '5';
-            } else {
-                digitContentNew = '9';
-            }
-        }
-
-        return digitContentNew;
-    }
-
-    return EXIT_TO_MENU;
-}
-
-
-static void openEdit_Timer(void)
-{
-    SSettings *settings = settingsGetPointer();
-
-    char text[32];
-    snprintf(text, 32, "\001%c%c", TXT_2BYTE, TXT2BYTE_Timer);
-    write_topline(text);
-
-    uint16_t yPos = ME_Y_LINE_BASE + get_globalState_Menu_Line() * ME_Y_LINE_STEP;
-    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Timer);
-    write_label_var(30, 299, yPos, &FontT48, text);
-    write_field_udigit(StMSYS_Timer, 300, 392, yPos, &FontT48, "#:##", settings->timerDurationS / 60, settings->timerDurationS % 60, 0, 0);
-    write_label_var(393, 800, yPos, &FontT48, "\016\016 [m:ss]\017");
-
-    write_buttonTextline(TXT2BYTE_ButtonMinus, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonPlus);
-
-    setEvent(StMSYS_Timer, (uint32_t)OnAction_Timer);
-    startEdit();
-}
-
-
 void openEdit_System(uint8_t line)
 {
     set_globalState_Menu_Line(line);
@@ -204,28 +123,17 @@ void openEdit_System(uint8_t line)
             openEdit_DateTime();
         break;
         case 2:
-            openEdit_Timer();
-        break;
-        case 3:
             openEdit_Language();
         break;
-        case 4:
+        case 3:
             openEdit_Design();
         break;
-        case 5:
+        case 4:
             openEdit_Information();
         break;
-        case 6:
+        case 5:
             openEdit_Reset();
         break;
-/*
-        case 3:
-            openEdit_DecoFutureTTS();
-        break;
-        case 4:
-            openEdit_DecoLastStop();
-        break;
-*/
         }
     }
     else

@@ -75,26 +75,6 @@ uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
 
     if((line == 0) || (line == 2))
     {
-        text[textPointer++] = TXT_2BYTE;
-        text[textPointer++] = TXT2BYTE_Compass;
-        text[textPointer++] = '\t';
-
-        if(settingsGetPointer()->compassBearing != 0)
-        {
-            textPointer += snprintf(&text[textPointer], 20, "(%03u`)", settingsGetPointer()->compassBearing % 360);
-        }
-        text[textPointer] = 0;
-/*
-        textPointer += snprintf(&text[textPointer],20,"%i  %i  %i"
-            ,stateUsed->lifeData.compass_DX_f
-            ,stateUsed->lifeData.compass_DY_f
-            ,stateUsed->lifeData.compass_DZ_f);
-*/
-    }
-    nextline(text,&textPointer);
-
-    if((line == 0) || (line == 3))
-    {
         text[textPointer++] = TXT_o2Sensors;
         if((stateUsed->lifeData.ppO2Sensor_bar[0] != 0) || (stateUsed->lifeData.ppO2Sensor_bar[1] != 0) || (stateUsed->lifeData.ppO2Sensor_bar[2] != 0))
         {
@@ -118,7 +98,7 @@ uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
     }
     nextline(text,&textPointer);
 
-    if((line == 0) || (line == 4))
+    if((line == 0) || (line == 3))
     {
         text[textPointer++] = TXT_Brightness;
         text[textPointer++] = '\t';
@@ -140,7 +120,7 @@ uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
     }
     nextline(text,&textPointer);
 
-    if((line == 0) || (line == 5))
+    if((line == 0) || (line == 4))
     {
         text[textPointer++] = TXT_2BYTE;
         text[textPointer++] = TXT2BYTE_ButtonSensitivity;
@@ -160,7 +140,7 @@ uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
     }
     nextline(text,&textPointer);
 
-    if((line == 0) || (line == 6))
+    if((line == 0) || (line == 5))
     {
             text[textPointer++] = TXT_2BYTE;
             text[textPointer++] = TXT2BYTE_FLIPDISPLAY;

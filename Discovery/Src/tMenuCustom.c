@@ -39,6 +39,7 @@
 #include "gfx_fonts.h"
 #include "tInfo.h"
 #include "motion.h"
+#include "ostc.h"
 
 
 /* Exported functions --------------------------------------------------------*/

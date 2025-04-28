@@ -42,6 +42,7 @@
 #include "tMenuEditSystem.h"
 #include "tMenuEditXtra.h"
 #include "tMenuEditCustom.h"
+#include "tMenuEditCvOption.h"
 #include "tMenuGas.h"
 #include "tMenuHardware.h"
 #include "tMenuPlanner.h"
@@ -51,12 +52,15 @@
 #include "tMenuCustom.h"
 
 /* Private types -------------------------------------------------------------*/
-#define MAXPAGES 		11
+#define MAXPAGES 		12
 #define CURSOR_HIGH 	25
 #define TAB_HEADER_HIGH	25
 #define TAB_BAR_HIGH	5
 #define MENU_WDW_HIGH	390
 #define KEY_LABEL_HIGH	25	/* Height of the label used for the the user keys */
+
+#define TAB_BAR_WIDTH	50
+#define TAB_BAR_SPACING	5
 
 #define SLOW_UPDATE_CNT	10	/* Some content shall not be update in short intervals => add prescalar */
 #define MAXLINES	6
@@ -580,6 +584,7 @@ void tM_build_pages(void)
         tM_add(StMDECO);
         tM_add(StMHARD);
         tM_add(StMCustom);
+        tM_add(StMOption);
 //		tM_add(StMSYS); now in both modes
     }
     else
@@ -648,6 +653,9 @@ void tM_build_pages(void)
     tM_build_page(id, text, tabPosition, subtext);
 
     id = tMCustom_refresh(0, text, &tabPosition, subtext);
+    tM_build_page(id, text, tabPosition, subtext);
+
+    id = tMCvOption_refresh(0, text, &tabPosition, subtext);
     tM_build_page(id, text, tabPosition, subtext);
 }
 
@@ -1153,6 +1161,9 @@ static void gotoMenuEdit(void)
     case StMCustom:
     	openEdit_Custom(line);
     	break;
+    case StMOption:
+    	openEdit_CvOption(line);
+    	break;
     default:
         break;
     }
@@ -1350,19 +1361,20 @@ static void draw_tMheader(uint8_t page)
     {   "",
         "OC",
         "CC",
-        "SP",
+        "",
         "DATA",
         "DECO",
         "",
         "SYS",
         "",
 		"",
+		"",
         "SIM"
     };
 
     _Bool spacing[MAXPAGES+1] =
     {   0,
-        0, // behind OC
+        1, // behind OC
         0, // behind CC
         1, // behind SP
         1, // behind DATA
@@ -1370,7 +1382,8 @@ static void draw_tMheader(uint8_t page)
         1, // behind DECO2
         0, // behind SYS1
         0, // behind SYS2
-		1, // behind SYS3
+		0, // behind SYS3
+		1, // behind SYS4
         1, // behind SIM
         0
     };
@@ -1378,7 +1391,7 @@ static void draw_tMheader(uint8_t page)
     if(actual_menu_content == MENU_SURFACE)
     {
     	spacing[3] = 0;		/* Display extra menu directly after setpoint */
-    	sprintf(text8max[4],"OP");
+    	memset(text8max[4],0,8);
     }
 
     pBackup = tMscreen.FBStartAdress;
@@ -1430,9 +1443,9 @@ static void draw_tMheader(uint8_t page)
 /* Draw color bars */
             if(!settingsGetPointer()->FlipDisplay)
             {
-				pDestination +=  5 * 480;
+				pDestination +=  TAB_BAR_SPACING * 480;
 
-					for(j = 60; j > 0; j--)
+					for(j = TAB_BAR_WIDTH; j > 0; j--)
 					{
 						pDestination += (390 + 26);
 
@@ -1443,13 +1456,13 @@ static void draw_tMheader(uint8_t page)
 						pDestination += 48;
 					}
 
-					pDestination += 5 * 480;
-					positionText += 70;
+					pDestination += TAB_BAR_SPACING * 480;
+					positionText += TAB_BAR_WIDTH + 2* TAB_BAR_SPACING;
 
 					if(((k == 4) && (actual_menu_content != MENU_SURFACE)) || ((k == 6) && (menu.pageCountNumber[5] == 0)))
 					{
-						pDestination += 70 * 480;
-						positionText += 70;
+						pDestination += (TAB_BAR_WIDTH + 2* TAB_BAR_SPACING) * 480;
+						positionText += TAB_BAR_WIDTH + 2* TAB_BAR_SPACING;
 					}
 
 					if(spacing[k])
