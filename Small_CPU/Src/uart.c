@@ -26,6 +26,7 @@
 #include "uartProtocol_GNSS.h"
 #include "externalInterface.h"
 #include "data_exchange.h"
+#include "gpio.h"
 #include <string.h>	/* memset */
 
 #ifdef ENABLE_GNSS_INTERN

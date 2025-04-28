@@ -181,6 +181,8 @@ uint8_t GPIO_GetVersion()
 
 void GPIO_Activate_V2(void)
 {
+	if(GPIO_Version == 0)
+	{
 	GPIO_Version = 1;
 	GPIO_LEDs_VIBRATION_Init();
 
@@ -191,6 +193,7 @@ void GPIO_Activate_V2(void)
 	MX_USART6_UART_Init();
 	GNSS_Init(&GNSS_Handle, &huart6);
 #endif
+	}
 }
 /* Private functions ---------------------------------------------------------*/
 

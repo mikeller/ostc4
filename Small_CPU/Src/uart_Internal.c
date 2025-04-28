@@ -64,6 +64,56 @@ void GNSS_IO_init() {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
 	GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+void MX_USART6_DMA_Init() {
+	  /* DMA controller clock enable */
+	  __HAL_RCC_DMA2_CLK_ENABLE();
+
+	  /* DMA interrupt init */
+	  /* DMA2_Stream2_IRQn interrupt configuration */
+	  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+	  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+	  /* DMA2_Stream6_IRQn interrupt configuration */
+	  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+	  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+}
+
+
+void MX_USART6_UART_DeInit(void)
+{
+	HAL_DMA_Abort(&hdma_usart6_rx);
+	HAL_DMA_DeInit(&hdma_usart6_rx);
+	HAL_DMA_Abort(&hdma_usart6_tx);
+	HAL_DMA_DeInit(&hdma_usart6_tx);
+	HAL_UART_DeInit(&huart6);
+	//HAL_UART_DeInit(&huart6);
+	Uart6Ctrl.dmaRxActive = 0;
+	Uart6Ctrl.dmaTxActive = 0;
+}
+
+void MX_USART6_UART_Init(void) {
+	huart6.Instance = USART6;
+	huart6.Init.BaudRate = 9600;
+	huart6.Init.WordLength = UART_WORDLENGTH_8B;
+	huart6.Init.StopBits = UART_STOPBITS_1;
+	huart6.Init.Parity = UART_PARITY_NONE;
+	huart6.Init.Mode = UART_MODE_TX_RX;
+	huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+	HAL_UART_Init(&huart6);
+
+	Uart6Ctrl.pHandle = &huart6;
+	Uart6Ctrl.dmaRxActive = 0;
+	Uart6Ctrl.dmaTxActive = 0;
+	Uart6Ctrl.pRxBuffer = rxBufferUart6;
+	Uart6Ctrl.pTxBuffer = txBufferUart6;
+	Uart6Ctrl.rxReadIndex = 0;
+	Uart6Ctrl.rxWriteIndex = 0;
+	Uart6Ctrl.txBufferQueLen = 0;
+
+	UART_clearRxBuffer(&Uart6Ctrl);
+	UART_SetGnssCtrl(&Uart6Ctrl);
 
 	/* USART6 DMA Init */
 	/* USART6_RX Init */
@@ -101,56 +151,6 @@ void GNSS_IO_init() {
 	HAL_NVIC_EnableIRQ(USART6_IRQn);
 
 	MX_USART6_DMA_Init();
-
-}
-
-void MX_USART6_DMA_Init() {
-	  /* DMA controller clock enable */
-	  __HAL_RCC_DMA2_CLK_ENABLE();
-
-	  /* DMA interrupt init */
-	  /* DMA2_Stream2_IRQn interrupt configuration */
-	  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-	  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
-	  /* DMA2_Stream6_IRQn interrupt configuration */
-	  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
-	  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-}
-
-
-void MX_USART6_UART_DeInit(void)
-{
-	HAL_DMA_Abort(&hdma_usart6_rx);
-	HAL_DMA_DeInit(&hdma_usart6_rx);
-	HAL_DMA_Abort(&hdma_usart6_tx);
-	HAL_DMA_DeInit(&hdma_usart6_tx);
-	HAL_UART_DeInit(&huart6);
-	HAL_UART_DeInit(&huart6);
-}
-
-void MX_USART6_UART_Init(void) {
-	huart6.Instance = USART6;
-	huart6.Init.BaudRate = 9600;
-	huart6.Init.WordLength = UART_WORDLENGTH_8B;
-	huart6.Init.StopBits = UART_STOPBITS_1;
-	huart6.Init.Parity = UART_PARITY_NONE;
-	huart6.Init.Mode = UART_MODE_TX_RX;
-	huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart6.Init.OverSampling = UART_OVERSAMPLING_16;
-	HAL_UART_Init(&huart6);
-
-	UART_clearRxBuffer(&Uart6Ctrl);
-
-	Uart6Ctrl.pHandle = &huart6;
-	Uart6Ctrl.dmaRxActive = 0;
-	Uart6Ctrl.dmaTxActive = 0;
-	Uart6Ctrl.pRxBuffer = rxBufferUart6;
-	Uart6Ctrl.pTxBuffer = txBufferUart6;
-	Uart6Ctrl.rxReadIndex = 0;
-	Uart6Ctrl.rxWriteIndex = 0;
-	Uart6Ctrl.txBufferQueLen = 0;
-
-	UART_SetGnssCtrl(&Uart6Ctrl);
 }
 
 void UART6_HandleUART()
@@ -163,7 +163,9 @@ void UART6_HandleUART()
 
 	uartGnssStatus_t gnssState = uartGnss_GetState();
 
-		if(gnssState != UART_GNSS_INIT)
+	if(Uart6Ctrl.pHandle != 0)
+	{
+		if((gnssState != UART_GNSS_INIT) && (gnssState != UART_GNSS_PWRUP))
 		{
 			UART_ReadData(SENSOR_GNSS, 0);
 			UART_WriteData(&Uart6Ctrl);
@@ -186,7 +188,7 @@ void UART6_HandleUART()
 			uartGnss_SetState(gnssState);
 		}
 		else if(((retryRequest == 0)		/* timeout or error */
-				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE))	/* retry if no answer after half request interval */
+				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE) && (gnssState != UART_GNSS_PWRUP))	/* retry if no answer after half request interval */
 					|| (gnssState == UART_GNSS_ERROR))))
 		{
 			/* The channel switch will cause the sensor to respond with an error message. */
@@ -216,7 +218,7 @@ void UART6_HandleUART()
 			timeToTrigger = 0;
 			uartGnss_Control();
 		}
-
+	}
 }
 
 

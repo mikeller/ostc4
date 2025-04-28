@@ -35,6 +35,11 @@ void RTC_GetTime(RTC_TimeTypeDef* pstimestructure)
 	HAL_RTC_GetTime(&RTCHandle, pstimestructure, RTC_FORMAT_BIN);
 }
 
+void RTC_GetDate(RTC_DateTypeDef* psdatestructure)
+{
+	HAL_RTC_GetDate(&RTCHandle, psdatestructure, RTC_FORMAT_BIN);
+}
+
 void RTC_SetTime(RTC_TimeTypeDef stimestructure)
 {
 

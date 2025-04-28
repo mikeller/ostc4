@@ -41,6 +41,7 @@ void RTC_SetTime(RTC_TimeTypeDef stimestructure);
 void RTC_SetDate(RTC_DateTypeDef sdatestructure);
 
 void RTC_GetTime(RTC_TimeTypeDef* pstimestructure);
+void RTC_GetDate(RTC_DateTypeDef* psdatestructure);
 
 #ifdef __cplusplus
 }

@@ -483,7 +483,10 @@ int main(void) {
 
 			MX_SPI3_Init();
 
-#if defined ENABLE_GNSS_INTERN || ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
+
+		do
+		{
 			if(GPIO_GetVersion() > 0)
 			{
 				if(shutdownTick == 0)
@@ -504,16 +507,18 @@ int main(void) {
 #endif
 #endif
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 3000))
+			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 4000))
 			{
 				global.mode = MODE_SLEEP;
 				uartGnss_ReqPowerDown(0);	/* release power down request */
+				uartGnss_SetState(UART_GNSS_INACTIVE);
 			}
+
 #else
 			global.mode = MODE_SLEEP;
 #endif
 
-
+		}while (global.mode == MODE_SHUTDOWN);
 			break;
 
 		case MODE_SLEEP:
@@ -549,6 +554,8 @@ int main(void) {
 				externalInterface_SwitchPower33(true);
 			}
 			externalInterface_InitDatastruct();
+			MX_USART6_UART_Init();
+			GNSS_Init(&GNSS_Handle, &huart6);
 			// EXTILine0_Button_DeInit(); not now, later after testing
 			break;
 		}

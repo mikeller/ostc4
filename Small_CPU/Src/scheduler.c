@@ -1204,7 +1204,7 @@ void scheduleSleepMode(void)
 			global.mode = MODE_BOOT;
 		}
 		scheduleUpdateLifeData(2000);
-#ifdef ENABLE_GNSS_INTER
+#ifdef ENABLE_GNSS_INTERN
 		if(GPIO_GetVersion() > 0)
 		{
 			if(deepSleepCntDwn)
@@ -1249,6 +1249,10 @@ void scheduleSleepMode(void)
 		if(deepSleep != 0)
 		{
 			GPIO_GNSS_Init();
+		}
+		else
+		{
+			GNSS_IO_init();
 		}
 	}
 #endif
