@@ -1524,8 +1524,6 @@ uint16_t GFX_return_offset(const tFont *Font, char *pText, uint8_t position)
 		if(found)
 		{
 			distance += (uint16_t)(Font->chars[i].image->width);
-			if(Font == &FontT105)
-				distance += 2;
 		}
 	}
 	return distance;
@@ -1534,8 +1532,6 @@ uint16_t GFX_return_offset(const tFont *Font, char *pText, uint8_t position)
 	if(*pText < ' ')
 	if((*pText) & 0x80)
 
-	if(((tFont *)settings.font == &FontT105) && settings.dualFont && ((*pText == '.') || (*pText == ':')))
-		settings.font = (uint32_t)&FontT54;
 	*/
 }
 
@@ -1660,25 +1656,10 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 	else
 		minimal = 0;
 
-	if(Font == &FontT105)
-		settings.TinyFont = (uint32_t)&FontT54;
-	else
-	if(Font == &FontT54)
-	{
-		settings.TinyFont = (uint32_t)&FontT48;
-		settings.TinyFontExtraYdelta = -9;
-	}
-	else
 	if(Font == &FontT48)
 	{
 		settings.TinyFont = (uint32_t)&FontT24;
 		settings.TinyFontExtraYdelta = 6;
-	}
-	else
-	if(Font == &FontT42)
-	{
-		settings.TinyFont = (uint32_t)&FontT24;
-		settings.TinyFontExtraYdelta = 2;
 	}
 
 	settings.actualFont = (tFont *)settings.font;
@@ -1785,9 +1766,6 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 				settings.Xdelta += ((tFont *)settings.font)->spacesize2Monospaced;
 		else
 		{
-			if(((tFont *)settings.font == &FontT105) && settings.dualFont && ((*pText == '.') || (*pText == ':')))
-					settings.actualFont = (tFont *)settings.TinyFont;
-
 			if(settings.actualFont == (tFont *)settings.TinyFont)
 				settings.Ydelta += settings.TinyFontExtraYdelta;
 
@@ -2229,10 +2207,6 @@ static uint32_t GFX_write_char_doubleSize(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteS
 		}
 	}
 
-// -----------------------------
-
-	if(Font == &FontT105)
-		width += 4;
 
 // -----------------------------
 
@@ -2521,9 +2495,7 @@ static uint32_t GFX_write_char(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteString* cfg,
 		}
 	}
 
-// -----------------------------
-	if(Font == &FontT105)
-		width += 2;
+
 /*
 	else
 	if(Font == &Font144)
@@ -2580,11 +2552,6 @@ static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_
 			tinyState = 0;
 		}
 
-		if((ptargetFont == &FontT105) && ((*(char*)pText == '.') || (*(char*)pText == ':')))
-		{
-			tinyState++;
-		}
-
 		if(tinyState > 1)
 		{
 			ptargetFont = (tFont *)cfg->TinyFont;
@@ -2616,8 +2583,6 @@ static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_
 
 		pText++;
 		j++;
-		if((ptargetFont == &FontT105) && (*(char*)pText != 0))
-			Xsum += 2;
 	}
 	pText -= j;
 
@@ -2668,11 +2633,6 @@ static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GF
 			tinyState = 0;
 		}
 
-		if((font == &FontT105) && ((*(char*)pText == '.') || (*(char*)pText == ':')))
-		{
-			tinyState++;
-		}
-
 		if(tinyState > 1)
 		{
 			font = (tFont *)cfg->TinyFont;
@@ -2707,9 +2667,6 @@ static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GF
 		}
 		pText++;
 		j++;
-
-		if((font == &FontT105) && (*(char*)pText != 0))
-			Xsum += 2;
 	}
 	pText -= j;
 
