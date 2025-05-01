@@ -135,6 +135,8 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr);
 static uint8_t receive_update_data_cpu2(void);
 uint8_t receive_update_data_cpu2_sub(uint8_t* pBuffer);
 
+
+/* #define OSTC4_HW */
 /* Exported functions --------------------------------------------------------*/
 
 void tComm_init(void)
@@ -1682,7 +1684,7 @@ void tComm_StartBlueModBaseInit()
 uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 {
 	uint8_t ret = 0;
-
+#ifndef OSTC4_HW
 	switch (cmdId)
 	{
 		case BT_CMD_ECHO:	sprintf(pCmdStr,"ATE0\r");
@@ -1704,6 +1706,41 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 		default:
 			break;
 	}
+#else
+	switch (cmdId)
+	{
+		case BT_CMD_ECHO:	sprintf(pCmdStr,"ATE0\r");
+							ret = 1;
+			break;
+		case BT_CMD_SILENCE:		strcpy(pCmdStr,"ATS30=0\r");
+									ret = 1;
+
+			break;
+		case BT_CMD_ESCAPE_DELAY:		strcpy(pCmdStr,"ATS12=10\r");
+										ret = 1;
+
+			break;
+		case BT_CMD_SIGNAL_POLL:	strcpy(pCmdStr,"AT+BSTPOLL=100\r");
+									ret = 1;
+
+			break;
+		case BT_CMD_BAUDRATE_115:	strcpy(pCmdStr,"AT%B8\r");
+									ret = 1;
+			break;
+
+		case BT_CMD_BAUDRATE_460:	strcpy(pCmdStr,"AT%B22\r");
+									ret = 1;
+			break;
+		case BT_CMD_NAME:			strcpy(pCmdStr,"AT+BNAME=OSTC4-12345\r");
+									ret = 1;
+			break;
+		case BT_CMD_EXIT_CMD:		strcpy(pCmdStr,"ATO\r");
+									ret = 1;
+			break;
+		default:
+			break;
+	}
+#endif
 	return ret;
 }
 
@@ -1721,10 +1758,20 @@ void tComm_StartBlueModConfig()
 	}while(answer == HAL_OK);
 }
 
+uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow)
+{
+	if(ticksstart <= ticksnow)
+		return ticksnow - ticksstart;
+	else
+		return 0xFFFFFFFF - ticksstart + ticksnow;
+}
+
 uint8_t tComm_HandleBlueModConfig()
 {
 	static uint8_t RestartModule = 1; 		/* used to do power off / on cycle */
 	static uint8_t ConfigRetryCnt = 0;		/* Retry count without power cycle */
+	static uint8_t lastConfigStep = BM_CONFIG_OFF;
+	static uint32_t cmdStartTick = 0;
 
 	char TxBuffer[UART_CMD_BUF_SIZE];
 	uint8_t CmdSize = 0;
@@ -1733,153 +1780,209 @@ uint8_t tComm_HandleBlueModConfig()
 
 	memset(TxBuffer, 0, sizeof(TxBuffer));
 
-	switch (BmTmpConfig)
+	if(lastConfigStep != BmTmpConfig)
 	{
-		case BM_CONFIG_ECHO: 			tComm_GetBTCmdStr (BT_CMD_ECHO, TxBuffer);
-			break;
-		case BM_CONFIG_SILENCE:			tComm_GetBTCmdStr (BT_CMD_SILENCE, TxBuffer);
-			break;
-		case BM_CONFIG_ESCAPE_DELAY:	tComm_GetBTCmdStr (BT_CMD_ESCAPE_DELAY, TxBuffer);
-			break;
-		case BM_CONFIG_SIGNAL_POLL:		tComm_GetBTCmdStr(BT_CMD_SIGNAL_POLL, TxBuffer);
-			break;
-		case BM_CONFIG_BAUD:
-#ifdef ENABLE_FAST_COMM
-										tComm_GetBTCmdStr(BT_CMD_BAUDRATE_460, TxBuffer);
-#else
-										BmTmpConfig = BM_CONFIG_DONE;
-#endif
-			break;
-		case BM_CONFIG_RETRY:			ConfigRetryCnt--;
-										HAL_Delay(1);
-										if(ConfigRetryCnt == 0)
+		ConfigRetryCnt = 0;
+		lastConfigStep = BmTmpConfig;
+	}
+
+	if(time_elapsed_ms(cmdStartTick, HAL_GetTick()) > 100)
+	{
+		switch (BmTmpConfig)
+		{
+			case BM_CONFIG_ECHO: 			tComm_GetBTCmdStr (BT_CMD_ECHO, TxBuffer);
+				break;
+			case BM_CONFIG_SILENCE:			tComm_GetBTCmdStr (BT_CMD_SILENCE, TxBuffer);
+				break;
+			case BM_CONFIG_ESCAPE_DELAY:	tComm_GetBTCmdStr (BT_CMD_ESCAPE_DELAY, TxBuffer);
+				break;
+			case BM_CONFIG_SIGNAL_POLL:		tComm_GetBTCmdStr(BT_CMD_SIGNAL_POLL, TxBuffer);
+				break;
+			case BM_CONFIG_BAUD:
+	#ifdef ENABLE_FAST_COMM
+											tComm_GetBTCmdStr(BT_CMD_BAUDRATE_460, TxBuffer);
+	#else
+											BmTmpConfig = BM_CONFIG_DONE;
+	#endif
+				break;
+			case BM_CONFIG_RETRY:			ConfigRetryCnt--;
+											HAL_Delay(1);
+											if(ConfigRetryCnt == 0)
+											{
+												MX_Bluetooth_PowerOn();
+												tComm_StartBlueModConfig();
+											}
+				break;
+			case BM_CONFIG_DONE:
+			case BM_CONFIG_OFF:
+				ConfigRetryCnt = 0;
+				RestartModule = 1;
+				break;
+
+
+#ifndef OSTC4_HW
+	/* the procedure below is just needed for the initial bluetooth module initialization */
+			case BM_INIT_TRIGGER_ON:	HAL_Delay(2000);
+										HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
+										BmTmpConfig++;
+									break;
+			case BM_INIT_TRIGGER_OFF:	HAL_Delay(1);
+										HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
+										HAL_Delay(2000);
+										BmTmpConfig++;
+									break;
+			case BM_INIT_ECHO: 			sprintf(TxBuffer,"ATE0\r");
+				break;
+			case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");      /*Set to factory defined configuration */
+									break;
+			case BM_INIT_MODE:			sprintf(TxBuffer,"AT+UMSM=1\r");        /* start in Data mode */
+									break;
+			case BM_INIT_BLE:			sprintf(TxBuffer,"AT+UBTLE=2\r"); 		/* Bluetooth low energy Peripheral */
+									break;
+			case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC5-12345\r"); /* Bluetooth name */
+										if(hardwareDataGetPointer()->primarySerial != 0xFFFF) /* module reinit? => restore old name */
 										{
-											MX_Bluetooth_PowerOn();
-											tComm_StartBlueModConfig();
+											gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
+											hardware_programmPrimaryBluetoothNameSet();
 										}
-			break;
-		case BM_CONFIG_DONE:
-		case BM_CONFIG_OFF:
-			ConfigRetryCnt = 0;
-			RestartModule = 1;
-			break;
-/* the procedure below is just needed for the initial bluetooth module initialization */
+									break;
+			case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");    /* Disable SPP Server on ID0 */
+									break;
+			case BM_INIT_SSP_IDO_ON:	sprintf(TxBuffer,"AT+UDSC=0,3\r"); 	  /* SPP Server on ID0 */
+									break;
+			case BM_INIT_SSP_ID1_OFF:	sprintf(TxBuffer,"AT+UDSC=1,0\r");    /* Disable SPS Server on ID1 */
+									break;
+			case BM_INIT_SSP_ID1_ON:	sprintf(TxBuffer,"AT+UDSC=1,6\r");	  /* SPS Server on ID1 */
+									break;
+			case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W0\r");	      /* write settings into eeprom */
+									break;
+			case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+CPWROFF\r");	  /* reboot module */
+									break;
+			case BM_INIT_DONE:			BmTmpConfig = BM_CONFIG_ECHO;
+									break;
+			default:
+				break;
+		}
+#else
 		case BM_INIT_TRIGGER_ON:	HAL_Delay(2000);
-									HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
 									BmTmpConfig++;
 								break;
 		case BM_INIT_TRIGGER_OFF:	HAL_Delay(1);
-									HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
 									HAL_Delay(2000);
 									BmTmpConfig++;
 								break;
-		case BM_INIT_ECHO: 			sprintf(TxBuffer,"ATE0\r");
+		case BM_INIT_ECHO:
+		case BM_INIT_ECHO2:			sprintf(TxBuffer,"ATE0\r");
 			break;
-		case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");      /*Set to factory defined configuration */
+		case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT&F1\r");      /*Set to factory defined configuration */
 								break;
-		case BM_INIT_MODE:			sprintf(TxBuffer,"AT+UMSM=1\r");        /* start in Data mode */
+		case BM_INIT_MODE:			BmTmpConfig++;
 								break;
-		case BM_INIT_BLE:			sprintf(TxBuffer,"AT+UBTLE=2\r"); 		/* Bluetooth low energy Peripheral */
+		case BM_INIT_BLE:			BmTmpConfig++;
 								break;
-		case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC5-12345\r"); /* Bluetooth name */
+		case BM_INIT_NAME:			sprintf(TxBuffer,"AT+BNAME=OSTC4-12345\r"); /* Bluetooth name */
 									if(hardwareDataGetPointer()->primarySerial != 0xFFFF) /* module reinit? => restore old name */
 									{
 										gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
 										hardware_programmPrimaryBluetoothNameSet();
 									}
 								break;
-		case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");    /* Disable SPP Server on ID0 */
+		case BM_INIT_SSP_IDO_OFF:	BmTmpConfig++;
 								break;
-		case BM_INIT_SSP_IDO_ON:	sprintf(TxBuffer,"AT+UDSC=0,3\r"); 	  /* SPP Server on ID0 */
+		case BM_INIT_SSP_IDO_ON:	BmTmpConfig++;
 								break;
-		case BM_INIT_SSP_ID1_OFF:	sprintf(TxBuffer,"AT+UDSC=1,0\r");    /* Disable SPS Server on ID1 */
+		case BM_INIT_SSP_ID1_OFF:	BmTmpConfig++;
 								break;
-		case BM_INIT_SSP_ID1_ON:	sprintf(TxBuffer,"AT+UDSC=1,6\r");	  /* SPS Server on ID1 */
+		case BM_INIT_SSP_ID1_ON:	BmTmpConfig++;
 								break;
 		case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W\r");	          /* write settings into eeprom */
 								break;
-		case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+CPWROFF\r");	  /* reboot module */
+		case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+RESET\r");	  /* reboot module */
 								break;
 		case BM_INIT_DONE:			BmTmpConfig = BM_CONFIG_ECHO;
 								break;
 		default:
 			break;
 	}
-	if(TxBuffer[0] != 0)		/* forward command to module */
-	{
-		CmdSize = strlen(TxBuffer);
-		if(HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000) == HAL_OK)
-		{
-			result = tComm_CheckAnswerOK();
+#endif
 
-			if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate != 460800)) /* is com already switched to fast speed? */
-			{
-				HAL_UART_DeInit(&UartHandle);
-				HAL_Delay(1);
-				UartHandle.Init.BaudRate   = 460800;
-				HAL_UART_Init(&UartHandle);
-			}
-			else if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate == 460800)) /* This shut not happen because default speed is 115200 => update module configuration */
-			{
-				tComm_GetBTCmdStr(BT_CMD_BAUDRATE_115, TxBuffer);
-
-				CmdSize = strlen(TxBuffer);
-				HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
-				HAL_UART_DeInit(&UartHandle);
-				HAL_Delay(10);
-				UartHandle.Init.BaudRate   = 115200;
-				HAL_UART_Init(&UartHandle);
-				sprintf(TxBuffer,"AT&W\r");		/* write configuration */
-				CmdSize = strlen(TxBuffer);
-				HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
-			}
-			if(result == HAL_OK)
-			{
-				BmTmpConfig++;
-				if(BmTmpConfig == BM_CONFIG_RETRY)
-				{
-					BmTmpConfig = BM_CONFIG_DONE;
-				}
-			}
-			if(BmTmpConfig == BM_CONFIG_ECHO)
-			{
-				BmTmpConfig = BM_CONFIG_DONE;
-				ConfigRetryCnt = 0;
-				RestartModule = 1;
-			}
-		}
-	}
-	else		/* no command for the configuration step found => skip step */
-	{
-		if((BmTmpConfig > BM_CONFIG_OFF) && (BmTmpConfig < BM_CONFIG_DONE))
+		if(TxBuffer[0] != 0)		/* forward command to module */
 		{
-			BmTmpConfig++;
-		}
-	}
-	if(result != HAL_OK)
-	{
-		ConfigRetryCnt++;
-		if(ConfigRetryCnt > 3)		/* Configuration failed => switch off module */
-		{
-			MX_Bluetooth_PowerOff();
-			if(RestartModule)
+			CmdSize = strlen(TxBuffer);
+			if(HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000) == HAL_OK)
 			{
-				RestartModule = 0;      /* only one try */
-				ConfigRetryCnt = 200;	/* used for delay to startup module again */
+				result = tComm_CheckAnswerOK();
 
-				if((BmTmpConfig == BM_CONFIG_ECHO) || (BmTmpConfig == BM_INIT_ECHO))	/* the module did not answer even once => try again with alternative baud rate */
+				if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate != 460800)) /* is com already switched to fast speed? */
 				{
 					HAL_UART_DeInit(&UartHandle);
 					HAL_Delay(1);
 					UartHandle.Init.BaudRate   = 460800;
 					HAL_UART_Init(&UartHandle);
 				}
-				BmTmpConfig = BM_CONFIG_RETRY;
+				else if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate == 460800)) /* This shut not happen because default speed is 115200 => update module configuration */
+				{
+					tComm_GetBTCmdStr(BT_CMD_BAUDRATE_115, TxBuffer);
+
+					CmdSize = strlen(TxBuffer);
+					HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
+					HAL_UART_DeInit(&UartHandle);
+					HAL_Delay(10);
+					UartHandle.Init.BaudRate   = 115200;
+					HAL_UART_Init(&UartHandle);
+					sprintf(TxBuffer,"AT&W\r");		/* write configuration */
+					CmdSize = strlen(TxBuffer);
+					HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
+				}
+				if(result == HAL_OK)
+				{
+					BmTmpConfig++;
+					cmdStartTick = HAL_GetTick();
+					if(BmTmpConfig == BM_CONFIG_RETRY)
+					{
+						BmTmpConfig = BM_CONFIG_DONE;
+					}
+				}
+				if(BmTmpConfig == BM_CONFIG_ECHO)
+				{
+					BmTmpConfig = BM_CONFIG_DONE;
+					ConfigRetryCnt = 0;
+					RestartModule = 1;
+				}
 			}
-			else						/* even restarting module failed => switch bluetooth off */
+		}
+		else		/* no command for the configuration step found => skip step */
+		{
+			if((BmTmpConfig > BM_CONFIG_OFF) && (BmTmpConfig < BM_CONFIG_DONE))
 			{
-				ConfigRetryCnt = 0;
-				BmTmpConfig = BM_CONFIG_OFF;
+				BmTmpConfig++;
+			}
+		}
+		if(result != HAL_OK)
+		{
+			ConfigRetryCnt++;
+			if(ConfigRetryCnt > 3)		/* Configuration failed => switch off module */
+			{
+				MX_Bluetooth_PowerOff();
+				if(RestartModule)
+				{
+					RestartModule = 0;      /* only one try */
+					ConfigRetryCnt = 200;	/* used for delay to startup module again */
+
+					if((BmTmpConfig == BM_CONFIG_ECHO) || (BmTmpConfig == BM_INIT_ECHO))	/* the module did not answer even once => try again with alternative baud rate */
+					{
+						HAL_UART_DeInit(&UartHandle);
+						HAL_Delay(1);
+						UartHandle.Init.BaudRate   = 460800;
+						HAL_UART_Init(&UartHandle);
+					}
+					BmTmpConfig = BM_CONFIG_RETRY;
+				}
+				else						/* even restarting module failed => switch bluetooth off */
+				{
+					ConfigRetryCnt = 0;
+					BmTmpConfig = BM_CONFIG_OFF;
+				}
 			}
 		}
 	}

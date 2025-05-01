@@ -223,13 +223,8 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
-//#include "Fonts/Font_T144_plus.h"
-#include "Fonts/Font_T84.h"
-#include "Fonts/Font_T105.h"
-#include "Fonts/Font_T54.h"
 #include "Fonts/Font_T48_plus.h"
-#include "Fonts/Font_T24.h"
-#include "Fonts/Font_T42.h"
+#include "font_T24_min.h"
 #include "Fonts/image_battery.h"
 #include "Fonts/image_heinrichs_weikamp.h"
 #include "Fonts/image_ostc.h"
@@ -415,7 +410,6 @@ void GPIO_test_I2C_lines(void)
 	HAL_Delay(10);
 	}
 }
-
 
 int __attribute__((optimize("O0"))) main(void)
 {
