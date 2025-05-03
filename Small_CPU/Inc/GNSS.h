@@ -122,8 +122,22 @@ typedef struct {
     uint16_t accuracy_seconds;
     uint16_t reserved;
     uint32_t accuracy_nano;
-
 }  __attribute__((packed)) UBX_MGA_INI_TIME_UTC_t;
+
+typedef struct {
+    uint8_t header1;
+    uint8_t header2;
+    uint8_t class_id;
+    uint8_t msg_id;
+    uint16_t length;
+    uint8_t type;
+    uint8_t version;
+    uint16_t reserved;
+    int32_t latitude;
+    int32_t longitude;
+    int32_t altitude;
+    uint32_t accuracy;
+} __attribute__((packed)) UBX_MGA_INI_POS_LLH_t;
 
 
 enum GNSSMode{Portable=0, Stationary=1, Pedestrian=2, Automotiv=3, Airbone1G=5, Airbone2G=6,Airbone4G=7,Wirst=8,Bike=9};

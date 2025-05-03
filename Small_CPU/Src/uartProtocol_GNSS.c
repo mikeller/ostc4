@@ -93,6 +93,7 @@ void UART_Gnss_SendCmd(uint8_t GnssCmd)
 	RTC_DateTypeDef date;
 
 	UBX_MGA_INI_TIME_UTC_t msg_DateTime;
+	UBX_MGA_INI_POS_LLH_t msg_Position;
 
 	switch (GnssCmd)
 	{
@@ -158,8 +159,19 @@ void UART_Gnss_SendCmd(uint8_t GnssCmd)
 
 									pData = (uint8_t*)&msg_DateTime;
 								  	txLength = sizeof(msg_DateTime) / sizeof(uint8_t);
-
 						     break;
+			case GNSSCMD_SET_POSITION:  msg_Position.header1 = 0xB5;
+										msg_Position.header2 = 0x62;
+										msg_Position.class_id = 0x13;
+										msg_Position.msg_id = 0x40;
+										msg_Position.length = sizeof(UBX_MGA_INI_POS_LLH_t) - 6;
+										msg_Position.latitude = (int32_t) (8.98647 * 1e7);
+										msg_Position.longitude = (int32_t) (47.77147 * 1e7);
+										msg_Position.altitude = (int32_t) 40000;
+										msg_Position.accuracy = 100000;
+										pData = (uint8_t*)&msg_Position;
+										txLength = sizeof(msg_Position) / sizeof(uint8_t);
+							break;
 		default:
 			break;
 	}
@@ -209,7 +221,11 @@ void uartGnss_Control(void)
 				break;
 		case UART_GNSS_SETDATE_TIME: UART_Gnss_SendCmd(GNSSCMD_SETDATETIME);
 		   	   	   	   	   	   	   	// rxState = GNSSRX_DETECT_ACK_0;	/* aiding function will not acknoledge receiption (until config to do so) */
-									gnssState = UART_GNSS_PWRUP;
+									gnssState = UART_GNSS_SET_POSITION;
+				break;
+		case UART_GNSS_SET_POSITION:  UART_Gnss_SendCmd(GNSSCMD_SET_POSITION);
+	   	   	   	   					 //  rxState = GNSSRX_DETECT_ACK_0;	/* aiding function will not acknoledge receiption (until config to do so) */
+										gnssState = UART_GNSS_IDLE;
 				break;
 		case UART_GNSS_PWRDOWN:		UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
 									rxState = GNSSRX_DETECT_ACK_0;
@@ -330,7 +346,12 @@ void uartGnss_ProcessData(uint8_t data)
 												case UART_GNSS_LOADCONF_0:
 												case UART_GNSS_LOADCONF_1:	gnssState++;
 													break;
-												case UART_GNSS_LOADCONF_2:	gnssState = UART_GNSS_SETMODE_MOBILE;
+												case UART_GNSS_LOADCONF_2:
+#ifdef ENABLE_GNSS_TIME_INIT
+													gnssState = UART_GNSS_SETMODE_MOBILE;
+#else
+													gnssState = UART_GNSS_SET_POSITION;
+#endif
 													break;
 												case UART_GNSS_SETMODE_MOBILE:
 #ifdef ENABLE_GNSS_TIME_INIT
@@ -340,6 +361,10 @@ void uartGnss_ProcessData(uint8_t data)
 																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
 																				gnssState = UART_GNSS_PWRUP;
 #endif
+													break;
+												case UART_GNSS_SET_POSITION:			rxState = GNSSRX_DETECT_ACK_0;
+																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
+																				gnssState = UART_GNSS_PWRUP;
 													break;
 												case UART_GNSS_SETDATE_TIME: rxState = GNSSRX_DETECT_ACK_0;
 																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);

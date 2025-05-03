@@ -517,8 +517,9 @@ int main(void) {
 #else
 			global.mode = MODE_SLEEP;
 #endif
-
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 		}while (global.mode == MODE_SHUTDOWN);
+#endif
 			break;
 
 		case MODE_SLEEP:
