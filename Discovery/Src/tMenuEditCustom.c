@@ -57,7 +57,7 @@ void openEdit_Customview(void);
 void openEdit_BigScreen(void);
 void openEdit_MotionCtrl(void);
 void openEdit_ViewPort(void);
-void openEdit_WarningBuz(void);
+void openEdit_FlipDisplay(void);
 void refresh_Customviews(void);
 void setMenuContentStructure();
 char customview_TXT2BYTE_helper(uint8_t customViewId);
@@ -380,11 +380,10 @@ void openEdit_Custom(uint8_t line)
     	case 5:		openEdit_ViewPort();
     		break;
 #endif
-    	case 5:		if(isNewDisplay())
-    				{
-    					openEdit_WarningBuz();
-    				}
-    	    	break;
+        case 5:
+        	openEdit_FlipDisplay();
+        break;
+
     }
 }
 
@@ -475,21 +474,16 @@ void openEdit_ViewPort(void)
     setEvent(StMCustom5_CViewPortControl,	(uint32_t)OnAction_CViewPortControl);
 #endif
 }
-void openEdit_WarningBuz(void)
+void openEdit_FlipDisplay(void)
 {
-    SSettings *pSettings = settingsGetPointer();
+/* does not work like this	resetEnterPressedToStateBeforeButtonAction(); */
 
-    if(pSettings->warningBuzzer == 0)
-    {
-        pSettings->warningBuzzer = 1;
-        requestBuzzerActivation(REQUEST_BUZZER_ONCE);
-    }
-    else
-    {
-        pSettings->warningBuzzer = 0;
-        deactivateBuzzer();
-    }
-    exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
+    bool oldValue = settingsGetPointer()->FlipDisplay;
+
+    setFlipDisplay(!oldValue);
+
+    exitEditWithUpdate();
+    exitMenuEdit_to_Home();
 }
 
 char customview_TXT2BYTE_helper(uint8_t customViewId)

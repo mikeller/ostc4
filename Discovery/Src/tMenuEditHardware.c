@@ -43,16 +43,16 @@
 #include "data_exchange_main.h"
 
 
-extern void tM_build_pages(void);
+//extern void tM_build_pages(void);
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_Bluetooth(void);
-void openEdit_Compass(void);
 void openEdit_O2Sensors(void);
 void openEdit_Brightness(void);
 //void openEdit_Luftintegration(void);
 void openEdit_ButtonSens(void);
-void openEdit_FlipDisplay(void);
+void openEdit_WarningBuz(void);
+
 
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_Sensor1		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -80,22 +80,20 @@ void openEdit_Hardware(uint8_t line)
     switch(line)
     {
     case 1:
-    default:
-        openEdit_Bluetooth();
-    break;
-    case 2:
-        openEdit_O2Sensors();
-    break;
-    case 3:
-        openEdit_Brightness();
-    break;
-    case 4:
-    	resetMenuEdit(CLUT_MenuPageHardware);
-        openEdit_ButtonSens();
-    break;
-    case 5:
-    	openEdit_FlipDisplay();
-    break;
+    default:	openEdit_Bluetooth();
+        break;
+    case 2:    	openEdit_O2Sensors();
+        break;
+    case 3:    	openEdit_Brightness();
+        break;
+    case 4:   	resetMenuEdit(CLUT_MenuPageHardware);
+        	openEdit_ButtonSens();
+        break;
+	case 5:		if(isNewDisplay())
+				{
+					openEdit_WarningBuz();
+				}
+	    	break;
     }
 }
 
@@ -120,17 +118,23 @@ void openEdit_Bluetooth(void)
     exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
 }
 
-void openEdit_FlipDisplay(void)
+void openEdit_WarningBuz(void)
 {
-/* does not work like this	resetEnterPressedToStateBeforeButtonAction(); */
+    SSettings *pSettings = settingsGetPointer();
 
-    bool oldValue = settingsGetPointer()->FlipDisplay;
-
-    setFlipDisplay(!oldValue);
-
-    exitEditWithUpdate();
-    exitMenuEdit_to_Home();
+    if(pSettings->warningBuzzer == 0)
+    {
+        pSettings->warningBuzzer = 1;
+        requestBuzzerActivation(REQUEST_BUZZER_ONCE);
+    }
+    else
+    {
+        pSettings->warningBuzzer = 0;
+        deactivateBuzzer();
+    }
+    exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only();
 }
+
 
 void refresh_O2Sensors(void)
 {

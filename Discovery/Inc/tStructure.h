@@ -292,6 +292,8 @@
 #define StMHARD5_ButtonBalance3	_MB(2,7,5,4,0)
 #define StMHARD5_ButtonLock		_MB(2,7,5,5,0)
 
+#define StMHARD6_WarningBuz		_MB(2,7,6,1,0)
+
 //#define StMHARD6_UpdateCPU2_No	_MB(2,7,6,1,0)
 //#define StMHARD6_UpdateCPU2_Yes	_MB(2,7,6,2,0)
 //#define StMHARD6_UpdateCPU2_Now	_MB(2,7,6,3,0)
@@ -378,7 +380,7 @@
 #define StMCustom5_CViewPortAmbient	_MB(2,9,5,4,0)
 #define StMCustom5_CViewPortControl	_MB(2,9,5,5,0)
 #endif
-#define StMCustom5_CViewWarningBuz	_MB(2,9,5,1,0)
+
 
 
 /* Page 10 */
@@ -390,8 +392,8 @@
 #define StMOption_Compass_Inertia		_MB(2,10,1,4,0)
 #define StMOption_Compass_Declination	_MB(2,10,1,5,0)
 
-#define StMOption_Timer					_MB(2,10,2,1,0)
-
+#define StMOption_Timer					_MB(2,10,2,0,0)
+#define StMOption_Timer_Value			_MB(2,10,2,1,0)
 
 /* PAGE 11 */
 #define StMPLAN		_MB(2,11,0,0,0)

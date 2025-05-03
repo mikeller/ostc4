@@ -120,18 +120,17 @@ uint32_t tMCustom_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
 	textPointer += 2;
 #endif
 
-
-    if((isNewDisplay()) && ((line == 0) || (line == 5)))
+    if((line == 0) || (line == 5))
     {
-		text[textPointer++] = TXT_2BYTE;
-		text[textPointer++] = TXT2BYTE_BUZZER;
-		text[textPointer++] = ' ';
-		text[textPointer++] = TXT_Warning;
-		text[textPointer++] = '\t';
-	    if(settingsGetPointer()->warningBuzzer)
-	            text[textPointer++] = '\005';
-	        else
-	            text[textPointer++] = '\006';
+            text[textPointer++] = TXT_2BYTE;
+            text[textPointer++] = TXT2BYTE_FLIPDISPLAY;
+            text[textPointer++] = '\t';
+            if(settingsGetPointer()->FlipDisplay)
+                text[textPointer++] = '\005';
+            else
+                text[textPointer++] = '\006';
+            text[textPointer] = 0;
+
     }
 
 	strcpy(&text[textPointer],"\n\r");

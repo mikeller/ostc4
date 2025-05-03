@@ -281,16 +281,17 @@ static void openEdit_Timer(void)
     write_topline(text);
 
     set_globalState(StMOption_Timer);
+    resetMenuEdit(CLUT_MenuPageCvOption);
 
     uint16_t yPos = ME_Y_LINE_BASE + get_globalState_Menu_Line() * ME_Y_LINE_STEP;
     snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_Timer);
     write_label_var(30, 299, yPos, &FontT48, text);
-    write_field_udigit(StMOption_Timer, 300, 392, yPos, &FontT48, "#:##", settings->timerDurationS / 60, settings->timerDurationS % 60, 0, 0);
+    write_field_udigit(StMOption_Timer_Value, 300, 392, yPos, &FontT48, "#:##", settings->timerDurationS / 60, settings->timerDurationS % 60, 0, 0);
     write_label_var(393, 800, yPos, &FontT48, "\016\016 [m:ss]\017");
 
     write_buttonTextline(TXT2BYTE_ButtonMinus, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonPlus);
 
-    setEvent(StMOption_Timer, (uint32_t)OnAction_Timer);
+    setEvent(StMOption_Timer_Value, (uint32_t)OnAction_Timer);
     startEdit();
 }
 static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
