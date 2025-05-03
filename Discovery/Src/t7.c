@@ -1065,6 +1065,7 @@ void t7_refresh_surface(void)
     else
     {
     	textIdx = 0;
+
         if(isLoopMode(stateUsed->diveSettings.diveMode))
             gasOffset = NUM_OFFSET_DILUENT;
         else
@@ -1095,9 +1096,23 @@ void t7_refresh_surface(void)
 			text[textIdx++] = 10;
     	}
     	text[textIdx++] = 0;
+    	if(!pSettings->FlipDisplay)
+    	{
+    		t7surfaceL.WindowX0 +=5;
+    	}
+    	else
+    	{
+    		t7surfaceL.WindowX1 -=2;
+    	}
         GFX_write_string(&FontT48,&t7surfaceL,text,6);
-
-
+        if(!pSettings->FlipDisplay)
+        {
+        	t7surfaceL.WindowX0 -=5;
+        }
+        else
+        {
+        	t7surfaceL.WindowX1 +=2;
+        }
         oxygen_percentage = 100;
         oxygen_percentage -= stateUsed->lifeData.actualGas.nitrogen_percentage;
         oxygen_percentage -= stateUsed->lifeData.actualGas.helium_percentage;
@@ -1121,7 +1136,7 @@ void t7_refresh_surface(void)
         	if(!pSettings->FlipDisplay)
         	{
         		start.y = t7surfaceL.WindowY0 + (3 * t7surfaceL.WindowLineSpacing);
-        		start.x = t7surfaceL.WindowX0 + ((stateUsed->lifeData.actualGas.GasIdInSettings - gasOffset - 1) * 35);
+        		start.x = t7surfaceL.WindowX0 + ((stateUsed->lifeData.actualGas.GasIdInSettings - gasOffset - 1) * 35) + 2;
         	}
 			else
 			{
@@ -1129,7 +1144,7 @@ void t7_refresh_surface(void)
 				start.x = t7surfaceR.WindowX0 + ((stateUsed->lifeData.actualGas.GasIdInSettings - gasOffset - 1) * 35);
 			}
 
-            stop.x = start.x + 25;
+            stop.x = start.x + 29;
             stop.y = start.y + 52;
             GFX_draw_box2(&t7screen, start, stop, CLUT_Font020, 1);
         }

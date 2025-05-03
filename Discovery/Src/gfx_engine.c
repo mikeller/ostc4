@@ -3483,7 +3483,7 @@ void GFX_LTDC_Init_display1(void)
 
 #define		Vsync_d1	2
 #define		VFP_d1		4	// make sure this value * VSYNC is also set in display.c for OLED_VFP_SET
-#define		VBP_d1		4	// make sure this value * VSYNC is also set in display.c for OLED_VBP_SET
+#define		VBP_d1		6	// make sure this value * VSYNC is also set in display.c for OLED_VBP_SET
 
   /* Horizontal synchronization width = Hsync - 1 */
   LtdcHandle.Init.HorizontalSync = Hsync_d1 - 1;

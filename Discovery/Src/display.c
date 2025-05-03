@@ -407,7 +407,7 @@ void display_power_on__2_of_2__post_RGB_display1(void)
 	aTxBuffer[1] = OLED_VFP_SET_13h;
 	send((uint8_t*)aTxBuffer, 2);
 	aTxBuffer[0] = 0x72;
-	aTxBuffer[1] = 0x08;
+	aTxBuffer[1] = 0x0C;
 	send((uint8_t*)aTxBuffer, 2);
 
 	aTxBuffer[0] = 0x70;
