@@ -843,30 +843,33 @@ void compass_Inertia(float newHeading)
 {
 	float newTarget = newHeading;
 
-	if(settingsGetPointer()->compassInertia == 0)
+	if((newHeading > 0.0) && (newHeading < 360))
 	{
-		compass_compensated = newHeading;
-	}
-	else
-	{
-		if((compass_compensated > 270.0) && (newHeading < 90.0))		/* transition passing 0 clockwise */
+		if(settingsGetPointer()->compassInertia == 0)
 		{
-			newTarget = newHeading + 360.0;
+			compass_compensated = newHeading;
 		}
+		else
+		{
+			if((compass_compensated > 270.0) && (newHeading < 90.0))		/* transition passing 0 clockwise */
+			{
+				newTarget = newHeading + 360.0;
+			}
 
-		if((compass_compensated < 90.0) && (newHeading > 270.0))		/* transition passing 0 counter clockwise */
-		{
-			newTarget = newHeading - 360.0;
-		}
+			if((compass_compensated < 90.0) && (newHeading > 270.0))		/* transition passing 0 counter clockwise */
+			{
+				newTarget = newHeading - 360.0;
+			}
 
-		compass_compensated = compass_compensated + ((newTarget - compass_compensated) / (COMPASS_FRACTION * (settingsGetPointer()->compassInertia)));
-		if(compass_compensated < 0.0)
-		{
-			compass_compensated += 360.0;
-		}
-		if(compass_compensated >= 360.0)
-		{
-			compass_compensated -= 360.0;
+			compass_compensated = compass_compensated + ((newTarget - compass_compensated) / (COMPASS_FRACTION * (settingsGetPointer()->compassInertia)));
+			if(compass_compensated < 0.0)
+			{
+				compass_compensated += 360.0;
+			}
+			if(compass_compensated >= 360.0)
+			{
+				compass_compensated -= 360.0;
+			}
 		}
 	}
 }

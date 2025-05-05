@@ -1075,7 +1075,7 @@ static void GFX_draw_image_color(GFX_DrawCfgScreen *hgfx, SWindowGimpStyle windo
 
 
 /* this is NOT fast nor optimized */
-static void GFX_draw_pixel(GFX_DrawCfgScreen *hgfx, int16_t x, int16_t y, uint8_t color)
+void GFX_draw_pixel(GFX_DrawCfgScreen *hgfx, int16_t x, int16_t y, uint8_t color)
 {
 	uint16_t* pDestination;
 

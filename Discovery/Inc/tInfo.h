@@ -60,6 +60,10 @@ void tInfo_write_field_on_off(uint32_t editID, uint16_t XleftGimpStyle, uint16_t
 void tInfo_write_buttonTextline(GFX_DrawCfgScreen *screenPtr, uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode);
 void tInfo_write_buttonTextline_simple(uint8_t left2ByteCode, char middle2ByteCode, char right2ByteCode);
 
+void tInfo_drawPixel(int16_t x, int16_t y, uint8_t color);
+void tInfo_draw_colorline(point_t start, point_t stop, uint8_t color);
+void t_Info_draw_circle(point_t center, uint8_t radius, int8_t color);
+
 void tInfo_setEvent(uint32_t inputEventID, uint32_t inputFunctionCall);
 
 void tInfo_set_on_off(uint32_t editID, uint8_t int1);

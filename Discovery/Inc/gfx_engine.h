@@ -140,6 +140,7 @@ void GFX_fill_buffer(uint32_t pDestination, uint8_t alpha, uint8_t color);
 void GFX_clear_window_immediately(GFX_DrawCfgWindow* hgfx);
 
 //void GFX_draw_circle_with_MEMORY(uint8_t use_memory, GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, int8_t color);
+void GFX_draw_pixel(GFX_DrawCfgScreen *hgfx, int16_t x, int16_t y, uint8_t color);
 void GFX_draw_circle(GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, int8_t color);
 void GFX_draw_colorline(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color);
 void GFX_draw_thick_line(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color);

@@ -86,6 +86,17 @@ int16_t compass_CY_f; ///< calibration value
 int16_t compass_CZ_f; ///< calibration value
 
 
+float compass_DX_min;
+float compass_DX_max;
+
+float compass_DY_min;
+float compass_DY_max;
+
+float compass_DZ_min;
+float compass_DZ_max;
+
+
+
 /// The (filtered) components of the accelerometer sensor
 int16_t accel_DX_f; ///< output from sensor
 int16_t accel_DY_f; ///< output from sensor
@@ -1070,8 +1081,25 @@ void  acceleration_read_MMA8452Q(void)
 //  ===============================================================================
 void compass_calc_roll_pitch_only(void)
 {
-	 float sinPhi, cosPhi;
+	 float sinPhi, cosPhi, sinTeta, cosTeta;
 	 float Phi, Teta;
+	 float mx_corr, my_corr;
+
+	 float offsetX, offsetY, offsetZ;
+	 float scaleX, scaleY,scaleZ;
+
+	 float local_DX = compass_DX_f;
+	 float local_DY = compass_DY_f;
+	 float local_DZ = compass_DZ_f;
+
+
+	 if(local_DX < compass_DX_min) compass_DX_min = local_DX;
+	 if(local_DY < compass_DY_min) compass_DY_min = local_DY;
+	 if(local_DZ < compass_DZ_min) compass_DZ_min = local_DZ;
+
+	 if(local_DX > compass_DX_max) compass_DX_max = local_DX;
+	 if(local_DY > compass_DY_max) compass_DY_max = local_DY;
+	 if(local_DZ > compass_DZ_max) compass_DZ_max = local_DZ;
 
 	//---- Calculate sine and cosine of roll angle Phi -----------------------
 	Phi= atan2f(accel_DY_f, accel_DZ_f) ;
@@ -1079,9 +1107,38 @@ void compass_calc_roll_pitch_only(void)
 	sinPhi = sinf(Phi);
 	cosPhi = cosf(Phi);
 
-	//---- calculate sin and cosine of pitch angle Theta ---------------------
-	Teta = atanf(-(float)accel_DX_f/(accel_DY_f * sinPhi + accel_DZ_f * cosPhi));
-	compass_pitch = Teta * 180.0f /PI;
+	Teta = atan2((double)accel_DX_f, sqrt((double)accel_DY_f * accel_DY_f + (double)accel_DZ_f * accel_DZ_f));
+	compass_pitch = Teta * (180.0 / PI);
+
+	sinTeta = sinf(Teta);
+	cosTeta = cosf(Teta);
+
+	offsetX = (compass_DX_max + compass_DX_min) / 2.0;
+	offsetY = (compass_DY_max + compass_DY_min) / 2.0;
+	offsetZ = (compass_DZ_max + compass_DZ_min) / 2.0;
+
+	scaleX = 2.0 / (compass_DX_max - compass_DX_min);
+	scaleY = 2.0 / (compass_DY_max - compass_DY_min);
+	scaleZ = 2.0 / (compass_DZ_max - compass_DZ_min);
+
+	local_DX -= offsetX;
+	local_DX *= scaleX;
+
+	local_DY -= offsetY;
+	local_DY *= scaleY;
+
+	local_DZ -= offsetZ;
+	local_DZ *= scaleZ;
+
+	mx_corr = local_DX * cosTeta + local_DZ * sinTeta;
+	my_corr = local_DX * sinPhi * sinTeta + local_DY * cosPhi - local_DZ * sinPhi * cosTeta;
+
+	compass_heading = atan2(my_corr, mx_corr) * (180.0 / PI);
+
+
+    if (compass_heading < 0) {
+    	compass_heading += 360.0;
+    }
 }
 
 
@@ -1172,6 +1229,14 @@ void compass_reset_calibration(SCompassCalib *g)
     g->Suuu = g->Svvv = g->Swww = 0.0;
     g->Suuv = g->Suuw = g->Svvu = g->Svvw = g->Swwu = g->Swwv = 0.0;
     compass_CX_f = compass_CY_f = compass_CZ_f = 0.0;
+
+    compass_DX_min = 10000;
+    compass_DY_min = 10000;
+    compass_DZ_min = 10000;
+
+    compass_DX_max = -10000;
+    compass_DY_max = -10000;
+    compass_DZ_max = -10000;
 }
 
 

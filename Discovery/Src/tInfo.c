@@ -298,6 +298,32 @@ void tInfo_build_page(void)
 
 }
 
+
+void tInfo_drawPixel(int16_t x, int16_t y, uint8_t color)
+{
+	int8_t xoff;
+	int8_t yoff;
+
+	for (xoff = -1; xoff < 2; xoff++)
+	{
+		for (yoff = -1; yoff < 2; yoff++)
+		{
+			GFX_draw_pixel(&tIscreen, x + xoff, y + yoff, color);
+		}
+	}
+	GFX_draw_pixel(&tIscreen, x, y, color);
+}
+
+void tInfo_draw_colorline(point_t start, point_t stop, uint8_t color)
+{
+	GFX_draw_colorline(&tIscreen, start, stop, color);
+}
+
+void t_Info_draw_circle(point_t center, uint8_t radius, int8_t color)
+{
+	GFX_draw_circle(&tIscreen, center, radius, color);
+}
+
 void tInfo_write_content_simple(uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle,  const tFont *Font, const char *text, uint8_t color)
 {
     GFX_DrawCfgWindow	hgfx;

@@ -28,6 +28,15 @@
 #ifndef TINFO_COMPASS_H
 #define TINFO_COMPASS_H
 
+#include "gfx.h"
+
+typedef struct
+{
+	point_t coord;
+	point_t eclipse;
+	uint8_t check[360];
+} axisIndicator_t;
+
 /* Exported functions --------------------------------------------------------*/
 void openInfo_Compass(void);
 void refreshInfo_Compass(GFX_DrawCfgScreen s);
