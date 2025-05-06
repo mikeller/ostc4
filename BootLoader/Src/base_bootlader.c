@@ -225,9 +225,7 @@
 
 #include "Fonts/Font_T48_plus.h"
 #include "font_T24_min.h"
-#include "Fonts/image_battery.h"
 #include "Fonts/image_heinrichs_weikamp.h"
-#include "Fonts/image_ostc.h"
 
 // From Discovery/Inc (shall be shared...)
 #include "data_exchange_main.h"
