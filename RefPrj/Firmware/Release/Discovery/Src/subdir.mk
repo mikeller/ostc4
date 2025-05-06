@@ -47,10 +47,12 @@ C_SRCS += \
 /home/mikeller/git/ostc4/Discovery/Src/tInfoSensor.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenu.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuCustom.c \
+/home/mikeller/git/ostc4/Discovery/Src/tMenuCvOption.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuDeco.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuDecoParameter.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuEdit.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuEditCustom.c \
+/home/mikeller/git/ostc4/Discovery/Src/tMenuEditCvOption.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuEditDeco.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuEditDecoParameter.c \
 /home/mikeller/git/ostc4/Discovery/Src/tMenuEditGasOC.c \
@@ -113,10 +115,12 @@ OBJS += \
 ./Discovery/Src/tInfoSensor.o \
 ./Discovery/Src/tMenu.o \
 ./Discovery/Src/tMenuCustom.o \
+./Discovery/Src/tMenuCvOption.o \
 ./Discovery/Src/tMenuDeco.o \
 ./Discovery/Src/tMenuDecoParameter.o \
 ./Discovery/Src/tMenuEdit.o \
 ./Discovery/Src/tMenuEditCustom.o \
+./Discovery/Src/tMenuEditCvOption.o \
 ./Discovery/Src/tMenuEditDeco.o \
 ./Discovery/Src/tMenuEditDecoParameter.o \
 ./Discovery/Src/tMenuEditGasOC.o \
@@ -178,10 +182,12 @@ C_DEPS += \
 ./Discovery/Src/tInfoSensor.d \
 ./Discovery/Src/tMenu.d \
 ./Discovery/Src/tMenuCustom.d \
+./Discovery/Src/tMenuCvOption.d \
 ./Discovery/Src/tMenuDeco.d \
 ./Discovery/Src/tMenuDecoParameter.d \
 ./Discovery/Src/tMenuEdit.d \
 ./Discovery/Src/tMenuEditCustom.d \
+./Discovery/Src/tMenuEditCvOption.d \
 ./Discovery/Src/tMenuEditDeco.d \
 ./Discovery/Src/tMenuEditDecoParameter.d \
 ./Discovery/Src/tMenuEditGasOC.d \
@@ -532,6 +538,14 @@ Discovery/Src/tMenuCustom.o: /home/mikeller/git/ostc4/Discovery/Src/tMenuCustom.
 	@echo 'Finished building: $<'
 	@echo ' '
 
+Discovery/Src/tMenuCvOption.o: /home/mikeller/git/ostc4/Discovery/Src/tMenuCvOption.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"/home/mikeller/git/ostc4/Discovery/Inc" -I"/home/mikeller/git/ostc4/Common/Drivers/CMSIS/Include" -I"/home/mikeller/git/ostc4/Common/Drivers/STM32F4xx/Include" -I"/home/mikeller/git/ostc4/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"/home/mikeller/git/ostc4/Common/Inc" -O2 -Wall -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
 Discovery/Src/tMenuDeco.o: /home/mikeller/git/ostc4/Discovery/Src/tMenuDeco.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
@@ -557,6 +571,14 @@ Discovery/Src/tMenuEdit.o: /home/mikeller/git/ostc4/Discovery/Src/tMenuEdit.c
 	@echo ' '
 
 Discovery/Src/tMenuEditCustom.o: /home/mikeller/git/ostc4/Discovery/Src/tMenuEditCustom.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"/home/mikeller/git/ostc4/Discovery/Inc" -I"/home/mikeller/git/ostc4/Common/Drivers/CMSIS/Include" -I"/home/mikeller/git/ostc4/Common/Drivers/STM32F4xx/Include" -I"/home/mikeller/git/ostc4/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"/home/mikeller/git/ostc4/Common/Inc" -O2 -Wall -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/tMenuEditCvOption.o: /home/mikeller/git/ostc4/Discovery/Src/tMenuEditCvOption.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
