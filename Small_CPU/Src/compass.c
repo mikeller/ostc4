@@ -1107,7 +1107,7 @@ void compass_calc_roll_pitch_only(void)
 	sinPhi = sinf(Phi);
 	cosPhi = cosf(Phi);
 
-	Teta = atan2((double)accel_DX_f, sqrt((double)accel_DY_f * accel_DY_f + (double)accel_DZ_f * accel_DZ_f));
+	Teta = atanf(-(float)accel_DX_f/(accel_DY_f * sinPhi + accel_DZ_f * cosPhi));
 	compass_pitch = Teta * (180.0 / PI);
 
 	sinTeta = sinf(Teta);
