@@ -47,7 +47,7 @@ static SSettingsStatus SettingsStatus;  /* Structure containing number of correc
 SSettings Settings;
 
 const uint8_t RTErequiredHigh = 3;
-const uint8_t RTErequiredLow = 5;
+const uint8_t RTErequiredLow = 6;
 
 const uint8_t FONTrequiredHigh = 1;
 const uint8_t FONTrequiredLow =	0;
@@ -66,7 +66,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
 {
     .versionFirst   = 1,
     .versionSecond 	= 7,
-    .versionThird   = 1,
+    .versionThird   = 2,
     .versionBeta    = 0,
 
     /* 4 bytes with trailing 0 */
