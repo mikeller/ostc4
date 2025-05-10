@@ -1100,7 +1100,14 @@ void refresh_InformationPage(void)
         text_header[1] = TXT_Information;
         text_header[2] = 0;
 
-        write_label_var(  20, 800, ME_Y_LINE1, &FontT42, "Dive Computer OSTC4");
+        if(isNewDisplay())
+        {
+        	write_label_var(  20, 800, ME_Y_LINE1, &FontT42, "Dive Computer OSTC5");
+        }
+        else
+        {
+        	write_label_var(  20, 800, ME_Y_LINE1, &FontT42, "Dive Computer OSTC4");
+        }
         write_label_var(  20, 800, ME_Y_LINE2, &FontT42, "Design heinrichs/weikamp");
 
         Sdate.Year = firmwareDataGetPointer()->release_year;
