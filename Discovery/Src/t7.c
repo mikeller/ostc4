@@ -1912,7 +1912,7 @@ static void t7_CcrSummary(SSettings *settings)
     heading[headingIndex++] = '\016';
     heading[headingIndex++] = TXT_CCRmode;
 
-    data[dataIndex++] = '\t';
+    data[dataIndex++] = '\002';
     char *modeText;
     if (settings->CCR_Mode == CCRMODE_Sensors) {
         if (settings->fallbackToFixedSetpoint) {
@@ -1940,7 +1940,7 @@ static void t7_CcrSummary(SSettings *settings)
 
         data[dataIndex++] = '\n';
         data[dataIndex++] = '\r';
-        data[dataIndex++] = '\t';
+        data[dataIndex++] = '\002';
         dataIndex += snprintf(&data[dataIndex], 10, "\020%01.2f", setpointsToShow[i]->setpoint_cbar / 100.0);
         if (setpointsToShow[i]->depth_meter && !(settings->autoSetpoint && i + 1 == SETPOINT_INDEX_AUTO_DECO)) {
             bool setpointDelayed = settings->autoSetpoint && i + 1 == SETPOINT_INDEX_AUTO_LOW && settings->delaySetpointLow;
@@ -1960,7 +1960,7 @@ static void t7_CcrSummary(SSettings *settings)
 
         data[dataIndex++] = '\n';
         data[dataIndex++] = '\r';
-        data[dataIndex++] = '\t';
+        data[dataIndex++] = '\002';
         data[dataIndex++] = '\020';
         dataIndex += write_gas(&data[dataIndex], diluentsToShow[i]->oxygen_percentage, diluentsToShow[i]->helium_percentage);
         if (diluentsToShow[i]->note.ub.deco) {
@@ -1982,8 +1982,19 @@ static void t7_CcrSummary(SSettings *settings)
 
         data[dataIndex++] = '\n';
         data[dataIndex++] = '\r';
-        data[dataIndex++] = '\t';
+        data[dataIndex++] = '\002';
+        if(settings->scubberActiveId == 3)	/* switch to small font size to avoid bad alignment */
+        {
+        	data[dataIndex++] = '\016';
+        	data[dataIndex++] = '\016';
+        }
         dataIndex += printScrubberText(&data[dataIndex], 10, settings->scrubberData, settings);
+        if(settings->scubberActiveId == 3)
+        {
+        	data[dataIndex++] = ' ';
+        	data[dataIndex++] = ' ';
+        }
+
     }
 
     heading[headingIndex++] = '\017';
@@ -1998,16 +2009,19 @@ static void t7_CcrSummary(SSettings *settings)
     if (!settings->FlipDisplay) {
 	    t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
         t7cY0free.WindowX0 += 10;
+        t7cY0free.WindowX1 = t7cC.WindowX1 - 10;
         t7cY0free.WindowY0 += 10;
         t7cY0free.WindowY1 = 355;
         GFX_write_string(&FontT24, &t7cY0free, heading, 1);
         t7cY0free.WindowX0 -= 10;
         t7cY0free.WindowY0 -= 10;
     } else {
+    	t7cY0free.WindowX0 -= 10;
 	    t7cY0free.WindowY1 = 400;
         t7cY0free.WindowY1 -= 10;
         t7cY0free.WindowX1 -= 10;
         GFX_write_string(&FontT24, &t7cY0free, heading, 1);
+        t7cY0free.WindowX0 += 10;
         t7cY0free.WindowY1 += 10;
         t7cY0free.WindowX1 += 10;
     }
