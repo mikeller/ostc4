@@ -43,6 +43,7 @@
 #include "vpm.h"
 #include "buehlmann.h"
 #include "logbook_miniLive.h"
+#include "logbook.h"
 
 #include "configuration.h"
 
@@ -111,7 +112,8 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 
     stateSim.lifeData.apnea_total_max_depth_meter = 0;
 
-    memcpy(stateSim.scrubberDataDive, settingsGetPointer()->scrubberData, sizeof(stateSim.scrubberDataDive));
+    SSettings *settings = settingsGetPointer();
+    memcpy(stateSim.scrubberDataDive, settings->scrubberData, sizeof(stateSim.scrubberDataDive));
     memset(simSensmVOffset,0,sizeof(simSensmVOffset));
    	if(getReplayOffset() != 0xFFFF)
    	{
@@ -151,7 +153,6 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     SDiveState * pDiveState = &stateSim;
     const SDiveState * pRealState = stateRealGetPointer();
 	SSettings *pSettings;
-	uint8_t timerId = 0;
 
     static int last_second = -1;
     static _Bool two_second = 0;
@@ -245,26 +246,34 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     	pDiveState->lifeData.ascent_rate_meter_per_min = 0;
     }
 
-    if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && (isLoopMode(pSettings->dive_mode)) && (pDiveState->mode == MODE_DIVE) && isLoopMode(pDiveState->diveSettings.diveMode))
-    {
-    	simScrubberTimeoutCount++;
-    	if(simScrubberTimeoutCount >= 60)		/* resolution is minutes */
-    	{
-    		simScrubberTimeoutCount = 0;
-    		for(timerId = 0; timerId < 2; timerId++)
-    		{
-    		   	if(pSettings->scubberActiveId & (1 << timerId))
-    		   	{
-					if(pDiveState->scrubberDataDive[timerId].TimerCur > MIN_SCRUBBER_TIME)
-					{
-						pDiveState->scrubberDataDive[timerId].TimerCur--;
-					}
-					translateDate(stateUsed->lifeData.dateBinaryFormat, &pDiveState->scrubberDataDive[timerId].lastDive);
-    		   	}
-    		}
-    	}
-    }
+    if (isScrubberTimerRunning(pDiveState, pSettings)) {
+        simScrubberTimeoutCount++;
 
+        if (simScrubberTimeoutCount >= 60) {
+            /* resolution is minutes */
+            simScrubberTimeoutCount = 0;
+
+            int16_t maxScrubberTime = INT16_MIN;
+            SScrubberData *longestScrubberData = NULL;
+            for (unsigned timerId = 0; timerId < 2; timerId++) {
+                if (pSettings->scrubberActiveId & (1 << timerId)) {
+                    SScrubberData *scrubberData = &pDiveState->scrubberDataDive[timerId];
+                    if (scrubberData->TimerCur > MIN_SCRUBBER_TIME) {
+                        scrubberData->TimerCur--;
+                    }
+
+                    if (scrubberData->TimerCur > maxScrubberTime) {
+                        maxScrubberTime = scrubberData->TimerCur;
+                        longestScrubberData = scrubberData;
+                    }
+
+                    translateDate(stateUsed->lifeData.dateBinaryFormat, &scrubberData->lastDive);
+                }
+            }
+
+            logScrubberState(longestScrubberData);
+        }
+    }
 
     if(lastPressure_bar > 0)
      {

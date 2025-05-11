@@ -229,7 +229,7 @@ static void openEdit_Scrubber(void)
     snprintf(&text[0], 32,"%c \002#%d",TXT_ScrubTime,scrubberMenuId);
     write_field_button(StMXTRA_ScrubTimer, 20, 780, ME_Y_LINE1,  &FontT48, text);
 
-    if(pSettings->scubberActiveId & (1 << scrubberMenuId))
+    if(pSettings->scrubberActiveId & (1 << scrubberMenuId))
     {
     	snprintf(&text[0], 32,"%c %c \002\005", TXT_ScrubTime, TXT_Active);
     }
@@ -255,9 +255,7 @@ static void openEdit_Scrubber(void)
 
     if(pSettings->scrubberData[scrubberMenuId].lastDive.WeekDay != 0)
     {
-    	snprintf(&text[0], 32,"%c%c\002       %02d.%02d.%02d", TXT_2BYTE, TXT2BYTE_SimDiveTime, 	pSettings->scrubberData[scrubberMenuId].lastDive.Date,
-																				pSettings->scrubberData[scrubberMenuId].lastDive.Month,
-																				pSettings->scrubberData[scrubberMenuId].lastDive.Year);
+        snprintf(&text[0], 32, "%c%c\002       %02d.%02d.%02d", TXT_2BYTE, TXT2BYTE_SimDiveTime, pSettings->scrubberData[scrubberMenuId].lastDive.Date, pSettings->scrubberData[scrubberMenuId].lastDive.Month, pSettings->scrubberData[scrubberMenuId].lastDive.Year);
     }
     else
     {
@@ -265,16 +263,17 @@ static void openEdit_Scrubber(void)
     }
 	write_label_var(  20, 780, ME_Y_LINE5, &FontT48, text);
 
-   	switch(pSettings->scrubTimerMode)
-    	{
-    		case SCRUB_TIMER_OFF:
-    		default: 	snprintf(&text[0], 32,"%c\002%c%c",TXT_ScrubTimeMode, TXT_2BYTE, TXT2BYTE_MoCtrlNone );
-    			break;
-    		case SCRUB_TIMER_MINUTES: snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Minutes );
-    			break;
-    		case SCRUB_TIMER_PERCENT: snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Percent );
-    			break;
-    	}
+    switch (pSettings->scrubTimerMode) {
+        case SCRUB_TIMER_MINUTES:
+        default:
+            snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Minutes );
+
+            break;
+        case SCRUB_TIMER_PERCENT:
+            snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Percent );
+
+            break;
+    }
     write_field_button(StMXTRA_ScrubTimer_OP_Mode,	 20, 780, ME_Y_LINE6,  &FontT48, text);
 
     setEvent(StMXTRA_ScrubTimer, (uint32_t)OnAction_ScrubberTimerId);
@@ -478,7 +477,6 @@ uint8_t OnAction_ScrubberTimerId(uint32_t editId, uint8_t blockNumber, uint8_t d
 	SSettings *pSettings;
     pSettings = settingsGetPointer();
 
-
     if(scrubberMenuId == 0)
     {
     	scrubberMenuId = 1;
@@ -498,9 +496,7 @@ uint8_t OnAction_ScrubberTimerId(uint32_t editId, uint8_t blockNumber, uint8_t d
 
     if(pSettings->scrubberData[scrubberMenuId].lastDive.WeekDay != 0)
     {
-    	snprintf(&text[0], 32,"%c%c\002   %02d.%02d.%02d", TXT_2BYTE, TXT2BYTE_SimDiveTime, 	pSettings->scrubberData[scrubberMenuId].lastDive.Date,
-																				pSettings->scrubberData[scrubberMenuId].lastDive.Month,
-																				pSettings->scrubberData[scrubberMenuId].lastDive.Year);
+        snprintf(&text[0], 32, "%c%c\002   %02d.%02d.%02d", TXT_2BYTE, TXT2BYTE_SimDiveTime, pSettings->scrubberData[scrubberMenuId].lastDive.Date, pSettings->scrubberData[scrubberMenuId].lastDive.Month, pSettings->scrubberData[scrubberMenuId].lastDive.Year);
     }
     else
     {
@@ -509,7 +505,7 @@ uint8_t OnAction_ScrubberTimerId(uint32_t editId, uint8_t blockNumber, uint8_t d
     clean_content(  20, 780, ME_Y_LINE5, &FontT48);
 	write_label_var(  20, 780, ME_Y_LINE5, &FontT48, text);
 
-    if(pSettings->scubberActiveId & (1 << scrubberMenuId))
+    if(pSettings->scrubberActiveId & (1 << scrubberMenuId))
     {
     	snprintf(&text[0], 32,"%c %c \002\005", TXT_ScrubTime, TXT_Active);
     }
@@ -589,22 +585,22 @@ uint8_t OnAction_ScrubberMode(uint32_t editId, uint8_t blockNumber, uint8_t digi
 	SSettings *pSettings;
     pSettings = settingsGetPointer();
     newMode = pSettings->scrubTimerMode + 1;
-    if(newMode >= SCRUB_TIMER_END)
-    {
-   	 newMode = SCRUB_TIMER_OFF;
+    if (newMode >= SCRUB_TIMER_END) {
+        newMode = SCRUB_TIMER_MINUTES;
     }
     pSettings->scrubTimerMode = newMode;
 
-   	switch(pSettings->scrubTimerMode)
-    	{
-    		case SCRUB_TIMER_OFF:
-    		default: 	snprintf(&text[0], 32,"%c\002%c%c",TXT_ScrubTimeMode, TXT_2BYTE, TXT2BYTE_MoCtrlNone );
-    			break;
-    		case SCRUB_TIMER_MINUTES: snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Minutes );
-    			break;
-    		case SCRUB_TIMER_PERCENT: snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Percent );
-    			break;
-    	}
+    switch (pSettings->scrubTimerMode) {
+        case SCRUB_TIMER_MINUTES:
+        default:
+            snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Minutes );
+
+            break;
+        case SCRUB_TIMER_PERCENT:
+            snprintf(&text[0], 32,"%c\002%c",TXT_ScrubTimeMode, TXT_Percent );
+
+            break;
+    }
     tMenuEdit_newButtonText(StMXTRA_ScrubTimer_OP_Mode, text);
 
     return UNSPECIFIC_RETURN;
@@ -616,14 +612,14 @@ uint8_t OnAction_ScrubberActive(uint32_t editId, uint8_t blockNumber, uint8_t di
 	SSettings *pSettings;
     pSettings = settingsGetPointer();
 
-    if(pSettings->scubberActiveId & (1 << scrubberMenuId))
+    if(pSettings->scrubberActiveId & (1 << scrubberMenuId))
     {
-    	pSettings->scubberActiveId &= ~(1 << scrubberMenuId);
+    	pSettings->scrubberActiveId &= ~(1 << scrubberMenuId);
     	snprintf(&text[0], 32,"%c %c \002\006", TXT_ScrubTime, TXT_Active);
     }
     else
     {
-       	pSettings->scubberActiveId |= (1 << scrubberMenuId);
+       	pSettings->scrubberActiveId |= (1 << scrubberMenuId);
        	snprintf(&text[0], 32,"%c %c \002\005", TXT_ScrubTime, TXT_Active);
     }
 

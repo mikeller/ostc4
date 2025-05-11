@@ -1835,7 +1835,7 @@ static void t7_CcrSummary(SSettings *settings)
     }
 
     bool showScrubberTime = false;
-    if (settings->scrubTimerMode != SCRUB_TIMER_OFF) {
+    if (isScrubberTimerEnabled(settings)) {
         numLines++;
         showScrubberTime = true;
     }
@@ -1982,19 +1982,8 @@ static void t7_CcrSummary(SSettings *settings)
 
         data[dataIndex++] = '\n';
         data[dataIndex++] = '\r';
-        data[dataIndex++] = '\002';
-        if(settings->scubberActiveId == 3)	/* switch to small font size to avoid bad alignment */
-        {
-        	data[dataIndex++] = '\016';
-        	data[dataIndex++] = '\016';
-        }
-        dataIndex += printScrubberText(&data[dataIndex], 10, settings->scrubberData, settings);
-        if(settings->scubberActiveId == 3)
-        {
-        	data[dataIndex++] = ' ';
-        	data[dataIndex++] = ' ';
-        }
-
+        data[dataIndex++] = '\t';
+        dataIndex += printScrubberText(&data[dataIndex], 10, settings->scrubberData, settings, false);
     }
 
     heading[headingIndex++] = '\017';
@@ -3283,18 +3272,18 @@ void t7_change_field(void)
     {
     	selection_custom_field++;
     }
-    if((selection_custom_field == LLC_ScrubberTime) && ((settingsGetPointer()->scrubTimerMode == SCRUB_TIMER_OFF) || (!isLoopMode(settingsGetPointer()->dive_mode))))
-    {
+    SSettings *settings = settingsGetPointer();
+    if (selection_custom_field == LLC_ScrubberTime && !isScrubberTimerEnabled(settings)) {
     	selection_custom_field++;
     }
 #ifdef ENABLE_PSCR_MODE
-    if((selection_custom_field == LCC_SimPpo2) && (settingsGetPointer()->dive_mode != DIVEMODE_PSCR))
+    if((selection_custom_field == LCC_SimPpo2) && (settings->dive_mode != DIVEMODE_PSCR))
     {
     	selection_custom_field++;
     }
 #endif
 #ifdef ENABLE_CO2_SUPPORT
-    if((selection_custom_field == LCC_CO2) && (settingsGetPointer()->co2_sensor_active == 0))
+    if((selection_custom_field == LCC_CO2) && (settings->co2_sensor_active == 0))
     {
        	selection_custom_field++;
     }
@@ -3315,9 +3304,7 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
 
     char  headerText[10];
     char  text[TEXTSIZE];
-    char  tmpString[TEXTSIZE];
     uint8_t textpointer = 0;
-    uint8_t index = 0;
     _Bool tinyHeaderFont = 0;
     uint8_t line = 0;
 #ifdef ENABLE_BOTTLE_SENSOR
@@ -3433,26 +3420,8 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     	tinyHeaderFont = 1;
         headerText[2] = TXT_ScrubTime;
 
-        textpointer = printScrubberText(text, TEXTSIZE, stateUsed->scrubberDataDive, pSettings);
-        if (pSettings->scubberActiveId == 3)	/* both timer active */
-        {
-        	snprintf(tmpString,TEXTSIZE,"\016\016%s",text);
-        	for(index = 0; index < textpointer; index++)
-        	{
-        		if(tmpString[index] == '\017')	/* remove switch to normal font */
-        		{
-        			tmpString[index] = ' ';
-        		}
-        		if(tmpString[index] == '|')	/* replace separator with new line */
-        		{
-        			tmpString[index] = '\n';
-        			tmpString[index+1] = '\r';
-        			break;
-        		}
-        	}
-        	line = 1;
-        	strcpy(text,tmpString);
-        }
+        bool useTwoLines = (pSettings->scrubberActiveId == 0x03);
+        textpointer = printScrubberText(text, TEXTSIZE, stateUsed->scrubberDataDive, pSettings, useTwoLines);
 
 		break;
 #ifdef ENABLE_PSCR_MODE
@@ -4226,7 +4195,7 @@ void t7_SummaryOfLeftCorner(void)
 
     t7cY0free.WindowLineSpacing = 48;
     t7cY0free.WindowNumberOfTextLines = 6;
-    t7cY0free.WindowTab = 420;
+    t7cY0free.WindowTab = 380;
 
     // header
     textpointer = 0;
@@ -4248,10 +4217,9 @@ void t7_SummaryOfLeftCorner(void)
     text[textpointer++] = TXT_FutureTTS;
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && (isLoopMode(pSettings->dive_mode)))
-    {
-		text[textpointer++] = TXT_ScrubTime;
-
+    if (isScrubberTimerEnabled(pSettings)) {
+		text[textpointer++] = TXT_2BYTE;
+		text[textpointer++] = TXT2BYTE_Scrubber;
     }
     text[textpointer++] = '\017';
 	text[textpointer++] = 0;
@@ -4297,13 +4265,12 @@ void t7_SummaryOfLeftCorner(void)
     else
     	textpointer += snprintf(&text[textpointer],10,"\020%ih", (pDecoinfoFuture->output_time_to_surface_seconds + 59) / 3600);
 
-    if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && (isLoopMode(pSettings->dive_mode)))
-    {
+    if (isScrubberTimerEnabled(pSettings)) {
         text[textpointer++] = '\n';
         text[textpointer++] = '\r';
         text[textpointer++] = '\t';
 
-        textpointer += printScrubberText(&text[textpointer], 10, stateUsed->scrubberDataDive, pSettings);
+        textpointer += printScrubberText(&text[textpointer], 10, stateUsed->scrubberDataDive, pSettings, false);
     }
     text[textpointer++] = 0;
     Gfx_colorsscheme_mod(text, 0);

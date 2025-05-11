@@ -81,8 +81,11 @@
 
 #define MAX_VIEWPORT_MODE 		(0x7F)
 
-#define MAX_SCRUBBER_TIME 		(999u)
+#define MAX_SCRUBBER_TIME		(999u)
 #define MIN_SCRUBBER_TIME       -99
+#define SCRUBBER_WARNING_TIME   30
+#define SCRUBBER_ERROR_TIME     0
+
 #define MIN_PPO2_SP_CBAR		(40u)
 
 #define PSCR_MAX_O2_DROP		(15u)
@@ -108,7 +111,7 @@ typedef enum
 
 typedef enum
 {
-	SCRUB_TIMER_OFF = 0,
+	INVALID_SCRUB_TIMER_OFF = 0,
 	SCRUB_TIMER_MINUTES,
 	SCRUB_TIMER_PERCENT,
 	SCRUB_TIMER_END
@@ -258,7 +261,7 @@ typedef struct
 	uint8_t co2_sensor_active;									/* redefined in 0xFFFF0021 */
 	uint8_t ext_uart_protocol;									/* redefined in 0xFFFF0022 */
 
-	uint8_t scubberActiveId;									/* redefined in 0xFFFF0023 */
+	uint8_t scrubberActiveId;									/* redefined in 0xFFFF0023 */
 	SScrubberData scrubberData[2];
 	uint8_t ext_sensor_map_Obsolete[5];
 	uint8_t buttonLockActive;									/* redefined in 0xFFFF0025 */
@@ -409,4 +412,7 @@ void reset_SettingWarning();
 uint8_t isSettingsWarning();
 
 bool checkAndFixSetpointSettings(void);
+
+bool isScrubberWarning(const SScrubberData *scrubberData);
+bool isScrubberError(const SScrubberData *scrubberData);
 #endif // SETTINGS_H

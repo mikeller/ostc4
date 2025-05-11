@@ -67,6 +67,9 @@
 #define DEFAULT_SAMPLES	(100)	/* Number of sample data bytes in case of an broken header information */
 #define DUMMY_SAMPLES	(1000)	/* Maximum number of samples profided by a dummy dive profile */
 
+#define SCRUBBER_ERROR_FLAG 0x4000
+#define SCRUBBER_WARNING_FLAG 0x2000
+
 typedef struct /* don't forget to adjust void clear_divisor(void) */
 {
 	uint8_t temperature;
@@ -467,6 +470,10 @@ void logbook_writeSample(const SDiveState *state)
             eventByte1.ub.bit7 = 1;
             eventByte2.ub.bit2 = 1;
     }
+    if (state->events.scrubberState) {
+        eventByte1.ub.bit7 = 1;
+        eventByte2.ub.bit3 = 1;
+    }
 
     //Add EventByte 1
     if(eventByte1.uw > 0)
@@ -510,8 +517,9 @@ void logbook_writeSample(const SDiveState *state)
     }
     if (state->events.compassHeadingUpdate) {
         // New heading and type of heading
-        sample[length++] = state->events.info_compassHeadingUpdate & 0xFF;
-        sample[length++] = (state->events.info_compassHeadingUpdate & 0xFF00) >> 8;
+        pdata = (uint8_t*)&state->events.info_compassHeadingUpdate;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
     }
     if (state->events.gnssPositionUpdate) {
     	pdata = (uint8_t*)&state->events.info_gnssPosition.fLon;
@@ -522,6 +530,11 @@ void logbook_writeSample(const SDiveState *state)
         pdata = (uint8_t*)&state->events.info_gnssPosition.fLat;
         sample[length++] = *pdata++;
         sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+        sample[length++] = *pdata++;
+    }
+    if (state->events.scrubberState) {
+        pdata = (uint8_t*)&state->events.info_scrubberState;
         sample[length++] = *pdata++;
         sample[length++] = *pdata++;
     }
@@ -1321,8 +1334,23 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 		{
 			//InitdiveProfile
 			pSettings->totalDiveCounter++;
-			logbook_initNewdiveProfile(pStateReal,settingsGetPointer());
+			logbook_initNewdiveProfile(pStateReal, pSettings);
 			min_temperature_float_celsius = pStateReal->lifeData.temperature_celsius;
+            if (isScrubberTimerRunning(pStateReal, pSettings)) {
+                int16_t maxScrubberTime = INT16_MIN;
+                SScrubberData *longestScrubberData = NULL;
+                for (unsigned timerId = 0; timerId < 2; timerId++) {
+                    if (pSettings->scrubberActiveId & (1 << timerId)) {
+                        SScrubberData *scrubberData = &pStateReal->scrubberDataDive[timerId];
+                        if (scrubberData->TimerCur > maxScrubberTime) {
+                            maxScrubberTime = scrubberData->TimerCur;
+                            longestScrubberData = scrubberData;
+                        }
+                    }
+                }
+
+                logScrubberState(longestScrubberData);
+            }
 
 			//Write logbook sample
 			logbook_writeSample(pStateReal);
@@ -2146,5 +2174,19 @@ void logbook_readDummySamples(uint8_t* pTarget, uint16_t length)
 	dummyReadIdx += length;
 }
 
+void logScrubberState(const SScrubberData *scrubberData)
+{
+    uint16_t scrubberState = scrubberData->TimerCur & 0x0FFF; // truncate to 12 bit
+    if (isScrubberError(scrubberData)) {
+        scrubberState |= SCRUBBER_ERROR_FLAG;
+    }
+
+    if (isScrubberWarning(scrubberData)) {
+        scrubberState |= SCRUBBER_WARNING_FLAG;
+    }
+
+    stateUsedWrite->events.scrubberState = 1;
+    stateUsedWrite->events.info_scrubberState = scrubberState;
+}
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/

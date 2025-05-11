@@ -396,11 +396,7 @@ void openEdit_PlanResult(void)
 
     resultPage = 0;
     pDecoinfo = simulation_decoplaner(tMplan_depth_meter, tMplan_intervall_time_minutes, tMplan_dive_time_minutes, gasChangeList);
-    simulation_evaluate_profil( &tMplan_pGasConsumption,
-    							&tMplan_Summary,
-								tMplan_depth_meter, tMplan_dive_time_minutes, tMplan_gasConsumTravel, tMplan_gasConsumDeco,
-								pDecoinfo,
-								gasChangeList);
+    simulation_evaluate_profil(&tMplan_pGasConsumption[0], &tMplan_Summary, tMplan_depth_meter, tMplan_dive_time_minutes, tMplan_gasConsumTravel, tMplan_gasConsumDeco, pDecoinfo, gasChangeList);
   //  simulation_gas_consumption(tMplan_pGasConsumption, tMplan_depth_meter, tMplan_dive_time_minutes, pDecoinfo, tMplan_gasConsumTravel, tMplan_gasConsumDeco, gasChangeList);
  //   simulation_helper_change_points(&tMplan_Summary, tMplan_depth_meter, tMplan_dive_time_minutes, pDecoinfo, gasChangeListDepth);
 

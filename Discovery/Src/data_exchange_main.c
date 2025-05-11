@@ -849,8 +849,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 	SDiveState *pStateReal = stateRealGetPointerWrite();
 	uint8_t idx;
 	float meter = 0;
-	SSettings *pSettings;
-	
+
 #ifdef ENABLE_EXTERNAL_PRESSURE
     float CO2Corr = 0.0;
 #endif
@@ -914,6 +913,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		}
 	}
 
+	SSettings *pSettings = settingsGetPointer();
 	if((requestNecessary.uw != 0) && (dataIn.confirmRequest.uw != 0))
 	{
 		if(((dataIn.confirmRequest.uw) & CRBUTTON) != 0)
@@ -951,14 +951,12 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 
 		if(requestNecessary.ub.button == 1)	/* send button values to RTE */
 		{
-			setButtonResponsiveness(settingsGetPointer()->ButtonResponsiveness);
+			setButtonResponsiveness(pSettings->ButtonResponsiveness);
 		}
 	}
 
 	/*	uint8_t IAmStolenPleaseKillMe;
 	 */
-	pSettings = settingsGetPointer();
-
 	if(pSettings->IAmStolenPleaseKillMe > 3)
 	{
 		pSettings->salinity = 0;
@@ -1046,7 +1044,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
             disableTimer();
 
 				// new 170508
-			settingsGetPointer()->bluetoothActive = 0;
+			pSettings->bluetoothActive = 0;
 			MX_Bluetooth_PowerOff();
 			//Init dive Mode
 			decoLock = DECO_CALC_init_as_is_start_of_dive;
@@ -1376,3 +1374,12 @@ void DataEX_setExtInterface_Cmd(uint16_t Cmd, uint8_t sensorId)
 	return;
 }
 
+bool isScrubberTimerEnabled(const SSettings *settings)
+{
+	return settings->scrubberActiveId != 0x00 && isLoopMode(settings->dive_mode);
+}
+
+bool isScrubberTimerRunning(const SDiveState *diveState, const SSettings *settings)
+{
+	return isScrubberTimerEnabled(settings) && diveState->mode == MODE_DIVE && isLoopMode(diveState->diveSettings.diveMode);
+}

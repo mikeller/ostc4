@@ -67,7 +67,6 @@ uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
     	{
     		text[textPointer++] = '\031';		/* change text color */
     	    textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-    	    disableLine(StMOption_Timer);
             text[textPointer++] = '\020';		/* restore text color */
     	}
     	else

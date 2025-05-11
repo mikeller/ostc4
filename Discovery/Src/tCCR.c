@@ -34,6 +34,7 @@
 #include "data_exchange.h"
 #include "check_warning.h"
 #include "configuration.h"
+#include "logbook.h"
 #include <math.h>
 
 /* Private types -------------------------------------------------------------*/
@@ -322,7 +323,6 @@ void tCCR_init(void)
 void tCCR_tick(void)
 {
 	SSettings* pSettings = settingsGetPointer();
-	uint8_t timerId = 0;
 
 	if(pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_OPTIC)
 	{
@@ -341,23 +341,30 @@ void tCCR_tick(void)
     // If we are in the simulator the counter is updated in `simulator.c`
     if (!is_stateUsedSetToSim()) {
         /* decrease scrubber timer only if we are not bailed out */
-        if((pSettings->scrubTimerMode != SCRUB_TIMER_OFF) && (isLoopMode(pSettings->dive_mode)) && (stateUsed->mode == MODE_DIVE) && isLoopMode(stateUsed->diveSettings.diveMode))
-        {
+        if (isScrubberTimerRunning(stateUsed, pSettings)) {
             ScrubberTimeoutCount++;
-            if(ScrubberTimeoutCount >= 600)		/* resolution is minutes */
-            {
+            if (ScrubberTimeoutCount >= 600) {		/* resolution is minutes */
                 ScrubberTimeoutCount = 0;
-                for(timerId = 0; timerId < 2; timerId++)
-                {
-                	if(pSettings->scubberActiveId & (1 << timerId))
-                	{
-						if(stateUsed->scrubberDataDive[timerId].TimerCur > MIN_SCRUBBER_TIME)
-						{
-							stateUsedWrite->scrubberDataDive[timerId].TimerCur--;
-						}
-						translateDate(stateUsed->lifeData.dateBinaryFormat, &stateUsedWrite->scrubberDataDive[timerId].lastDive);
-                	}
+
+                int16_t maxScrubberTime = INT16_MIN;
+                SScrubberData *longestScrubberData = NULL;
+                for (unsigned timerId = 0; timerId < 2; timerId++) {
+                    if (pSettings->scrubberActiveId & (1 << timerId)) {
+                        SScrubberData *scrubberData = &stateUsedWrite->scrubberDataDive[timerId];
+                        if (scrubberData->TimerCur > MIN_SCRUBBER_TIME) {
+                            scrubberData->TimerCur--;
+                        }
+
+                        if (scrubberData->TimerCur > maxScrubberTime) {
+                            maxScrubberTime = scrubberData->TimerCur;
+                            longestScrubberData = scrubberData;
+                        }
+
+                        translateDate(stateUsed->lifeData.dateBinaryFormat, &scrubberData->lastDive);
+                    }
                 }
+
+                logScrubberState(longestScrubberData);
             }
         }
     }

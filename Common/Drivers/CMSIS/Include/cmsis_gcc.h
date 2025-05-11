@@ -185,11 +185,10 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_MSP(void)
 
     \param [in]    topOfMainStack  Main Stack Pointer value to set
  */
-// This is deprecated, get the compiler to shut up about it
-//__attribute__( ( always_inline ) ) __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
-//{
-//  __ASM volatile ("MSR msp, %0\n" : : "r" (topOfMainStack) : "sp");
-//}
+__attribute__( ( always_inline ) ) __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
+{
+  __ASM volatile ("MSR msp, %0\n" : : "r" (topOfMainStack) : "sp");
+}
 
 
 /**

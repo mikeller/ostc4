@@ -330,7 +330,7 @@ const SSettings SettingsStandard = {
 	.autoSetpoint = 0,
 	.scrubTimerMax_Obsolete = 0,
 	.scrubTimerCur_Obsolete = 0,
-	.scrubTimerMode = SCRUB_TIMER_OFF,
+	.scrubTimerMode = SCRUB_TIMER_MINUTES,
 	.ext_sensor_map[0] = SENSOR_OPTIC,
 	.ext_sensor_map[1] = SENSOR_OPTIC,
 	.ext_sensor_map[2] = SENSOR_OPTIC,
@@ -501,7 +501,7 @@ void set_new_settings_missing_in_ext_flash(void)
         // no break
     case 0xFFFF0018:
     	pSettings->cv_configuration = 0xFFFFFFFF;
-    	pSettings->cv_configuration &= pSettings->cv_configuration ^= 1 << (CVIEW_Timer);
+        pSettings->cv_configuration &= ~(1 << CVIEW_sensors | 1 << CVIEW_sensors_mV | 1 << CVIEW_Timer);
     	// no break
     case 0xFFFF0019:
     	pSettings->MotionDetection = MOTION_DETECT_OFF;
@@ -509,13 +509,13 @@ void set_new_settings_missing_in_ext_flash(void)
     case 0xFFFF001A:
     	/* deactivate new views => to be activated by customer */
         pSettings->cv_config_BigScreen = 0xFFFFFFFF;
-        pSettings->cv_config_BigScreen &= pSettings->cv_configuration ^= 1 << (CVIEW_T3_Navigation + LEGACY_T3_START_ID_PRE_TIMER);
-        pSettings->cv_config_BigScreen &= pSettings->cv_configuration ^= 1 << (CVIEW_T3_DepthData + LEGACY_T3_START_ID_PRE_TIMER);
+        pSettings->cv_config_BigScreen &= 1 << (CVIEW_T3_Navigation + LEGACY_T3_START_ID_PRE_TIMER);
+        pSettings->cv_config_BigScreen &= 1 << (CVIEW_T3_DepthData + LEGACY_T3_START_ID_PRE_TIMER);
         // no break
     case 0xFFFF001B:
     	pSettings->compassInertia = 0; 			/* no inertia */
     	pSettings->tX_customViewPrimaryBF = CVIEW_T3_Decostop;
-    	pSettings->cv_config_BigScreen &= pSettings->cv_configuration ^= 1 << (CVIEW_T3_DecoTTS + LEGACY_T3_START_ID_PRE_TIMER);
+        pSettings->cv_config_BigScreen &= 1 << (CVIEW_T3_DecoTTS + LEGACY_T3_START_ID_PRE_TIMER);
         // no break
     case 0xFFFF001C:
     	pSettings->viewPortMode = 0;
@@ -534,7 +534,7 @@ void set_new_settings_missing_in_ext_flash(void)
     	pSettings->autoSetpoint = 0;
     	pSettings->scrubTimerMax_Obsolete = 0;
     	pSettings->scrubTimerCur_Obsolete = 0;
-    	pSettings->scrubTimerMode = SCRUB_TIMER_OFF;
+        pSettings->scrubTimerMode = SCRUB_TIMER_MINUTES;
     	// no break
     case 0xFFFF001F:
     	pSettings->pscr_lung_ratio = 10;
@@ -547,7 +547,7 @@ void set_new_settings_missing_in_ext_flash(void)
     	pSettings->ext_uart_protocol = 0;
     	// no break;
     case 0xFFFF0022:
-    	pSettings->scubberActiveId = 0;
+        pSettings->scrubberActiveId = 0;
     	pSettings->scrubberData[0].TimerCur = pSettings->scrubTimerCur_Obsolete;
     	pSettings->scrubberData[0].TimerMax = pSettings->scrubTimerMax_Obsolete;
     	pSettings->scrubberData[0].lastDive.WeekDay = 0;
@@ -1767,11 +1767,11 @@ uint8_t check_and_correct_settings(void)
     	setFirstCorrection(parameterId);
     }
     parameterId++; /* 91 */
-    if(Settings.scubberActiveId > 3)	/* scrubber active is used as bitfield => two timer => 2 bits in use */
-    {
-    	Settings.scubberActiveId = 0;
-    	corrections++;
-    	setFirstCorrection(parameterId);
+    if (Settings.scrubberActiveId > 0x03) {
+        /* scrubber active is used as bitfield => two timer => 2 bits in use */
+        Settings.scrubberActiveId = 0x00;
+        corrections++;
+        setFirstCorrection(parameterId);
     }
     parameterId++; /* 92 */
     if((Settings.scrubberData[0].TimerMax > MAX_SCRUBBER_TIME) || Settings.scrubberData[0].TimerCur < MIN_SCRUBBER_TIME || Settings.scrubberData[0].TimerCur > (int16_t)MAX_SCRUBBER_TIME)
@@ -1790,9 +1790,8 @@ uint8_t check_and_correct_settings(void)
     	setFirstCorrection(parameterId);
     }
     parameterId++; /* 94 */
-    if(Settings.scrubTimerMode > SCRUB_TIMER_END)
-    {
-    	Settings.scrubTimerMode = SCRUB_TIMER_OFF;
+    if (Settings.scrubTimerMode == INVALID_SCRUB_TIMER_OFF || Settings.scrubTimerMode > SCRUB_TIMER_END) {
+        Settings.scrubTimerMode = SCRUB_TIMER_MINUTES;
     	corrections++;
     	setFirstCorrection(parameterId);
     }
@@ -1996,7 +1995,7 @@ void set_settings_to_Standard(void)
 
     memset(pSettings->customtext,0,60);
     sprintf(pSettings->customtext," <your name>\n <address>");
-    pSettings->cv_configuration &= (pSettings->cv_configuration ^= 1 << (CVIEW_Timer));
+    pSettings->cv_configuration &= ~(1 << CVIEW_sensors | 1 << CVIEW_sensors_mV | 1 << CVIEW_Timer);
 
     set_new_settings_missing_in_ext_flash();
     check_and_correct_settings();
@@ -3389,7 +3388,26 @@ void reset_SettingWarning()
 {
 	settingsWarning = 0;
 }
+
 inline uint8_t isSettingsWarning()
 {
 	return settingsWarning;
+}
+
+bool isScrubberError(const SScrubberData *scrubberData)
+{
+    if (scrubberData->TimerCur <= SCRUBBER_ERROR_TIME) {
+        return true;
+    }
+
+    return false;
+}
+
+bool isScrubberWarning(const SScrubberData *scrubberData)
+{
+    if (scrubberData->TimerCur <= SCRUBBER_WARNING_TIME) {
+        return true;
+    }
+
+    return false;
 }

@@ -344,6 +344,8 @@ typedef struct
     uint16_t info_compassHeadingUpdate;
     int16_t gnssPositionUpdate;
     SGnssCoord info_gnssPosition;
+    int16_t scrubberState;
+    uint16_t info_scrubberState;
 } SEvents;
 
 
@@ -598,4 +600,6 @@ void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHour
 
 uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8_t* pColor);
 
+bool isScrubberTimerEnabled(const SSettings *settings);
+bool isScrubberTimerRunning(const SDiveState *diveState, const SSettings *settings);
 #endif // DATA_CENTRAL_H

@@ -328,6 +328,8 @@ static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digi
                 tMenuEdit_newInput(editId, settings->timerDurationS / 60, settings->timerDurationS % 60, 0, 0);
             }
 
+            settings->cv_configuration |= (1 << CVIEW_Timer);
+
             return EXIT_TO_MENU;
         }
     case ACTION_BUTTON_NEXT:

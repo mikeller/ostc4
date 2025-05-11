@@ -221,4 +221,6 @@ uint16_t logbook_lastDive_diveNumber(void);
 uint16_t logbook_fillDummySampleBuffer(SLogbookHeader* pHeader);
 void logbook_readDummySamples(uint8_t* pTarget, uint16_t length);
 
+void logScrubberState(const SScrubberData *scrubberData);
+
 #endif /* LOGBOOK_H */
