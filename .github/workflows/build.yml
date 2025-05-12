@@ -1,0 +1,106 @@
+name: Build the OSTC 4/5 Firmware
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+    - development
+  pull_request:
+    branches:
+    - development
+  workflow_dispatch:
+
+env:
+  BUILD_TOOLS_DIR: tools
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: get container ready for build
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y dist-upgrade
+        #DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -q \
+
+    - name: checkout sources
+      uses: actions/checkout@v4
+
+    - name: get ARM toolchain version
+      id: set_variables
+      run: |
+        ARM_TOOLCHAIN_VERSION=$(make arm_tools_version)
+        echo "arm_toolchain_version=${ARM_TOOLCHAIN_VERSION}" >> $GITHUB_OUTPUT
+
+    - name: load the arm toolchain from cache
+      id: cache_toolchain
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.BUILD_TOOLS_DIR }}/
+        key: arm_toolchain-${{ steps.set_variables.outputs.arm_toolchain_version }}
+
+    - name: install toolchain
+      if: steps.cache_toolchain.outputs.cache-hit != 'true'
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make arm_tools
+
+    - name: generate the version
+      id: generate_version
+      env:
+        PULL_REQUEST_BRANCH: ${{ github.event.pull_request.head.ref }}
+        PULL_REQUEST_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          SHORT_SHA=$(git rev-parse --short $PULL_REQUEST_SHA)
+          BRANCH_NAME="$(echo "${PULL_REQUEST_BRANCH}" | sed 's@/@_@g')."
+        else
+          DATE="$(date +%Y%m%d)"
+        fi
+        NAME="${DATE}${BRANCH_NAME}${SHORT_SHA}"
+        echo "name=$NAME" >> $GITHUB_OUTPUT
+
+    - name: build the full image
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make NO_DATE=1 all
+
+    - name: build the RTE image
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make NO_DATE=1 rte
+
+    - name: build the fontpack image
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make NO_DATE=1 fontpack
+
+    - name: build the firmware image
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make NO_DATE=1 firmware
+
+    - name: PR artifacts
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: OSTC4_update${{ steps.generate_version.outputs.name }}
+        path: Release/OSTC4update_*.bin
+
+    - name: Push release
+      if: github.event_name == 'push'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          Release/OSTC4update_*.bin
+        generate_release_notes: true
+        tag_name: ${{ steps.generate_version.outputs.name }}
