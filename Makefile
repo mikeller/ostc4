@@ -4,9 +4,18 @@
 # https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2020q2/gcc-arm-none-eabi-9-2020-q2-update-x86_64-linux.tar.bz2
 #
 
+SCRIPT_DIR := $(shell pwd)
+
+OSTC4_BUILD_DIR ?= $(SCRIPT_DIR)
+export OSTC4_BUILD_DIR
+
 NUM_CORES := $(shell nproc)
 
 # Default target
+
+test:
+	@echo $(SCRIPT_DIR)
+	@echo $(OSTC4_BUILD_DIR)
 
 firmware: firmware_binary packer
 	ostc4pack/create_full_update_bin.sh --no-rte --no-fonts
