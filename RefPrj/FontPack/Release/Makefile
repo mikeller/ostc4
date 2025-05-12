@@ -27,10 +27,10 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # Tool invocations
-OSTC4_FontPack.elf: $(OBJS) $(USER_OBJS) /home/mikeller/git/ostc4/RefPrj/FontPack/../../Common/CPU1-F429.ld
+OSTC4_FontPack.elf: $(OBJS) $(USER_OBJS) $(OSTC4_BUILD_DIR)/RefPrj/FontPack/../../Common/CPU1-F429.ld
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU GCC Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -nostartfiles -nodefaultlibs -nostdlib -L"/home/mikeller/git/ostc4/RefPrj/FontPack/Library" -Xlinker --print-memory-usage -T"/home/mikeller/git/ostc4/Common/CPU1-F429.ld" -Wl,-Map=output.map -o "OSTC4_FontPack.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lOSTC4_FontPack
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -nostartfiles -nodefaultlibs -nostdlib -L"$(OSTC4_BUILD_DIR)/RefPrj/FontPack/Library" -Xlinker --print-memory-usage -T"$(OSTC4_BUILD_DIR)/Common/CPU1-F429.ld" -Wl,-Map=output.map -o "OSTC4_FontPack.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lOSTC4_FontPack
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
