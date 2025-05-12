@@ -5,7 +5,7 @@
 #
 
 # the build products are here
-PROJECT_PATH="$HOME/git/ostc4"
+PROJECT_PATH=${OSTC4_BUILD_DIR:-$HOME/git/ostc4}
 
 # Debug or Release build
 BUILD_TYPE="Release"
@@ -32,9 +32,13 @@ while test $# -gt 0; do
         shift
 
         ;;
+    --no-date)
+        NO_DATE=1
+        shift
 
+        ;;
     *)
-        echo "Invalid parameter. Usage: create_full_update_bin.sh [--no-fonts] [--no-rte]"
+        echo "Invalid parameter. Usage: create_full_update_bin.sh [--no-fonts] [--no-rte] [--no-date]"
         exit 1
 
         ;;
@@ -52,22 +56,30 @@ cd ./$BUILD_TYPE
 BUILD_PATH=$PROJECT_PATH/RefPrj
 PACKAGE_TOOL_DIR=$PROJECT_PATH/ostc4pack/src
 
-cp $BUILD_PATH/$CPU1_DISCOVERY/$BUILD_TYPE/${PROJECT_NAME_PREFIX}$CPU1_DISCOVERY.bin .
+CHECKSUM_COMMAND_PARAMETERS="--type"
+if [ -z ${NO_DATE+x} ]; then
+    CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} --date"
+fi
+
+pushd $BUILD_PATH/$CPU1_DISCOVERY/$BUILD_TYPE/
 $PACKAGE_TOOL_DIR/OSTC4pack_V4 1 ${PROJECT_NAME_PREFIX}${CPU1_DISCOVERY}.bin
-CHECKSUM_COMMAND_PARAMETERS=${PROJECT_NAME_PREFIX}${CPU1_DISCOVERY}_upload.bin
+CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} $(pwd)/${PROJECT_NAME_PREFIX}${CPU1_DISCOVERY}_upload.bin"
+popd
 
 if [ -z ${NO_FONTS+x} ]; then
-    cp $BUILD_PATH/$CPU1_FONTPACK/$BUILD_TYPE/${PROJECT_NAME_PREFIX}$CPU1_FONTPACK.bin .
+    pushd $BUILD_PATH/$CPU1_FONTPACK/$BUILD_TYPE/
     $PACKAGE_TOOL_DIR/OSTC4pack_V4 2 ${PROJECT_NAME_PREFIX}${CPU1_FONTPACK}.bin
-    CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} ${PROJECT_NAME_PREFIX}${CPU1_FONTPACK}_upload.bin"
+    CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} $(pwd)/${PROJECT_NAME_PREFIX}${CPU1_FONTPACK}_upload.bin"
+    popd
 else
     CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} null"
 fi
 
 if [ -z ${NO_RTE+x} ]; then
-    cp $BUILD_PATH/$CPU2_RTE/$BUILD_TYPE/${PROJECT_NAME_PREFIX}$CPU2_RTE.bin .
+    pushd $BUILD_PATH/$CPU2_RTE/$BUILD_TYPE/
     $PACKAGE_TOOL_DIR/OSTC4pack_V4 0 ${PROJECT_NAME_PREFIX}${CPU2_RTE}.bin
-    CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} ${PROJECT_NAME_PREFIX}${CPU2_RTE}_upload.bin"
+    CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} $(pwd)/${PROJECT_NAME_PREFIX}${CPU2_RTE}_upload.bin"
+    popd
 fi
 
 
