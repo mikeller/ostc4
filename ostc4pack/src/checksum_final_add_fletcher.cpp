@@ -47,27 +47,42 @@ hw_ostc3_firmware_checksum (unsigned char *result1, unsigned char *result2, unsi
 }
 
 
-int main(int argc, char** argv) {
-	
+int main(int argc, char** argv)
+{
+	unsigned index = 1;
+	bool useDate = false;
+	bool useType = false;
+	while (index < argc && strncmp(argv[index], "-", 1) == 0) {
+		if (strcmp(argv[index], "--date") == 0) {
+			useDate = true;
+		} else if (strcmp(argv[index], "--type") == 0) {
+			useType = true;
+		} else {
+			printf("Unknown option: %s\n", argv[index]);
+
+			return -1;
+		}
+
+		index++;
+	}
 	
 	char *file;
 	char *file2;
 	char *file3;
-    switch (argc) {
-    case 4:
-        file3 = argv[3];
-    case 3:
-        file2 = argv[2];
-    case 2:
-        file = argv[1];
+	switch (argc - index) {
+	case 3:
+		file3 = argv[index + 2];
+	case 2:
+		file2 = argv[index + 1];
+	case 1:
+		file = argv[index];
 
-        break;
-    case 1:
-    default:
-	    printf("Invalid number of arguments. Usage: checksum_final_add_fletcher <file1> [(<file2>|null) [<file3>]]\n");
+		break;
+	default:
+		printf("Invalid number of arguments. Usage: checksum_final_add_fletcher <file1> [(<file2>|null) [<file3>]]\n");
 
-        return -1;
-    }
+		return -1;
+	}
 
 	FILE *fp, * fpout;
 	size_t lenTotal,lenTemp;
@@ -99,6 +114,7 @@ int main(int argc, char** argv) {
 	printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 	fclose(fp);
 
+	unsigned typeFlags = 0x00;
 	if(file2 && strcmp(file2, "null") != 0)
 	{
 		if (NULL == (fp = fopen(file2, "rb")))
@@ -110,6 +126,8 @@ int main(int argc, char** argv) {
 		lenTotal += lenTemp;
 		printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 		fclose(fp);
+
+		typeFlags |= 0x01;
 	}
 	if(file3)
 	{
@@ -122,6 +140,8 @@ int main(int argc, char** argv) {
 		lenTotal += lenTemp;
 		printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 		fclose(fp);
+
+		typeFlags |= 0x02;
 	}
 
    	printf("\n");
@@ -133,7 +153,35 @@ int main(int argc, char** argv) {
 	timeinfo = localtime(&rawtime);
 	
 //	sprintf(filenameout,"fwupdate_%s.bin",ctime(&rawtime));
-	sprintf(filenameout,"OSTC4update_%02u%02u%02u.bin",timeinfo->tm_year-100,timeinfo->tm_mon+1,timeinfo->tm_mday);
+
+	char type[10] = "";
+	if (useType) {
+		switch (typeFlags) {
+		case 0x00:
+			sprintf(type, "_firmware");
+
+			break;
+		case 0x01:
+			sprintf(type, "_fontpack");
+
+			break;
+		case 0x02:
+			sprintf(type, "_rte");
+
+			break;
+		case 0x03:
+			sprintf(type, "_all");
+
+			break;
+		}
+	}
+
+	char date[8] = "";
+	if (useDate) {
+		sprintf(date, "_%02u%02u%02u", timeinfo->tm_year-100, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+	}
+
+	sprintf(filenameout, "OSTC4update%s%s.bin", type, date);
 
     fpout = fopen(filenameout, "wb");     
     for(int i = 0;i <lenTotal;i++)
