@@ -1,21 +1,14 @@
-#
-# Requires the arm-none-eabi toolchain to be installed and available in the PATH.
-# Currently builds with version 9 of the toolchain, available from:
-# https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2020q2/gcc-arm-none-eabi-9-2020-q2-update-x86_64-linux.tar.bz2
-#
-
 SCRIPT_DIR := $(shell pwd)
 
 OSTC4_BUILD_DIR ?= $(SCRIPT_DIR)
 export OSTC4_BUILD_DIR
 
+BUILD_TOOLS_DIR ?= $(OSTC4_BUILD_DIR)/tools
+export PATH := $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi/bin:$(PATH)
+
 NUM_CORES := $(shell nproc)
 
 # Default target
-
-test:
-	@echo $(SCRIPT_DIR)
-	@echo $(OSTC4_BUILD_DIR)
 
 firmware: firmware_binary packer
 	ostc4pack/create_full_update_bin.sh --no-rte --no-fonts
@@ -48,12 +41,23 @@ clean:
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile clean
 	rm -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin
 
+arm_tools: $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi
+
+$(BUILD_TOOLS_DIR)/gcc-arm-none-eabi:
+	$(MAKE) arm_tools_clean
+	mkdir -p $(BUILD_TOOLS_DIR)
+	curl -L https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2020q2/gcc-arm-none-eabi-9-2020-q2-update-x86_64-linux.tar.bz2 | tar -xj -C $(BUILD_TOOLS_DIR)
+	ln -s $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi-* $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi
+
+arm_tools_clean:
+	rm -rf $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi*
+
 packer:
 	$(MAKE) -C ostc4pack/src -j $(NUM_CORES)
 
 packer_clean:
 	$(MAKE) -C ostc4pack/src clean
 
-distclean: clean packer_clean
+distclean: clean packer_clean arm_tools_clean
 
-.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all clean packer packer_clean distclean
+.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all clean arm_tools arm_tools_clean packer packer_clean distclean
