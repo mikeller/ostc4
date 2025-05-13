@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_TOOLS_DIR: ../tools
+  BUILD_TOOLS_DIR: tools
 
 jobs:
   build:
