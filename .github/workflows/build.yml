@@ -31,8 +31,6 @@ jobs:
       run: |
         ARM_TOOLCHAIN_VERSION=$(make arm_tools_version)
         echo "arm_toolchain_version=${ARM_TOOLCHAIN_VERSION}" >> $GITHUB_OUTPUT
-        RELEASE_DATE=$(date +%y%m%d)
-        echo "release_date=${RELEASE_DATE}" >> $GITHUB_OUTPUT
 
     - name: load the arm toolchain from cache
       id: cache_toolchain
@@ -51,38 +49,37 @@ jobs:
     - name: build the full image
       env:
         BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
-        RELEASE_DATE: ${{ steps.set_variables.outputs.release_date }}
       run: |
-        make all
-        find . -name \*.bin
-        mv Release/OSTC4update_${RELEASE_DATE}.bin Release/OSTC4update_all_${RELEASE_DATE}.bin
+        make NO_DATE=1 all
 
     - name: build the RTE image
       env:
         BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
-        RELEASE_DATE: ${{ steps.set_variables.outputs.release_date }}
       run: |
-        make rte
-        mv Release/OSTC4update_${RELEASE_DATE}.bin Release/OSTC4update_rte_${RELEASE_DATE}.bin
+        make NO_DATE=1 rte
+
+    - name: build the fontpack image
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make NO_DATE=1 fontpack
 
     - name: build the firmware image
       env:
         BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
-        RELEASE_DATE: ${{ steps.set_variables.outputs.release_date }}
       run: |
-        make firmware
-        mv Release/OSTC4update_${RELEASE_DATE}.bin Release/OSTC4update_firmware_${RELEASE_DATE}.bin
+        make NO_DATE=1 firmware
 
     - name: PR artifacts
       if: github.event_name == 'pull_request'
       uses: actions/upload-artifact@v4
       with:
-        name: OSTC4_update_${{ steps.set_variables.outputs.release_date }}
-        path: Release/OSTC4update_*_${{ steps.set_variables.outputs.release_date }}.bin
+        name: OSTC4_update
+        path: Release/OSTC4update_*.bin
 
     - name: Push artifacts
       if: github.event_name == 'push'
       uses: actions/upload-artifact@v4
       with:
-        name: OSTC4_update_${{ steps.set_variables.outputs.release_date }}
-        path: Release/OSTC4update_*_${{ steps.set_variables.outputs.release_date }}.bin
+        name: OSTC4_update
+        path: Release/OSTC4update_*.bin
