@@ -5,6 +5,24 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(INCLUDE_VERSION_SUPPORT)
+
+#include "settings.h"
+
+extern "C" {
+	void tHome_init(void) { }
+	void tI_init(void) { }
+	void tM_init(void) { }
+	void tMenuEdit_init(void) { }
+	void tInfoLog_init(void) { }
+	void tM_build_pages(void) { }
+	void GFX_build_logo_frame(void) { }
+	void setButtonResponsiveness(void) { }
+	void GFX_use_colorscheme(void) { }
+	void GFX_build_hw_background_frame(void) { }
+}
+#endif
+
 void fletcher16(unsigned char *result1, unsigned char *result2, unsigned char const *data, size_t bytes )
 {
         unsigned short sum1 = 0xff, sum2 = 0xff;
@@ -49,14 +67,22 @@ hw_ostc3_firmware_checksum (unsigned char *result1, unsigned char *result2, unsi
 
 int main(int argc, char** argv)
 {
-	unsigned index = 1;
+	int index = 1;
 	bool useDate = false;
 	bool useType = false;
+	bool useVersion = false;
+	bool printVersionOnly = false;
 	while (index < argc && strncmp(argv[index], "-", 1) == 0) {
 		if (strcmp(argv[index], "--date") == 0) {
 			useDate = true;
 		} else if (strcmp(argv[index], "--type") == 0) {
 			useType = true;
+#if defined(INCLUDE_VERSION_SUPPORT)
+		} else if (strcmp(argv[index], "--version") == 0) {
+			useVersion = true;
+#endif
+		} else if (strcmp(argv[index], "--print-version-only") == 0) {
+			printVersionOnly = true;
 		} else {
 			printf("Unknown option: %s\n", argv[index]);
 
@@ -67,8 +93,8 @@ int main(int argc, char** argv)
 	}
 	
 	char *file;
-	char *file2;
-	char *file3;
+	char *file2 = NULL;
+	char *file3 = NULL;
 	switch (argc - index) {
 	case 3:
 		file3 = argv[index + 2];
@@ -84,10 +110,37 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	FILE *fp, * fpout;
-	size_t lenTotal,lenTemp;
+	char versionName[26] = "";
+	index = 0;
+#if defined(INCLUDE_VERSION_SUPPORT)
+	if (useVersion) {
+		if (!printVersionOnly) {
+			index += sprintf(&versionName[index], "_");
+		}
+		index += sprintf(&versionName[index], "%u.%u.%u%s", firmware_FirmwareData.versionFirst, firmware_FirmwareData.versionSecond, firmware_FirmwareData.versionThird, firmware_FirmwareData.versionBeta ? "-beta" : "");
+	}
+#endif
+
+	if (useDate) {
+		time_t rawtime;
+		time (&rawtime);
+		struct tm *timeinfo;
+		timeinfo = localtime(&rawtime);
+
+		if (useVersion || !printVersionOnly) {
+			index += sprintf(&versionName[index], "_");
+		}
+		index += sprintf(&versionName[index], "%02u%02u%02u", timeinfo->tm_year-100, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+	}
+
+	if (printVersionOnly) {
+		printf("%s\n", versionName);
+
+		return 0;
+	}
+
+	FILE *fp, *fpout;
 	unsigned char buf[2000000];
-	unsigned int pruefsumme;
 	unsigned char buf2[4];
 
    	printf("1: %s\n",  file);
@@ -102,13 +155,13 @@ int main(int argc, char** argv)
 	int filelength = strlen(filename);
 	filename[filelength -4] = 0;
 	
-	lenTotal = 0;
+	size_t lenTotal = 0;
 	if (NULL == (fp = fopen(file, "rb")))
 	{
 	    printf("Unable to open %s for reading\n", file);
 	    return -1;
 	}
-	lenTemp = fread(&buf[lenTotal], sizeof(char), sizeof(buf), fp);
+	size_t lenTemp = fread(&buf[lenTotal], sizeof(char), sizeof(buf), fp);
 //	lenTemp = fread(buf, sizeof(char), sizeof(buf), fp);
 	lenTotal = lenTemp;
 	printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
@@ -147,11 +200,6 @@ int main(int argc, char** argv)
    	printf("\n");
 	printf("%d bytes read (hex: %#x ) total \n", (uint32_t)lenTotal, (uint32_t)lenTotal);
 
-	time_t rawtime;
-	time (&rawtime);
-	struct tm *timeinfo;
-	timeinfo = localtime(&rawtime);
-	
 //	sprintf(filenameout,"fwupdate_%s.bin",ctime(&rawtime));
 
 	char type[10] = "";
@@ -176,15 +224,10 @@ int main(int argc, char** argv)
 		}
 	}
 
-	char date[8] = "";
-	if (useDate) {
-		sprintf(date, "_%02u%02u%02u", timeinfo->tm_year-100, timeinfo->tm_mon + 1, timeinfo->tm_mday);
-	}
-
-	sprintf(filenameout, "OSTC4update%s%s.bin", type, date);
+	sprintf(filenameout, "OSTC4update%s%s.bin", type, versionName);
 
     fpout = fopen(filenameout, "wb");     
-    for(int i = 0;i <lenTotal;i++)
+    for (size_t i = 0; i < lenTotal; i++)
     {
     	if(fwrite(&buf[i],1,1,fpout) != 1)
      	printf("error writing\n");
