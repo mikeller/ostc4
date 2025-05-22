@@ -24,7 +24,6 @@ jobs:
       run: |
         sudo apt-get -y update
         sudo apt-get -y dist-upgrade
-        #DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -q \
 
     - name: checkout sources
       uses: actions/checkout@v4
@@ -53,16 +52,19 @@ jobs:
       id: generate_version
       env:
         PULL_REQUEST_BRANCH: ${{ github.event.pull_request.head.ref }}
+        PULL_REQUEST_NUMBER: ${{ github.event.number }}
         PULL_REQUEST_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
+        make packer
+        VERSION=$(make print_version)
         SHORT_SHA=$(git rev-parse --short HEAD)
         if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
           SHORT_SHA=$(git rev-parse --short $PULL_REQUEST_SHA)
-          BRANCH_NAME="$(echo "${PULL_REQUEST_BRANCH}" | sed 's@/@_@g')."
+          NAME="${PULL_REQUEST_NUMBER}-$(echo "${PULL_REQUEST_BRANCH}" | sed 's@/@_@g')"
         else
-          DATE="$(date +%Y%m%d)."
+          NAME="$(date +%Y%m%d)."
         fi
-        NAME="${DATE}${BRANCH_NAME}${SHORT_SHA}"
+        NAME="${VERSION}-${NAME}-${SHORT_SHA}"
         echo "name=$NAME" >> $GITHUB_OUTPUT
 
     - name: build the full image
@@ -93,7 +95,7 @@ jobs:
       if: github.event_name == 'pull_request'
       uses: actions/upload-artifact@v4
       with:
-        name: OSTC4_update${{ steps.generate_version.outputs.name }}
+        name: OSTC4_update-${{ steps.generate_version.outputs.name }}
         path: Release/OSTC4update_*.bin
 
     - name: Push release
