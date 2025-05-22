@@ -13,27 +13,27 @@ NUM_CORES := $(shell nproc)
 # Default target
 
 firmware: firmware_binary packer
-	ostc4pack/create_full_update_bin.sh --no-rte --no-fonts
+	ostc4pack/create_full_update_bin.sh --version --no-rte --no-fonts
 
 fontpack: firmware_binary fontpack_binary packer
-	ostc4pack/create_full_update_bin.sh --no-rte
+	ostc4pack/create_full_update_bin.sh --version --no-rte
 
 rte: firmware_binary rte_binary packer
-	ostc4pack/create_full_update_bin.sh --no-fonts
+	ostc4pack/create_full_update_bin.sh --version --no-fonts
 
 all: firmware_binary fontpack_binary rte_binary packer
-	ostc4pack/create_full_update_bin.sh
+	ostc4pack/create_full_update_bin.sh --version
 
-fontpack_library:
+fontpack_library: arm_tools
 	$(MAKE) -C RefPrj/FontPack/Library -f Makefile -j $(NUM_CORES)
 
-firmware_binary: fontpack_library
+firmware_binary: arm_tools fontpack_library
 	$(MAKE) -C RefPrj/Firmware/Release -f Makefile -j $(NUM_CORES)
 
-fontpack_binary: fontpack_library
+fontpack_binary: arm_tools fontpack_library
 	$(MAKE) -C RefPrj/FontPack/Release -f Makefile -j $(NUM_CORES)
 
-rte_binary: fontpack_library
+rte_binary: arm_tools fontpack_library
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile -j $(NUM_CORES)
 
 clean:
@@ -42,6 +42,9 @@ clean:
 	$(MAKE) -C RefPrj/FontPack/Release -f Makefile clean
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile clean
 	rm -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin
+
+print_version:
+	@ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only
 
 arm_tools: $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi
 
@@ -65,4 +68,4 @@ packer_clean:
 
 distclean: clean packer_clean arm_tools_clean
 
-.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all clean arm_tools arm_tools_version arm_tools_clean packer packer_clean distclean
+.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all clean print_version arm_tools arm_tools_version arm_tools_clean packer packer_clean distclean
