@@ -1,5 +1,8 @@
 name: Build the OSTC 4/5 Firmware
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -46,6 +49,22 @@ jobs:
       run: |
         make arm_tools
 
+    - name: generate the version
+      id: generate_version
+      env:
+        PULL_REQUEST_BRANCH: ${{ github.event.pull_request.head.ref }}
+        PULL_REQUEST_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          SHORT_SHA=$(git rev-parse --short $PULL_REQUEST_SHA)
+          BRANCH_NAME="$(echo "${PULL_REQUEST_BRANCH}" | sed 's@/@_@g')."
+        else
+          DATE="$(date +%Y%m%d)."
+        fi
+        NAME="${DATE}${BRANCH_NAME}${SHORT_SHA}"
+        echo "name=$NAME" >> $GITHUB_OUTPUT
+
     - name: build the full image
       env:
         BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
@@ -74,12 +93,14 @@ jobs:
       if: github.event_name == 'pull_request'
       uses: actions/upload-artifact@v4
       with:
-        name: OSTC4_update
+        name: OSTC4_update${{ steps.generate_version.outputs.name }}
         path: Release/OSTC4update_*.bin
 
-    - name: Push artifacts
+    - name: Push release
       if: github.event_name == 'push'
-      uses: actions/upload-artifact@v4
+      uses: softprops/action-gh-release@v2
       with:
-        name: OSTC4_update
-        path: Release/OSTC4update_*.bin
+        files: |
+          Release/OSTC4update_*.bin
+        generate_release_notes: true
+        tag_name: ${{ steps.generate_version.outputs.name }}
