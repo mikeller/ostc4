@@ -223,7 +223,7 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
-#include "Fonts/Font_T48_plus.h"
+#include "font_T48_min.h"
 #include "font_T24_min.h"
 #include "Fonts/image_heinrichs_weikamp.h"
 
@@ -238,6 +238,9 @@
 // From AC6 support:
 #include <stdio.h>
 #include <string.h> // for memcopy
+
+
+extern void decompressFont(const tFont* pFont, tImageComp** pFontComp);
 
 /* Private define ------------------------------------------------------------*/
 #define BUFFER_SIZE         ((uint32_t)0x00177000)
@@ -486,6 +489,10 @@ GPIO_test_I2C_lines();
 
 	MX_SPI_Init();
 	SDRAM_Config();
+
+	decompressFont(&FontT24min, (tImageComp**)&FontT24_Comp);
+	decompressFont(&FontT48min, (tImageComp**)&FontT48_Comp);
+
 	HAL_Delay(100);
 
 	GFX_init1_no_DMA(&pLayerInvisible, 2);

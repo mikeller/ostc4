@@ -199,13 +199,13 @@ void tComm_refresh(void)
     {
         GFX_hwBackgroundOn();
         tCscreen.FBStartAdress = getFrame(18);
-        write_content_simple(&tCscreen, 0, 800, 480-24, &FontT24,"Exit",CLUT_ButtonSurfaceScreen);
-        write_content_simple(&tCscreen, 800 - 70, 800, 480-24, &FontT24,"Signal",CLUT_ButtonSurfaceScreen);
+        write_content_simple(&tCscreen, 0, 800, 480-24, &FontT24min,"Exit",CLUT_ButtonSurfaceScreen);
+        write_content_simple(&tCscreen, 800 - 70, 800, 480-24, &FontT24min,"Signal",CLUT_ButtonSurfaceScreen);
 
         if(receiveStartByteUart == BYTE_SERVICE_MODE)
-            GFX_write_string(&FontT48, &tCwindow, "Service mode enabled",2);
+            GFX_write_string(&FontT48min, &tCwindow, "Service mode enabled",2);
         else
-            GFX_write_string(&FontT48, &tCwindow, "Download mode enabled",2);
+            GFX_write_string(&FontT48min, &tCwindow, "Download mode enabled",2);
         GFX_SetFramesTopBottom(tCscreen.FBStartAdress, 0,480);
         display_text[0] = 0;
         display_text[255] = 0;
@@ -217,9 +217,9 @@ void tComm_refresh(void)
         strcpy (&localString[1],display_text);
         releaseFrame(18,tCscreen.FBStartAdress);
         tCscreen.FBStartAdress = getFrame(18);
-        write_content_simple(&tCscreen, 0, 800, 480-24, &FontT24,"Exit",CLUT_ButtonSurfaceScreen);
-        write_content_simple(&tCscreen, 800 - 70, 800, 480-24, &FontT24,"Signal",CLUT_ButtonSurfaceScreen);
-        GFX_write_string(&FontT48, &tCwindow, localString,2);
+        write_content_simple(&tCscreen, 0, 800, 480-24, &FontT24min,"Exit",CLUT_ButtonSurfaceScreen);
+        write_content_simple(&tCscreen, 800 - 70, 800, 480-24, &FontT24min,"Signal",CLUT_ButtonSurfaceScreen);
+        GFX_write_string(&FontT48min, &tCwindow, localString,2);
         GFX_SetFrameTop(tCscreen.FBStartAdress);
         display_text[0] = 0;
         display_text[255] = 0;

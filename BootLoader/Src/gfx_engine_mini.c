@@ -175,8 +175,6 @@ uint32_t MaxU32GFX(uint32_t a, uint32_t b)
 
 static uint32_t GFX_write_char(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteString* cfg, uint8_t character, tFont *Font);
 static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* hgfx, uint8_t textId, int8_t nextCharFor2Byte);
-static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* hgfx, const char *pText);
-static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* hgfx, const char *pTextInput);
 static void GFX_Error_Handler(void);
 static void GFX_Dma2d_TransferComplete(DMA2D_HandleTypeDef* Dma2dHandle);
 static void GFX_Dma2d_TransferError(DMA2D_HandleTypeDef* Dma2dHandle);
@@ -284,6 +282,29 @@ void GFX_build_hw_background_frame(void)
 */	
 }
 
+void decompressFont(const tFont* pFont, const tImageComp** pFontComp)
+{
+	uint16_t indexFont = 0;
+	uint16_t indexData = 0;
+	uint8_t data = 0;
+	uint8_t count = 0;
+	uint8_t targetIndex = 0;
+	uint8_t* pPixel;
+
+	for (indexFont = 0; indexFont < pFont->length; indexFont++)
+	{
+		pPixel = (uint8_t*)pFont->chars[indexFont].image->data;
+		for(indexData = 0; indexData < pFontComp[indexFont]->sizeComp; indexData += 2)
+		{
+			data = pFontComp[indexFont]->dataComp[indexData];
+			count = pFontComp[indexFont]->dataComp[indexData + 1];
+			for (targetIndex = 0; targetIndex < count; targetIndex++)
+			{
+				*pPixel++ = data;
+			}
+		}
+	}
+}
 
 void GFX_build_logo_frame(void)
 {
@@ -1656,9 +1677,9 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 	else
 		minimal = 0;
 
-	if(Font == &FontT48)
+	if(Font == &FontT48min)
 	{
-		settings.TinyFont = (uint32_t)&FontT24;
+		settings.TinyFont = (uint32_t)&FontT24min;
 		settings.TinyFontExtraYdelta = 6;
 	}
 
@@ -1688,12 +1709,6 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 			else
 			if(*pText == '\r') // carriage return, no newline
 				settings.Xdelta = 0;
-			else
-			if((*pText == '\001')) // center
-				settings.Xdelta = GFX_write__Modify_Xdelta__Centered(&settings, hgfx, pText+1);
-			else
-			if((*pText == '\002')) // right
-				settings.Xdelta = GFX_write__Modify_Xdelta__RightAlign(&settings, hgfx, pText+1);
 			else
 			if((*pText == '\003') && !minimal) // doubleSize
 				settings.doubleSize = 1;
@@ -2512,176 +2527,6 @@ static uint32_t GFX_write_char(GFX_DrawCfgWindow* hgfx, GFX_CfgWriteString* cfg,
 		return cfg->Xdelta + width;
 }
 
-/**
-  ******************************************************************************
-  * @brief   GFX write Modify Ydelta for align. /  calc Ydelta for start
-  * @author  heinrichs weikamp gmbh
-  * @version V0.0.1
-  * @date    22-April-2014
-  ******************************************************************************
-	*
-  * @param  *hgfx: 		check gfx_engine.h.
-  * @param  *cfg:		 	Ydelta, Font
-  * @param  *pText: 	character
-	* @retval Ydelta:		0 if text has to start left ( and probably does not fit)
-  */
-
-static uint32_t GFX_write__Modify_Xdelta__Centered(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* hgfx, const char *pTextInput)
-{
-	char cText[101];
-	uint32_t result;
-	uint32_t Xsum;
-	uint32_t j;
-	uint32_t pText;
-	uint16_t decodeUTF8;
-	uint8_t tinyState = 0;		/* used to identify the usage of tiny font */
-	tFont* ptargetFont;
-
-	pText = (uint32_t)&cText[0];
-	Xsum = 0;
-	j = 0;
-	ptargetFont = (tFont *)cfg->font;
-	while (*(char*)pText != 0)// und fehlend: Abfrage window / image size
-	{
-		if(*(char*)pText == '\016')	/* request font change */
-		{
-			tinyState++;
-		}
-		if(*(char*)pText == '\017')	/* request font reset */
-		{
-			tinyState = 0;
-		}
-
-		if(tinyState > 1)
-		{
-			ptargetFont = (tFont *)cfg->TinyFont;
-		}
-		else
-		{
-			ptargetFont = (tFont *)cfg->font;
-		}
-
-		decodeUTF8 = *(char*)pText; /* place ASCII char */
-		if((*(char*)pText == '\005') || (*(char*)pText == '\006'))
-		{
-			Xsum += 45;
-		}
-		else
-		{
-			if((*(char*)pText) & 0x80) /* Identify a UNICODE character other than standard ASCII using the highest bit */
-			{
-				decodeUTF8 = ((*(char*)pText) & 0x1F) << 6; /* use 5bits of first byte for upper part of unicode */
-				pText++;
-				decodeUTF8 |= (*(char*)pText) & 0x3F; /* add lower 6bits as second part of the unicode */
-			}
-			else
-			{
-				decodeUTF8 = *(char*)pText; /* place ASCII char */
-			}
-			Xsum += GFX_Character_Width(decodeUTF8, ptargetFont);
-		}
-
-		pText++;
-		j++;
-	}
-	pText -= j;
-
-	if(cfg->doubleSize)
-		Xsum *= 2;
-	
-	result = hgfx->WindowX1 - hgfx->WindowX0;
-	if(Xsum < result)
-	{
-		result -= Xsum;
-		result /= 2;
-	}
-	else
-		result = 0;
-	return result;
-}
-
-
-static uint32_t GFX_write__Modify_Xdelta__RightAlign(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* hgfx, const char *pTextInput)
-{
-	uint32_t result;
-	uint32_t Xsum;
-	uint32_t j;
-	tFont *font;
-	char cText[101];
-	uint32_t pText;
-	uint16_t decodeUTF8;
-	uint8_t tinyState = 0;		/* used to identify the usage of tiny font */
-
-	cText[0] = 0;
-
-// -----------------------------
-	pText = (uint32_t)&cText[0];
-// -----------------------------
-
-	font = (tFont *)cfg->font;
-	Xsum = 0;
-	j = 0;
-
-	while (*(char*)pText != 0)// und fehlend: Abfrage window / image size
-	{
-		if(*(char*)pText == '\016')	/* request font change */
-		{
-			tinyState++;
-		}
-		if(*(char*)pText == '\017')	/* request font reset */
-		{
-			tinyState = 0;
-		}
-
-		if(tinyState > 1)
-		{
-			font = (tFont *)cfg->TinyFont;
-		}
-		else
-		{
-			font = (tFont *)cfg->font;
-		}
-
-		if(*(char*)pText == ' ')
-		{
-			Xsum += font->spacesize;
-		}
-		else
-		if((*(char*)pText == '\005') || (*(char*)pText == '\006'))
-		{
-			Xsum += 45;
-		}
-		else
-		{
-			if((*(char*)pText) & 0x80) /* Identify a UNICODE character other than standard ASCII using the highest bit */
-			{
-				decodeUTF8 = ((*(char*)pText) & 0x1F) << 6; /* use 5bits of first byte for upper part of unicode */
-				pText++;
-				decodeUTF8 |= (*(char*)pText) & 0x3F; /* add lower 6bits as second part of the unicode */
-			}
-			else
-			{
-				decodeUTF8 = *(char*)pText;
-			}
-			Xsum += GFX_Character_Width(decodeUTF8, font);  /* lookup character and add width */
-		}
-		pText++;
-		j++;
-	}
-	pText -= j;
-
-	if(cfg->doubleSize)
-		Xsum *= 2;
-	
-	result = hgfx->WindowX1 - hgfx->WindowX0 - 1;
-	if(Xsum < result)
-		result -= Xsum;
-	else
-		result = 0;
-
-	return result;
-}
-
 void GFX_LTDC_Init(void)
 {
 	GFX_LTDC_Init_display1();
@@ -2975,7 +2820,7 @@ void write_content_simple(GFX_DrawCfgScreen *tMscreen, uint16_t XleftGimpStyle, 
 void gfx_write_topline_simple(GFX_DrawCfgScreen *tMscreen, const char *text, uint8_t color)
 {
 	GFX_DrawCfgWindow	hgfx;
-	const tFont *Font = &FontT48;
+	const tFont *Font = &FontT48min;
 	
 	hgfx.Image = tMscreen;
 	hgfx.WindowNumberOfTextLines = 1;
@@ -2994,13 +2839,13 @@ void gfx_write_topline_simple(GFX_DrawCfgScreen *tMscreen, const char *text, uin
 void gfx_write_page_number(GFX_DrawCfgScreen *tMscreen, uint8_t page, uint8_t total, uint8_t color)
 {
 	GFX_DrawCfgWindow	hgfx;
-	const tFont *Font = &FontT48;
+	const tFont *Font = &FontT48min;
 	char text[7];
 	uint8_t i, secondDigitPage, secondDigitTotal;
 
 	if(total > 8)
 	{
-		Font = &FontT24;
+		Font = &FontT24min;
 	}
 
 	hgfx.Image = tMscreen;
@@ -3009,7 +2854,7 @@ void gfx_write_page_number(GFX_DrawCfgScreen *tMscreen, uint8_t page, uint8_t to
 	hgfx.WindowTab = 0;
 
 	hgfx.WindowX1 = 779;
-	if(Font == &FontT24)
+	if(Font == &FontT24min)
 	{
 		hgfx.WindowX0 = hgfx.WindowX1 - (Font->spacesize*3);
 	}

@@ -48,7 +48,7 @@ SEARCH_DIR(.)
 /***************************** Memory Definition ****************************/
 MEMORY
 {
-  ROM_BOOT  (rx) : ORIGIN = 0x08000000, LENGTH = 0x00040000 /* 256K */
+  ROM_BOOT  (rx) : ORIGIN = 0x08000000, LENGTH = 0x00020000 /* 128K */
     ROM  (rx) : ORIGIN = 0x08040000, LENGTH = 0x00090000 /* 576K */
     UPPER(rx) : ORIGIN = 0x08132000, LENGTH = 0xAE270 /* 713K */
     RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
@@ -113,13 +113,6 @@ SECTIONS
      *libm.a:*(*)
   } >ROM_BOOT
 
-  .rodata :
-  {
-    . = ALIGN(4);
-    *(.rodata)         /* .rodata sections (constants, strings, etc.) */
-    *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
-    . = ALIGN(4);
-  } >ROM_BOOT
 
  /********************** Constant data into ROM memory *********************/
 
@@ -205,12 +198,18 @@ SECTIONS
     _etext = .;        /* define a global symbols at end of code */
   } >ROM_BOOT
  
-
+  .rodata :
+  {
+    . = ALIGN(4);
+    *(.rodata)         /* .rodata sections (constants, strings, etc.) */
+    *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
+    . = ALIGN(4);
+  } >ROM_BOOT
  	
     /* Define Known Address for Each Font */
     /* Flash Sector 23 is protected (bootloader font + image) => use end of sector 22 */
 
-.lower_fonts 	0x08016000  : {
+.lower_fonts 	0x0801F000  : {
 	 *(.lower_fonts.image_data_*)
 	 *(.lower_fonts.*)
 	 *(.upper_fonts.image_data_FontT48*) 

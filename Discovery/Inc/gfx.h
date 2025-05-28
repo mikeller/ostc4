@@ -39,11 +39,24 @@ typedef struct {
 		 uint16_t width;
 		 uint16_t height;
 		 } tImage;
+typedef struct {
+		 uint8_t *data;
+		 const uint8_t *dataComp;
+		 uint16_t sizeComp;
+ 		 uint16_t width;
+ 		 uint16_t height;
+ 		 } tImageComp;
 
 typedef struct {
 		 long int code;
 		 const tImage *image;
 		 } tChar;
+
+typedef struct {
+		long int code;
+		const tImageComp *image;
+		} tCharComp;
+
 
 typedef struct {
 		 uint32_t length;
@@ -52,6 +65,15 @@ typedef struct {
 		 uint8_t spacesize2Monospaced;
 		 uint8_t height;
 		 } tFont;
+
+typedef struct {
+ 		 uint32_t length;
+ 		 const tCharComp *chars;
+ 		 uint8_t spacesize;
+ 		 uint8_t spacesize2Monospaced;
+ 		 uint8_t height;
+ 		 } tFontComp;
+
 
 typedef struct {
 		uint32_t x;

@@ -55,8 +55,10 @@ enum { indexHWcolorSIZE = 256 };
 
 extern const tFont Awe48;
 extern const tFont FontT24;
+extern const tFont FontT24min;
 extern const tFont FontT42;
 extern const tFont FontT48;
+extern const tFont FontT48min;
 extern const tFont FontT54;
 extern const tFont FontT84;
 extern const tFont FontT105;
