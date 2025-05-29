@@ -1914,11 +1914,13 @@ const SFirmwareData* firmwareDataGetPointer(void)
 }
 
 
+#if 0
 #ifndef SPECIALPROGRAMM
 const SHardwareData* hardwareDataGetPointer(void)
 {
     return (SHardwareData *)HARDWAREDATA_ADDRESS;
 }
+#endif
 #endif
 #endif
 const SSettings* settingsGetPointerStandard(void)

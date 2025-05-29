@@ -1572,7 +1572,10 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
 
     // neu 110212
     if(id == id_FONT)
+    {
         offsetTotal = 256 * 256 * 256 * (uint32_t)sBuffer[1] +  256 * 256 * (uint32_t)sBuffer[2] + 256 * (uint32_t)sBuffer[3];
+       /* todo set offset depending on font version offsetTotal = 0; */
+    }
     else
         offsetTotal = 256 * 256 * 256 * (uint32_t)sBuffer[0] +  256 * 256 * (uint32_t)sBuffer[1] + 256 * (uint32_t)sBuffer[2] + sBuffer[3];
 
