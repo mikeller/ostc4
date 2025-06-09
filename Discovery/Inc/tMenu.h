@@ -95,4 +95,5 @@ void enableLine(uint32_t lineId);
 void clearDisabledMenuLines(void);
 
 char *makeGrey(bool isGrey);
+char printCheckbox(bool isChecked);
 #endif /* TMENU_H */

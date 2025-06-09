@@ -1516,3 +1516,9 @@ char *makeGrey(bool isGrey)
 {
     return isGrey ? "\031" : "";
 }
+
+
+char printCheckbox(bool isChecked)
+{
+    return isChecked ? '\005' : '\006';
+}
