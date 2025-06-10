@@ -41,41 +41,10 @@
 #define HARDWAREDATA_ADDRESS	(0x08000000 + 0x0000A040)
 /* Exported functions --------------------------------------------------------*/
 
- typedef struct
- {
- 	// 8 bytes
- 	uint16_t primarySerial;
- 	uint8_t primaryLicence;
- 	uint8_t revision8bit;
- 	uint8_t production_year;
- 	uint8_t production_month;
- 	uint8_t production_day;
- 	uint8_t production_bluetooth_name_set;
 
- 	// 44 bytes
- 	char production_info[44];
-
- 	// 8 bytes
- 	uint16_t secondarySerial;
- 	uint8_t secondaryLicence;
- 	uint8_t secondaryReason8bit;
- 	uint8_t secondary_year;
- 	uint8_t secondary_month;
- 	uint8_t secondary_day;
- 	uint8_t secondary_bluetooth_name_set;
-
- 	// 4 bytes
- 	char secondary_info[4];
- } SHardwareData;
-
-
-uint32_t CalcFletcher32(uint32_t startAddr, uint32_t endAddr);
 
 uint8_t firmware_eraseFlashMemory(void);
 uint8_t firmware_programFlashMemory(uint8_t *pBuffer1, uint32_t length1);//, uint8_t *pBuffer2, uint32_t length2)
-
-uint8_t bootloader_eraseFlashMemory(void);
-uint8_t bootloader_programFlashMemory(uint8_t *pBuffer1, uint32_t length1, SHardwareData* pHwInfo);
 
 uint8_t firmware2_variable_upperpart_eraseFlashMemory(uint32_t length, uint32_t offset);
 uint8_t firmware2_variable_upperpart_programFlashMemory(uint32_t length, uint32_t offset, uint8_t *pBuffer1, uint32_t pBuffer1Size, uint8_t *pBuffer2);
