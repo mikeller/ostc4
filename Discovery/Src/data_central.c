@@ -717,12 +717,10 @@ void resetEvents(const SDiveState *pStateUsed)
 
 uint32_t	CRC_CalcBlockCRC_moreThan768000(uint32_t *buffer1, uint32_t *buffer2, uint32_t words)
 {
-	 cm_t        crc_model;
-	 uint32_t      word_to_do;
-	 uint8_t       byte_to_do;
-	 int         i;
-
-	 uint32_t wordCnt = 0;
+ cm_t        crc_model;
+ uint32_t      word_to_do;
+ uint8_t       byte_to_do;
+ int         i;
  
      // Values for the STM32F generator.
  
@@ -735,10 +733,10 @@ uint32_t	CRC_CalcBlockCRC_moreThan768000(uint32_t *buffer1, uint32_t *buffer2, u
  
      cm_ini(&crc_model);
  
-     do
+     while (words--)
      {
          // The STM32F10x hardware does 32-bit words at a time!!!
-				if(wordCnt >= (768000/4))
+				if(words > (768000/4))
 					word_to_do = *buffer2++;
 				else
 					word_to_do = *buffer1++;
@@ -767,8 +765,7 @@ uint32_t	CRC_CalcBlockCRC_moreThan768000(uint32_t *buffer1, uint32_t *buffer2, u
  
              cm_nxt(&crc_model, byte_to_do);
          }
-         wordCnt++;
-     } while (wordCnt != words);
+     }
  
      // Return the final result.
  
