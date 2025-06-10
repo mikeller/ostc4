@@ -58,19 +58,6 @@ void openEdit_Maintenance(void);
 //void openEdit_ShowDebugInfo(void);
 //void openEdit_Salinity(void);
 
-static uint32_t swapBytes(uint32_t source)
-{
-	uint32_t ret = 0;
-
-	ret =  		((source & 0x000000FF) << 24)
-			| 	((source & 0x0000FF00) <<  8)
-			| 	((source & 0x00FF0000) >>  8)
-			| 	((source & 0xFF000000) >> 24);
-
-	return ret;
-}
-
-
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_Date					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Time					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -114,9 +101,7 @@ uint8_t OnAction_RecoverSampleIdx(uint32_t editId, uint8_t blockNumber, uint8_t 
 #ifdef SCREENTEST
 uint8_t OnAction_ScreenTest		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 #endif
-uint8_t OnAction_Information	 (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-uint8_t OnAction_FlashBootloader (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-
+uint8_t OnAction_Information	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 /*
 uint8_t OnAction_Salinity			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_TestCLog			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -1398,20 +1383,12 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
-customBlockInfo_t blockInfo;
-
 void openEdit_Maintenance(void)
 {
     char text[32];
     unsigned char index = 0;
     SSettings *pSettings = settingsGetPointer();
     SSensorDataDiveO2* pDiveO2Data = NULL;
-
-    customBlockInfo_t* pCustumBlockInfo = (customBlockInfo_t *) CUSTOM_BLOCK_INFO_ADDR;
-
-    blockInfo.Type = swapBytes(pCustumBlockInfo->Type);
-    blockInfo.fletcher = swapBytes(pCustumBlockInfo->fletcher);
-    blockInfo.length = swapBytes(pCustumBlockInfo->length);
 
     resetMenuEdit(CLUT_MenuPageSystem);
 
@@ -1455,12 +1432,6 @@ void openEdit_Maintenance(void)
     	}
     }
 
-    if((blockInfo.Type & 0x0000FF00)== 0x0100)
-    {
-    	snprintf(text,32,"Flash Bootloader");
-		write_field_button(StMSYS5_FlashBoot,			30, 800, ME_Y_LINE4,  &FontT48, text);
-    }
-
 #ifdef ENABLE_ANALYSE_SAMPLES
     text[0] = TXT_2BYTE;
     text[1] = TXT2BYTE_SetSampleIndex;
@@ -1483,12 +1454,6 @@ void openEdit_Maintenance(void)
 #ifdef ENABLE_ANALYSE_SAMPLES
     setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
 #endif
-
-    if((blockInfo.Type & 0x0000FF00)== 0x0100)
-    {
-    	setEvent(StMSYS5_FlashBoot, (uint32_t)OnAction_FlashBootloader);
-    }
-
 
 
     text[0] = TXT_2BYTE;
@@ -1705,31 +1670,6 @@ uint8_t OnAction_ScreenTest		(uint32_t editId, uint8_t blockNumber, uint8_t digi
     FrameCount++;
 }
 #endif
-
-uint8_t OnAction_FlashBootloader (uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
-{
-	SHardwareData HwInfo;
-    customBlockInfo_t* pCustumBlockInfo = (customBlockInfo_t *) CUSTOM_BLOCK_INFO_ADDR;
-    customBlockInfo_t blockInfo;
-    uint32_t checksum;
-    uint8_t* pSource = (uint8_t *) 0x08100000;
-
-    checksum = CalcFletcher32(0x08100000,0x0811FFEF);	/* last nibble contains block info => exclude */
-
-    blockInfo.Type = swapBytes(pCustumBlockInfo->Type);
-    blockInfo.fletcher = swapBytes(pCustumBlockInfo->fletcher);
-    blockInfo.length = swapBytes(pCustumBlockInfo->length);
-
-    if(checksum == blockInfo.fletcher)
-    {
-		memcpy (&HwInfo, hardwareDataGetPointer(), sizeof(SHardwareData)); /* create backup copy because data will be overwritten during flash erase */
-
-		bootloader_eraseFlashMemory();
-		bootloader_programFlashMemory(pSource, blockInfo.length, &HwInfo);
-    }
-	return UNSPECIFIC_RETURN;
-}
-
 /*
 uint8_t OnAction_TestCLog	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {

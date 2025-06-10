@@ -32,7 +32,8 @@
 
 // From Common/Inc:
 #include "FirmwareData.h"
-#include "firmwareEraseProgram.h"
+
+//#include "data_central.h"
 
 #include "global_constants.h"
 // From Common/Drivers/
@@ -330,6 +331,33 @@ typedef struct
 	StimeZone timeZone;
 	uint8_t warningBuzzer;
 } SSettings;
+
+typedef struct
+{
+	// 8 bytes
+	uint16_t primarySerial;
+	uint8_t primaryLicence;
+	uint8_t revision8bit;
+	uint8_t production_year;
+	uint8_t production_month;
+	uint8_t production_day;
+	uint8_t production_bluetooth_name_set;
+
+	// 44 bytes
+	char production_info[44];
+
+	// 8 bytes
+	uint16_t secondarySerial;
+	uint8_t secondaryLicence;
+	uint8_t secondaryReason8bit;
+	uint8_t secondary_year;
+	uint8_t secondary_month;
+	uint8_t secondary_day;
+	uint8_t secondary_bluetooth_name_set;
+
+	// 4 bytes
+	char secondary_info[4];
+} SHardwareData;
 
 uint8_t writeData(uint8_t *);
 uint8_t readData(uint8_t what,uint8_t *);
