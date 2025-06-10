@@ -340,7 +340,6 @@
 #define StMSYS5_ResetBluetooth	_MB(2,8,5,12,0)
 #define StMSYS5_SetSampleIndx   _MB(2,8,5,13,0)
 #define StMSYS5_AdjustSurfPres  _MB(2,8,5,14,0)
-#define StMSYS5_FlashBoot		_MB(2,8,5,15,0)
 
 #define StMSYS_Custom0			_MB(2,8,1,0,0)
 #define StMSYS_Custom1			_MB(2,8,2,0,0)
