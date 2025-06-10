@@ -36,16 +36,6 @@
 	* @{
 	*/
 
-#define CUSTOM_BLOCK_INFO_ADDR	(0x0811FFF0)
-
-typedef struct
-{
-    uint32_t Reserved;		/* for future use */
-    uint32_t Type;			/* type => block purpose */
-    uint32_t fletcher;		/* fletcher check sum */
-    uint32_t length;		/* length of block starting from 0x08100000 */
-} customBlockInfo_t;
-
 void set_CustomsviewsSubpage(uint8_t page);
 
 /* Exported variables --------------------------------------------------------*/
