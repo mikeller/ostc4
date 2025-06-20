@@ -212,7 +212,7 @@ uint8_t logbook_getNumberOfHeaders(void);
 uint8_t logbook_getHeader(uint8_t StepBackwards,SLogbookHeader* pLogbookHeader);
 uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t* depth, uint8_t*  gasid, int16_t* temperature, uint16_t* ppo2,
 							    uint16_t* setpoint, uint16_t* sensor1, uint16_t* sensor2, uint16_t* sensor3, uint16_t* cns, uint8_t* bailout,
-								uint16_t* decostopDepth, uint16_t* tank, SGnssCoord* pPosition, uint8_t* event);
+								uint16_t* decostopDepth, uint16_t* tank, uint16_t* compassHeading, SGnssCoord* pPosition, uint16_t* scrubberState, uint8_t* event);
 void logbook_test(void);
 void logbook_InitAndWrite(SDiveState* pStateReal);
 void logbook_recover_brokenlog(uint8_t headerId);
