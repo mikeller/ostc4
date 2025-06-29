@@ -1070,16 +1070,20 @@ uint8_t select_mode(uint8_t type)
     // get model + features
     case 0x60:
         aTxBuffer[count++] = 0x00; // hardware descriptor HIGH byte
-        aTxBuffer[count++] = 0x3B; // hardware descriptor LOW byte // 0x3B is OSTC4 //  0x1A is OTSC3
+        aTxBuffer[count++] = 0x3B; // hardware descriptor LOW byte // 0x3B is OSTC 4/5 //  0x1A is OTSC3
         aTxBuffer[count++] = 0x00; // feature descriptor HIGH byte
         aTxBuffer[count++] = 0x00; // feature descriptor LOW byte
-        aTxBuffer[count++] = 0x43; // model id
+        if (isNewDisplay()) {
+            aTxBuffer[count++] = 0x44; // model id OSTC5
+        } else {
+            aTxBuffer[count++] = 0x43; // model id OSTC4
+        }
         aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
         break;
 
     // get model
     case 0x6A:
-        aTxBuffer[count++] = 0x3B; // 0x3B is OSTC4 //  0x1A is OTSC3
+        aTxBuffer[count++] = 0x3B; // 0x3B is OSTC 4/5 //  0x1A is OTSC3
         aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
         break;
 
