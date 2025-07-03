@@ -83,6 +83,32 @@ const SFirmwareData font_FirmwareData   __attribute__(( section(".font_firmware_
 		.magic[3] = FIRMWARE_MAGIC_END
 };
 
+
+const SFirmwareData font_CustomData   __attribute__(( section(".font_custom_data") )) =
+{
+		.versionFirst   = 1,
+		.versionSecond  = 0,
+		.versionThird	= 0,
+		.versionBeta	= 0,
+
+		/* 4 bytes, including trailing 0 */
+		.signature      = "im",
+
+		.release_year   = 18,
+		.release_month  = 10,
+		.release_day    = 04,
+		.release_sub    = 0,
+
+		/* max 48, including trailing 0 */
+		.release_info   ="FontPack extension",
+
+		/* for safety reasons and coming functions */
+		.magic[0] = FIRMWARE_MAGIC_FIRST,
+		.magic[1] = FIRMWARE_MAGIC_SECOND,
+		.magic[2] = FIRMWARE_MAGIC_FONT, /* the magic byte for fonts*/
+		.magic[3] = FIRMWARE_MAGIC_END
+};
+
 //////////////////////////////////////////////////////////////////////////////
 
 #ifdef BUILD_LIBRARY
