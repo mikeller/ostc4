@@ -76,6 +76,7 @@
 #define StIDEBUG		_MB(0,7,0,0,0)
 #define StISENINFO		_MB(0,8,0,0,0)
 #define StIPREDIVE		_MB(0,9,0,0,0)
+#define StILOGGER		_MB(0,10,0,0,0)
 
 #define StI_GoToLogbook			_MB(0,1,1,0,0)
 #define StI_GoToPlanner			_MB(0,1,2,0,0)
@@ -395,6 +396,8 @@
 
 #define StMOption_Timer					_MB(2,10,2,0,0)
 #define StMOption_Timer_Value			_MB(2,10,2,1,0)
+
+#define StMOption_Heartbeat 			_MB(2,10,3,0,0)
 
 /* PAGE 11 */
 #define StMPLAN		_MB(2,11,0,0,0)

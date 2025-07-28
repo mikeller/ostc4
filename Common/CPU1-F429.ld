@@ -208,7 +208,7 @@ SECTIONS
     /* Define Known Address for Each Font */
     /* Flash Sector 23 is protected (bootloader font + image) => use end of sector 22 */
 
-.lower_fonts 	0x080A0000  : {
+.lower_fonts 	0x080AA000  : {
 	 *(.lower_fonts.image_data_*)
 	 
 	 *(.lower_fonts.*) 

@@ -60,6 +60,10 @@
 #define DISPLAY_VERSION_LCD						(0u)
 #define DISPLAY_VERSION_NEW						(1u)
 
+#define CHUNK_SIZE				(150u)		/* the DMA will handle chunk size transfers */
+#define CHUNKS_PER_BUFFER		(3u)
+
+
 /* Exported variables --------------------------------------------------------*/
 
 extern SPI_HandleTypeDef hspiDisplay;
@@ -82,6 +86,7 @@ extern UART_HandleTypeDef UartPiezoTxHandle;
 void MX_SPI_Init(void);
 void MX_GPIO_Init(void);
 void MX_UART_Init(void);
+void MX_UART_BT_Init_DMA();
 uint8_t MX_UART_ButtonAdjust(uint8_t *array);
 
 void MX_SmallCPU_Reset_To_Boot(void);
@@ -103,6 +108,9 @@ void MX_TestPin_Low(void);
 
 void SetDisplayVersion(uint8_t version);
 uint8_t isNewDisplay(void);
+
+uint8_t UART_getChar();
+void UART_StartDMARx();
 
 
 #endif // OSTC_H

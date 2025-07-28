@@ -76,6 +76,15 @@ uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
     }
     nextline(text,&textPointer);
 
+#ifdef ENABLE_PULSE_SENSOR_BT
+    if (line == 0 || line == 3)
+    {
+   		textPointer += snprintf(&text[textPointer], 21, "%c%c", TXT_2BYTE, TXT2BYTE_Pulse);
+    }
+    nextline(text,&textPointer);
+
+#endif
+
     return StMOption;
 }
 void tMCvOption_checkLineStatus(void)

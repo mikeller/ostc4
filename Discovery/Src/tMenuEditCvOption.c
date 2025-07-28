@@ -35,6 +35,8 @@
 #include "tMenuEdit.h"
 #include "tHome.h"
 
+#include "cv_heartbeat.h"
+
 /* Private function prototypes -----------------------------------------------*/
 static void openEdit_Timer(void);
 void openEdit_Compass(void);
@@ -56,13 +58,13 @@ void openEdit_CvOption(uint8_t line)
     switch(line)
     {
 		case 1:
-		default:
-			resetMenuEdit(CLUT_MenuPageHardware);
-			openEdit_Compass();
-		break;
-		case 2:
-			openEdit_Timer();
-		break;
+		default:	resetMenuEdit(CLUT_MenuPageHardware);
+					openEdit_Compass();
+			break;
+		case 2:		openEdit_Timer();
+			break;
+		case 3: 	openEdit_Heartbeat();
+			break;
     }
 }
 

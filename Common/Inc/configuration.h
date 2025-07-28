@@ -96,6 +96,9 @@
 /* Enable to have a faster transfer speed between bluetooth module and CPU */
 #define ENABLE_FAST_COMM
 
+/* Enable to have support of Polar HC10 heartbeat sensor active */
+#define ENABLE_PULSE_SENSOR_BT
+
 /* Enable RTE sleep mode debugging */
 /* #define ENABLE_SLEEP_DEBUG */
 

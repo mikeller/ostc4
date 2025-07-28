@@ -42,6 +42,7 @@
 #include "tMenuEditSystem.h"
 #include "tMenuEditXtra.h"
 #include "tMenuEditCustom.h"
+#include "cv_heartbeat.h"
 
 /* Private types -------------------------------------------------------------*/
 #define TEXTSIZE 16
@@ -256,6 +257,11 @@ void tMenuEdit_refresh_live_content(void)
 	 	 case StMCustom3_CViewSelection5:
 	 	 case StMCustom3_CViewSelection6: refreshFct = CustomviewDivemode_refresh;
 	 	 	 break;
+#ifdef ENABLE_PULSE_SENSOR_BT
+	 	case (StMOption_Heartbeat):		refreshFct = refresh_Heartbeat;
+	 		break;
+#endif
+
 #ifdef ENABLE_MOTION_CONTROL
 	 	 case (StMCustom5_CViewPortCalib & MaskFieldDigit):
 	 	 case StMCustom5_CViewPortLayout:

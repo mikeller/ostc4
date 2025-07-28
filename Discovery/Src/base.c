@@ -501,6 +501,7 @@ int main(void)
             resetToFirmwareUpdate();
 
         tCCR_control();
+
         if( tComm_control() )// will stop while loop if tComm Mode started until exit from UART
         {
             createDiveSettings();
@@ -532,6 +533,8 @@ int main(void)
         }
         if(DoDisplayRefresh)							/* set every 100ms by timer interrupt */
         {
+        	cv_heartbeat_Control();
+
 	        DoDisplayRefresh = 0;
 
 	        updateSetpointStateUsed();
@@ -727,6 +730,13 @@ static void RefreshDisplay()
 {
 	SStateList status;
 	get_globalStateList(&status);
+
+	if((status.base != 0) && (InfoLogger_isUpdated()))
+	{
+		openInfo_Logger();
+		get_globalStateList(&status);
+	}
+
 	switch(status.base)
 	{
 	case BaseHome:
