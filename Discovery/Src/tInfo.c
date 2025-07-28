@@ -38,6 +38,7 @@
 #include "tInfoCompass.h"
 #include "tInfoSensor.h"
 #include "tInfoPreDive.h"
+#include "tInfoLogger.h"
 #include "tMenu.h"
 #include "tMenuEdit.h"
 
@@ -226,6 +227,10 @@ void tInfo_refresh(void)
     		case StIPREDIVE: 	tIscreen.FBStartAdress = getFrame(14);
     							infoColor = CLUT_MenuPageGasCC;
     							refreshInfo_PreDive(tIscreen);
+    				break;
+    		case StILOGGER: 	tIscreen.FBStartAdress = getFrame(14);
+    							infoColor = CLUT_MenuPageCvOption;
+    							refreshInfo_Logger(tIscreen);
     				break;
 
     		default:
