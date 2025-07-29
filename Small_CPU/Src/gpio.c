@@ -183,15 +183,21 @@ void GPIO_Activate_V2(void)
 {
 	if(GPIO_Version == 0)
 	{
-	GPIO_Version = 1;
-	GPIO_LEDs_VIBRATION_Init();
+		GPIO_Version = 1;
+	}
+}
 
+void GPIO_Init_V2(void)
+{
+	if(GPIO_Version == 1)
+	{
+		GPIO_LEDs_VIBRATION_Init();
 #ifdef ENABLE_GNSS_INTERN
-	GNSS_IO_init();
-	GPIO_GPS_ON();
-	GPIO_GPS_BCKP_ON();
-	MX_USART6_UART_Init();
-	GNSS_Init(&GNSS_Handle, &huart6);
+		GNSS_IO_init();
+		GPIO_GPS_ON();
+		GPIO_GPS_BCKP_ON();
+		MX_USART6_UART_Init();
+		GNSS_Init(&GNSS_Handle, &huart6);
 #endif
 	}
 }

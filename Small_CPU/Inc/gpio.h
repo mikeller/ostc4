@@ -52,6 +52,7 @@ void GPIO_GPS_BCKP_ON(void);
 
 uint8_t GPIO_GetVersion(void);
 void GPIO_Activate_V2(void);
+void GPIO_Init_V2(void);
 void GPIO_HandleBuzzer();
 #endif
 #ifdef __cplusplus

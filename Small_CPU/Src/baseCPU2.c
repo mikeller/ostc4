@@ -285,8 +285,6 @@ int main(void) {
 	HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
 	MX_RTC_init();
-	GPIO_LEDs_VIBRATION_Init();
-	GPIO_GNSS_Init();
 	GPIO_new_DEBUG_Init(); // added 170322 hw
 	initGlobals();
 
@@ -528,7 +526,6 @@ int main(void) {
 			externalInterface_SwitchPower33(false);
 			if (hasExternalClock())
 				SystemClock_Config_HSI();
-			GPIO_LEDs_VIBRATION_Init();
 			sleep_prepare();
 
 			while(time_elapsed_ms(shutdownTick,HAL_GetTick()) < 1000 )	/* delay shutdown till shutdown animation is finished */
@@ -537,6 +534,8 @@ int main(void) {
 			}
 			shutdownTick = 0;
 			scheduleSleepMode();
+
+			/* wakeup starts here */
 			if (hasExternalClock())
 				SystemClock_Config_HSE();
 			EXTI_Wakeup_Button_DeInit();
@@ -555,8 +554,7 @@ int main(void) {
 				externalInterface_SwitchPower33(true);
 			}
 			externalInterface_InitDatastruct();
-			MX_USART6_UART_Init();
-			GNSS_Init(&GNSS_Handle, &huart6);
+			GPIO_Init_V2();
 			// EXTILine0_Button_DeInit(); not now, later after testing
 			break;
 		}
@@ -885,6 +883,9 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle) {
 }
 
 void sleep_prepare(void) {
+
+	GPIO_InitTypeDef GPIO_InitStruct;
+
 	EXTI_Wakeup_Button_Init();
 
 	compass_sleep();
@@ -897,7 +898,12 @@ void sleep_prepare(void) {
 	MX_SPI3_DeInit();
 	ADCx_DeInit();
 
-	GPIO_InitTypeDef GPIO_InitStruct;
+	if(GPIO_GetVersion() > 0)
+	{
+		GPIO_LED_GREEN_OFF();
+		GPIO_LED_RED_OFF();
+		GPIO_VIBRATION_OFF();
+	}
 
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
@@ -909,35 +915,29 @@ void sleep_prepare(void) {
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Pin = GPIO_PIN_All;
 	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
+
 #ifdef ENABLE_SLEEP_DEBUG
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_3 | GPIO_PIN_8 | GPIO_PIN_9); /* debug */
 #endif
 
-/*
+#ifdef ENABLE_GNSS_INTERN
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
+#else
+	GPIO_InitStruct.Pin = GPIO_PIN_All;
+#endif
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
-*/
-	GPIO_InitStruct.Pin =  GPIO_PIN_All ^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | EXT33V_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
 
+	GPIO_InitStruct.Pin =  GPIO_PIN_All ^ ( MAINCPU_CONTROL_PIN | CHARGE_OUT_PIN | EXT33V_CONTROL_PIN); /* power off & charger in & charge out & OSC32 & ext33Volt */
 	HAL_GPIO_Init( GPIOC, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | VIBRATION_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN);
+	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 ); /* could be added for debug purpose: | VIBRATION_CONTROL_PIN | LED_CONTROL_PIN_RED | LED_CONTROL_PIN_GREEN */
 #ifdef ENABLE_SLEEP_DEBUG
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_0 | GPIO_PIN_13 | GPIO_PIN_14); /* wake up button & debug */
 #endif
 	HAL_GPIO_Init( GPIOA, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = GPIO_PIN_All;
-	HAL_GPIO_Init( GPIOH, &GPIO_InitStruct);
-
 	GPIO_Power_MainCPU_OFF();
 
-	if(GPIO_GetVersion() > 0)
-	{
-		GPIO_LED_GREEN_OFF();
-		GPIO_LED_RED_OFF();
-		GPIO_VIBRATION_OFF();
-	}
 #ifdef ENABLE_GNSS_INTERN
 	if(GPIO_GetVersion() > 0)
 	{
@@ -947,9 +947,9 @@ void sleep_prepare(void) {
 	}
 #endif
 #ifndef ENABLE_SLEEP_DEBUG
-/*
+#ifndef ENABLE_GNSS_INTERN
 	__HAL_RCC_GPIOB_CLK_DISABLE();
-*/
+#endif
 #endif
 	__HAL_RCC_GPIOH_CLK_DISABLE();
 }

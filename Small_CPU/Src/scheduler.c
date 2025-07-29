@@ -346,6 +346,7 @@ void scheduleSpecial_Evaluate_DataSendToSlave(void)
 	if(GPIO_GetVersion() < global.dataSendToSlave.displayVersion)
 	{
 		GPIO_Activate_V2();
+		GPIO_Init_V2();
 	}
 
 	if(GPIO_GetVersion() > 0)
