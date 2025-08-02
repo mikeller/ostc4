@@ -40,6 +40,8 @@ typedef enum
 	DEVICE_INDICATOR,
 	CONNECTION_INDICATOR,
 	SERVICE_INDICATOR,
+	CHARACTERISTIC_INDICATOR,
+	DESCRIPTOR_INDICATOR,
 	OK_INDICATOR,			/* module control */
 	ERROR_INDICATOR			/* module control */
 } indicatior_t;
@@ -54,7 +56,16 @@ typedef enum
 	BT_READ_SERV_HANDLE,
 	BT_READ_SERV_START,
 	BT_READ_SERV_END,
-	BT_READ_SERV_UUID
+	BT_READ_SERV_UUID,
+	BT_READ_CHAR_CONHANDLE,
+	BT_READ_CHAR_ATTRIBUTE,
+	BT_READ_CHAR_PROPERTY,
+	BT_READ_CHAR_VALUEHANDLE,
+	BT_READ_CHAR_UUID,
+	BT_READ_DESC_CONHANDLE,
+	BT_READ_DESC_CHARHANDLE,
+	BT_READ_DESC_DESCHANDLE,
+	BT_READ_DESC_UUID
 } readDataType_t;
 
 typedef enum
@@ -64,7 +75,11 @@ typedef enum
 	SENSOR_HB_CHECK_CONFIG,
 	SENSOR_HB_DISCOVER,
 	SENSOR_HB_CONNECT,
+	SENSOR_HB_DISCONNECT,
 	SENSOR_HB_SERVICES,
+	SENSOR_HB_CHARACTERISTIC,
+	SENSOR_HB_DESCRIPTOR,
+	SENSOR_HB_SUBSCRIBE,
 	SENSOR_HB_RESTART,
 	SENSOR_HB_DETECTION_INDICATOR,		/* searching for indicators to identify data items */
 	SENSOR_HB_DETECTION_RSSI,
@@ -92,10 +107,26 @@ typedef struct
 	uint8_t uuid[50];
 } btDeviceService_t;
 
+typedef struct
+{
+	uint8_t conHandle;
+	uint8_t attrHandle[10];
+	uint8_t properties[10];
+	uint8_t valueHandle[10];
+	uint8_t uuid[50];
+} btDeviceCharacteristic_t;
 
+typedef struct
+{
+	uint8_t conHandle;
+	uint8_t charHandle[10];
+	uint8_t descHandle[10];
+	uint8_t uuid[50];
+} btDeviceDescriptor_t;
 
 sensorHeartbeat_State_t cv_heartbeat_getState();
 void refresh_Heartbeat(void);
 void cv_heartbeat_Control(void);
+uint8_t cv_heartbeat_HandleData();
 
 #endif /* INC_CV_HEARTBEAT_H_ */

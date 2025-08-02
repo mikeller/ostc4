@@ -29,8 +29,8 @@
 #define TINFO_LOGGER_H
 
 #define LINE_HEADER_BYTES (3u)
-#define MAX_CHAR_PER_LINE (50u)
-#define MAX_LOGGER_LINES	(12u)
+#define MAX_CHAR_PER_LINE (60u)
+#define MAX_LOGGER_LINES  (13u)
 
 #define LOG_TX_LINE	(0u)
 #define LOG_RX_LINE (1u)

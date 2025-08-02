@@ -58,13 +58,13 @@ void InfoLogger_writeLine(uint8_t* pLine,uint8_t lineLength,uint8_t direction)
 
 	if(lineLength <= MAX_CHAR_PER_LINE)
 	{
+		memset(&lines[lineWriteIndex][0],0, (MAX_CHAR_PER_LINE + LINE_HEADER_BYTES));
 		if(direction == LOG_TX_LINE)
 		{
 			lines[lineWriteIndex][LogIndex] = '\002';	/* align right */
 			LogIndex++;
 		}
 		memcpy(&lines[lineWriteIndex][LogIndex],pLine,lineLength);
-		lines[lineWriteIndex][LogIndex + lineLength] = 0;	/* make sure string is zero terminated */
 		lineWriteIndex++;
 		if(lineWriteIndex == MAX_LOGGER_LINES)
 		{
@@ -124,18 +124,26 @@ void refreshInfo_Logger(GFX_DrawCfgScreen s)
 		displayLine = lineWriteIndex;
 	}
 
+	if(lineReadIndex != lineWriteIndex)			/* needed for isUpdated function */
+	{
+		lineReadIndex++;
+		if(lineReadIndex == MAX_LOGGER_LINES)
+		{
+			lineReadIndex = 0;
+		}
+	}
 	while (index < displayLine)
 	{
 		color = CLUT_Font020;
 		if(lines[index][0] == '\002')
 		{
-			color = CLUT_Font021;
+			color = CLUT_NiceGreen;
 		}
-		if(lineReadIndex == lineWriteIndex)
+		if(lineReadIndex == index)
 		{
-			color = CLUT_Font022;
+			color = CLUT_NiceBlue;
 		}
-		tInfo_write_content_simple(  30, 770, 50 + (index * 30), &FontT24, (char*)lines[index], color);
+		tInfo_write_content_simple(  30, 770, 60 + (index * 30), &FontT24, (char*)lines[index], color);
 
 		if(lineReadIndex != lineWriteIndex)			/* needed for isUpdated function */
 		{

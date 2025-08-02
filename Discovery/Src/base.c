@@ -237,6 +237,8 @@
 #include "t7.h"
 #include "t3.h"
 #include "tMenuEditSetpoint.h"
+#include "cv_heartbeat.h"
+#include "tInfoLogger.h"
 
 #ifdef DEMOMODE
 #include "demo.h"
@@ -527,6 +529,9 @@ int main(void)
         {
         	TriggerButtonAction();
         }
+
+        cv_heartbeat_HandleData();
+
         if(DoHousekeeping)
         {
            	DoHousekeeping = housekeepingFrame();

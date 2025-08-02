@@ -41,19 +41,21 @@ static uint32_t startDetection_ms;
 #define MAX_BT_DEVICE 10		/* max number of device which may be handled */
 static btDdeviceData_t btDeviceList[MAX_BT_DEVICE];
 static btDeviceService_t curDeviceService[10];
+static btDeviceCharacteristic_t curDevCharacteristic[10];
+static btDeviceDescriptor_t curDevDescriptor;
+
+
+static uint8_t curCharacteristicIndex = 0;
 static uint8_t curServiceIndex = 0;
 static uint8_t curBtIndex = 0;
 static uint8_t connHandle = ' ';
+static uint8_t evaluateDevIndex = 0xFF;
+static uint8_t evaluateSrvIndex = 0xFF;
+static uint8_t evaluateCharIndex = 0xFF;
+static uint8_t evaluateDescIndex = 0xFF;
 
 static indicatior_t checkIndicators(uint8_t* pdata)
 {
-#if 0
-	static uint8_t foundRSSI = 0;
-	static uint8_t foundNAME = 0;
-	static uint8_t foundMNF = 0;
-	static uint8_t foundUUID = 0;
-	static uint8_t foundOK = 0;
-#endif
 	indicatior_t ret = NO_INDICATOR;
 
 	if(strcmp((char*)pdata,"+UBTD:") == 0)
@@ -68,12 +70,22 @@ static indicatior_t checkIndicators(uint8_t* pdata)
 	{
 		ret = SERVICE_INDICATOR;
 	}
+	else if(strcmp((char*)pdata,"+UBTGDCS:") == 0)
+	{
+		ret = CHARACTERISTIC_INDICATOR;
+	}
+	else if(strcmp((char*)pdata,"+UBTGDCD:") == 0)
+	{
+		ret = DESCRIPTOR_INDICATOR;
+	}
 
 	return ret;
 }
 
 static void handleOK()
 {
+	uint8_t index = 0;
+
 	switch(heartbeatState)
 	{
 		case SENSOR_HB_ENABLE_BLE:	heartbeatState = SENSOR_HB_CHECK_CONFIG;
@@ -82,10 +94,75 @@ static void handleOK()
 							break;
 		case SENSOR_HB_RESTART: 	heartbeatState = SENSOR_HB_OFFLINE;
 							break;
-		case SENSOR_HB_DISCOVER: heartbeatState = SENSOR_HB_CONNECT;
+		case SENSOR_HB_DISCOVER: 	if(curBtIndex > 0)
+									{
+										heartbeatState = SENSOR_HB_CONNECT;
+										evaluateDevIndex = 0;
+									}
+									else
+									{
+										heartbeatState = SENSOR_HB_OFFLINE;
+									}
+
 							break;
-		case SENSOR_HB_SERVICES: heartbeatState = SENSOR_HB_OFFLINE;
+		case SENSOR_HB_SERVICES: 	evaluateSrvIndex = 0xFF;
+									if(curServiceIndex != 0)
+									{
+										for(index = 0; index <= curServiceIndex; index++)
+										{
+											if(strcmp((char*)curDeviceService[index].uuid,"180D") == 0)
+											{
+												heartbeatState = SENSOR_HB_CHARACTERISTIC;
+												evaluateSrvIndex = index;
+												curCharacteristicIndex = 0;
+												break;
+											}
+										}
+									}
+									if(evaluateSrvIndex == 0xFF)		/* device does not provide heartbeat data => disconnect */
+									{
+										heartbeatState = SENSOR_HB_DISCONNECT;
+									}
 							break;
+		case SENSOR_HB_CHARACTERISTIC:	evaluateCharIndex = 0xFF;
+										if(curCharacteristicIndex != 0)
+										{
+											for(index = 0; index < curCharacteristicIndex; index++)
+											{
+												if(strcmp((char*)curDevCharacteristic[index].uuid,"2A37") == 0)
+												{
+													heartbeatState = SENSOR_HB_DESCRIPTOR;
+													evaluateCharIndex = index;
+													break;
+												}
+											}
+										}
+										if(evaluateCharIndex == 0xFF)		/* device does not provide heartbeat data => disconnect */
+										{
+											heartbeatState = SENSOR_HB_DISCONNECT;
+										}
+							break;
+		case SENSOR_HB_DESCRIPTOR:		if(strcmp((char*)curDevDescriptor.uuid,"2902") == 0)
+										{
+											heartbeatState = SENSOR_HB_SUBSCRIBE;
+										}
+										else
+										{
+											heartbeatState = SENSOR_HB_DISCONNECT;
+										}
+							break;
+		case SENSOR_HB_DISCONNECT:		evaluateDevIndex++;
+										connHandle= ' ';
+										if(evaluateDevIndex < curBtIndex)	/* more devices to be evaluated? */
+										{
+											heartbeatState = SENSOR_HB_CONNECT;
+										}
+										else
+										{
+											heartbeatState = SENSOR_HB_OFFLINE;
+										}
+							break;
+		case SENSOR_HB_CONNECT:			/* handled in data rx section */
 		default:
 							break;
 	}
@@ -93,10 +170,25 @@ static void handleOK()
 
 static void handleERROR()
 {
-
+	switch(heartbeatState)
+	{
+		case SENSOR_HB_DISCONNECT:			evaluateDevIndex++;
+											connHandle= ' ';
+											if(evaluateDevIndex < curBtIndex)	/* more devices to be evaluated? */
+											{
+												heartbeatState = SENSOR_HB_CONNECT;
+											}
+											else
+											{
+												heartbeatState = SENSOR_HB_OFFLINE;
+											}
+						break;
+		default:
+						break;
+	}
 }
 
-static uint8_t getDeviceList()
+uint8_t cv_heartbeat_HandleData()
 {
 	static uint8_t firstDevice = 1;
 	static uint8_t curLine[MAX_CHAR_PER_LINE];			/* holds complete line and is used for logging */
@@ -113,7 +205,7 @@ static uint8_t getDeviceList()
 
 	while((data != 0) && (complete == 0))
 	{
-		if(curLineIndex == MAX_CHAR_PER_LINE)		/* avoid overflow */
+		if(curLineIndex == MAX_CHAR_PER_LINE - 1)		/* avoid overflow */
 		{
 			InfoLogger_writeLine(curLine,curLineIndex,0);
 			memset(curLine,0,sizeof(curLine));
@@ -143,11 +235,22 @@ static uint8_t getDeviceList()
 												memcpy (btDeviceList[curBtIndex].name, parameter, writeIndex);
 											}
 								break;
-				case BT_READ_SERV_UUID: 	if(writeIndex < 50)
+				case BT_READ_SERV_UUID: 	if((writeIndex < 50) && (curServiceIndex < 10))
 											{
 												memcpy(curDeviceService[curServiceIndex].uuid, parameter, writeIndex);
 											}
 											curServiceIndex++;
+								break;
+				case BT_READ_CHAR_UUID: 	if(writeIndex < 50)
+											{
+												memcpy(curDevCharacteristic[curCharacteristicIndex].uuid, parameter, writeIndex);
+												curCharacteristicIndex++;
+											}
+								break;
+				case BT_READ_DESC_UUID: 	if(writeIndex < 50)
+											{
+												memcpy(curDevDescriptor.uuid, parameter, writeIndex);
+											}
 								break;
 				default:
 					break;
@@ -171,6 +274,13 @@ static uint8_t getDeviceList()
 						break;
 					case SERVICE_INDICATOR: 	readType = BT_READ_SERV_HANDLE;
 						break;
+					case CHARACTERISTIC_INDICATOR: readType = BT_READ_CHAR_CONHANDLE;
+								//					snprintf(text,40,"Found Char");
+							//						InfoLogger_writeLine((uint8_t*)text,strlen(text),0);
+						break;
+					case DESCRIPTOR_INDICATOR: 	readType = BT_READ_DESC_CONHANDLE;
+						break;
+
 					default:
 						break;
 				}
@@ -213,6 +323,7 @@ static uint8_t getDeviceList()
 						case BT_READ_CON_DETAILS:	connHandle = parameter[0];
 													heartbeatState = SENSOR_HB_SERVICES;
 													readType = BT_READ_NOTHING;
+													curServiceIndex = 0;
 										break;
 						case BT_READ_SERV_HANDLE:	curDeviceService[curServiceIndex].handle = parameter[0];
 													readType = BT_READ_SERV_START;
@@ -229,7 +340,42 @@ static uint8_t getDeviceList()
 													}
 													readType = BT_READ_SERV_UUID;
 										break;
-
+						case BT_READ_CHAR_CONHANDLE: curDevCharacteristic[curCharacteristicIndex].conHandle = parameter[0];
+													 readType = BT_READ_CHAR_ATTRIBUTE;
+										break;
+						case BT_READ_CHAR_ATTRIBUTE: if(writeIndex < 10)
+													{
+														memcpy(curDevCharacteristic[curCharacteristicIndex].attrHandle, parameter, writeIndex);
+													}
+													readType = BT_READ_CHAR_PROPERTY;
+										break;
+						case BT_READ_CHAR_PROPERTY: if(writeIndex < 10)
+													{
+														memcpy(curDevCharacteristic[curCharacteristicIndex].properties, parameter, writeIndex);
+													}
+													readType = BT_READ_CHAR_VALUEHANDLE;
+										break;
+						case BT_READ_CHAR_VALUEHANDLE: if(writeIndex < 10)
+													{
+														memcpy(curDevCharacteristic[curCharacteristicIndex].valueHandle, parameter, writeIndex);
+													}
+													readType = BT_READ_CHAR_UUID;
+										break;
+						case BT_READ_DESC_CONHANDLE: curDevDescriptor.conHandle = parameter[0];
+													 readType = BT_READ_DESC_CHARHANDLE;
+										break;
+						case BT_READ_DESC_CHARHANDLE: if(writeIndex < 10)
+													{
+														memcpy(curDevDescriptor.charHandle, parameter, writeIndex);
+													}
+													readType = BT_READ_DESC_DESCHANDLE;
+										break;
+						case BT_READ_DESC_DESCHANDLE: if(writeIndex < 10)
+													{
+														memcpy(curDevDescriptor.descHandle, parameter, writeIndex);
+													}
+													readType = BT_READ_DESC_UUID;
+										break;
 						default:					readType = BT_READ_NOTHING;
 							break;
 					}
@@ -299,14 +445,9 @@ void cv_heartbeat_Control(void)
 	static uint8_t action = 0;
 	static uint8_t retry = 0;
 	static uint8_t lastState = 0;
-	static uint8_t devicesIndex = 0;
-
-
 	char cmd[50];
 
 	cmd[0] = 0;
-
-	getDeviceList();
 
 	if(action == 3)
 	{
@@ -336,7 +477,7 @@ void cv_heartbeat_Control(void)
 			case SENSOR_HB_DISCOVER:	if(lastState != SENSOR_HB_DISCOVER)
 										{
 											snprintf(cmd, sizeof(cmd), "AT+UBTD=2,1\r\n" ); //+UBTLE=1 //"AT+UBTD=2,1,5000\r\n"
-											devicesIndex = 0;
+											curBtIndex = 0;
 										}
 
 										//snprintf(cmd, sizeof(cmd), "AT&W\r\n" ); //  AT+UBTD=2,1\r\n "AT+UBTD=2,1,5000\r\n"
@@ -347,22 +488,31 @@ void cv_heartbeat_Control(void)
 									//	snprintf(cmd, sizeof(cmd), "AT+CPWROFF\r\n" ); //  AT+UBTD=2,1\r\n "AT+UBTD=2,1,5000\r\n"
 				break;
 #endif
-			case SENSOR_HB_CONNECT:		if(curBtIndex != devicesIndex)
+			case SENSOR_HB_CONNECT:		if(evaluateDevIndex < curBtIndex)
 										{
-											snprintf(cmd, sizeof(cmd), "AT+UBTACLC=%s\r\n",btDeviceList[devicesIndex].address);
-											devicesIndex++;
+											snprintf(cmd, sizeof(cmd), "AT+UBTACLC=%s\r\n",btDeviceList[evaluateDevIndex].address);
+									//		evaluateDevIndex = devicesIndex;
+									//		devicesIndex++;
 										}
+				break;
+			case SENSOR_HB_DISCONNECT:		snprintf(cmd, sizeof(cmd), "AT+UBTACLD=%c\r\n",connHandle);
 				break;
 			case SENSOR_HB_SERVICES:	if((connHandle >= '0') && (connHandle <= '9') && (lastState != SENSOR_HB_SERVICES))
 										{
-											snprintf(cmd, sizeof(cmd), "AT+UBTGDP=0%c\r\n",connHandle);
-										}
-										else
-										{
-											heartbeatState = SENSOR_HB_OFFLINE;
+											snprintf(cmd, sizeof(cmd), "AT+UBTGDP=%c\r\n",connHandle);
+											memset(curDeviceService, 0, sizeof(curDeviceService));
 										}
 				break;
-
+			case SENSOR_HB_CHARACTERISTIC:	snprintf(cmd, sizeof(cmd), "AT+UBTGDCS=%c,%s,%s\r\n",connHandle,curDeviceService[evaluateSrvIndex].start
+																								,curDeviceService[evaluateSrvIndex].end);
+											memset(curDevCharacteristic, 0, sizeof(curDevCharacteristic));
+				break;
+			case SENSOR_HB_DESCRIPTOR: 		snprintf(cmd, sizeof(cmd), "AT+UBTGDCD=%c,%s,%s\r\n",connHandle,curDevCharacteristic[evaluateCharIndex].valueHandle
+																											,curDeviceService[evaluateSrvIndex].end);
+											//memset(curDevDescriptor, 0, sizeof(curDevCharacteristic));
+				break;
+			case SENSOR_HB_SUBSCRIBE: 		snprintf(cmd, sizeof(cmd), "AT+UBTGWC=%c,%s,1\r\n",connHandle,curDevDescriptor.descHandle);
+				break;
 			default:
 				break;
 		}

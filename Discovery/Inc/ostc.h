@@ -60,7 +60,7 @@
 #define DISPLAY_VERSION_LCD						(0u)
 #define DISPLAY_VERSION_NEW						(1u)
 
-#define CHUNK_SIZE				(150u)		/* the DMA will handle chunk size transfers */
+#define CHUNK_SIZE				(160u)		/* the DMA will handle chunk size transfers */
 #define CHUNKS_PER_BUFFER		(3u)
 
 
