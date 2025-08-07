@@ -24,6 +24,9 @@
 ///     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 
+#include "configuration.h"
+
+#ifdef ENABLE_PULSE_SENSOR_BT
 #include "cv_heartbeat.h"
 #include "tMenuEdit.h"
 
@@ -32,6 +35,7 @@
 #include "ostc.h"
 #include "tComm.h"
 #include "tInfoLogger.h"
+#include "stdlib.h"
 
 static sensorHeartbeat_State_t heartbeatState = SENSOR_HB_OFFLINE;
 
@@ -52,7 +56,63 @@ static uint8_t connHandle = ' ';
 static uint8_t evaluateDevIndex = 0xFF;
 static uint8_t evaluateSrvIndex = 0xFF;
 static uint8_t evaluateCharIndex = 0xFF;
-static uint8_t evaluateDescIndex = 0xFF;
+
+static void parsePulseMeasurement(uint8_t* pData, uint8_t length)
+{
+	uint8_t rawData[10];
+	char text[40];
+	char* enptr;
+	uint8_t flags = 0;
+	uint16_t rr = 0;
+	uint8_t index = 0;
+	uint8_t* pRaw = (uint8_t*)&rawData;
+	char tmpStr[3];
+
+	tmpStr[2] = 0;
+
+	HRMeasurement_t pulseData;
+
+	for(index = 0; index < length; index +=2)
+	{
+		memcpy(tmpStr,&pData[index],2);
+		rawData[index / 2] = strtol(tmpStr, &enptr,16);
+	}
+	flags = pRaw[0];
+	index = 1;
+    /* 0: Heart Rate Format bit (0 = UINT8, 1 = UINT16) */
+	if (flags & 0x01)
+	{
+	   	pulseData.heart_rate = pRaw[index] | (pRaw[index + 1] << 8);
+	    index += 2;
+	} else
+	{
+	  	pulseData.heart_rate = pRaw[index];
+	    index += 1;
+	}
+
+	/* 3: Energy Expended Status	*/
+	if (flags & 0x08)
+	{
+	   	pulseData.energy_expended = pRaw[index] | (pRaw[index + 1] << 8);
+	    index += 2;
+	} else
+	{
+	  	pulseData.energy_expended = 0;
+	}
+    /* 4: RR-Interval bit			*/
+	pulseData.rr_count = 0;
+	if (flags & 0x10)
+	{
+	    while (index + 1 < 4 && pulseData.rr_count < 10)
+	    {
+	        rr = pRaw[index] | (pRaw[index + 1] << 8);
+	        pulseData.rr_intervals[pulseData.rr_count++] = rr;
+	        index += 2;
+	    }
+	}
+//			snprintf(text,40,"Pulse: %d",pulseData.heart_rate);
+//			InfoLogger_writeLine((uint8_t*)text,strlen(text),0);
+}
 
 static indicatior_t checkIndicators(uint8_t* pdata)
 {
@@ -78,7 +138,10 @@ static indicatior_t checkIndicators(uint8_t* pdata)
 	{
 		ret = DESCRIPTOR_INDICATOR;
 	}
-
+	else if(strcmp((char*)pdata,"+UUBTGN:") == 0)
+	{
+		ret = PULSE_INDICATOR;
+	}
 	return ret;
 }
 
@@ -150,6 +213,9 @@ static void handleOK()
 										{
 											heartbeatState = SENSOR_HB_DISCONNECT;
 										}
+							break;
+
+		case SENSOR_HB_SUBSCRIBE:		heartbeatState = SENSOR_HB_CONNECTED;
 							break;
 		case SENSOR_HB_DISCONNECT:		evaluateDevIndex++;
 										connHandle= ' ';
@@ -252,6 +318,11 @@ uint8_t cv_heartbeat_HandleData()
 												memcpy(curDevDescriptor.uuid, parameter, writeIndex);
 											}
 								break;
+				case BT_READ_PULSE_DATA: 	if(writeIndex < 50)
+											{
+												parsePulseMeasurement(parameter, writeIndex);
+											}
+								break;
 				default:
 					break;
 			}
@@ -275,12 +346,11 @@ uint8_t cv_heartbeat_HandleData()
 					case SERVICE_INDICATOR: 	readType = BT_READ_SERV_HANDLE;
 						break;
 					case CHARACTERISTIC_INDICATOR: readType = BT_READ_CHAR_CONHANDLE;
-								//					snprintf(text,40,"Found Char");
-							//						InfoLogger_writeLine((uint8_t*)text,strlen(text),0);
 						break;
 					case DESCRIPTOR_INDICATOR: 	readType = BT_READ_DESC_CONHANDLE;
 						break;
-
+					case PULSE_INDICATOR:		readType = BT_READ_PULSE_CONHANDLE;
+						break;
 					default:
 						break;
 				}
@@ -376,6 +446,23 @@ uint8_t cv_heartbeat_HandleData()
 													}
 													readType = BT_READ_DESC_UUID;
 										break;
+						case BT_READ_PULSE_CONHANDLE: curDevDescriptor.conHandle = parameter[0];
+													  readType = BT_READ_PULSE_VALUEHANDLE;
+										break;
+						case BT_READ_PULSE_VALUEHANDLE: if(writeIndex < 10)
+														{
+											//				if(strcmp((char*)curDevCharacteristic[evaluateCharIndex].valueHandle,(char*) parameter) == 0)
+															{
+																readType = BT_READ_PULSE_DATA;
+															}
+#if 0
+															else
+															{
+																readType = BT_READ_NOTHING;
+															}
+#endif
+														}
+										break;
 						default:					readType = BT_READ_NOTHING;
 							break;
 					}
@@ -384,7 +471,7 @@ uint8_t cv_heartbeat_HandleData()
 				}
 				else
 				{
-				//	if(readType != BT_READ_NOTHING)
+					if(readType != BT_READ_NOTHING)
 					{
 						parameter[writeIndex++] = data;
 					}
@@ -491,8 +578,6 @@ void cv_heartbeat_Control(void)
 			case SENSOR_HB_CONNECT:		if(evaluateDevIndex < curBtIndex)
 										{
 											snprintf(cmd, sizeof(cmd), "AT+UBTACLC=%s\r\n",btDeviceList[evaluateDevIndex].address);
-									//		evaluateDevIndex = devicesIndex;
-									//		devicesIndex++;
 										}
 				break;
 			case SENSOR_HB_DISCONNECT:		snprintf(cmd, sizeof(cmd), "AT+UBTACLD=%c\r\n",connHandle);
@@ -509,7 +594,6 @@ void cv_heartbeat_Control(void)
 				break;
 			case SENSOR_HB_DESCRIPTOR: 		snprintf(cmd, sizeof(cmd), "AT+UBTGDCD=%c,%s,%s\r\n",connHandle,curDevCharacteristic[evaluateCharIndex].valueHandle
 																											,curDeviceService[evaluateSrvIndex].end);
-											//memset(curDevDescriptor, 0, sizeof(curDevCharacteristic));
 				break;
 			case SENSOR_HB_SUBSCRIBE: 		snprintf(cmd, sizeof(cmd), "AT+UBTGWC=%c,%s,1\r\n",connHandle,curDevDescriptor.descHandle);
 				break;
@@ -584,4 +668,4 @@ void refresh_Heartbeat(void)
 
     write_buttonTextline(TXT2BYTE_ButtonMinus, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonPlus);
 }
-
+#endif

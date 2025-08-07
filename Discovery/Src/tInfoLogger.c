@@ -96,7 +96,6 @@ void openInfo_Logger()
  //   memset(lines,0,sizeof(lines));
 }
 
-extern void refresh_Heartbeat(void);
 void refreshInfo_Logger(GFX_DrawCfgScreen s)
 {
 	uint8_t index = 0;
@@ -155,13 +154,10 @@ void refreshInfo_Logger(GFX_DrawCfgScreen s)
 		}
 		index++;
 	}
-
-
 	if((time_elapsed_ms(loggerUpdateTime, HAL_GetTick()) > 20000))
 	{
 		set_globalState(previousGlobalState); /* restore state which was active before log data was received */
 	}
-	refresh_Heartbeat();
 }
 
 void sendActionToInfoLogger(uint8_t sendAction)

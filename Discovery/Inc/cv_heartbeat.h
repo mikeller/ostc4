@@ -42,6 +42,7 @@ typedef enum
 	SERVICE_INDICATOR,
 	CHARACTERISTIC_INDICATOR,
 	DESCRIPTOR_INDICATOR,
+	PULSE_INDICATOR,
 	OK_INDICATOR,			/* module control */
 	ERROR_INDICATOR			/* module control */
 } indicatior_t;
@@ -65,7 +66,10 @@ typedef enum
 	BT_READ_DESC_CONHANDLE,
 	BT_READ_DESC_CHARHANDLE,
 	BT_READ_DESC_DESCHANDLE,
-	BT_READ_DESC_UUID
+	BT_READ_DESC_UUID,
+	BT_READ_PULSE_CONHANDLE,
+	BT_READ_PULSE_VALUEHANDLE,
+	BT_READ_PULSE_DATA,
 } readDataType_t;
 
 typedef enum
@@ -123,6 +127,13 @@ typedef struct
 	uint8_t descHandle[10];
 	uint8_t uuid[50];
 } btDeviceDescriptor_t;
+
+typedef struct {
+    uint16_t heart_rate;
+    uint16_t energy_expended;
+    uint16_t rr_intervals[10];
+    uint8_t rr_count;
+} HRMeasurement_t;
 
 sensorHeartbeat_State_t cv_heartbeat_getState();
 void refresh_Heartbeat(void);

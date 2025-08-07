@@ -63,7 +63,9 @@ void openEdit_CvOption(uint8_t line)
 			break;
 		case 2:		openEdit_Timer();
 			break;
+#ifdef ENABLE_PULSE_SENSOR_BT
 		case 3: 	openEdit_Heartbeat();
+#endif
 			break;
     }
 }

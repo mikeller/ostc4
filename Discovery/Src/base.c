@@ -529,17 +529,18 @@ int main(void)
         {
         	TriggerButtonAction();
         }
-
+#ifdef ENABLE_PULSE_SENSOR_BT
         cv_heartbeat_HandleData();
-
+#endif
         if(DoHousekeeping)
         {
            	DoHousekeeping = housekeepingFrame();
         }
         if(DoDisplayRefresh)							/* set every 100ms by timer interrupt */
         {
+#ifdef ENABLE_PULSE_SENSOR_BT
         	cv_heartbeat_Control();
-
+#endif
 	        DoDisplayRefresh = 0;
 
 	        updateSetpointStateUsed();
