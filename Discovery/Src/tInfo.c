@@ -228,10 +228,12 @@ void tInfo_refresh(void)
     							infoColor = CLUT_MenuPageGasCC;
     							refreshInfo_PreDive(tIscreen);
     				break;
+#ifdef ENABLE_LOGGER_WINDOW
     		case StILOGGER: 	tIscreen.FBStartAdress = getFrame(14);
     							infoColor = CLUT_MenuPageCvOption;
     							refreshInfo_Logger(tIscreen);
     				break;
+#endif
 
     		default:
     				break;
@@ -261,6 +263,11 @@ void exitInfoToBack(void)
     exitMenuEdit_to_BackMenu();
 }
 
+void exitInfoSilent(void)	/* no changes were done on info screen => just free buffer */
+{
+    releaseFrame(14,tIscreen.FBStartAdress);
+    updateMenu();
+}
 
 void sendActionToInfo(uint8_t sendAction)
 {

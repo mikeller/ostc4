@@ -60,7 +60,7 @@ static uint8_t evaluateCharIndex = 0xFF;
 static void parsePulseMeasurement(uint8_t* pData, uint8_t length)
 {
 	uint8_t rawData[10];
-	char text[40];
+
 	char* enptr;
 	uint8_t flags = 0;
 	uint16_t rr = 0;
@@ -265,7 +265,6 @@ uint8_t cv_heartbeat_HandleData()
 
 	static readDataType_t readType = BT_READ_NOTHING;
 
-	char text[40];
 	uint8_t data = 0;
 	data = UART_getChar();
 
@@ -490,8 +489,6 @@ sensorHeartbeat_State_t cv_heartbeat_getState()
 
 void openEdit_Heartbeat(void)
 {
-    SSettings *settings = settingsGetPointer();
-
     char text[32];
     snprintf(text, 32, "\001%c%c", TXT_2BYTE, TXT2BYTE_Pulse);
     write_topline(text);

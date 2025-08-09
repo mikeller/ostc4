@@ -35,6 +35,7 @@
 #include "tInfoLogger.h"
 #include "tMenuEdit.h"
 #include "data_exchange_main.h"
+#include "t7.h""
 
 #include <string.h>
 #include <inttypes.h>
@@ -54,24 +55,29 @@ static uint32_t previousGlobalState = 0;
 
 void InfoLogger_writeLine(uint8_t* pLine,uint8_t lineLength,uint8_t direction)
 {
+#ifdef ENABLE_LOGGER_WINDOW
 	uint8_t LogIndex = 0;
 
-	if(lineLength <= MAX_CHAR_PER_LINE)
+	if(!t7_customview_disabled(CVIEW_Logger))
 	{
-		memset(&lines[lineWriteIndex][0],0, (MAX_CHAR_PER_LINE + LINE_HEADER_BYTES));
-		if(direction == LOG_TX_LINE)
+		if(lineLength <= MAX_CHAR_PER_LINE)
 		{
-			lines[lineWriteIndex][LogIndex] = '\002';	/* align right */
-			LogIndex++;
+			memset(&lines[lineWriteIndex][0],0, (MAX_CHAR_PER_LINE + LINE_HEADER_BYTES));
+			if(direction == LOG_TX_LINE)
+			{
+				lines[lineWriteIndex][LogIndex] = '\002';	/* align right */
+				LogIndex++;
+			}
+			memcpy(&lines[lineWriteIndex][LogIndex],pLine,lineLength);
+			lineWriteIndex++;
+			if(lineWriteIndex == MAX_LOGGER_LINES)
+			{
+				lineWriteIndex = 0;
+			}
+			receivedLinesCount++;
 		}
-		memcpy(&lines[lineWriteIndex][LogIndex],pLine,lineLength);
-		lineWriteIndex++;
-		if(lineWriteIndex == MAX_LOGGER_LINES)
-		{
-			lineWriteIndex = 0;
-		}
-		receivedLinesCount++;
 	}
+#endif
 }
 
 uint8_t InfoLogger_isUpdated()
@@ -90,10 +96,6 @@ void openInfo_Logger()
 	set_globalState(StILOGGER);
 
 	loggerUpdateTime = HAL_GetTick();
-
- //   lineWriteIndex = 0;
- //   receivedLinesCount = 0;
- //   memset(lines,0,sizeof(lines));
 }
 
 void refreshInfo_Logger(GFX_DrawCfgScreen s)
@@ -103,11 +105,9 @@ void refreshInfo_Logger(GFX_DrawCfgScreen s)
     uint8_t displayLine = 0;
     uint8_t color = CLUT_Font020;
 
-    text[0] = '\001';
-	text[1] = TXT_PreDive;
-	text[2] = 0;
+	sprintf(text,"\001%c%c", TXT_2BYTE, TXT2BYTE_Logger);
 
-	tInfo_write_content_simple(  30, 770, ME_Y_LINE_BASE, &FontT48, text, CLUT_MenuPageHardware);
+	tInfo_write_content_simple(  30, 770, ME_Y_LINE_BASE, &FontT48, text, CLUT_InfoSurface);
 
 
 	if(InfoLogger_isUpdated())
@@ -154,31 +154,17 @@ void refreshInfo_Logger(GFX_DrawCfgScreen s)
 		}
 		index++;
 	}
-	if((time_elapsed_ms(loggerUpdateTime, HAL_GetTick()) > 20000))
+	if((time_elapsed_ms(loggerUpdateTime, HAL_GetTick()) > 10000))
 	{
 		set_globalState(previousGlobalState); /* restore state which was active before log data was received */
+		exitInfo();
 	}
 }
 
 void sendActionToInfoLogger(uint8_t sendAction)
 {
-    switch(sendAction)
-    {
-    	case ACTION_BUTTON_BACK:
-    	//	exitInfo();
-    		exitMenuEdit_to_Menu_with_Menu_Update();
-    			break;
-
-    	case ACTION_BUTTON_ENTER:
-    		break;
-		case ACTION_BUTTON_NEXT:
-			break;
-		case ACTION_TIMEOUT:
-		case ACTION_MODE_CHANGE:
-	    case ACTION_IDLE_TICK:
-	    case ACTION_IDLE_SECOND:
-		default:
-	        break;
-    }
+/* TODO: at the moment a generic return to home is used because the logger window could be opened from everywhere => implement context based return from view */
+    set_globalState(previousGlobalState); /* restore state which was active before log data was received */
+    exitInfoSilent();
 }
 

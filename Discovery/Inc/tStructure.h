@@ -66,6 +66,7 @@
 #define InfoPageCompass 6
 #define InfoPageSensor  8
 #define InfoPagePreDive 9
+#define InfoPageLogger  10
 
 #define StI 			_MB(0,1,0,0,0)
 #define StILOGLIST		_MB(0,2,0,0,0)

@@ -528,6 +528,10 @@ char customview_TXT2BYTE_helper(uint8_t customViewId)
     case CVIEW_noneOrDebug:
     	text = TXT2BYTE_DispNoneDbg;
     	break;
+#ifdef ENABLE_LOGGER_WINDOW
+    case CVIEW_Logger: text = TXT2BYTE_Logger;
+    	break;
+#endif
     default:
         break;
     }

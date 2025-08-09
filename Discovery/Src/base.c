@@ -737,11 +737,13 @@ static void RefreshDisplay()
 	SStateList status;
 	get_globalStateList(&status);
 
-	if((status.base != 0) && (InfoLogger_isUpdated()))
+#ifdef ENABLE_LOGGER_WINDOW
+	if((status.base != 0) && (get_globalState() != StILOGGER) && (InfoLogger_isUpdated()))
 	{
 		openInfo_Logger();
 		get_globalStateList(&status);
 	}
+#endif
 
 	switch(status.base)
 	{
@@ -934,6 +936,8 @@ static void TriggerButtonAction()
 							case InfoPageSensor: 	sendActionToInfoSensor(action);
 								break;
 							case InfoPagePreDive: 	sendActionToInfoPreDive(action);
+								break;
+							case InfoPageLogger: 	exitInfo();
 								break;
 							default:				sendActionToInfo(action);
 								break;

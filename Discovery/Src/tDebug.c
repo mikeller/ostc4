@@ -58,9 +58,12 @@ void setDebugMode(void)
 
 void exitDebugMode(void)
 {
-    MX_Bluetooth_PowerOff();
-    settingsGetPointer()->debugModeOnStart = 0;
-    tD_debugModeActive = 0;
+	if(tD_debugModeActive)
+	{
+		MX_Bluetooth_PowerOff();
+		settingsGetPointer()->debugModeOnStart = 0;
+		tD_debugModeActive = 0;
+	}
 }
 
 
