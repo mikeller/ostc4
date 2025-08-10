@@ -110,7 +110,14 @@ void SetDisplayVersion(uint8_t version);
 uint8_t isNewDisplay(void);
 
 uint8_t UART_getChar();
+
+#ifdef ENABLE_PULSE_SENSOR_BT
 void UART_StartDMARx();
+#endif
+#ifdef ENABLE_USART_RADIO
+void MX_UART_RADIO_Init_DMA();
+void UART_StartDMARxRadio();
+#endif
 
 
 #endif // OSTC_H

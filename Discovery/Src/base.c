@@ -245,6 +245,9 @@
 static void TIM_DEMO_init(void);
 #endif
 
+#ifdef ENABLE_USART_RADIO
+#include "demo.h"
+#endif
 
 //#include "lodepng.h"
 //#include <stdlib.h> // for malloc and free
@@ -531,6 +534,10 @@ int main(void)
         }
 #ifdef ENABLE_PULSE_SENSOR_BT
         cv_heartbeat_HandleData();
+#endif
+
+#ifdef ENABLE_USART_RADIO
+        demo_HandleData();
 #endif
         if(DoHousekeeping)
         {

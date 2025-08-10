@@ -167,6 +167,22 @@
 #define USART_IR_HUD_IRQn                           USART2_IRQn
 // to it directly#define USART_IR_HUD_IRQHandler    USART2_IRQHandler
 
+#define USART_RADIO                                 USART3
+#define USART_RADIO_CLK_ENABLE()                   __USART3_CLK_ENABLE();
+#define USART_RADIO_FORCE_RESET()                  __USART3_FORCE_RESET()
+#define USART_RADIO_RELEASE_RESET()                __USART3_RELEASE_RESET()
+//#define USART_IR_HUD_TX_AF                          GPIO_AF7_USART3
+//#define USART_IR_HUD_TX_PIN                         GPIO_PIN_5
+//#define USART_IR_HUD_TX_GPIO_PORT                   GPIOD
+//#define USART_IR_HUD_TX_GPIO_CLK_ENABLE()           __GPIOD_CLK_ENABLE()
+
+#define USART_RADIO_RX_AF                          GPIO_AF7_USART3
+#define USART_RADIO_RX_PIN                         GPIO_PIN_11
+#define USART_RADIO_RX_GPIO_PORT                   GPIOB
+#define USART_RADIO_RX_GPIO_CLK_ENABLE()           __GPIOB_CLK_ENABLE()
+#define USART_RADIO_IRQn                           USART3_IRQn
+
+
 #define TIMx                                        TIM4
 #define TIMx_CLK_ENABLE                             __TIM4_CLK_ENABLE
 #define TIMx_IRQn                                   TIM4_IRQn

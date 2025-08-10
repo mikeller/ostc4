@@ -35,4 +35,6 @@ uint8_t demoModeActive(void);
 void demoConfigureSettings(void);
 void demoSendCommand(uint8_t action);
 
+void demo_HandleData(void);
+
 #endif // DEMO_H

@@ -35,6 +35,8 @@
 #define LOG_TX_LINE	(0u)
 #define LOG_RX_LINE (1u)
 
+#include "gfx_engine.h"
+
 /* Exported functions --------------------------------------------------------*/
 void openInfo_Logger();
 void refreshInfo_Logger(GFX_DrawCfgScreen s);

@@ -97,10 +97,15 @@
 #define ENABLE_FAST_COMM
 
 /* Enable to have support of Polar HC10 heartbeat sensor active */
-#define ENABLE_PULSE_SENSOR_BT
+/* #define ENABLE_PULSE_SENSOR_BT */
 
 /* Enable RTE sleep mode debugging */
 /* #define ENABLE_SLEEP_DEBUG */
 
+/* Enable to receive data from the radio connection usart */
+#define ENABLE_USART_RADIO
+
+/* Enable to show messages which are den during runtime in a popup window */
+#define ENABLE_LOGGER_WINDOW
 
 #endif

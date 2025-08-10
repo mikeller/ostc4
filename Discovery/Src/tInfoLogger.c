@@ -35,7 +35,7 @@
 #include "tInfoLogger.h"
 #include "tMenuEdit.h"
 #include "data_exchange_main.h"
-#include "t7.h""
+#include "t7.h"
 
 #include <string.h>
 #include <inttypes.h>

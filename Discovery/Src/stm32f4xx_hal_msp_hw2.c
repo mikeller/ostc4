@@ -630,18 +630,20 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
   /* USER CODE END USART3_MspInit 0 */
     /* Peripheral clock enable */
-    __USART3_CLK_ENABLE();
+	USART_RADIO_RX_GPIO_CLK_ENABLE();
 
     /**USART3 GPIO Configuration
-    PC10     ------> USART3_TX
-    PC11     ------> USART3_RX
+    PB11     ------> USART3_RX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
+    GPIO_InitStruct.Pin = USART_RADIO_RX_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    GPIO_InitStruct.Alternate = USART_RADIO_RX_AF;
+    HAL_GPIO_Init(USART_RADIO_RX_GPIO_PORT, &GPIO_InitStruct);
+
+    HAL_NVIC_SetPriority(USART_RADIO_IRQn, 0, 1);
+    HAL_NVIC_EnableIRQ(USART_RADIO_IRQn);
 
   /* USER CODE BEGIN USART3_MspInit 1 */
 
@@ -706,7 +708,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     PC10     ------> USART3_TX
     PC11     ------> USART3_RX
     */
-    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_10|GPIO_PIN_11);
+    HAL_GPIO_DeInit(USART_RADIO_RX_GPIO_PORT, USART_RADIO_RX_PIN);
 
   /* USER CODE BEGIN USART3_MspDeInit 1 */
 
