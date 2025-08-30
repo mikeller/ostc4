@@ -2834,7 +2834,7 @@ void t7_refresh_divemode(void)
 
 /* ascent rate graph */
     color = 0xff;
-    if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter))
+    if((pSettings->slowExitTime != 0) && (nextstopDepthMeter == 0) && (stateUsed->lifeData.depth_meter < pSettings->last_stop_depth_meter) && (stateUsed->lifeData.depth_meter > 0.3))
     {
     	color = t7_drawSlowExitGraph();
     }
