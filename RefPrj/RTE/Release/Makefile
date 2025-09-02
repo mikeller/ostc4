@@ -31,10 +31,10 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # Tool invocations
-OSTC4_RTE.elf: $(OBJS) $(USER_OBJS) $(OSTC4_BUILD_DIR)/RefPrj/RTE/../../Small_CPU/CPU2-RTE.ld
+OSTC4_RTE.elf: $(OBJS) $(USER_OBJS) $(BUILD_DIR)/RefPrj/RTE/../../Small_CPU/CPU2-RTE.ld
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU GCC Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Xlinker --print-memory-usage -T"$(OSTC4_BUILD_DIR)/Small_CPU/CPU2-RTE.ld" -Wl,-Map=output.map -Wl,--gc-sections -Wl,-z,muldefs -o "OSTC4_RTE.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lm
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Xlinker --print-memory-usage -T"$(BUILD_DIR)/Small_CPU/CPU2-RTE.ld" -Wl,-Map=output.map -Wl,--gc-sections -Wl,-z,muldefs -o "OSTC4_RTE.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lm
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build

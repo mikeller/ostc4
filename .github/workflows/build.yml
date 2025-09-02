@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_TOOLS_DIR: tools
+  BUILD_TOOLS_DIR: ${{ github.workspace }}/tools
 
 jobs:
   build:
@@ -23,7 +23,6 @@ jobs:
     - name: get container ready for build
       run: |
         sudo apt-get -y update
-        sudo apt-get -y dist-upgrade
 
     - name: checkout sources
       uses: actions/checkout@v4
