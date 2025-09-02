@@ -5,7 +5,7 @@
 #
 
 # the build products are here
-PROJECT_PATH=${OSTC4_BUILD_DIR:-$HOME/git/ostc4}
+PROJECT_PATH=${BUILD_DIR:-$HOME/git/ostc4}
 
 # Debug or Release build
 BUILD_TYPE="Release"
