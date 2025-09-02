@@ -1,14 +1,12 @@
-ARM_TOOLCHAIN_VERSION := 9-2020-q2-update
+SCRIPT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-SCRIPT_DIR := $(shell pwd)
+BUILD_DIR ?= $(SCRIPT_DIR)
+export BUILD_DIR
 
-OSTC4_BUILD_DIR ?= $(SCRIPT_DIR)
-export OSTC4_BUILD_DIR
-
-BUILD_TOOLS_DIR ?= $(OSTC4_BUILD_DIR)/tools
-export PATH := $(abspath $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi/bin):$(PATH)
-
-NUM_CORES := $(shell nproc)
+NUM_CORES := $(shell \
+  command -v nproc >/dev/null 2>&1 && nproc || \
+  getconf _NPROCESSORS_ONLN 2>/dev/null || \
+  sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
 # Default target
 
@@ -36,29 +34,8 @@ fontpack_binary: arm_tools fontpack_library
 rte_binary: arm_tools fontpack_library
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile -j $(NUM_CORES)
 
-clean:
-	$(MAKE) -C RefPrj/Firmware/Release -f Makefile clean
-	$(MAKE) -C RefPrj/FontPack/Library -f Makefile clean
-	$(MAKE) -C RefPrj/FontPack/Release -f Makefile clean
-	$(MAKE) -C RefPrj/RTE/Release -f Makefile clean
-	rm -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin
-
 print_version:
 	@ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only
-
-arm_tools: $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi
-
-$(BUILD_TOOLS_DIR)/gcc-arm-none-eabi:
-	$(MAKE) arm_tools_clean
-	mkdir -p $(BUILD_TOOLS_DIR)
-	curl -L https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2020q2/gcc-arm-none-eabi-$(ARM_TOOLCHAIN_VERSION)-x86_64-linux.tar.bz2 | tar -xj -C $(BUILD_TOOLS_DIR)
-	cd $(BUILD_TOOLS_DIR); ln -s gcc-arm-none-eabi-* gcc-arm-none-eabi
-
-arm_tools_version:
-	@echo $(ARM_TOOLCHAIN_VERSION)
-
-arm_tools_clean:
-	rm -rf $(BUILD_TOOLS_DIR)/gcc-arm-none-eabi*
 
 packer:
 	$(MAKE) -C ostc4pack/src -j $(NUM_CORES)
@@ -66,6 +43,18 @@ packer:
 packer_clean:
 	$(MAKE) -C ostc4pack/src clean
 
-distclean: clean packer_clean arm_tools_clean
+clean:
+	$(MAKE) -C RefPrj/Firmware/Release -f Makefile clean
+	$(MAKE) -C RefPrj/FontPack/Library -f Makefile clean
+	$(MAKE) -C RefPrj/FontPack/Release -f Makefile clean
+	$(MAKE) -C RefPrj/RTE/Release -f Makefile clean
+	$(RM) -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin
 
-.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all clean print_version arm_tools arm_tools_version arm_tools_clean packer packer_clean distclean
+distclean: clean packer_clean
+
+test:
+	@echo "No tests defined"
+
+include arm_build_tools.mk
+
+.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all clean print_version packer packer_clean distclean test
