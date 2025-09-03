@@ -45,7 +45,7 @@ jobs:
       env:
         BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
       run: |
-        make arm_tools
+        make arm_tools_install
 
     - name: generate the version
       id: generate_version
