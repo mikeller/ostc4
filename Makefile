@@ -22,16 +22,16 @@ rte: firmware_binary rte_binary packer
 all: firmware_binary fontpack_binary rte_binary packer
 	ostc4pack/create_full_update_bin.sh --version
 
-fontpack_library: arm_tools
+fontpack_library: arm_tools_install
 	$(MAKE) -C RefPrj/FontPack/Library -f Makefile -j $(NUM_CORES)
 
-firmware_binary: arm_tools fontpack_library
+firmware_binary: arm_tools_install fontpack_library
 	$(MAKE) -C RefPrj/Firmware/Release -f Makefile -j $(NUM_CORES)
 
-fontpack_binary: arm_tools fontpack_library
+fontpack_binary: arm_tools_install fontpack_library
 	$(MAKE) -C RefPrj/FontPack/Release -f Makefile -j $(NUM_CORES)
 
-rte_binary: arm_tools fontpack_library
+rte_binary: arm_tools_install fontpack_library
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile -j $(NUM_CORES)
 
 print_version:
