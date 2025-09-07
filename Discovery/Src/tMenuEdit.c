@@ -551,7 +551,10 @@ void mark_new_3digit_of_actual_id_block(void)
 void mark_new_digit_of_actual_id_block_and_subBlock(void)
 {
     char oneCharText[2];
+    char text[10];
     uint16_t positionOffset;
+    uint8_t index = 0;
+    uint8_t textPos = 0;
 
     if(event[actualevid].callerID != ident[actualId].callerID)
         return;
@@ -562,6 +565,19 @@ void mark_new_digit_of_actual_id_block_and_subBlock(void)
         oneCharText[1] = 0;
         positionOffset = GFX_return_offset(ident[actualId].fontUsed, ident[actualId].newText, ident[actualId].begin[block] + subBlockPosition);
         write_content( ident[actualId].coord[0] + positionOffset, ident[actualId].coord[1], ident[actualId].coord[2], ident[actualId].fontUsed, oneCharText, CLUT_MenuEditDigit);
+    }
+    if(ident[actualId].maintype == FIELD_TEXT)		/* letter width may change from character to character => output end of string */
+    {
+    	if(block + 1 < 8)
+    	{
+			for(index = block + 1; index < 8; index++)
+			{
+				text[textPos++] = ident[actualId].newText[ident[actualId].begin[index] + 0];
+			}
+			text[textPos] = 0;
+		    positionOffset = GFX_return_offset(ident[actualId].fontUsed, ident[actualId].newText, ident[actualId].begin[block + 1] + subBlockPosition);
+			write_content( ident[actualId].coord[0] + positionOffset, ident[actualId].coord[1], ident[actualId].coord[2], ident[actualId].fontUsed, text, CLUT_MenuEditFieldSelected);
+    	}
     }
 }
 
