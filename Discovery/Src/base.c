@@ -384,16 +384,16 @@ int main(void)
     HAL_Delay( 100 );
 
     stateRealGetPointerWrite()->lastKnownBatteryPercentage = 0; // damit das nicht in settings kopiert wird.
-    set_settings_to_Standard();									/* initialize setting structure with default value => will be overwritten by flash read operation */
+    set_settings_to_Standard(EF_SETTINGS);									/* initialize setting structure with default value => will be overwritten by flash read operation */
     mod_settings_for_first_start_with_empty_ext_flash();
-    ext_flash_read_settings();
+    ext_flash_read_settings(EF_SETTINGS);
     if( newFirmwareVersionCheckViaSettings() ) // test for old firmware version in loaded settings
     {
         wasFirmwareUpdateCheckBattery = 1;
         set_settings_button_to_factory_with_individual_buttonBalance(); // will adapt individual values
     }
 
-    set_new_settings_missing_in_ext_flash(); // includes update of firmware version  161121
+    set_new_settings_missing_in_ext_flash(EF_SETTINGS); // includes update of firmware version  161121
 
     GFX_init( &pLayerInvisible );
     TIM_BACKLIGHT_init();
@@ -412,7 +412,7 @@ int main(void)
         tComm_Set_Bluetooth_Name(1);
     }
     */
-    errorsInSettings = check_and_correct_settings();
+    errorsInSettings = check_and_correct_settings(EF_SETTINGS);
     createDiveSettings();
 
 #ifdef QUICK_SLEEP
@@ -471,7 +471,7 @@ int main(void)
     if( settingsGetPointer()->debugModeOnStart )
     {
         settingsGetPointer()->debugModeOnStart = 0;
-        ext_flash_write_settings(0);
+        ext_flash_write_settings(EF_SETTINGS,0);
         setDebugMode();
         openInfo( StIDEBUG );
     }
@@ -505,7 +505,7 @@ int main(void)
         {
             createDiveSettings();
             updateMenu();
-            ext_flash_write_settings(0);
+            ext_flash_write_settings(EF_SETTINGS,0);
         }
 
         /* check if tasks depending on global state are pending */
@@ -1023,7 +1023,7 @@ static void gotoSleep(void)
 	GFX_logoAutoOff();
 	display_power_off();
     ext_flash_write_devicedata(true);	/* write data at default position */
-    ext_flash_write_settings(true);		/* write data at default position */
+    ext_flash_write_settings(EF_SETTINGS,true);		/* write data at default position */
     set_globalState(StStop);
 }
 
@@ -1053,6 +1053,16 @@ void get_idSpecificStateList(uint32_t id, SStateList *output)
     output->line  = (uint8_t)((id >> 16) & 0xFF);
     output->field = (uint8_t)((id >> 8) & 0xFF);
     output->mode  = (uint8_t)((id     ) & 0xFF);
+}
+
+uint8_t get_lineOfID(uint32_t id)
+{
+	uint8_t ret = (uint8_t)((id >> 16) & 0xFF);
+	if(ret > 6)
+	{
+		ret = 0;
+	}
+	return ret;
 }
 
 SButtonLock get_ButtonLock(void)

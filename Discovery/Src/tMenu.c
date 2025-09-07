@@ -797,7 +797,7 @@ void updateMenu(void)
         update_content_with_new_frame(page, text, tabPosition, subtext);
         break;
     case StMDECO:
-        if((line == 1) || (line == 3)) // dive mode or ppO2 limits (the later for correct MOD in gaslists)
+        if((line == get_lineOfID(StMDECO1_OC)) || (line == get_lineOfID(StMDECO3_PPO2Max))) // dive mode or ppO2 limits (the later for correct MOD in gaslists)
         {
             tM_rebuild_pages();
             menu.lineMemoryForNavigationForPage[page] = line; // fix 160623
@@ -826,7 +826,7 @@ void updateMenu(void)
         update_content_actual_page(text, tabPosition, subtext);
         break;
     case StMSYS:
-        if((line == 2) || (line == 3) || (line == 6))
+        if((line == get_lineOfID(StMSYS1_DateTime)) || (line == get_lineOfID(StMSYS2_English)) || (line == get_lineOfID(StMSYS_Profile)))
         {
             tM_rebuild_pages();
             menu.lineMemoryForNavigationForPage[page] = line; // fix 160623
