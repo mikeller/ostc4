@@ -84,17 +84,6 @@
 
 #define HEADER2OFFSET 0x400
 
-typedef enum{
-	EF_HEADER,
-	EF_SAMPLE,
-	EF_DEVICEDATA,
-	EF_VPMDATA,
-	EF_SETTINGS,
-	EF_FIRMWARE,
-	EF_FIRMWARE2,
-}which_ring_enum;
-
-
 typedef struct{
 uint8_t IsBusy:1;
 uint8_t IsWriteEnabled:1;
@@ -130,6 +119,7 @@ static uint32_t	actualPointerSample = 0;
 static uint32_t	actualPointerDevicedata = DDSTART;
 static uint32_t	actualPointerVPM = 0;
 static uint32_t	actualPointerSettings = SETTINGSSTART;
+static uint32_t	actualPointerProfile = PROFILE0_START;
 static uint32_t	actualPointerFirmware = 0;
 static uint32_t	actualPointerFirmware2 = 0;
 
@@ -527,28 +517,44 @@ void ext_flash_write_settings(void)
 	return;
 }
 #else
-void ext_flash_write_settings(uint8_t resetRing)
+void ext_flash_write_settings(uint8_t whichSettings, uint8_t resetRing)
 {
-	uint8_t *pData;
+	SSettings *pSettings;
 	const uint16_t length = sizeof(SSettings);
 	uint8_t length_lo, length_hi;
 	uint8_t dataLength[2] = { 0 };
 
+	pSettings = settingsGetPointer();
+
 	ext_flash_disable_protection();
 
-	if(stateRealGetPointer()->lastKnownBatteryPercentage)
+	switch (whichSettings)
 	{
-		settingsGetPointer()->lastKnownBatteryPercentage = stateRealGetPointer()->lastKnownBatteryPercentage;
-	}
-	settingsGetPointer()->backup_localtime_rtc_tr = stateRealGetPointer()->lifeData.timeBinaryFormat;
-	settingsGetPointer()->backup_localtime_rtc_dr = stateRealGetPointer()->lifeData.dateBinaryFormat;
-
-	pData = (uint8_t *)settingsGetPointer();
-
-	/* Reset the Ring to the start address if requested (e.g. because we write the default block during shutdown) */
-	if((resetRing) || ((actualPointerSettings + length) >= SETTINGSSTOP))
-	{
-		actualPointerSettings = SETTINGSSTART;
+		default:
+		case EF_SETTINGS:		if(stateRealGetPointer()->lastKnownBatteryPercentage)
+								{
+									pSettings->lastKnownBatteryPercentage = stateRealGetPointer()->lastKnownBatteryPercentage;
+								}
+								pSettings->backup_localtime_rtc_tr = stateRealGetPointer()->lifeData.timeBinaryFormat;
+								pSettings->backup_localtime_rtc_dr = stateRealGetPointer()->lifeData.dateBinaryFormat;
+								/* Reset the Ring to the start address if requested (e.g. because we write the default block during shutdown) */
+								if((resetRing) || ((actualPointerSettings + length) >= SETTINGSSTOP))
+								{
+									actualPointerSettings = SETTINGSSTART;
+								}
+			break;
+		case EF_PROFILE0:		actualPointerProfile = PROFILE0_START;
+								pSettings = profileGetPointer(0);
+			break;
+		case EF_PROFILE1:		actualPointerProfile = PROFILE1_START;
+								pSettings = profileGetPointer(1);
+			break;
+		case EF_PROFILE2:		actualPointerProfile = PROFILE2_START;
+								pSettings = profileGetPointer(2);
+			break;
+		case EF_PROFILE3:		actualPointerProfile = PROFILE3_START;
+								pSettings = profileGetPointer(3);
+			break;
 	}
 
 	length_lo = (uint8_t)(length & 0xFF);
@@ -556,8 +562,8 @@ void ext_flash_write_settings(uint8_t resetRing)
 	dataLength[0] = length_lo;
 	dataLength[1] = length_hi;
 
-	ef_write_block(dataLength,2, EF_SETTINGS, 0);
-	ef_write_block(pData,length, EF_SETTINGS, 0);
+	ef_write_block(dataLength,2, whichSettings, 0);
+	ef_write_block((uint8_t*)pSettings,length, whichSettings, 0);
 //	ext_flash_enable_protection();
 }
 #endif
@@ -570,7 +576,7 @@ void ext_flash_write_settings(uint8_t resetRing)
  * new settings should be fine as they are added
  * and loaded before calling this function
  */
-uint8_t ext_flash_read_settings(void)
+uint8_t ext_flash_read_settings(uint8_t whichSettings)
 {
 	uint8_t returnValue = HAL_BUSY;
 	uint8_t exit = 0;
@@ -579,69 +585,90 @@ uint8_t ext_flash_read_settings(void)
 	uint8_t length_lo, length_hi;
 	uint16_t lengthOnEEPROM;
 	uint32_t header;
-	SSettings *pSettings = settingsGetPointer();
+	SSettings* pSettings = settingsGetPointer();
 
-	actualAddress = SETTINGSSTART;
-
-	ext_flash_read_block_start();
-	ext_flash_read_block(&length_lo, EF_SETTINGS);
-	ext_flash_read_block(&length_hi, EF_SETTINGS);
-	
-	while ((length_lo != 0xFF) && (length_hi != 0xFF) && (exit == 0))		/* get the latest stored setting block */
+	switch(whichSettings)
 	{
-		lengthOnEEPROM = length_hi * 256;
-		lengthOnEEPROM += length_lo;
-		if(lengthOnEEPROM <= lengthStandardNow) 			/* EEPROM Header size equal or smaller => settings constant or upgraded */
+		case EF_SETTINGS:	pSettings = settingsGetPointer();
+							actualAddress = SETTINGSSTART;
+			break;
+		case EF_PROFILE0:	pSettings = profileGetPointer(0);
+							actualAddress = PROFILE0_START;
+			break;
+		case EF_PROFILE1:	pSettings = profileGetPointer(1);
+							actualAddress = PROFILE1_START;
+					break;
+		case EF_PROFILE2:	pSettings = profileGetPointer(2);
+							actualAddress = PROFILE2_START;
+					break;
+		case EF_PROFILE3:	pSettings = profileGetPointer(3);
+							actualAddress = PROFILE3_START;
+					break;
+		default: returnValue = HAL_ERROR;
+	}
+
+	if(returnValue != HAL_ERROR)
+	{
+		ext_flash_read_block_start();
+		ext_flash_read_block(&length_lo, whichSettings);
+		ext_flash_read_block(&length_hi, whichSettings);
+
+		while ((length_lo != 0xFF) && (length_hi != 0xFF) && (exit == 0))		/* get the latest stored setting block */
 		{
-			ext_flash_read_block_multi(&header, 4, EF_SETTINGS);
-			if((header <= pSettings->header) && (header >= pSettings->updateSettingsAllowedFromHeader))	/* check to allow update of header */
+			lengthOnEEPROM = length_hi * 256;
+			lengthOnEEPROM += length_lo;
+			if(lengthOnEEPROM <= lengthStandardNow) 			/* EEPROM Header size equal or smaller => settings constant or upgraded */
 			{
-				returnValue = HAL_OK;
-				pSettings->header = header;
-				pData = (uint8_t *)pSettings + 4; /* header */
-				for(uint16_t i = 0; i < (lengthOnEEPROM-4); i++)
-					ext_flash_read_block(&pData[i], EF_SETTINGS);
-				if(header != pSettings->header)				/* setting layout changed => no additional setting sets expected */
+				ext_flash_read_block_multi(&header, 4, whichSettings);
+				if((header <= pSettings->header) && (header >= pSettings->updateSettingsAllowedFromHeader))	/* check to allow update of header */
 				{
+					returnValue = HAL_OK;
+					pSettings->header = header;
+					pData = (uint8_t *)pSettings + 4; /* header */
+					for(uint16_t i = 0; i < (lengthOnEEPROM-4); i++)
+						ext_flash_read_block(&pData[i], whichSettings);
+					if(header != pSettings->header)				/* setting layout changed => no additional setting sets expected */
+					{
+						exit = 1;
+					}
+				}
+				else
+				{
+					returnValue = HAL_ERROR;
 					exit = 1;
 				}
 			}
-			else
+			else											/* size of settings decreased => possible downgrade of firmware */
 			{
-				returnValue = HAL_ERROR;
+				ext_flash_read_block_multi(&header, 4, whichSettings);
+
+				if(header > 0xFFFF0014)						/* verify that new (old) header should be compatible (only less bytes, no change in layout) */
+				{
+					returnValue = HAL_OK;
+					pSettings->header = header;
+					pData = (uint8_t *)pSettings + 4; /* header */
+					for(uint16_t i = 0; i < (lengthStandardNow-4); i++) 		/* only read the data fitting into the structure */
+						ext_flash_read_block(&pData[i], whichSettings);
+				}
+				else
+				{
+					returnValue = HAL_ERROR;
+				}
 				exit = 1;
 			}
+			ext_flash_read_block(&length_lo, whichSettings);
+			ext_flash_read_block(&length_hi, whichSettings);
 		}
-		else											/* size of settings decreased => possible downgrade of firmware */
+		ext_flash_decf_address_ring(whichSettings);				/* set pointer back to empty address */
+		ext_flash_decf_address_ring(whichSettings);
+		ext_flash_read_block_stop();
+
+		if(actualAddress > actualPointerSettings)				/* the write pointer has not yet been set up probably */
 		{
-			ext_flash_read_block_multi(&header, 4, EF_SETTINGS);
-
-			if(header > 0xFFFF0014)						/* verify that new (old) header should be compatible (only less bytes, no change in layout) */
-			{
-				returnValue = HAL_OK;
-				pSettings->header = header;
-				pData = (uint8_t *)pSettings + 4; /* header */
-				for(uint16_t i = 0; i < (lengthStandardNow-4); i++) 		/* only read the data fitting into the structure */
-					ext_flash_read_block(&pData[i], EF_SETTINGS);
-			}
-			else
-			{
-				returnValue = HAL_ERROR;
-			}
-			exit = 1;
+			actualPointerSettings = actualAddress;
 		}
-		ext_flash_read_block(&length_lo, EF_SETTINGS);
-		ext_flash_read_block(&length_hi, EF_SETTINGS);
+		ext_flash_read_block_stop();
 	}
-	ext_flash_decf_address_ring(EF_SETTINGS);				/* set pointer back to empty address */
-	ext_flash_decf_address_ring(EF_SETTINGS);
-	ext_flash_read_block_stop();
-
-	if(actualAddress > actualPointerSettings)				/* the write pointer has not yet been set up probably */
-	{
-		actualPointerSettings = actualAddress;
-	}
-	ext_flash_read_block_stop();
 	return returnValue;
 }
 
@@ -1851,6 +1878,13 @@ static void ef_write_block(uint8_t * sendByte, uint32_t length, uint8_t type, ui
 			ringStart = FWSTART2;
 			ringStop = FWSTOP2;
 			break;
+		case EF_PROFILE0:
+		case EF_PROFILE1:
+		case EF_PROFILE2:
+		case EF_PROFILE3:	actualAddress = actualPointerProfile;
+							ringStart = PROFILE0_START;
+							ringStop = PROFILE3_STOP;
+			break;
 		default:
 			ringStart = FLASHSTART;
 			ringStop = FLASHSTOP;
@@ -1932,6 +1966,11 @@ static void ef_write_block(uint8_t * sendByte, uint32_t length, uint8_t type, ui
 		case EF_FIRMWARE2:
 			actualPointerFirmware2 = actualAddress;
 			break;
+		case EF_PROFILE0:
+		case EF_PROFILE1:
+		case EF_PROFILE2:
+		case EF_PROFILE3:	actualPointerProfile = actualAddress;
+			break;
 		default:
 			break;
 	}
@@ -1996,6 +2035,13 @@ static void ext_flash_set_to_begin_of_next_page(uint32_t *pointer, uint8_t type)
 			ringStart = SETTINGSSTART;
 			ringStop = SETTINGSSTOP;
 			break;
+		case EF_PROFILE0:
+		case EF_PROFILE1:
+		case EF_PROFILE2:
+		case EF_PROFILE3:	ringStart = PROFILE0_START;
+							ringStop = PROFILE3_STOP;
+			break;
+
 		default:
 			ringStart = FLASHSTART;
 			ringStop = FLASHSTOP;
@@ -2145,6 +2191,12 @@ static void ext_flash_incf_address(uint8_t type)
 			ringStart = FWSTART2;
 			ringStop = FWSTOP2;
 			break;
+		case EF_PROFILE0:
+		case EF_PROFILE1:
+		case EF_PROFILE2:
+		case EF_PROFILE3:	ringStart = PROFILE0_START;
+							ringStop = PROFILE3_STOP;
+			break;
 		default:
 			ringStart = FLASHSTART;
 			ringStop = FLASHSTOP;
@@ -2190,6 +2242,13 @@ static void ext_flash_decf_address_ring(uint8_t type)
 			ringStart = FWSTART2;
 			ringStop = FWSTOP2;
 			break;
+		case EF_PROFILE0:
+		case EF_PROFILE1:
+		case EF_PROFILE2:
+		case EF_PROFILE3:	ringStart = PROFILE0_START;
+							ringStop = PROFILE3_STOP;
+			break;
+
 		default:
 			ringStart = FLASHSTART;
 			ringStop = FLASHSTOP;

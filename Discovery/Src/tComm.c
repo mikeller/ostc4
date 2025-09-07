@@ -328,7 +328,7 @@ void tComm_exit(void)
 #ifndef BOOTLOADER_STANDALONE
     if(updateSettingsAndMenuOnExit)
     {
-        check_and_correct_settings();
+        check_and_correct_settings(EF_SETTINGS);
         createDiveSettings();
         tM_rebuild_menu_after_tComm();
     }
@@ -1183,7 +1183,7 @@ uint8_t select_mode(uint8_t type)
 #ifndef BOOTLOADER_STANDALONE
     //Reset all setting
     case 0x78:
-        set_settings_to_Standard();
+        set_settings_to_Standard(EF_SETTINGS);
         updateSettingsAndMenuOnExit = 1;
         aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
         break;

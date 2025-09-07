@@ -95,6 +95,8 @@
 
 #define FUTURE_SPARE_SIZE		(0u)		/* Applied for reuse of old, not used, scooter block (was 32 bytes)*/
 
+#define NUMBER_OF_PROFILES		(4u)
+
 typedef enum
 {
 	O2_SENSOR_SOURCE_OPTIC = 0,
@@ -329,6 +331,9 @@ typedef struct
 	/* new in 0xFFFF002c */
 	StimeZone timeZone;
 	uint8_t warningBuzzer;
+	/* new in 0xFFFF002d */
+	uint8_t profileName[NUMBER_OF_PROFILES][9];
+	uint8_t activeProfile;
 } SSettings;
 
 uint8_t writeData(uint8_t *);
@@ -342,9 +347,11 @@ uint8_t getCCRMode(void);
 uint8_t getDecoType(void);
 uint8_t getFutureTTS(void);
 
+uint16_t settingsGetSize();
 SSettings* settingsGetPointer(void);
+SSettings* profileGetPointer(uint8_t number);
 const SSettings* settingsGetPointerStandard(void);
-void set_settings_to_Standard(void);
+void set_settings_to_Standard(uint8_t whichSettings);
 void mod_settings_for_first_start_with_empty_ext_flash(void);
 const SFirmwareData* firmwareDataGetPointer(void);
 const SHardwareData* hardwareDataGetPointer(void);
@@ -361,8 +368,8 @@ void setActualRTEversion(uint8_t high, uint8_t low);
 void getActualRTEandFONTversion(uint8_t *RTEhigh, uint8_t *RTElow, uint8_t *FONThigh, uint8_t *FONTlow);
 
 void setFlipDisplay(uint8_t flipDisplay);
-void set_new_settings_missing_in_ext_flash(void);
-uint8_t check_and_correct_settings(void);
+void set_new_settings_missing_in_ext_flash(uint8_t whichSettings);
+uint8_t check_and_correct_settings(uint8_t whichSettings);
 uint8_t newFirmwareVersionCheckViaSettings(void);
 void set_settings_button_to_factory_with_individual_buttonBalance(void);
 uint8_t getLicence(void);

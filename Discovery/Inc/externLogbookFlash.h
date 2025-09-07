@@ -41,7 +41,17 @@
  */
 #define DDSTART				0x00000000
 #define DDSTOP				0x00000FFF
-#define unused1START	0x00001000
+
+#define PROFILE0_START	0x00001000		/* store profiles within one 4k sector because they are always read / written as one block */
+#define PROFILE0_STOP	0x000013FF		/* no ring functionality is implemented because changes are not expected very often */
+#define PROFILE1_START	0x00001400
+#define PROFILE1_STOP	0x000017FF
+#define PROFILE2_START	0x00001800
+#define PROFILE2_STOP	0x00001BFF
+#define PROFILE3_START	0x00001C00
+#define PROFILE3_STOP	0x00001FFF
+
+#define unused1START	0x00002000
 #define unused1STOP		0x00007FFF
 
 /* 32 KB */
@@ -84,6 +94,22 @@
 #define SECTOR_INUSE		(4)
 #define SECTOR_EMPTY		(5)
 
+
+typedef enum{
+	EF_HEADER,
+	EF_SAMPLE,
+	EF_DEVICEDATA,
+	EF_VPMDATA,
+	EF_SETTINGS,
+	EF_FIRMWARE,
+	EF_FIRMWARE2,
+	EF_PROFILE0,
+	EF_PROFILE1,
+	EF_PROFILE2,
+	EF_PROFILE3,
+}which_ring_enum;
+
+
 /* Exported types ------------------------------------------------------------*/
 typedef struct{
 uint8_t byteLow;
@@ -108,8 +134,8 @@ uint16_t u16bit;
 } convert16_Type;
 
 /* Exported functions --------------------------------------------------------*/
-void ext_flash_write_settings(uint8_t resetRing);
-uint8_t ext_flash_read_settings(void);
+void ext_flash_write_settings(uint8_t whichSettings, uint8_t resetRing);
+uint8_t ext_flash_read_settings(uint8_t whichSettings);
 
 void ext_flash_write_devicedata(uint8_t resetRing);
 uint16_t ext_flash_read_devicedata(uint8_t *buffer, uint16_t max_length);

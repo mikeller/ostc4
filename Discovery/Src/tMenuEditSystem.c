@@ -46,12 +46,16 @@
 
 /*#define HAVE_DEBUG_VIEW */
 static uint8_t infoPage = 0;
+static uint32_t profileStartCrc[NUMBER_OF_PROFILES];
+static uint8_t profileActiveStart = 0;
+
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_DateTime(void);
 void openEdit_DateFormat(void);
 void openEdit_Language(void);
 void openEdit_Design(void);
+void openEdit_Profile(void);
 void openEdit_Information(void);
 void openEdit_Reset(void);
 void openEdit_Maintenance(void);
@@ -94,6 +98,8 @@ uint8_t OnAction_Espanol			(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 uint8_t OnAction_Units				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Colorscheme	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_DebugInfo		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_Profile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_SetProfile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 uint8_t OnAction_Exit					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Confirm			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -138,17 +144,21 @@ void openEdit_System(uint8_t line)
             openEdit_DateTime();
         break;
         case 2:
-            openEdit_Language();
+           	openEdit_Profile();
         break;
         case 3:
-            openEdit_Design();
+            openEdit_Language();
         break;
         case 4:
-            openEdit_Information();
+            openEdit_Design();
         break;
         case 5:
+            openEdit_Information();
+        break;
+        case 6:
             openEdit_Reset();
         break;
+
         }
     }
     else
@@ -909,10 +919,129 @@ void openEdit_Design(void)
 #endif
 }
 
+void changeActiveProfil(uint8_t newProfile)
+{
+	SSettings *pSettings = settingsGetPointer();
+	SSettings* pOldProfile = profileGetPointer(pSettings->activeProfile);
+	SSettings* pNewProfile = profileGetPointer(newProfile);
+    uint16_t personalDiveCountBackup;
+    uint8_t lastDiveLogIdBackup;
+    uint32_t sampleStartBackup;
+    char customTextBackup[60];
+
+    if( newProfile < NUMBER_OF_PROFILES)
+    {
+	/* some data needs to be the same in all profiles => make backup before gettings the new profile */
+		personalDiveCountBackup = pSettings->personalDiveCount;
+		lastDiveLogIdBackup = pSettings->lastDiveLogId;
+		sampleStartBackup = pSettings->logFlashNextSampleStartAddress;
+		memcpy(customTextBackup, pSettings->customtext, 60);
+
+
+		memcpy(pOldProfile,pSettings,sizeof(SSettings));
+		memcpy(pSettings,pNewProfile,sizeof(SSettings));
+
+		set_new_settings_missing_in_ext_flash(EF_PROFILE0 + newProfile);
+		check_and_correct_settings(EF_PROFILE0 + newProfile);
+
+		pSettings->personalDiveCount = personalDiveCountBackup;
+		pSettings->lastDiveLogId = lastDiveLogIdBackup;
+		pSettings->logFlashNextSampleStartAddress = sampleStartBackup;
+
+		pSettings->firmwareVersion[0] = firmware_FirmwareData.versionFirst;
+		pSettings->firmwareVersion[1] = firmware_FirmwareData.versionSecond;
+		pSettings->firmwareVersion[2] = firmware_FirmwareData.versionThird;
+		pSettings->firmwareVersion[3] = firmware_FirmwareData.versionBeta;
+
+		memcpy(pSettings->customtext, customTextBackup,  60);
+
+		if(pOldProfile->tX_colorscheme != pSettings->tX_colorscheme)
+		{
+		    GFX_use_colorscheme(pSettings->tX_colorscheme);
+		    tHome_init_compass();
+		}
+    }
+}
+
+void exitMenuProfil()
+{
+	uint8_t index = 0;
+	SSettings* pProfile;
+	uint8_t writeFlash = 0;
+	uint32_t profileExitCrc;
+
+	for(index = 0; index < NUMBER_OF_PROFILES; index++)
+	{
+		pProfile = profileGetPointer(index);
+		profileExitCrc = CalcFletcher32((uint32_t)pProfile, (uint32_t)pProfile + sizeof(SSettings));
+
+		if(profileExitCrc != profileStartCrc[index])
+		{
+			writeFlash = 1;
+			break;
+		}
+	}
+	if(writeFlash)
+	{
+		for(index = EF_PROFILE0; index <= EF_PROFILE3; index++)
+		ext_flash_write_settings(index,0);
+	}
+	if(profileActiveStart != settingsGetPointer()->activeProfile)
+	{
+		createDiveSettings();
+	}
+	exitMenuEdit(1);
+}
+
+void openEdit_Profile(void)
+{
+	char text[50];
+	uint8_t index = 0;
+	SSettings *pSettings = settingsGetPointer();
+	SSettings* pProfile;
+
+	setBackMenu((uint32_t)exitMenuProfil,0,0);
+
+	profileActiveStart = pSettings->activeProfile;
+
+/* read profiles from flash */
+	for(index = EF_PROFILE0; index <= EF_PROFILE3; index++)
+	{
+		set_settings_to_Standard(index);		/* this is needed because details like header version are used by the read block function */
+		ext_flash_read_settings(index);			/* will overwrite standard settings if reading is successfull */
+		pProfile = profileGetPointer(index - EF_PROFILE0);
+		profileStartCrc[index - EF_PROFILE0] = CalcFletcher32((uint32_t)pProfile, (uint32_t)pProfile + sizeof(SSettings));
+		set_new_settings_missing_in_ext_flash(index);
+		check_and_correct_settings(index);
+	}
+
+    sprintf(text,"\001%c%c",TXT_2BYTE,TXT2BYTE_Profile);
+    write_topline(text);
+
+    sprintf(text,"%c %c%c:",TXT_Active,TXT_2BYTE,TXT2BYTE_Profile);
+    write_label_var(  30, 300, ME_Y_LINE1, &FontT48, text);
+    sprintf(text,"%s",pSettings->profileName[pSettings->activeProfile]);
+    write_field_button(StMSYS_Profile,		400, 700, ME_Y_LINE1,  &FontT48, text);
+    write_field_text(StMSYS_ProfileA,		400, 700, ME_Y_LINE3,  &FontT48, "########", pSettings->profileName[0]);
+    write_field_text(StMSYS_ProfileB,		400, 700, ME_Y_LINE4,  &FontT48, "########", pSettings->profileName[1]);
+    write_field_text(StMSYS_ProfileC,		400, 700, ME_Y_LINE5,  &FontT48, "########", pSettings->profileName[2]);
+    write_field_text(StMSYS_ProfileD,		400, 700, ME_Y_LINE6,  &FontT48, "########", pSettings->profileName[3]);
+
+    setEvent(StMSYS_Profile,	(uint32_t)OnAction_SetProfile);
+    setEvent(StMSYS_ProfileA,	(uint32_t)OnAction_Profile);
+    setEvent(StMSYS_ProfileB,	(uint32_t)OnAction_Profile);
+    setEvent(StMSYS_ProfileC,	(uint32_t)OnAction_Profile);
+    setEvent(StMSYS_ProfileD,	(uint32_t)OnAction_Profile);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+
 
 void refresh_Design(void)
 {
-    char text[32];
+	char text[32];
+	SSettings *pSettings = settingsGetPointer();
 
     // header
     text[0] = '\001';
@@ -927,7 +1056,7 @@ void refresh_Design(void)
     text[2] = 0;
     write_label_var(  30, 200, ME_Y_LINE1, &FontT48, text);
 
-    if(settingsGetPointer()->nonMetricalSystem)
+    if(pSettings->nonMetricalSystem)
     {
         text[1] = TXT2BYTE_Units_feet;
     }
@@ -943,10 +1072,20 @@ void refresh_Design(void)
     text[2] = 0;
     write_label_var(  30, 300, ME_Y_LINE2, &FontT48, text);
 
-    text[0] = '0' + settingsGetPointer()->tX_colorscheme;
+    text[0] = '0' + pSettings->tX_colorscheme;
     text[1] = 0;
     write_label_var( 400, 700, ME_Y_LINE2, &FontT48, text);
 
+#if 0
+    /* profile */
+    sprintf(text,"Profile:");
+    write_label_var(  30, 300, ME_Y_LINE3, &FontT48, text);
+
+    memset(text,0, sizeof(text));
+    sprintf(text,"%s",pSettings->profileName[pSettings->activeProfile]);
+    tMenuEdit_newInputText(StMSYS_Profile,(uint8_t*)text);
+  //  write_label_var( 400, 700, ME_Y_LINE3, &FontT48, text);
+#endif
 #ifdef HAVE_DEBUG_VIEW
     // specials
     text[0] = TXT_2BYTE;
@@ -1004,7 +1143,100 @@ uint8_t OnAction_DebugInfo(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
     return UPDATE_DIVESETTINGS;
 }
 
+uint8_t OnAction_SetProfile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
 
+	uint8_t newProfile = pSettings->activeProfile + 1;
+
+	if(newProfile == NUMBER_OF_PROFILES)
+	{
+		newProfile = 0;
+	}
+	changeActiveProfil(newProfile);
+	pSettings->activeProfile = newProfile;
+
+	tMenuEdit_newButtonText(editId,(char*)pSettings->profileName[pSettings->activeProfile]);
+    return UNSPECIFIC_RETURN;
+}
+uint8_t OnAction_Profile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *pSettings = settingsGetPointer();
+    SSettings *pProfile;
+    uint8_t digitContentNew;
+    uint8_t profilName[9];
+    uint8_t updateProfilIndex = 0;
+    uint8_t index = 0;
+
+    uint8_t returnValue = UNSPECIFIC_RETURN;
+
+    switch (editId)
+    {
+    	default:
+    	case StMSYS_ProfileA: updateProfilIndex = 0;
+    		break;
+    	case StMSYS_ProfileB: updateProfilIndex = 1;
+    	    		break;
+    	case StMSYS_ProfileC: updateProfilIndex = 2;
+    	    		break;
+    	case StMSYS_ProfileD: updateProfilIndex = 3;
+    	    		break;
+    }
+
+    switch (action)
+    {
+		case ACTION_BUTTON_ENTER: returnValue = digitContent;
+			break;
+		case ACTION_BUTTON_ENTER_FINAL:
+			{
+				evaluateNewStringText(editId, profilName);
+				tMenuEdit_newInputText(editId, profilName);
+				if(pSettings->activeProfile == updateProfilIndex)
+				{
+					tMenuEdit_newButtonText(StMSYS_Profile, (char*)profilName);
+				}
+				strcpy((char*)pSettings->profileName[updateProfilIndex],(char*)profilName);
+				for (index = 0; index < NUMBER_OF_PROFILES; index++)
+				{
+					pProfile = profileGetPointer(index);
+					strcpy((char*)pProfile->profileName[updateProfilIndex],(char*)profilName);
+				}
+			}
+
+			break;
+		case ACTION_BUTTON_NEXT:
+				if(digitContent == 'Z')
+				{
+					digitContentNew = '_';
+				}
+				else if (digitContent == '_')
+				{
+					digitContentNew = 'A';
+				}
+				else
+				{
+					digitContentNew = digitContent + 1;
+				}
+				returnValue = digitContentNew;
+			break;
+		case ACTION_BUTTON_BACK:
+				if(digitContent == 'A')
+				{
+					digitContentNew = '_';
+				}
+				else if (digitContent == '_')
+				{
+					digitContentNew = 'Z';
+				}
+				else
+				{
+					digitContentNew = digitContent - 1;
+				}
+				returnValue = digitContentNew;
+			break;
+    }
+    return returnValue;
+}
 
 
 /*
@@ -1574,8 +1806,8 @@ uint8_t OnAction_ResetDeco		(uint32_t editId, uint8_t blockNumber, uint8_t digit
 
 uint8_t OnAction_ResetAll			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-    set_settings_to_Standard();
-    check_and_correct_settings();
+    set_settings_to_Standard(EF_SETTINGS);
+    check_and_correct_settings(EF_SETTINGS);
 
     return UPDATE_AND_EXIT_TO_HOME;
 }

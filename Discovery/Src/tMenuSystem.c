@@ -146,6 +146,15 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         textPointer += 2;
     }
 
+    if((line == 0) || (line == 2))
+    {
+    	textPointer += snprintf(&text[textPointer], 40,"%c%c:\t%s\n\r",TXT_2BYTE,TXT2BYTE_Profile,data->profileName[data->activeProfile]);
+    }
+    else
+    {
+    	strcpy(&text[textPointer],"\n\r");
+    	textPointer += 2;
+    }
     if((line == 0) || (line == 3))
     {
         text[textPointer++] = TXT_Language;
