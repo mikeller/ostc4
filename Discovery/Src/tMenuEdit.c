@@ -46,6 +46,9 @@
 /* Private types -------------------------------------------------------------*/
 #define TEXTSIZE 16
 
+#define IDENT_MAY_INPUT_NUM		4	/* legacy value of ident.input struct */
+#define IDENT_MAX_INPUT_TEXT	9	/* 8 data items + 0 for string operations */
+
 typedef struct
 {
     uint32_t pEventFunction;
@@ -63,9 +66,9 @@ typedef struct
 {
     char orgText[32];
     char newText[32];
-    uint32_t input[4];
+    uint32_t input[IDENT_MAX_INPUT_TEXT];
     uint16_t coord[3];
-    int8_t begin[4], size[4];
+    int8_t begin[IDENT_MAX_INPUT_TEXT], size[IDENT_MAX_INPUT_TEXT];
     tFont *fontUsed;
     uint32_t callerID;
     uint8_t maintype;
@@ -85,6 +88,7 @@ typedef struct
     FIELD_3DIGIT,
     FIELD_SDIGIT,
     FIELD_FLOAT,
+	FIELD_TEXT,
     FIELD_END
 } SField;
 
@@ -284,7 +288,7 @@ void tMenuEdit_writeSettingsToFlash(void)
     {
     	reset_SettingWarning();
         GFX_logoAutoOff();
-        ext_flash_write_settings(0);
+        ext_flash_write_settings(EF_SETTINGS,0);
         WriteSettings = 0;
     }
 }
@@ -442,7 +446,7 @@ _Bool inc_subBlock_or_block_of_actual_id(void)
         return 1;
     }
 
-    if(((block + 1) < 4) && (ident[actualId].size[block+1] > 0))
+    if((((block + 1) < 4) || ((ident[actualId].maintype == FIELD_TEXT) && ((block + 1) < IDENT_MAX_INPUT_TEXT)))  && (ident[actualId].size[block+1] > 0))
     {
         block++;
         subBlockPosition = 0;
@@ -476,7 +480,7 @@ uint8_t get_newContent_of_actual_id_block_and_subBlock(uint8_t action)
         content += ident[actualId].newText[ident[actualId].begin[block] + 1];
     }
     else
-    if(ident[actualId].maintype == FIELD_NUMBERS)
+    if((ident[actualId].maintype == FIELD_NUMBERS) || (ident[actualId].maintype == FIELD_TEXT))
         content = ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition];
     else
     if((ident[actualId].maintype == FIELD_ON_OFF) || (ident[actualId].maintype == FIELD_TOGGLE))
@@ -495,7 +499,7 @@ void mark_digit_of_actual_id_with_this_block_and_subBlock(int8_t oldblock, int8_
     if(event[actualevid].callerID != ident[actualId].callerID)
         return;
 
-    if(ident[actualId].maintype == FIELD_NUMBERS)
+    if((ident[actualId].maintype == FIELD_NUMBERS) || (ident[actualId].maintype == FIELD_TEXT))
     {
         oneCharText[0] = ident[actualId].newText[ident[actualId].begin[oldblock] + oldsubblockpos];
         oneCharText[1] = 0;
@@ -552,7 +556,7 @@ void mark_new_digit_of_actual_id_block_and_subBlock(void)
     if(event[actualevid].callerID != ident[actualId].callerID)
         return;
 
-    if(ident[actualId].maintype == FIELD_NUMBERS)
+    if((ident[actualId].maintype == FIELD_NUMBERS) || (ident[actualId].maintype == FIELD_TEXT))
     {
         oneCharText[0] = ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition];
         oneCharText[1] = 0;
@@ -582,7 +586,7 @@ void enterMenuEditField(void)
     block = 0;
     subBlockPosition = 0;
 
-    if(ident[actualId].maintype == FIELD_NUMBERS)
+    if((ident[actualId].maintype == FIELD_NUMBERS) || (ident[actualId].maintype == FIELD_TEXT))
     {
         change_CLUT_entry(CLUT_MenuEditLineSelected, CLUT_MenuEditCursor);
         // old stuff? hw 150916, reactivated 150923, this shows which digit will be changed now as it marks the other grey/black
@@ -690,7 +694,13 @@ void enterMenuEditField(void)
         break;
     case FIELD_SELECT:
         write_buttonTextline(TXT2BYTE_ButtonMinus, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonPlus);
+        break;
+    case FIELD_TEXT:
+    	write_buttonTextline(TXT2BYTE_ButtonMinus, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonPlus);
+        if((newContent >= 'A') && (newContent <= '_'))
+            ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
 
+        mark_new_digit_of_actual_id_block_and_subBlock();
         break;
     }
 }
@@ -815,6 +825,9 @@ void nextMenuEditFieldDigit(void)
     else
     if((ident[actualId].maintype == FIELD_NUMBERS) && (action == ACTION_BUTTON_ENTER) && (newContent >= '0') && (newContent <= '9'))
         ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
+    else
+        if((ident[actualId].maintype == FIELD_TEXT) && (action == ACTION_BUTTON_ENTER) && (newContent >= '0') && (newContent <= '9'))
+            ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
 
     if(action == ACTION_BUTTON_ENTER)
     {
@@ -911,6 +924,10 @@ void upMenuEditFieldDigit(void)
         ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
     }
 
+    if ((ident[actualId].maintype == FIELD_TEXT) && (newContent >= 'A' && newContent <= '_'))
+    {
+        ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
+    }
     mark_new_digit_of_actual_id_block_and_subBlock();
 }
 
@@ -948,6 +965,9 @@ void downMenuEditFieldDigit(void)
     if (ident[actualId].maintype == FIELD_NUMBERS && ident[actualId].subtype == FIELD_SDIGIT) {
         checkUpdateSDigit(newContent);
     } else if (ident[actualId].maintype == FIELD_NUMBERS && newContent >= '0' && newContent <= '9') {
+        ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
+    }
+    if ((ident[actualId].maintype == FIELD_TEXT) && (newContent >= 'A' && newContent <= '_')) {
         ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
     }
 
@@ -1018,7 +1038,27 @@ void evaluateNewString(uint32_t editID, uint32_t *pNewValue1, uint32_t *pNewValu
     *pNewValue3 = sum[2];
     *pNewValue4 = sum[3];
 }
+void evaluateNewStringText(uint32_t editID, uint8_t *pNewString)
+{
+    if(editID != ident[actualId].callerID)
+        return;
 
+    uint8_t i, digitCount;
+	uint8_t digit = '_';
+
+    memset(pNewString, 0 , IDENT_MAX_INPUT_TEXT);
+
+    i = 0;
+    while( ident[actualId].size[i] && (i < IDENT_MAX_INPUT_TEXT - 1))
+    {
+        for(digitCount = 0; digitCount < ident[actualId].size[i]; digitCount++)
+        {
+            digit = ident[actualId].newText[ident[actualId].begin[i] + digitCount];
+        }
+        pNewString[i] = digit;
+        i++;
+    }
+}
 
 uint8_t get_id_of(uint32_t editID)
 {
@@ -1156,7 +1196,38 @@ void tMenuEdit_newInput(uint32_t editID, uint32_t int1,  uint32_t int2,  uint32_
 
     id = backup_id;
 }
+void tMenuEdit_newInputText(uint32_t editID, uint8_t* ptext)
+{
+    uint8_t backup_id, temp_id;
+    uint8_t index = 0;
 
+    temp_id = get_id_of(editID);
+    if(temp_id == 255)
+        return;
+
+    backup_id = id;
+    id = temp_id;
+
+    if(editID != ident[id].callerID)
+    {
+        temp_id = 0;
+        while((temp_id < IDENT_MAX_INPUT_TEXT) && (editID != ident[temp_id].callerID))
+            temp_id++;
+        if(editID != ident[temp_id].callerID)
+            return;
+        id = temp_id;
+    }
+    for(index = 0; index < IDENT_MAX_INPUT_TEXT; index++)
+    {
+    	ident[id].input[index] = *ptext++;
+    }
+    create_newText_for_Id(id);
+    if(id <= idLast)
+        change_CLUT_entry((CLUT_MenuEditField0 + id), CLUT_MenuEditFieldRegular);
+    write_content_of_Id(id);
+
+    id = backup_id;
+}
 
 void resetEnterPressedToStateBeforeButtonAction(void)
 {
@@ -1257,6 +1328,20 @@ void create_newText_for_Id_and_field_select(int8_t localId)
     }
 }
 
+void create_newText_for_Id_and_field_text(int8_t localId)
+{
+    uint8_t i;
+
+    i = 0;
+    while( ident[localId].size[i] && (i < 9))
+    {
+        if(ident[localId].input[i])
+            ident[localId].newText[ident[localId].begin[i]] = ident[localId].input[i];
+        i++;
+    }
+}
+
+
 void create_newText_for_actual_Id_and_field_select(void)
 {
 	create_newText_for_Id_and_field_select(actualId);
@@ -1273,6 +1358,12 @@ void create_newText_for_Id(int8_t localId)
     if(	ident[localId].maintype == FIELD_SELECT)
     {
         create_newText_for_Id_and_field_select(localId);
+        return;
+    }
+
+    if(	ident[localId].maintype == FIELD_TEXT)
+    {
+        create_newText_for_Id_and_field_text(localId);
         return;
     }
 
@@ -1441,6 +1532,66 @@ void write_field_3digit(uint32_t editID, uint16_t XleftGimpStyle, uint16_t Xrigh
 void write_field_sdigit(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, int32_t int1, int32_t int2, int32_t int3, int32_t int4)
 {
     write_field_udigit_and_2digit(FIELD_SDIGIT, editID, XleftGimpStyle, XrightGimpStyle, YtopGimpStyle, Font, text, ((input_u)int1).uint32, ((input_u)int2).uint32, ((input_u)int3).uint32, ((input_u)int4).uint32);
+}
+
+void write_field_text(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint8_t* pInput)
+{
+    if(id >= 9)
+        return;
+
+    int8_t beginTmp;
+
+    ident[id].maintype = FIELD_TEXT;
+    ident[id].subtype  = FIELD_TEXT;
+
+    ident[id].coord[0] = XleftGimpStyle;
+    ident[id].coord[1] = XrightGimpStyle;
+    ident[id].coord[2] = YtopGimpStyle;
+    ident[id].fontUsed = (tFont *)Font;
+    ident[id].callerID = editID;
+
+    strncpy(ident[id].orgText, text, 32);
+    strncpy(ident[id].newText, text, 32);
+    ident[id].orgText[31] = 0;
+    ident[id].newText[31] = 0;
+
+    for(int i=0;i < IDENT_MAX_INPUT_TEXT -1;i++)
+    {
+    	ident[id].input[i] = pInput[i];
+        ident[id].size[i] = 0;
+    }
+    pInput[8] = 0;
+
+    beginTmp = 0;
+    for(int i=0;i < IDENT_MAX_INPUT_TEXT;i++)
+    {
+        while((ident[id].orgText[beginTmp] != '#')&& ident[id].orgText[beginTmp])
+            beginTmp++;
+
+        if(ident[id].orgText[beginTmp] == '#')
+        {
+
+            ident[id].begin[i] = beginTmp;
+            ident[id].size[i] = 1;
+            beginTmp = ident[id].begin[i] + ident[id].size[i];
+        }
+        else
+            break;
+    }
+
+    change_CLUT_entry((CLUT_MenuEditField0 + id), CLUT_MenuEditFieldRegular);
+
+    create_newText_for_Id(id);
+
+    if(editID == 0)
+    	write_content_without_Id();
+    else
+    {
+        write_content_of_Id(id);
+        if(!tME_stop)
+            idLast = id;
+        id++;
+    }
 }
 
 

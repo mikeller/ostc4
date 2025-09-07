@@ -68,7 +68,10 @@ void tMenuEdit_refresh_field(uint32_t editID);
 void tMenuEdit_select(uint32_t editID);
 
 void evaluateNewString	(uint32_t editID, uint32_t *pNewValue1, uint32_t *pNewValue2, uint32_t *pNewValue3, uint32_t *pNewValue4);
+void evaluateNewStringText(uint32_t editID, uint8_t *pNewString);
+
 void tMenuEdit_newInput	(uint32_t editID, uint32_t int1, uint32_t int2, uint32_t int3, uint32_t int4);
+void tMenuEdit_newInputText(uint32_t editID, uint8_t* ptext);
 void tMenuEdit_newButtonText(uint32_t editID, char *text);
 void tMenuEdit_set_on_off(uint32_t editID, uint32_t int1);
 
@@ -91,6 +94,7 @@ void write_field_symbol(uint32_t editID, uint16_t XleftGimpStyle, uint16_t Xrigh
 void write_field_toggle(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint8_t int1,  uint8_t int2);
 void write_field_on_off(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint8_t int1);
 void write_field_fpoint(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, float input);
+void write_field_text(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, uint8_t* pInput);
 
 void stop_cursor_fields(void);
 
