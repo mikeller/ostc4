@@ -24,6 +24,8 @@ jobs:
 
     - name: checkout sources
       uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      with:
+        persist-credentials: false
 
     - name: get ARM toolchain version
       id: set_variables
@@ -32,6 +34,7 @@ jobs:
         echo "arm_toolchain_version=${ARM_TOOLCHAIN_VERSION}" >> $GITHUB_OUTPUT
 
     - name: load the arm toolchain from cache
+      if: github.event_name != 'push'
       id: cache_toolchain
       uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
       with:
