@@ -2005,6 +2005,18 @@ static uint8_t text_FR_Reverse[] = "Inverser";
 static uint8_t text_IT_Reverse[] = "Invertire";
 static uint8_t text_ES_Reverse[] = "Invertir";
 
+static uint8_t text_EN_Pulse[] = "Heartbeat sensor (BT)";
+static uint8_t text_DE_Pulse[] = "Pulssensor (BT)";
+static uint8_t text_FR_Pulse[] = "";
+static uint8_t text_IT_Pulse[] = "";
+static uint8_t text_ES_Pulse[] = "";
+
+static uint8_t text_EN_Logger[] = "Debug Messages";
+static uint8_t text_DE_Logger[] = "Logger";
+static uint8_t text_FR_Logger[] = "";
+static uint8_t text_IT_Logger[] = "";
+static uint8_t text_ES_Logger[] = "";
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2319,6 +2331,8 @@ const tText text_array2[] =
  	{(uint8_t)TXT2BYTE_Log, 			{text_EN_Log, text_DE_Log, text_FR_Log, text_IT_Log, text_ES_Log}},
 	{(uint8_t)TXT2BYTE_Reverse, 		{text_EN_Reverse, text_DE_Reverse, text_FR_Reverse, text_IT_Reverse, text_ES_Reverse}},
 
+	{(uint8_t)TXT2BYTE_Pulse, 			{text_EN_Pulse, text_DE_Pulse, text_FR_Pulse, text_IT_Pulse, text_ES_Pulse}},
+	{(uint8_t)TXT2BYTE_Logger, 			{text_EN_Logger, text_DE_Logger, text_FR_Logger, text_IT_Logger, text_ES_Logger}},
 
 
 };

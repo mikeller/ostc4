@@ -395,6 +395,8 @@ extern const tText text_array2[];
 		TXT2BYTE_TIMEZONE,
 
 		TXT2BYTE_BUZZER,
+		TXT2BYTE_Pulse,
+		TXT2BYTE_Logger,
 
 		TXT2BYTE_END,
 };

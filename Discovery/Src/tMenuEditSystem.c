@@ -46,16 +46,19 @@
 
 /*#define HAVE_DEBUG_VIEW */
 static uint8_t infoPage = 0;
+#ifdef ENABLE_SETTING_PROFILES
 static uint32_t profileStartCrc[NUMBER_OF_PROFILES];
 static uint8_t profileActiveStart = 0;
-
+#endif
 
 /* Private function prototypes -----------------------------------------------*/
 void openEdit_DateTime(void);
 void openEdit_DateFormat(void);
 void openEdit_Language(void);
 void openEdit_Design(void);
+#ifdef ENABLE_SETTING_PROFILES
 void openEdit_Profile(void);
+#endif
 void openEdit_Information(void);
 void openEdit_Reset(void);
 void openEdit_Maintenance(void);
@@ -98,9 +101,10 @@ uint8_t OnAction_Espanol			(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 uint8_t OnAction_Units				(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Colorscheme	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_DebugInfo		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+#ifdef ENABLE_SETTING_PROFILES
 uint8_t OnAction_Profile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetProfile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-
+#endif
 uint8_t OnAction_Exit					(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Confirm			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Maintenance			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -137,29 +141,33 @@ void openEdit_System(uint8_t line)
 
     if(actual_menu_content == MENU_SURFACE)
     {
-        switch(line)
-        {
-        case 1:
-        default:
-            openEdit_DateTime();
-        break;
-        case 2:
-           	openEdit_Profile();
-        break;
-        case 3:
-            openEdit_Language();
-        break;
-        case 4:
-            openEdit_Design();
-        break;
-        case 5:
-            openEdit_Information();
-        break;
-        case 6:
-            openEdit_Reset();
-        break;
 
-        }
+    	if(line == get_lineOfID(StMSYS1_DateTime))
+    	{
+    		openEdit_DateTime();
+    	}
+    	else if(line == get_lineOfID(StMSYS2_English))
+    	{
+    		 openEdit_Language();
+    	}
+    	else if(line == get_lineOfID(StMSYS3_Units))
+    	{
+    		openEdit_Design();
+    	}
+    	else if(line == get_lineOfID(StMSYS4_Info))
+    	{
+    		openEdit_Information();
+    	}
+    	else if(line == get_lineOfID(StMSYS5_ResetAll))
+    	{
+    		openEdit_Reset();
+    	}
+#ifdef ENABLE_SETTING_PROFILES
+    	else if(line == get_lineOfID(StMSYS_Profile))
+    	{
+    		openEdit_Profile();
+    	}
+#endif
     }
     else
     {
@@ -919,6 +927,7 @@ void openEdit_Design(void)
 #endif
 }
 
+#ifdef ENABLE_SETTING_PROFILES
 void changeActiveProfil(uint8_t newProfile)
 {
 	SSettings *pSettings = settingsGetPointer();
@@ -992,7 +1001,8 @@ void exitMenuProfil()
 	}
 	exitMenuEdit(1);
 }
-
+#endif
+#ifdef ENABLE_SETTING_PROFILES
 void openEdit_Profile(void)
 {
 	char text[50];
@@ -1035,7 +1045,7 @@ void openEdit_Profile(void)
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
-
+#endif
 
 
 void refresh_Design(void)
@@ -1076,16 +1086,6 @@ void refresh_Design(void)
     text[1] = 0;
     write_label_var( 400, 700, ME_Y_LINE2, &FontT48, text);
 
-#if 0
-    /* profile */
-    sprintf(text,"Profile:");
-    write_label_var(  30, 300, ME_Y_LINE3, &FontT48, text);
-
-    memset(text,0, sizeof(text));
-    sprintf(text,"%s",pSettings->profileName[pSettings->activeProfile]);
-    tMenuEdit_newInputText(StMSYS_Profile,(uint8_t*)text);
-  //  write_label_var( 400, 700, ME_Y_LINE3, &FontT48, text);
-#endif
 #ifdef HAVE_DEBUG_VIEW
     // specials
     text[0] = TXT_2BYTE;
@@ -1143,6 +1143,7 @@ uint8_t OnAction_DebugInfo(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
     return UPDATE_DIVESETTINGS;
 }
 
+#ifdef ENABLE_SETTING_PROFILES
 uint8_t OnAction_SetProfile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
 	SSettings *pSettings = settingsGetPointer();
@@ -1159,6 +1160,7 @@ uint8_t OnAction_SetProfile(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 	tMenuEdit_newButtonText(editId,(char*)pSettings->profileName[pSettings->activeProfile]);
     return UNSPECIFIC_RETURN;
 }
+
 uint8_t OnAction_Profile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     SSettings *pSettings = settingsGetPointer();
@@ -1237,7 +1239,7 @@ uint8_t OnAction_Profile(uint32_t editId, uint8_t blockNumber, uint8_t digitNumb
     }
     return returnValue;
 }
-
+#endif
 
 /*
 uint8_t OnAction_Design_t7ft		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)

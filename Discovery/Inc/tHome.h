@@ -81,7 +81,10 @@ enum CUSTOMVIEWS
 		CVIEW_CcrSummary,
         CVIEW_Timer,
 		CVIEW_Position,
-		CVIEW_END			/* The ID is used in shift operation => 31 is the max number of supported views */
+#ifdef ENABLE_LOGGER_WINDOW
+		CVIEW_Logger = 25,			/* keep development views at the end of the list to avoid id problems in official releases */
+#endif
+		CVIEW_END	= 32			/* The ID is used in shift operation => 31 is the max number of supported views */
 };
 
 enum CUSTOMVIEWS_BF

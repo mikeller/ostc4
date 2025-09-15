@@ -66,6 +66,7 @@
 #define InfoPageCompass 6
 #define InfoPageSensor  8
 #define InfoPagePreDive 9
+#define InfoPageLogger  10
 
 #define StI 			_MB(0,1,0,0,0)
 #define StILOGLIST		_MB(0,2,0,0,0)
@@ -76,6 +77,7 @@
 #define StIDEBUG		_MB(0,7,0,0,0)
 #define StISENINFO		_MB(0,8,0,0,0)
 #define StIPREDIVE		_MB(0,9,0,0,0)
+#define StILOGGER		_MB(0,10,0,0,0)
 
 #define StI_GoToLogbook			_MB(0,1,1,0,0)
 #define StI_GoToPlanner			_MB(0,1,2,0,0)
@@ -313,6 +315,7 @@
 #define StMSYS1_GNSSDT  _MB(2,8,1,5,0)
 #define StMSYS1_ZONE	_MB(2,8,1,6,0)
 
+#ifdef ENABLE_SETTING_PROFILES
 #define StMSYS_Profile		_MB(2,8,2,0,0)
 #define StMSYS_ProfileA 	_MB(2,8,2,1,0)
 #define StMSYS_ProfileB 	_MB(2,8,2,2,0)
@@ -331,7 +334,7 @@
 #define StMSYS3_Debug	_MB(2,8,4,3,0)
 #endif
 
- #define StMSYS4_Info	_MB(2,8,5,1,0)
+#define StMSYS4_Info	_MB(2,8,5,1,0)
 
 #define StMSYS5_Exit			_MB(2,8,6,1,0)
 #define StMSYS5_LogbookOffset	_MB(2,8,6,7,0)
@@ -350,6 +353,39 @@
 #define StMSYS5_AdjustSurfPres  _MB(2,8,6,14,0)
 #define StMSYS5_FlashBoot		_MB(2,8,6,15,0)
 
+#else
+
+#define StMSYS2_English	_MB(2,8,2,1,0)
+#define StMSYS2_German	_MB(2,8,2,2,0)
+#define StMSYS2_French	_MB(2,8,2,3,0)
+#define StMSYS2_Italian	_MB(2,8,2,4,0)
+#define StMSYS2_Espanol	_MB(2,8,2,5,0)
+
+#define StMSYS3_Units	_MB(2,8,3,1,0)
+#define StMSYS3_Colors	_MB(2,8,3,2,0)
+#ifdef HAVE_DEBUG_VIEW
+#define StMSYS3_Debug	_MB(2,8,3,3,0)
+#endif
+
+#define StMSYS4_Info	_MB(2,8,4,1,0)
+
+#define StMSYS5_Exit			_MB(2,8,5,1,0)
+#define StMSYS5_LogbookOffset	_MB(2,8,5,7,0)
+#define StMSYS5_ResetAll		_MB(2,8,5,2,0)
+#define StMSYS5_ResetDeco		_MB(2,8,5,3,0)
+#define StMSYS5_Reboot			_MB(2,8,5,4,0)
+#define StMSYS5_Maintenance		_MB(2,8,5,5,0)
+#define StMSYS5_ResetLogbook	_MB(2,8,5,6,0)
+#define StMSYS5_SetBattCharge	_MB(2,8,5,7,0)
+#define StMSYS5_RebootRTE		_MB(2,8,5,8,0)
+#define StMSYS5_RebootMainCPU	_MB(2,8,5,9,0)
+#define StMSYS5_ScreenTest		_MB(2,8,5,10,0)
+#define StMSYS5_SetFactoryBC	_MB(2,8,5,11,0)
+#define StMSYS5_ResetBluetooth	_MB(2,8,5,12,0)
+#define StMSYS5_SetSampleIndx   _MB(2,8,5,13,0)
+#define StMSYS5_AdjustSurfPres  _MB(2,8,5,14,0)
+#define StMSYS5_FlashBoot		_MB(2,8,5,15,0)
+#endif
 
 
 #define StMSYS_Custom0			_MB(2,8,1,0,0)
@@ -405,6 +441,8 @@
 
 #define StMOption_Timer					_MB(2,10,2,0,0)
 #define StMOption_Timer_Value			_MB(2,10,2,1,0)
+
+#define StMOption_Heartbeat 			_MB(2,10,3,0,0)
 
 /* PAGE 11 */
 #define StMPLAN		_MB(2,11,0,0,0)

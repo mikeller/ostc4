@@ -826,7 +826,12 @@ void updateMenu(void)
         update_content_actual_page(text, tabPosition, subtext);
         break;
     case StMSYS:
-        if((line == get_lineOfID(StMSYS1_DateTime)) || (line == get_lineOfID(StMSYS2_English)) || (line == get_lineOfID(StMSYS_Profile)))
+        if((line == get_lineOfID(StMSYS1_DateTime)) || (line == get_lineOfID(StMSYS2_English))
+#ifdef ENABLE_SETTING_PROFILES
+        		|| (line == get_lineOfID(StMSYS_Profile)))
+#else
+        	)
+#endif
         {
             tM_rebuild_pages();
             menu.lineMemoryForNavigationForPage[page] = line; // fix 160623

@@ -27,8 +27,10 @@
 //////////////////////////////////////////////////////////////////////////////
 
 /* Includes ------------------------------------------------------------------*/
+#include "configuration.h"
 #include "ostc.h"
 #include "stm32f4xx_hal.h"
+#include "cv_heartbeat.h"
 
 #ifndef BOOTLOADER_STANDALONE
 #include "tCCR.h"
@@ -45,6 +47,10 @@ UART_HandleTypeDef UartPiezoTxHandle;
 #endif
 UART_HandleTypeDef UartIR_HUD_Handle;
 
+#ifdef ENABLE_USART_RADIO
+UART_HandleTypeDef UartRadio_Handle;
+#endif
+
 __IO ITStatus UartReady = RESET;
 __IO ITStatus UartReadyHUD = RESET;
 
@@ -54,6 +60,19 @@ __IO ITStatus UartReadyHUD = RESET;
 
 /* Private variables with external access via get_xxx() function -------------*/
 static uint8_t	hardwareDisplay = 0;		//< either OSTC4 LCD (=0) or new Screen (=1)
+
+#ifdef ENABLE_PULSE_SENSOR_BT
+static DMA_HandleTypeDef  hdma_uart_BT_rx;
+#endif
+
+#ifdef ENABLE_USART_RADIO
+static DMA_HandleTypeDef  hdma_uart_radio_rx;
+#endif
+
+static uint16_t rxBufRead = 0;
+static uint16_t rxBufWrite = 0;
+static uint8_t rxBufferUart[CHUNK_SIZE * CHUNKS_PER_BUFFER];		/* The complete buffer has a X * chunk size to allow variations in buffer read time */
+
 /* Private function prototypes -----------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
@@ -378,7 +397,121 @@ void MX_UART_Init(void)
 
     HAL_UART_Init(&UartIR_HUD_Handle);
 #endif
+
+#ifdef ENABLE_USART_RADIO
+    UartRadio_Handle.Instance        = USART_RADIO;
+    UartRadio_Handle.Init.BaudRate   = 9600;
+    UartRadio_Handle.Init.WordLength = UART_WORDLENGTH_8B;
+    UartRadio_Handle.Init.StopBits   = UART_STOPBITS_1;
+    UartRadio_Handle.Init.Parity     = UART_PARITY_NONE;
+    UartRadio_Handle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
+    UartRadio_Handle.Init.Mode       = UART_MODE_RX;
+
+    HAL_UART_Init(&UartRadio_Handle);
+#endif
+
 }
+
+#ifdef ENABLE_PULSE_SENSOR_BT
+void MX_UART_BT_Init_DMA()
+{
+
+	__DMA2_CLK_ENABLE();
+	 __HAL_RCC_DMA2_CLK_ENABLE();
+
+	hdma_uart_BT_rx.Instance = DMA2_Stream2;
+	hdma_uart_BT_rx.Init.Channel = DMA_CHANNEL_4;
+	hdma_uart_BT_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+	hdma_uart_BT_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma_uart_BT_rx.Init.MemInc = DMA_MINC_ENABLE;
+	hdma_uart_BT_rx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma_uart_BT_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma_uart_BT_rx.Init.Mode = DMA_NORMAL;
+	hdma_uart_BT_rx.Init.Priority = DMA_PRIORITY_LOW;
+	hdma_uart_BT_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	HAL_DMA_Init(&hdma_uart_BT_rx);
+
+	__HAL_LINKDMA(&UartHandle, hdmarx, hdma_uart_BT_rx);
+
+	HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+}
+#endif
+
+#ifdef ENABLE_USART_RADIO
+void MX_UART_RADIO_Init_DMA()
+{
+
+	__DMA2_CLK_ENABLE();
+	 __HAL_RCC_DMA2_CLK_ENABLE();
+
+	hdma_uart_radio_rx.Instance = DMA2_Stream1;
+	hdma_uart_radio_rx.Init.Channel = DMA_CHANNEL_4;
+	hdma_uart_radio_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+	hdma_uart_radio_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma_uart_radio_rx.Init.MemInc = DMA_MINC_ENABLE;
+	hdma_uart_radio_rx.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma_uart_radio_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma_uart_radio_rx.Init.Mode = DMA_NORMAL;
+	hdma_uart_radio_rx.Init.Priority = DMA_PRIORITY_LOW;
+	hdma_uart_radio_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	HAL_DMA_Init(&hdma_uart_radio_rx);
+
+	__HAL_LINKDMA(&UartRadio_Handle, hdmarx, hdma_uart_radio_rx);
+
+	HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+}
+#endif
+
+
+uint8_t UART_getChar()
+{
+	uint8_t retChar = 0;
+
+	if((rxBufRead != rxBufWrite) && (rxBufferUart[rxBufRead] != 0))
+	{
+		retChar = rxBufferUart[rxBufRead];
+		rxBufferUart[rxBufRead++] = 0;
+		if(rxBufRead == CHUNK_SIZE * CHUNKS_PER_BUFFER)
+		{
+			rxBufRead = 0;
+		}
+	}
+	return retChar;
+}
+#ifdef ENABLE_PULSE_SENSOR_BT
+void UART_StartDMARx()
+{
+	HAL_UART_Receive_DMA (&UartHandle, &rxBufferUart[rxBufWrite], CHUNK_SIZE);
+	rxBufWrite += CHUNK_SIZE;
+	if(rxBufWrite >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+	{
+		rxBufWrite = 0;
+	}
+}
+void DMA2_Stream2_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_uart_BT_rx);
+}
+#endif
+
+#ifdef ENABLE_USART_RADIO
+void UART_StartDMARxRadio()
+{
+	HAL_UART_Receive_DMA (&UartRadio_Handle, &rxBufferUart[rxBufWrite], CHUNK_SIZE);
+	rxBufWrite += CHUNK_SIZE;
+	if(rxBufWrite >= CHUNK_SIZE * CHUNKS_PER_BUFFER)
+	{
+		rxBufWrite = 0;
+	}
+}
+
+void DMA2_Stream2_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_uart_radio_rx);
+}
+#endif
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -390,7 +523,20 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if(huart == &UartHandle)
-        UartReady = SET;
+    {
+#ifdef ENABLE_PULSE_SENSOR_BT
+    	if(cv_heartbeat_getState() != SENSOR_HB_OFFLINE)
+    	{
+    		UART_StartDMARx();
+    	}
+    	else
+    	{
+    		UartReady = SET;
+    	}
+#else
+    	UartReady = SET;
+#endif
+    }
     else
     if(huart == &UartIR_HUD_Handle)
     {

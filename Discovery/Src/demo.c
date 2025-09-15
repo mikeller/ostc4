@@ -28,6 +28,8 @@
 #include "data_exchange_main.h" // for time_elapsed_ms()
 #include "settings.h"
 #include "ostc.h"
+#include "tInfoLogger.h"
+#include <string.h>
 
 #ifndef DEMOMODE
 
@@ -424,6 +426,63 @@ void demoConfigureSettings(void)
 
 
 #endif // DEMO
+
+#ifdef ENABLE_USART_RADIO				/* debug function to check receiption of radio data */
+void demo_HandleData(void)
+{
+	static uint8_t comStarted = 0;
+	static uint8_t text[50];
+	static uint8_t index = 0;
+	static uint32_t startTick = 0;
+	static uint8_t firstData = 1;
+	uint8_t data = 0;
+
+	switch(comStarted)
+	{
+		case 0: 	startTick = HAL_GetTick();
+					comStarted++;
+				break;
+		case 1:		if(time_elapsed_ms(startTick, HAL_GetTick()) > 5000)
+					{
+						MX_UART_RADIO_Init_DMA();
+						UART_StartDMARxRadio();
+						comStarted++;
+						sprintf((char*)text,"RadioStarted");
+						InfoLogger_writeLine(text,strlen((char*)text),1);
+					}
+			break;
+		case 2:				data = UART_getChar();
+							if(data != 0)
+							{
+								if(firstData)
+								{
+									firstData = 0;
+									sprintf((char*)text,"FirstData");
+									InfoLogger_writeLine(text,strlen((char*)text),1);
+								}
+								if((index == 50) || (data =='r')  || (data =='n'))
+								{
+									if(index > 0)
+									{
+										InfoLogger_writeLine(text,index,0);
+										index = 0;
+									}
+								}
+								else
+								{
+									text[index++] = data;
+								}
+							}
+			break;
+		default:
+			break;
+	}
+
+
+	{
+	}
+}
+#endif
 
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/

@@ -96,8 +96,20 @@
 /* Enable to have a faster transfer speed between bluetooth module and CPU */
 #define ENABLE_FAST_COMM
 
+/* Enable to have support of Polar HC10 heartbeat sensor active */
+/* #define ENABLE_PULSE_SENSOR_BT */
+
 /* Enable RTE sleep mode debugging */
 /* #define ENABLE_SLEEP_DEBUG */
+
+/* Enable to receive data from the radio connection usart */
+/* #define ENABLE_USART_RADIO */
+
+/* Enable to show messages which are den during runtime in a popup window */
+/* #define ENABLE_LOGGER_WINDOW */
+
+/* Enable to have the possibility to switch between four individual sets of settings */
+/* #define ENABLE_SETTING_PROFILES */
 
 
 #endif

@@ -237,12 +237,17 @@
 #include "t7.h"
 #include "t3.h"
 #include "tMenuEditSetpoint.h"
+#include "cv_heartbeat.h"
+#include "tInfoLogger.h"
 
 #ifdef DEMOMODE
 #include "demo.h"
 static void TIM_DEMO_init(void);
 #endif
 
+#ifdef ENABLE_USART_RADIO
+#include "demo.h"
+#endif
 
 //#include "lodepng.h"
 //#include <stdlib.h> // for malloc and free
@@ -501,6 +506,7 @@ int main(void)
             resetToFirmwareUpdate();
 
         tCCR_control();
+
         if( tComm_control() )// will stop while loop if tComm Mode started until exit from UART
         {
             createDiveSettings();
@@ -526,12 +532,22 @@ int main(void)
         {
         	TriggerButtonAction();
         }
+#ifdef ENABLE_PULSE_SENSOR_BT
+        cv_heartbeat_HandleData();
+#endif
+
+#ifdef ENABLE_USART_RADIO
+        demo_HandleData();
+#endif
         if(DoHousekeeping)
         {
            	DoHousekeeping = housekeepingFrame();
         }
         if(DoDisplayRefresh)							/* set every 100ms by timer interrupt */
         {
+#ifdef ENABLE_PULSE_SENSOR_BT
+        	cv_heartbeat_Control();
+#endif
 	        DoDisplayRefresh = 0;
 
 	        updateSetpointStateUsed();
@@ -727,6 +743,15 @@ static void RefreshDisplay()
 {
 	SStateList status;
 	get_globalStateList(&status);
+
+#ifdef ENABLE_LOGGER_WINDOW
+	if((status.base != 0) && (get_globalState() != StILOGGER) && (InfoLogger_isUpdated()))
+	{
+		openInfo_Logger();
+		get_globalStateList(&status);
+	}
+#endif
+
 	switch(status.base)
 	{
 	case BaseHome:
@@ -918,6 +943,8 @@ static void TriggerButtonAction()
 							case InfoPageSensor: 	sendActionToInfoSensor(action);
 								break;
 							case InfoPagePreDive: 	sendActionToInfoPreDive(action);
+								break;
+							case InfoPageLogger: 	exitInfo();
 								break;
 							default:				sendActionToInfo(action);
 								break;
