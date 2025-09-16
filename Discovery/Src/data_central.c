@@ -978,6 +978,62 @@ uint8_t drawingColor_from_ascentspeed(float speed)
     return color;
 }
 
+void formatStringOfTime(char* pString, uint8_t strLen, RTC_TimeTypeDef Stime, uint8_t showAlive, uint8_t showSeconds)
+{
+    char timeSuffix[] = {0,0,0};
+    uint8_t hours;
+
+	if(strLen > 10)
+	{
+
+        hours = Stime.Hours;
+        if (settingsGetPointer()->amPMTime)
+        {
+        	timeSuffix[1] = 'M';
+    		if (Stime.Hours > 11)
+    		{
+    			timeSuffix[0] = 'P';
+    		}
+    		else
+    		{
+    			timeSuffix[0] = 'A';
+    		}
+
+    		if (Stime.Hours % 12 == 0)
+    		{
+    			hours = 12;
+    		}
+    		else
+    		{
+    			hours = (Stime.Hours % 12);
+    		}
+        }
+
+       	if(showSeconds)
+       	{
+       		if((Stime.Seconds % 2) || (!showAlive))
+       		{
+       			snprintf(pString, strLen,"%02d:%02d:%02d\016\016%s\017",hours, Stime.Minutes, Stime.Seconds,timeSuffix);
+       		}
+       		else
+       		{
+       			snprintf(pString, strLen,"%02d\031:\030%02d\031:\030%02d\016\016%s\017",hours, Stime.Minutes, Stime.Seconds,timeSuffix);
+       		}
+       	}
+       	else
+       	{
+       		if((Stime.Seconds % 2) || (!showAlive))
+       		{
+       			snprintf(pString, strLen,"%02d:%02d\016\016%s\017",hours, Stime.Minutes,timeSuffix);
+       		}
+        	else
+        	{
+        		snprintf(pString, strLen,"%02d\031:\030%02d\016\016%s\017",hours, Stime.Minutes,timeSuffix);
+        	}
+        }
+	}
+}
+
 /* returns the date in the order defined by the settings DDMMYY => X */
 void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year)
 {

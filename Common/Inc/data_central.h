@@ -594,6 +594,7 @@ void disableTimer(void);
 
 uint8_t drawingColor_from_ascentspeed(float speed);
 
+void formatStringOfTime(char* pString, uint8_t strLen, RTC_TimeTypeDef Stime, uint8_t showAlive, uint8_t showSeconds);
 void convertStringOfDate_DDMMYY(char* pString, uint8_t strLen, uint8_t day, uint8_t month, uint8_t year);
 void getStringOfFormat_DDMMYY(char* pString, uint8_t strLen);
 void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHours, uint8_t* pLocalMinutes);

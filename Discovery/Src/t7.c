@@ -705,9 +705,9 @@ void t7_refresh_surface(void)
 	static float debounceAmbientPressure = 0;
 	static uint8_t lastChargeStatus = 0;
 	static float lastTemperature = 100.0;
-    char text[256];
-    char timeSuffix;
-    uint8_t hours;
+    char text[200];
+    char tmpString[20];
+
     uint8_t loop, textIdx;
     uint8_t date[3], year,month,day;
     uint32_t color;
@@ -795,53 +795,20 @@ void t7_refresh_surface(void)
         dateNotSet = 1;
     else
         dateNotSet = 0;
-/*
-    if(Stime.Seconds % 2)
-        snprintf(text,255,"\001%02d:%02d",Stime.Hours,Stime.Minutes);
-    else
-        snprintf(text,255,"\001%02d\031:\020%02d",Stime.Hours,Stime.Minutes);
-    GFX_write_string(&FontT54,&t7surfaceR,text,3);
-*/
-// debug version:
 
-    if (settingsGetPointer()->amPMTime)
+
+
+    if((dateNotSet) && (Stime.Seconds % 2 == 0))
     {
-		if (Stime.Hours > 11)
-		{
-			timeSuffix = 'P';
-		}
-		else
-		{
-			timeSuffix = 'A';
-		}
-
-		if (Stime.Hours % 12 == 0)
-		{
-			hours = 12;
-		}
-		else
-		{
-			hours = (Stime.Hours % 12);
-		}
-
-	    if(Stime.Seconds % 2)
-	        snprintf(text,255,"\001%02d:%02d:%02d\016\016%cM\017",hours,Stime.Minutes,Stime.Seconds,timeSuffix);
-	    else if(dateNotSet)
-	        snprintf(text,255,"\001\031%02d:%02d:%02d\016\016%cM\017\020",hours,Stime.Minutes,Stime.Seconds,timeSuffix);
-	    else
-	        snprintf(text,255,"\001%02d\031:\020%02d:%02d\016\016%cM\017",hours,Stime.Minutes,Stime.Seconds,timeSuffix);
-	    GFX_write_string(&FontT48,&t7surfaceR,text,3);
+    	formatStringOfTime(tmpString,20,Stime,0,1);
+    	snprintf(text,100,"\031\001%s",tmpString);
     }
     else
     {
-        if(Stime.Seconds % 2)
-            snprintf(text,255,"\001%02d:%02d:%02d",Stime.Hours,Stime.Minutes,Stime.Seconds);
-        else if(dateNotSet)
-            snprintf(text,255,"\001\031%02d:%02d:%02d\020",Stime.Hours,Stime.Minutes,Stime.Seconds);
-        else
-            snprintf(text,255,"\001%02d\031:\020%02d:%02d",Stime.Hours,Stime.Minutes,Stime.Seconds);
-        GFX_write_string(&FontT54,&t7surfaceR,text,3);
+    	formatStringOfTime(tmpString,20,Stime,1,1);
+    	snprintf(text,100,"\030\001%s",tmpString);
     }
+    GFX_write_string(&FontT48,&t7surfaceR,text,3);
 
     if(settingsGetPointer()->date_format == DDMMYY)
     {
@@ -2183,9 +2150,8 @@ void t7_refresh_customview(void)
 {
 	static uint8_t last_customview = CVIEW_END;
 
-    char text[256];
-	char timeSuffix;
-	uint8_t hoursToDisplay;
+    char text[200];
+    char tmpString[20];
 #ifdef ENABLE_PSCR_MODE
 	uint8_t showSimPPO2 = 1;
 #endif
@@ -2449,39 +2415,8 @@ void t7_refresh_customview(void)
         translateDate(stateRealGetPointer()->lifeData.dateBinaryFormat, &Sdate);
         translateTime(stateRealGetPointer()->lifeData.timeBinaryFormat, &Stime);
 
-        if (settingsGetPointer()->amPMTime)
-        {
-			if (Stime.Hours > 11)
-			{
-				timeSuffix = 'P';
-			}
-			else
-			{
-				timeSuffix = 'A';
-			}
-
-			if (Stime.Hours % 12 == 0)
-			{
-				hoursToDisplay = 12;
-			}
-			else
-			{
-				hoursToDisplay = (Stime.Hours % 12);
-			}
-
-			if(Stime.Seconds % 2)
-				textpointer += snprintf(&text[textpointer],100,"\030\001%02d:%02d %cM",hoursToDisplay,Stime.Minutes,timeSuffix);
-			else
-				textpointer += snprintf(&text[textpointer],100,"\030\001%02d\031:\030%02d %cM",hoursToDisplay,Stime.Minutes,timeSuffix);
-        }
-        else
-        {
-        	if(Stime.Seconds % 2)
-        		textpointer += snprintf(&text[textpointer],100,"\030\001%02d:%02d",Stime.Hours,Stime.Minutes);
-        	else
-        		textpointer += snprintf(&text[textpointer],100,"\030\001%02d\031:\030%02d",Stime.Hours,Stime.Minutes);
-        }
-
+        formatStringOfTime(tmpString,20,Stime,1,0);
+		snprintf(text,100,"\030\001%s",tmpString);
         GFX_write_string(&FontT42, &t7cY0free, text, 2);
 
         // EAD / END

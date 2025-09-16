@@ -58,7 +58,7 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
     textPointer = 0;
     *tab = 300;
     *subtext = 0;
-    char tmpString[15];
+    char tmpString[20];
 
     resetLineMask(StMSYS);
 
@@ -131,14 +131,10 @@ uint32_t tMSystem_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
         text[textPointer++] = TXT_Date;
         getStringOfFormat_DDMMYY(tmpString,15);
         textPointer += snprintf(&text[textPointer], 40,"\016\016 %s ",tmpString);
-       convertStringOfDate_DDMMYY(tmpString,15,Sdate.Date, Sdate.Month, Sdate.Year);
+        convertStringOfDate_DDMMYY(tmpString,15,Sdate.Date, Sdate.Month, Sdate.Year);
         textPointer += snprintf(&text[textPointer], 40,"\017\t%s   ",tmpString);
-
-        textPointer += snprintf(&text[textPointer], 60,
-            "%02d:%02d:%02d"
-            "\n\r"
-            ,Stime.Hours, Stime.Minutes, Stime.Seconds
-        );
+        formatStringOfTime(tmpString,20,Stime,0,1);
+        textPointer += snprintf(&text[textPointer], 60,"%s\n\r",tmpString);
     }
     else
     {
