@@ -153,3 +153,4 @@
 "Discovery/Src/timer.o"
 "Discovery/Src/unit.o"
 "Discovery/Src/vpm.o"
+"Discovery/Src/firmwareEraseProgram.o"

@@ -71,7 +71,8 @@ $(BUILD_DIR)/Discovery/Src/test_vpm.c \
 $(BUILD_DIR)/Discovery/Src/text_multilanguage.c \
 $(BUILD_DIR)/Discovery/Src/timer.c \
 $(BUILD_DIR)/Discovery/Src/unit.c \
-$(BUILD_DIR)/Discovery/Src/vpm.c 
+$(BUILD_DIR)/Discovery/Src/vpm.c \
+$(BUILD_DIR)/Discovery/Src/firmwareEraseProgram.c
 
 OBJS += \
 ./Discovery/Src/base.o \
@@ -139,7 +140,8 @@ OBJS += \
 ./Discovery/Src/text_multilanguage.o \
 ./Discovery/Src/timer.o \
 ./Discovery/Src/unit.o \
-./Discovery/Src/vpm.o 
+./Discovery/Src/vpm.o \
+./Discovery/Src/firmwareEraseProgram.o
 
 C_DEPS += \
 ./Discovery/Src/base.d \
@@ -206,7 +208,8 @@ C_DEPS += \
 ./Discovery/Src/text_multilanguage.d \
 ./Discovery/Src/timer.d \
 ./Discovery/Src/unit.d \
-./Discovery/Src/vpm.d 
+./Discovery/Src/vpm.d \
+./Discovery/Src/firmwareEraseProgram.d
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -731,6 +734,14 @@ Discovery/Src/unit.o: $(BUILD_DIR)/Discovery/Src/unit.c
 	@echo ' '
 
 Discovery/Src/vpm.o: $(BUILD_DIR)/Discovery/Src/vpm.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/firmwareEraseProgram.o: $(BUILD_DIR)/Discovery/Src/firmwareEraseProgram.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
