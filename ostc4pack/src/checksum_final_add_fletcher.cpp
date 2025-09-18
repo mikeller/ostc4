@@ -10,17 +10,19 @@
 #include "settings.h"
 
 extern "C" {
-	void tHome_init(void) { }
-	void tI_init(void) { }
-	void tM_init(void) { }
-	void tMenuEdit_init(void) { }
-	void tInfoLog_init(void) { }
-	void tM_build_pages(void) { }
-	void GFX_build_logo_frame(void) { }
-	void setButtonResponsiveness(void) { }
-	void GFX_use_colorscheme(void) { }
-	void GFX_build_hw_background_frame(void) { }
+    void tHome_init(void) { }
+    void tI_init(void) { }
+    void tM_init(void) { }
+    void tMenuEdit_init(void) { }
+    void tInfoLog_init(void) { }
+    void tM_build_pages(void) { }
+    void GFX_build_logo_frame(void) { }
+    void setButtonResponsiveness(void) { }
+    void GFX_use_colorscheme(void) { }
+    void GFX_build_hw_background_frame(void) { }
+    const SHardwareData* hardwareDataGetPointer(void) { return NULL; }
 }
+
 #endif
 
 void fletcher16(unsigned char *result1, unsigned char *result2, unsigned char const *data, size_t bytes )
