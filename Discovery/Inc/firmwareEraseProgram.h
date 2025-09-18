@@ -85,4 +85,7 @@ uint8_t hardware_programmSecondarySerial(uint8_t *buffer12); 	// uint16_t serial
 uint8_t hardware_programmPrimaryBluetoothNameSet(void);
 uint8_t hardware_programmSecondaryBluetoothNameSet(void);
 
+#ifdef __cplusplus
+ }
+#endif
 #endif // FIRMWARE_ERASE_PROGRAM_H
