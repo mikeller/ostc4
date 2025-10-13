@@ -1550,6 +1550,7 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     const uint8_t id_Region1_firmware = 0xFF;
     const uint8_t id_RTE = 0xFE;
     uint8_t textpointer = 0;
+    uint32_t index = 0;
 
     //Get length
     if(HAL_UART_Receive(&UartHandle, sBuffer, 4,5000)!= HAL_OK) // 58000
@@ -1720,7 +1721,7 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
             return 0xFF;
     }
     else
-    //if(region == 2)
+    if(id == id_FONT)
     {
         uint8_t ptr = 0;
         ptr += gfx_number_to_string(7,0,&display_text[ptr],lengthTotal);
@@ -1735,7 +1736,7 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     }
 
 
-    // only non RTE !!
+    /* only non RTE !! (at this point RTE path already performed a return some lines above */
     uint8_t* pBufferCompare = (uint8_t*)getFrame(20);
     ByteCompareStatus = 0;
 
@@ -1749,14 +1750,14 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
 
         if(lengthCompare != length1)
             ByteCompareStatus = 10000;
-        for(int i = 0; i < length1; i++)
+        for(index = 0; index < length1; index++)
         {
-            if(pBuffer1[0] != pBufferCompare[0])
+            if(pBuffer1[index] != pBufferCompare[index])
                 ByteCompareStatus++;
         }
     }
     else
-    //if(region == 2)
+    if(id == id_FONT)
     {
         /* upper region firmware can be larger (1MB) */
         if(ext_flash_read_firmware2(0, pBufferCompare,4, 0,0) != 0xFFFFFFFF)
@@ -1768,16 +1769,16 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
             ByteCompareStatus = 10000;
         if(offsetTotal != offsetCompare)
             ByteCompareStatus += 20000;
-        for(int i = 0; i < length1; i++)
+        for(index = 0; index < length1; index++)
         {
-            if(pBuffer1[0] != pBufferCompare[0])
+            if(pBuffer1[index] != pBufferCompare[index])
                 ByteCompareStatus++;
         }
 
         lengthCompare = ext_flash_read_firmware2(0, 0,768000, pBufferCompare,768000);
-        for(int i = 0; i < length2; i++)
+        for(index = 0; index < length2; index++)
         {
-            if(pBuffer2[0] != pBufferCompare[0])
+            if(pBuffer2[index] != pBufferCompare[index])
                 ByteCompareStatus++;
         }
     }

@@ -334,7 +334,11 @@ uint32_t ext_flash_read_firmware2(uint32_t *offset, uint8_t *pSample1, uint32_t 
 		}
 		else if(pSample2)
 		{
-			actualAddress += length1;
+			/* actualAddress += length1; do dummy read to get EEPROM to the correct address */
+			for(uint32_t i = 0; i<length1; i++)
+			{
+				ext_flash_read_block(&pSample2[0], EF_FIRMWARE2);
+			}
 			for(uint32_t i = 0; i<length2; i++)
 			{
 				ext_flash_read_block(&pSample2[i], EF_FIRMWARE2);
