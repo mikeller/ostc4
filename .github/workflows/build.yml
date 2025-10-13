@@ -60,7 +60,7 @@ jobs:
         SHORT_SHA=$(git rev-parse --short HEAD)
         if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
           SHORT_SHA=$(git rev-parse --short $PULL_REQUEST_SHA)
-          NAME="${PULL_REQUEST_NUMBER}-$(echo "${PULL_REQUEST_BRANCH}" | sed 's@/@_@g')"
+          NAME="${PULL_REQUEST_NUMBER}-$(echo "${PULL_REQUEST_BRANCH}" | sed 's@[/_]@-@g;s/[^.a-zA-Z0-9-]//g')"
         else
           NAME="$(date +%Y%m%d)"
         fi
