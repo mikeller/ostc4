@@ -907,7 +907,7 @@ void openMenu(uint8_t freshWithFlipPages)
     change_CLUT_entry(CLUT_MenuLineSelectedSeperator, (CLUT_MenuPageGasOC + page - 1));
 
 
-    if(((page == 6) ||  (page == 8)) && (menu.pageCountNumber[page-1] == 0))
+    if(((page == 6) ||  (page == 9)) && (menu.pageCountNumber[page-1] == 0))
     {
         change_CLUT_entry(CLUT_MenuLineSelectedSides, 		(CLUT_MenuPageGasOC + page - 2));
         change_CLUT_entry(CLUT_MenuLineSelectedSeperator, (CLUT_MenuPageGasOC + page - 2));
@@ -1375,9 +1375,9 @@ static void draw_tMheader(uint8_t page)
         "DATA",
         "DECO",
         "",
-        "SYS",
         "",
-		"",
+        "",
+		"SYS",
 		"",
 		"SIM",
         ""
