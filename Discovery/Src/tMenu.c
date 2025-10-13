@@ -578,17 +578,17 @@ void tM_build_pages(void)
      */
 
 
-    tM_add(StMSYS); //now in both modes
     if(actual_menu_content == MENU_SURFACE)
     {
         tM_add(StMDECO);
         tM_add(StMHARD);
-        tM_add(StMCustom);
         tM_add(StMOption);
-//		tM_add(StMSYS); now in both modes
+        tM_add(StMSYS);
+        tM_add(StMCustom);
     }
     else
     {
+        tM_add(StMSYS); //now in both modes (dive mode)
         tM_add(StMXTRA);
     }
     if(actual_menu_content == MENU_SURFACE)

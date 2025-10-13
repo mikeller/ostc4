@@ -152,8 +152,8 @@ uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subte
 	            text[textPointer++] = '\005';
 	        else
 	            text[textPointer++] = '\006';
+	    nextline(text,&textPointer);
     }
-    nextline(text,&textPointer);
 
     return StMHARD;
 }
