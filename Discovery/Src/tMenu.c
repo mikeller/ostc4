@@ -578,17 +578,17 @@ void tM_build_pages(void)
      */
 
 
+    tM_add(StMSYS); //now in both modes
     if(actual_menu_content == MENU_SURFACE)
     {
         tM_add(StMDECO);
         tM_add(StMHARD);
-        tM_add(StMOption);
-        tM_add(StMSYS);
         tM_add(StMCustom);
+        tM_add(StMOption);
+//		tM_add(StMSYS); now in both modes
     }
     else
     {
-        tM_add(StMSYS); //now in both modes (dive mode)
         tM_add(StMXTRA);
     }
     if(actual_menu_content == MENU_SURFACE)
@@ -1379,7 +1379,8 @@ static void draw_tMheader(uint8_t page)
         "",
 		"",
 		"",
-        "SIM"
+		"SIM",
+        ""
     };
 
     _Bool spacing[MAXPAGES+1] =
@@ -1412,6 +1413,7 @@ static void draw_tMheader(uint8_t page)
 
     gfx_write_page_number(&tMscreen ,menu.pageCountNumber[page],menu.pageCountTotal,0);
 
+    /* Find the matching master text if a tab has no direct name e.g. SYS subtabs */
     while((text8max[pageText][0] == 0) && (pageText > 1))
     {
         pageText--;
