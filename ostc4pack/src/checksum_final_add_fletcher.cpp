@@ -132,7 +132,7 @@ int main(int argc, char** argv)
 		if (useVersion || !printVersionOnly) {
 			index += sprintf(&versionName[index], "_");
 		}
-		index += sprintf(&versionName[index], "%02u%02u%02u", timeinfo->tm_year-100, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+		index += sprintf(&versionName[index], "%04u%02u%02u", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
 	}
 
 	if (printVersionOnly) {

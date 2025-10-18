@@ -56,7 +56,7 @@ arm_tools_version:
 arm_tools_uninstall:
 	$(RM) -rf "$(TOOLCHAIN_DIR)"
 
-distclean: arm_tools_uninstall
+distclean:: arm_tools_uninstall
 	$(RM) -rf "$(BUILD_TOOLS_DIR)/dist"
 
 .PHONY: arm_tools_install arm_tools_version arm_tools_uninstall distclean
