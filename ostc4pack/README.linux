@@ -10,15 +10,15 @@ make OSTC4pack_V4
 2. Edit create_full_update_bin.sh
 
 Set BUILD_PATH to the location where you build the individual parts
-of the firmware using the OpenSTM23 IDE. 
+of the firmware using the OpenSTM32 IDE.
 
-Set BUILD_TYPE the either Debug or Release (or any other build style you 
-defined in the OpenSTM23 IDE).
+Set BUILD_TYPE to either Debug or Release (or any other build style you
+defined in the OpenSTM32 IDE).
 
-Set the "build project names" as defined in the OpenSTM23 IDE.
+Set the "build project names" as defined in the OpenSTM32 IDE.
 
 3. Simpy run create_full_update_bin.sh
 
 Run it in the ostc4pack folder of the repository, and a file with name
-like OSTC4_<date>.bin is created containg the individual blobs.
+like <build type>/OSTC4update_<target>_<version>_<date>.bin is created containing the individual blobs.
 
