@@ -1949,7 +1949,7 @@ static void t7_CcrSummary(SSettings *settings)
 
         data[dataIndex++] = '\n';
         data[dataIndex++] = '\r';
-        data[dataIndex++] = '\t';
+        data[dataIndex++] = '\002';
         dataIndex += printScrubberText(&data[dataIndex], 10, settings->scrubberData, settings, false);
     }
 

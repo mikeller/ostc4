@@ -274,20 +274,14 @@ static void drawScrubberMenu(bool isRefresh)
     }
 	write_label_var(20, 780, ME_Y_LINE5, &FontT48, text);
 
-    if (isRefresh) {
-        switch (settings->scrubTimerMode) {
-            case SCRUB_TIMER_MINUTES:
-            default:
-                snprintf(text, 32, "%c\002%c", TXT_ScrubTimeMode, TXT_Minutes);
-
-                break;
-            case SCRUB_TIMER_PERCENT:
-                snprintf(text, 32, "%c\002%c", TXT_ScrubTimeMode, TXT_Percent);
-
-                break;
-        }
-        write_field_button(StMXTRA_ScrubTimer_OP_Mode, 20, 780, ME_Y_LINE6, &FontT48, text);
+    switch (settings->scrubTimerMode) {
+    	case SCRUB_TIMER_MINUTES:
+        default:					snprintf(text, 32, "%c\002%c", TXT_ScrubTimeMode, TXT_Minutes);
+        	break;
+        case SCRUB_TIMER_PERCENT:  	snprintf(text, 32, "%c\002%c", TXT_ScrubTimeMode, TXT_Percent);
+            break;
     }
+    write_field_button(StMXTRA_ScrubTimer_OP_Mode, 20, 780, ME_Y_LINE6, &FontT48, text);
 
     setEvent(StMXTRA_ScrubTimer, (uint32_t)OnAction_ScrubberTimerId);
     setEvent(StMXTRA_ScrubTimer_Active, (uint32_t)OnAction_ScrubberActive);
