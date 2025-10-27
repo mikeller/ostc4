@@ -512,6 +512,7 @@ int main(void)
             createDiveSettings();
             updateMenu();
             ext_flash_write_settings(EF_SETTINGS,0);
+            time_without_button_pressed_deciseconds = 0;	/* reset timeout to avoid shutdown after long time in Comm state */
         }
 
         /* check if tasks depending on global state are pending */
