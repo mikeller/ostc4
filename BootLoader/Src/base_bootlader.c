@@ -688,9 +688,8 @@ GPIO_test_I2C_lines();
 	tComm_init();
 
 	tInfo_button_text("exit","","sleep");
-	tInfo_newpage("bootloader 250113");
+	tInfo_newpage("bootloader 251102");
 	tInfo_write("start bluetooth");
-	tInfo_write("");
 	tInfo_write(textVersion);
 #if 0
 	if(tComm_Set_Bluetooth_Name(0) == 0xFF)

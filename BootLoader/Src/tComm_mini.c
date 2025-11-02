@@ -74,6 +74,7 @@
 #include "base_bootloader.h"
 #include "firmwareEraseProgram.h"
 #include "text_multilanguage.h"
+#include "tInfoBootloader.h"
 
 #ifdef SPECIALPROGRAMM
 #	include "firmwareEraseProgram.h"
@@ -560,7 +561,7 @@ uint8_t select_mode(uint8_t type)
             break;
 
         case 0x73:
-            answer = receive_update_flex(0);
+            answer = receive_update_flex(1);
             if(answer == 0)
                 return 0;
             else if(answer == 2) // 2 = RTE without bootToBootloader
@@ -1677,7 +1678,7 @@ void tComm_EvaluateBluetoothStrength(void)
 
 void tComm_StartBlueModBaseInit()
 {
-	BmTmpConfig = BM_INIT_TRIGGER_ON;
+	BmTmpConfig = BM_INIT_POWEROFF;
 }
 
 
@@ -1746,9 +1747,11 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 
 void tComm_StartBlueModConfig()
 {
+#ifdef OSTC4_HW
 	uint8_t answer = HAL_OK;
 	uint8_t RxBuffer[UART_CMD_BUF_SIZE];
 	uint8_t index = 0;
+
 
 	BmTmpConfig = BM_CONFIG_ECHO;
 	do	/* flush RX buffer */
@@ -1756,6 +1759,9 @@ void tComm_StartBlueModConfig()
 		answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&RxBuffer[index], 1, 10);
 		if(index < UART_CMD_BUF_SIZE) index++;
 	}while(answer == HAL_OK);
+#else
+	BmTmpConfig = BM_CONFIG_DONE;
+#endif
 }
 
 uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow)
@@ -1768,7 +1774,9 @@ uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow)
 
 uint8_t tComm_HandleBlueModConfig()
 {
+#ifdef OSTC4_HW
 	static uint8_t RestartModule = 1; 		/* used to do power off / on cycle */
+#endif
 	static uint8_t ConfigRetryCnt = 0;		/* Retry count without power cycle */
 	static uint8_t lastConfigStep = BM_CONFIG_OFF;
 	static uint32_t cmdStartTick = 0;
@@ -1788,6 +1796,7 @@ uint8_t tComm_HandleBlueModConfig()
 
 	if(time_elapsed_ms(cmdStartTick, HAL_GetTick()) > 100)
 	{
+		cmdStartTick = HAL_GetTick();
 		switch (BmTmpConfig)
 		{
 			case BM_CONFIG_ECHO: 			tComm_GetBTCmdStr (BT_CMD_ECHO, TxBuffer);
@@ -1816,22 +1825,31 @@ uint8_t tComm_HandleBlueModConfig()
 			case BM_CONFIG_DONE:
 			case BM_CONFIG_OFF:
 				ConfigRetryCnt = 0;
+#ifdef OSTC4_HW
 				RestartModule = 1;
+#endif
 				break;
 
 
 #ifndef OSTC4_HW
 	/* the procedure below is just needed for the initial bluetooth module initialization */
+			case BM_INIT_POWEROFF:		MX_Bluetooth_PowerOff();
+										HAL_Delay(1000);
+										BmTmpConfig++;
+									break;
+			case BM_INIT_POWERON:		MX_Bluetooth_PowerOn();
+										BmTmpConfig++;
+									break;
 			case BM_INIT_TRIGGER_ON:	HAL_Delay(2000);
 										HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
 										BmTmpConfig++;
 									break;
-			case BM_INIT_TRIGGER_OFF:	HAL_Delay(1);
-										HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
+			case BM_INIT_TRIGGER_OFF:	HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
 										HAL_Delay(2000);
 										BmTmpConfig++;
 									break;
-			case BM_INIT_ECHO: 			sprintf(TxBuffer,"ATE0\r");
+			case BM_INIT_ECHO:
+			case BM_INIT_ECHO2:			sprintf(TxBuffer,"ATE0\r");
 				break;
 			case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");      /*Set to factory defined configuration */
 									break;
@@ -1858,7 +1876,8 @@ uint8_t tComm_HandleBlueModConfig()
 									break;
 			case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+CPWROFF\r");	  /* reboot module */
 									break;
-			case BM_INIT_DONE:			BmTmpConfig = BM_CONFIG_ECHO;
+			case BM_INIT_DONE:			tInfo_write("Done");
+										BmTmpConfig = BM_CONFIG_DONE;
 									break;
 			default:
 				break;
@@ -1909,10 +1928,11 @@ uint8_t tComm_HandleBlueModConfig()
 		if(TxBuffer[0] != 0)		/* forward command to module */
 		{
 			CmdSize = strlen(TxBuffer);
-			if(HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000) == HAL_OK)
+			result = HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 500);
+			if(result == HAL_OK)
 			{
 				result = tComm_CheckAnswerOK();
-
+#ifdef OSTC4_HW
 				if((BmTmpConfig == BM_CONFIG_BAUD) && (result == HAL_OK) && (UartHandle.Init.BaudRate != 460800)) /* is com already switched to fast speed? */
 				{
 					HAL_UART_DeInit(&UartHandle);
@@ -1934,21 +1954,24 @@ uint8_t tComm_HandleBlueModConfig()
 					CmdSize = strlen(TxBuffer);
 					HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000);
 				}
+#endif
 				if(result == HAL_OK)
 				{
+					ConfigRetryCnt = 0;
 					BmTmpConfig++;
-					cmdStartTick = HAL_GetTick();
 					if(BmTmpConfig == BM_CONFIG_RETRY)
 					{
 						BmTmpConfig = BM_CONFIG_DONE;
 					}
 				}
+#ifdef OSTC4_HW
 				if(BmTmpConfig == BM_CONFIG_ECHO)
 				{
 					BmTmpConfig = BM_CONFIG_DONE;
 					ConfigRetryCnt = 0;
 					RestartModule = 1;
 				}
+#endif
 			}
 		}
 		else		/* no command for the configuration step found => skip step */
@@ -1964,6 +1987,10 @@ uint8_t tComm_HandleBlueModConfig()
 			if(ConfigRetryCnt > 3)		/* Configuration failed => switch off module */
 			{
 				MX_Bluetooth_PowerOff();
+				tInfo_write("Failed");
+				BmTmpConfig = BM_CONFIG_OFF;
+
+#ifdef OSTC4_HW
 				if(RestartModule)
 				{
 					RestartModule = 0;      /* only one try */
@@ -1983,6 +2010,7 @@ uint8_t tComm_HandleBlueModConfig()
 					ConfigRetryCnt = 0;
 					BmTmpConfig = BM_CONFIG_OFF;
 				}
+#endif
 			}
 		}
 	}

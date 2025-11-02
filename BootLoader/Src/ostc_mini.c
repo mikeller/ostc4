@@ -238,7 +238,9 @@ void MX_Bluetooth_PowerOn(void)
 
 void MX_Bluetooth_PowerOff(void)
 {
-    GPIO_InitTypeDef GPIO_InitStruct;
+	HAL_GPIO_WritePin(BLE_NENABLE_GPIO_PORT,BLE_NENABLE_PIN,GPIO_PIN_SET);
+	HAL_Delay(10);
+	GPIO_InitTypeDef GPIO_InitStruct;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pin = BLE_NENABLE_PIN;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
