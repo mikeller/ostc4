@@ -2257,12 +2257,20 @@ void tComm_StartBlueModConfig()
 	uint8_t RxBuffer[UART_CMD_BUF_SIZE];
 	uint8_t index = 0;
 
-	BmTmpConfig = BM_CONFIG_ECHO;
 	do	/* flush RX buffer */
 	{
 		answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&RxBuffer[index], 1, 10);
 		if(index < UART_CMD_BUF_SIZE) index++;
 	}while(answer == HAL_OK);
+
+	if (isNewDisplay())
+	{
+		BmTmpConfig = BM_CONFIG_DONE;	/* Configuration is stored in BT module => no configuration needed */
+	}
+	else
+	{
+		BmTmpConfig = BM_CONFIG_ECHO;
+	}
 }
 
 uint8_t tComm_HandleBlueModConfig()
@@ -2352,7 +2360,8 @@ uint8_t tComm_HandleBlueModConfig()
 	if(TxBuffer[0] != 0)		/* forward command to module */
 	{
 		CmdSize = strlen(TxBuffer);
-		if(HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 2000) == HAL_OK)
+		result = HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 500);
+		if(result == HAL_OK)
 		{
 			result = tComm_CheckAnswerOK();
 
@@ -2385,12 +2394,14 @@ uint8_t tComm_HandleBlueModConfig()
 					BmTmpConfig = BM_CONFIG_DONE;
 				}
 			}
+#if 0
 			if(BmTmpConfig == BM_CONFIG_ECHO)
 			{
 				BmTmpConfig = BM_CONFIG_DONE;
 				ConfigRetryCnt = 0;
 				RestartModule = 1;
 			}
+#endif
 		}
 	}
 	else		/* no command for the configuration step found => skip step */

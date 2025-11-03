@@ -382,7 +382,6 @@ int main(void)
 
     MX_GPIO_Init();
     //  MX_SmallCPU_NO_Reset_Helper();	 //161116 hw
-    MX_Bluetooth_PowerOff();	/* disable module, needed in case of e.g. a reset event to make sure module is configured from scratch */
     MX_SPI_Init();
     MX_UART_Init();
     SDRAM_Config();
@@ -402,11 +401,6 @@ int main(void)
 
     GFX_init( &pLayerInvisible );
     TIM_BACKLIGHT_init();
-
-    // new 170508: bluetooth on at start
-    settingsGetPointer()->bluetoothActive = 1;
-    MX_Bluetooth_PowerOn();
-    tComm_StartBlueModConfig();
 
     /*
     if( (hardwareDataGetPointer()->primarySerial == 20+18)
@@ -441,6 +435,12 @@ int main(void)
     HAL_Delay( 20 );
     display_power_on__2_of_2__post_RGB();
     GFX_use_colorscheme( settingsGetPointer()->tX_colorscheme );
+
+
+    // new 170508: bluetooth on at start
+    settingsGetPointer()->bluetoothActive = 1;
+    MX_Bluetooth_PowerOn();
+    tComm_StartBlueModConfig();
 
     tHome_init();
     tI_init();
