@@ -49,7 +49,7 @@ SSettings Settings;
 SSettings Profile[NUMBER_OF_PROFILES];	/* may be optimized if RAM is getting short. profile copies are only used by profile dialog */
 												/* static structure is used to keep things simple avoiding larger code changes */
 const uint8_t RTErequiredHigh = 3;
-const uint8_t RTErequiredLow = 6;
+const uint8_t RTErequiredLow = 7;
 
 const uint8_t FONTrequiredHigh = 1;
 const uint8_t FONTrequiredLow =	0;
@@ -68,7 +68,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
 {
     .versionFirst   = 1,
     .versionSecond 	= 7,
-    .versionThird   = 3,
+    .versionThird   = 4,
     .versionBeta    = 0,
 
     /* 4 bytes with trailing 0 */
