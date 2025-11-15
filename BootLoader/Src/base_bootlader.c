@@ -223,18 +223,9 @@
 #include "stm32f4xx_hal_flash_ex.h"
 #include "stm32f4xx_hal_wwdg.h"
 
-#ifdef BOOTLOADER_STANDALONE
-#include "Fonts/Font_T144_plus.h"
-#include "Fonts/Font_T84.h"
-#include "Fonts/Font_T105.h"
-#include "Fonts/Font_T54.h"
-#include "Fonts/Font_T48_plus.h"
-#include "Fonts/Font_T24.h"
-#include "Fonts/Font_T42.h"
-#include "Fonts/image_battery.h"
+#include "font_T48_min.h"
+#include "font_T24_min.h"
 #include "Fonts/image_heinrichs_weikamp.h"
-#include "Fonts/image_ostc.h"
-#endif
 
 // From Discovery/Inc (shall be shared...)
 #include "data_exchange_main.h"
@@ -247,6 +238,9 @@
 // From AC6 support:
 #include <stdio.h>
 #include <string.h> // for memcopy
+
+
+extern void decompressFont(const tFont* pFont, tImageComp** pFontComp);
 
 /* Private define ------------------------------------------------------------*/
 #define BUFFER_SIZE         ((uint32_t)0x00177000)
@@ -268,8 +262,8 @@ const SFirmwareData bootloader_FirmwareData __attribute__(( section(".bootloader
 	.signature = "mh",
 
 	.release_year   = 25,
-	.release_month  = 1,
-	.release_day    = 13,
+	.release_month  = 11,
+	.release_day    = 15,
 	.release_sub    = 0,
 
 	/* max 48 with trailing 0 */
@@ -286,7 +280,7 @@ const SHardwareData HardwareData __attribute__((section(".bootloader_hardware_da
 {
 
 	// first 52 bytes
-	.primarySerial = 0xFFFF,
+	.primarySerial = 0x06a4,
 	.primaryLicence	= 0x00,
 	.revision8bit = 0x02,
 	.production_year = 0x19,
@@ -418,8 +412,7 @@ void GPIO_test_I2C_lines(void)
 	}
 }
 
-
-int main(void)
+int __attribute__((optimize("O0"))) main(void)
 {
 
 /*
@@ -449,7 +442,7 @@ GPIO_test_I2C_lines();
 	/* button press is only 40 to 50 us low */
 	MX_GPIO_One_Button_only_Init();
 
-	uint32_t i = 500000;
+	uint32_t i = 4000000;
 
 	callForUpdate = __HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST);
 
@@ -473,7 +466,7 @@ GPIO_test_I2C_lines();
 		}
 		if(i)
 		{
-			i = 200000;
+			i = 4000000;
 			while(!MX_GPIO_Read_The_One_Button() && i)
 			{
 				i--;
@@ -481,29 +474,11 @@ GPIO_test_I2C_lines();
 			}
 			if(i)
 			{
-				i = 200000;
+				i = 4000000;
 				while(MX_GPIO_Read_The_One_Button() && i)
 				{
 					i--;
 					__NOP();
-				}
-				if(i)
-				{
-					i = 200000;
-					while(!MX_GPIO_Read_The_One_Button() && i)
-					{
-						i--;
-						__NOP();
-					}
-					if(i)
-					{
-						i = 200000;
-						while(MX_GPIO_Read_The_One_Button() && i)
-						{
-							i--;
-							__NOP();
-						}
-					}
 				}
 			}
 		}
@@ -514,6 +489,10 @@ GPIO_test_I2C_lines();
 
 	MX_SPI_Init();
 	SDRAM_Config();
+
+	decompressFont(&FontT24min, (tImageComp**)&FontT24_Comp);
+	decompressFont(&FontT48min, (tImageComp**)&FontT48_Comp);
+
 	HAL_Delay(100);
 
 	GFX_init1_no_DMA(&pLayerInvisible, 2);
@@ -709,21 +688,17 @@ GPIO_test_I2C_lines();
 	tComm_init();
 
 	tInfo_button_text("exit","","sleep");
-	tInfo_newpage("bootloader 250113");
+	tInfo_newpage("bootloader 251115");
 	tInfo_write("start bluetooth");
-	tInfo_write("");
 	tInfo_write(textVersion);
+#if 0
 	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
+#else
+	if(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF)
+#endif
 	{
 		tInfo_write("init bluetooth");
-		if(isNewDisplay())
-		{
-			tComm_StartBlueModBaseInit();
-		}
-		else
-		{
-			tComm_StartBlueModConfig();
-		}
+		tComm_StartBlueModBaseInit();
 	}
 	else
 	{

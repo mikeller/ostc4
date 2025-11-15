@@ -96,15 +96,15 @@ void tInfo_newpage(const char *text)
 	tIBscreen.FBStartAdress = getFrame(18);
 	line = 1;
 	if(text)
-		GFX_write_string(&FontT48, &tIBwindow, text,line);
+		GFX_write_string(&FontT48min, &tIBwindow, text,line);
 	line++;
 
 	if(*textButtonLeft)
-		write_content_simple(&tIBscreen, 0, 800, 480-24, &FontT24,textButtonLeft,CLUT_ButtonSurfaceScreen);
+		write_content_simple(&tIBscreen, 0, 800, 480-24, &FontT24min,textButtonLeft,CLUT_ButtonSurfaceScreen);
 	if(*textButtonMid)
-		write_content_simple(&tIBscreen, 0, 800, 480-24, &FontT24,textButtonMid,CLUT_ButtonSurfaceScreen);
+		write_content_simple(&tIBscreen, 0, 800, 480-24, &FontT24min,textButtonMid,CLUT_ButtonSurfaceScreen);
 	if(*textButtonRight)
-		write_content_simple(&tIBscreen, 0, 800, 480-24, &FontT24,textButtonRight,CLUT_ButtonSurfaceScreen);
+		write_content_simple(&tIBscreen, 0, 800, 480-24, &FontT24min,textButtonRight,CLUT_ButtonSurfaceScreen);
 
 	GFX_SetFrameTop(tIBscreen.FBStartAdress);
 	GFX_change_LTDC();
@@ -121,7 +121,7 @@ void tInfo_write(const char *text)
 	else
 	{
 		if(text)
-			GFX_write_string(&FontT48, &tIBwindow, text,line);
+			GFX_write_string(&FontT48min, &tIBwindow, text,line);
 		line++;
 
 	}
