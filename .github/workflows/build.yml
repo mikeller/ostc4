@@ -106,3 +106,10 @@ jobs:
           Release/OSTC4update_*.bin
         generate_release_notes: true
         tag_name: ${{ steps.generate_version.outputs.name }}
+
+    - name: build the bootloader
+      env:
+        BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
+      run: |
+        make NO_DATE=1 bootloader
+
