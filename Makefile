@@ -29,9 +29,11 @@ rte: firmware_binary rte_binary packer
 
 bootloader: bootloader_binary packer
 	$(eval VERSION := $(shell ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only))
+	$(eval VERSION_STRING := $(if $(VERSION),_$(VERSION),))
 	$(eval DATE := $(shell date +%Y%m%d))
+	$(eval DATE_STRING := $(if $(DATE),_$(DATE),))
 	ostc4pack/create_full_update_bin.sh --version --no-rte --no-fonts --do-bootloader
-	mv Release/OSTC4update_fontpack_$(VERSION)_$(DATE).bin Release/OSTC4update_bootloader_$(VERSION)_$(DATE).bin
+	mv Release/OSTC4update_fontpack$(VERSION_STRING)$(DATE_STRING).bin Release/OSTC4update_bootloader$(VERSION_STRING)$(DATE_STRING).bin
 
 all: firmware_binary fontpack_binary rte_binary packer
 	ostc4pack/create_full_update_bin.sh --version
@@ -56,8 +58,10 @@ print_version:
 
 install: $(INSTALL_TARGET)
 	$(eval VERSION := $(shell ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only))
+	$(eval VERSION_STRING := $(if $(VERSION),_$(VERSION),))
 	$(eval DATE := $(shell date +%Y%m%d))
-	$(eval FILENAME := "Release/OSTC4update_$(INSTALL_TARGET)_$(VERSION)_$(DATE).bin")
+	$(eval DATE_STRING := $(if $(DATE),_$(DATE),))
+	$(eval FILENAME := "Release/OSTC4update_$(INSTALL_TARGET)$(VERSION_STRING)$(DATE_STRING).bin")
 	$(FIRMWARE_INSTALLER) --update-firmware --dc-vendor="Heinrichs Weikamp" --dc-product=$(MODEL) --device=$(DEVICE) $(if $(FORCE),--force-update-firmware) --firmware-file=$(FILENAME)
 
 packer:
