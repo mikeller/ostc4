@@ -111,5 +111,5 @@ jobs:
       env:
         BUILD_TOOLS_DIR: ${{ env.BUILD_TOOLS_DIR }}
       run: |
-        make NO_DATE=1 bootloader
+        make bootloader
 
