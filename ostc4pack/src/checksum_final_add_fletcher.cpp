@@ -164,16 +164,20 @@ int main(int argc, char** argv)
 	filename[filelength -4] = 0;
 	
 	size_t lenTotal = 0;
-	if (NULL == (fp = fopen(file, "rb")))
+    size_t lenTemp = 0;
+	if(file && strcmp(file, "null") != 0)
 	{
-	    printf("Unable to open %s for reading\n", file);
-	    return -1;
-	}
-	size_t lenTemp = fread(&buf[lenTotal], sizeof(char), sizeof(buf), fp);
+	    if (NULL == (fp = fopen(file, "rb")))
+	    {
+	        printf("Unable to open %s for reading\n", file);
+	        return -1;
+	    }
+	    lenTemp = fread(&buf[lenTotal], sizeof(char), sizeof(buf), fp);
 //	lenTemp = fread(buf, sizeof(char), sizeof(buf), fp);
-	lenTotal = lenTemp;
-	printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
-	fclose(fp);
+	    lenTotal = lenTemp;
+	    printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
+	    fclose(fp);
+    }
 
 	if(file2)
 	{

@@ -62,6 +62,9 @@ fontpack_binary: arm_tools_install fontpack_library
 rte_binary: arm_tools_install fontpack_library
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile
 
+bootloader_binary: arm_tools_install fontpack_library
+	$(MAKE) -C RefPrj/BootLoader/Release -f Makefile
+
 print_version:
 	@ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only
 
@@ -82,6 +85,7 @@ clean:
 	$(MAKE) -C RefPrj/FontPack/Library -f Makefile clean
 	$(MAKE) -C RefPrj/FontPack/Release -f Makefile clean
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile clean
+	$(MAKE) -C RefPrj/BootLoader/Release -f Makefile clean
 	$(RM) -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin
 
 distclean:: clean packer_clean
@@ -92,4 +96,4 @@ test:
 
 include arm_build_tools.mk
 
-.PHONY: firmware fontpack rte fontpack_library firmware_binary fontpack_binary rte_binary all install clean print_version packer packer_clean distclean test
+.PHONY: firmware fontpack rte bootloader fontpack_library firmware_binary fontpack_binary rte_binary bootloader_binary all install clean print_version packer packer_clean distclean test

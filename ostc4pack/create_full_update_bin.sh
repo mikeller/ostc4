@@ -14,6 +14,7 @@ BUILD_TYPE="Release"
 CPU1_DISCOVERY="Firmware"
 CPU1_FONTPACK="FontPack"
 CPU2_RTE="RTE"
+CPU1_BOOTLOADER="BootLoader"
 
 PROJECT_NAME_PREFIX="OSTC4_"
 #
@@ -44,6 +45,11 @@ while test $# -gt 0; do
     --do-bootloader)
         DO_BOOTLOADER=1
         TYPE="bootloader"
+        shift
+
+        ;;
+    --do-bootloader)
+        DO_BOOTLOADER=1
         shift
 
         ;;
