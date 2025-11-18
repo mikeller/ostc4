@@ -320,11 +320,14 @@ void buehlmann_super_saturation_calculator(SLifeData* pLifeData, SDecoinfo * pDe
 	float inertgas_a;
 	float inertgas_b;
 	float ceiling;
+	float M_surf,gf_surf;
 	float super_saturation;
 	float pres_respiration = pLifeData->pressure_ambient_bar;
+	float pres_surface = pLifeData->pressure_surface_bar;
 	int ci;
 
 	pDecoInfo->super_saturation = 0;
+	pDecoInfo->gf_surf = 0;
 
 	for (ci = 0; ci < 16; ci++)
 	{
@@ -339,6 +342,16 @@ void buehlmann_super_saturation_calculator(SLifeData* pLifeData, SDecoinfo * pDe
 			tissue_inertgas_saturation =  gTissue_nitrogen_bar[ci] + gTissue_helium_bar[ci];
 			inertgas_a = ( ( buehlmann_N2_a[ci] *  gTissue_nitrogen_bar[ci]) + ( buehlmann_He_a[ci] * gTissue_helium_bar[ci]) ) / tissue_inertgas_saturation;
 			inertgas_b = ( ( buehlmann_N2_b[ci] *  gTissue_nitrogen_bar[ci]) + ( buehlmann_He_b[ci] * gTissue_helium_bar[ci]) ) / tissue_inertgas_saturation;
+		}
+
+		M_surf = inertgas_a + inertgas_b * pres_surface;
+		if (M_surf > pres_surface)
+		{
+			gf_surf = (tissue_inertgas_saturation - pres_surface) / (M_surf - pres_surface);
+			if(gf_surf > pDecoInfo->gf_surf)
+			{
+				pDecoInfo->gf_surf = gf_surf;
+			}
 		}
 
 		ceiling = pres_respiration / inertgas_b + inertgas_a;

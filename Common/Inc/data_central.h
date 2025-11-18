@@ -105,6 +105,7 @@ typedef struct
 	int output_ndl_seconds;
 	float output_ceiling_meter;
 	float super_saturation;
+	float gf_surf;
 	uint32_t tickstamp;
 } 	SDecoinfo;
 

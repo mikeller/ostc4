@@ -3348,7 +3348,10 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     /* actual GF */
     case LLC_GF:
         headerText[2] = TXT_ActualGradient;
-        snprintf(text,TEXTSIZE,"\020%.0f\016\016%%\017",100 * pDecoinfoStandard->super_saturation);
+        snprintf(text,TEXTSIZE,"\020\002\016\016%3.0f%% @ C\017\n\r\002\016\016%3.0f%% @ 0\017",100 * pDecoinfoStandard->super_saturation
+        																		 	 	 ,100 * pDecoinfoStandard->gf_surf);
+        tinyHeaderFont = 1;
+        line = 1;
         break;
 
     case LLC_ScrubberTime:
@@ -4146,6 +4149,9 @@ void t7_SummaryOfLeftCorner(void)
     text[textpointer++] = TXT_ActualGradient;
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
+    text[textpointer++] = TXT_ActualGradient;
+    text[textpointer++] = '\n';
+    text[textpointer++] = '\r';
     text[textpointer++] = TXT_CNS;
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
@@ -4187,7 +4193,11 @@ void t7_SummaryOfLeftCorner(void)
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
     text[textpointer++] = '\t';
-    textpointer += snprintf(&text[textpointer],10,"\020%.0f\016\016%%\017",		100 * pDecoinfoStandard->super_saturation);
+    textpointer += snprintf(&text[textpointer],15,"\020%.0f\016\016%%\017 @ C",		100 * pDecoinfoStandard->super_saturation);
+    text[textpointer++] = '\n';
+    text[textpointer++] = '\r';
+    text[textpointer++] = '\t';
+    textpointer += snprintf(&text[textpointer],15,"\020%.0f\016\016%%\017 @ 0",			100 * pDecoinfoStandard->gf_surf);
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
     text[textpointer++] = '\t';
