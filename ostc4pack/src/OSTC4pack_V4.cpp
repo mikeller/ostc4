@@ -194,6 +194,7 @@ ulong cm_tab P_((p_cm_t p_cm,int index));
 /*                                                                            */
 /******************************************************************************/
 
+#include <cstdint>
 #include "crcmodel.h"
 
 /******************************************************************************/
@@ -296,9 +297,6 @@ ulong cm_tab (p_cm_t p_cm,int index)
 /*                             End of crcmodel.c                              */
 /******************************************************************************/
 
-#define uint32_t unsigned int
-#define uint8_t unsigned char
-
 uint32_t	CRC_CalcBlockCRC(uint32_t *buffer, uint32_t words)
  {
  cm_t        crc_model;
@@ -394,6 +392,22 @@ unsigned int crc32c_checksum(unsigned char* message, int length) {
    return ~crc;
 }
 
+uint32_t CalcFletcher32(const uint32_t *startAddr, const uint32_t *endAddr)
+{
+    const uint16_t *ptr = (const uint16_t *)startAddr;
+    const uint16_t *end = (const uint16_t *)endAddr;
+
+    uint16_t sum1 = 0;
+    uint16_t sum2 = 0;
+
+    while (ptr <= end) {
+        sum1 = sum1 + *ptr++;
+        sum2 = sum2 + sum1;
+    }
+
+    return ((uint32_t)sum2 << 16) | sum1;
+}
+
 
 
 
@@ -408,6 +422,7 @@ unsigned int crc32c_checksum(unsigned char* message, int length) {
 
 #include <stdio.h>
 #include <string.h>
+
 int main(int argc, char** argv) {
 	
 	
@@ -442,8 +457,11 @@ int main(int argc, char** argv) {
 			printf("Error: File too large for type 2.\n");
 			return -1;
 		}
+        unsigned int binaryLength = len;
+        memset(buf + len, 0xFF, 0x01fff0 - len);
+len = 0x01fff0;
 		len = 0x01fff0;
-		unsigned int internalChecksum = CRC_CalcBlockCRC((uint32_t *)buf, (uint32_t)(len/4));
+		unsigned int internalChecksum = CalcFletcher32((uint32_t *)buf, (uint32_t *)&buf[len - 1]);
 		printf("Internal checksum for type 3: %#x\n", internalChecksum);
 
 		buf[len++] = 0x00; // reserved
@@ -451,17 +469,17 @@ int main(int argc, char** argv) {
 		buf[len++] = 0x00;
 		buf[len++] = 0x00;
 		buf[len++] = 0x00; // type == bootloader
-		buf[len++] = 0x01;
 		buf[len++] = 0x00;
+		buf[len++] = 0x01;
 		buf[len++] = 0x00;
      		buf[len++] = 0xFF & (internalChecksum >> 24);
      		buf[len++] = 0xFF & (internalChecksum >> 16);
      		buf[len++] = 0xFF & (internalChecksum >> 8);
      		buf[len++] = 0xFF & internalChecksum;
-     		buf[len++] = 0xFF & (len >> 24);
-     		buf[len++] = 0xFF & (len >> 16);
-     		buf[len++] = 0xFF & (len >> 8);
-     		buf[len++] = 0xFF & len;
+     		buf[len++] = 0xFF & (binaryLength >> 24);
+     		buf[len++] = 0xFF & (binaryLength >> 16);
+     		buf[len++] = 0xFF & (binaryLength >> 8);
+     		buf[len++] = 0xFF & binaryLength;
 	}
 	printf("The length is %#x\n", (unsigned int)len);
 
