@@ -198,6 +198,10 @@ void refresh_Customviews(void)
         text[5] = TXT2BYTE_Compass;
 
         break;
+    case LCC_GF_SURF:
+		text[4] = TXT_2BYTE;
+		text[5] = TXT2BYTE_GFSurf;
+		break;
     /* none */
     case LLC_Empty:
         text[4] = '-';

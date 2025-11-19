@@ -348,6 +348,10 @@ void buehlmann_super_saturation_calculator(SLifeData* pLifeData, SDecoinfo * pDe
 		if (M_surf > pres_surface)
 		{
 			gf_surf = (tissue_inertgas_saturation - pres_surface) / (M_surf - pres_surface);
+			if(M_surf > 9.99)
+			{
+				M_surf = 9.99;		/* only intended to be used with 3 digit visualizations */
+			}
 			if(gf_surf > pDecoInfo->gf_surf)
 			{
 				pDecoInfo->gf_surf = gf_surf;

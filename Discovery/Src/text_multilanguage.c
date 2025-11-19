@@ -176,6 +176,12 @@ static uint8_t text_FR_CompassCalib[] = "Calibration boussole";
 static uint8_t text_IT_CompassCalib[] = "Calibrazione bussola";
 static uint8_t text_ES_CompassCalib[] = "Calibrar brujula";
 
+static uint8_t text_EN_GFSurf[] = "GF Surface";
+static uint8_t text_DE_GFSurf[] = "";
+static uint8_t text_FR_GFSurf[] = "";
+static uint8_t text_IT_GFSurf[] = "";
+static uint8_t text_ES_GFSurf[] = "";
+
 static uint8_t text_EN_CompassInertia[] = "Compass inertia level";
 static uint8_t text_DE_CompassInertia[] = "Kompass Trägheitsfaktor";
 static uint8_t text_FR_CompassInertia[] = "Facteur d'inertie";
@@ -2131,6 +2137,7 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_SetMarkerShort,	{text_EN_SetMarkerShort, text_DE_SetMarkerShort, text_FR_SetMarkerShort, text_IT_SetMarkerShort, text_ES_SetMarkerShort}},
 	{(uint8_t)TXT2BYTE_CheckMarker,		{text_EN_CheckMarker, text_DE_CheckMarker, text_FR_CheckMarker, text_IT_CheckMarker, text_ES_CheckMarker}},
     {(uint8_t)TXT2BYTE_CompassHeading,  {text_EN_CompassHeading, text_DE_CompassHeading, text_FR_CompassHeading, text_IT_CompassHeading, text_ES_CompassHeading}},
+	{(uint8_t)TXT2BYTE_GFSurf,  		{text_EN_GFSurf, text_DE_GFSurf, text_FR_GFSurf, text_IT_GFSurf, text_ES_GFSurf}},
 	{(uint8_t)TXT2BYTE_CalibView,		{text_EN_CalibView, text_DE_CalibView, text_FR_CalibView, text_IT_CalibView, text_ES_CalibView}},
 	{(uint8_t)TXT2BYTE_IndicateFrame,	{text_EN_IndicateFrame, text_DE_IndicateFrame, text_FR_IndicateFrame, text_IT_IndicateFrame, text_ES_IndicateFrame}},
 	{(uint8_t)TXT2BYTE_BoostBacklight,	{text_EN_BoostBacklight, text_DE_BoostBacklight, text_FR_BoostBacklight, text_IT_BoostBacklight, text_ES_BoostBacklight}},

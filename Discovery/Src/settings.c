@@ -95,7 +95,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF002D,
+    .header = 0xFFFF002E,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -661,6 +661,12 @@ void set_new_settings_missing_in_ext_flash(uint8_t whichSettings)
     	sprintf((char*)pSettings->profileName[2],"MCCR____");
     	sprintf((char*)pSettings->profileName[3],"ECCR____");
     	pSettings->activeProfile = 0;
+    	// no break;
+    case 0xFFFF002D:
+    	if(pSettings->tX_userselectedLeftLowerCornerPrimary > LLC_GF) /* GF_Surf was added behind => shift ID of views */
+    	{
+    		pSettings->tX_userselectedLeftLowerCornerPrimary++;
+    	}
 
     	// no break;
     default:

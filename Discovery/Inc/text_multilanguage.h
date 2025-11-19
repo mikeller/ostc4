@@ -235,6 +235,7 @@ extern const tText text_array2[];
 		TXT2BYTE_OTU,
 		TXT2BYTE_Profile,
 		TXT2BYTE_Compass,
+		TXT2BYTE_GFSurf,
 		TXT2BYTE_SafetyStop2,
 		TXT2BYTE_noFly,
 		TXT2BYTE_Desaturation,

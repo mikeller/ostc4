@@ -47,6 +47,7 @@ typedef enum
 		LLC_FutureTTS,
 		LLC_CNS,
 		LLC_GF,
+		LCC_GF_SURF,
 		LLC_ScrubberTime,
 #ifdef ENABLE_BOTTLE_SENSOR
 		LCC_BottleBar,

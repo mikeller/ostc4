@@ -3203,7 +3203,7 @@ void t7_change_field(void)
 {
     selection_custom_field++;
 
-    if((stateUsed->diveSettings.deco_type.ub.standard == VPM_MODE) && (selection_custom_field == LLC_GF)) /* no GF if in VPM mode */
+    if((stateUsed->diveSettings.deco_type.ub.standard == VPM_MODE) && ((selection_custom_field == LLC_GF) || (selection_custom_field == LCC_GF_SURF))) /* no GF if in VPM mode */
     {
     	selection_custom_field++;
     }
@@ -3348,10 +3348,14 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
     /* actual GF */
     case LLC_GF:
         headerText[2] = TXT_ActualGradient;
-        snprintf(text,TEXTSIZE,"\020\002\016\016%3.0f%% @ C\017\n\r\002\016\016%3.0f%% @ 0\017",100 * pDecoinfoStandard->super_saturation
-        																		 	 	 ,100 * pDecoinfoStandard->gf_surf);
-        tinyHeaderFont = 1;
-        line = 1;
+        snprintf(text,TEXTSIZE,"\020%.0f\016\016%%\017",100 * pDecoinfoStandard->super_saturation);
+        break;
+
+    /* Surface GF */
+    case LCC_GF_SURF:
+        headerText[2] = TXT_2BYTE;
+        headerText[3] = TXT2BYTE_GFSurf;
+        snprintf(text,TEXTSIZE,"\020%.0f\016\016%%\017",100 * pDecoinfoStandard->gf_surf);
         break;
 
     case LLC_ScrubberTime:
@@ -4149,7 +4153,8 @@ void t7_SummaryOfLeftCorner(void)
     text[textpointer++] = TXT_ActualGradient;
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    text[textpointer++] = TXT_ActualGradient;
+    text[textpointer++] = TXT_2BYTE;
+    text[textpointer++] = TXT2BYTE_GFSurf;
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
     text[textpointer++] = TXT_CNS;
@@ -4181,30 +4186,30 @@ void t7_SummaryOfLeftCorner(void)
 		t7cY0free.WindowX1 += 10;
     }
     textpointer = 0;
-    text[textpointer++] = '\t';
+    text[textpointer++] = '\002';
     textpointer += snprintf(&text[textpointer],10,"\020%01.2f",	stateUsed->lifeData.ppO2);
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    text[textpointer++] = '\t';
+    text[textpointer++] = '\002';
     if((pDecoinfoStandard->output_ceiling_meter > 99.9f) || (settingsGetPointer()->nonMetricalSystem))
         textpointer += snprintf(&text[textpointer],10,"\020%01.0f",unit_depth_float(pDecoinfoStandard->output_ceiling_meter));
     else
         textpointer += snprintf(&text[textpointer],10,"\020%01.1f",pDecoinfoStandard->output_ceiling_meter);
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    text[textpointer++] = '\t';
-    textpointer += snprintf(&text[textpointer],15,"\020%.0f\016\016%%\017 @ C",		100 * pDecoinfoStandard->super_saturation);
+    text[textpointer++] = '\002';
+    textpointer += snprintf(&text[textpointer],10,"\020%.0f\016\016%%\017",		100 * pDecoinfoStandard->super_saturation);
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    text[textpointer++] = '\t';
-    textpointer += snprintf(&text[textpointer],15,"\020%.0f\016\016%%\017 @ 0",			100 * pDecoinfoStandard->gf_surf);
+    text[textpointer++] = '\002';
+    textpointer += snprintf(&text[textpointer],10,"\020%.0f\016\016%%\017",		100 * pDecoinfoStandard->gf_surf);
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    text[textpointer++] = '\t';
+    text[textpointer++] = '\002';
     textpointer += snprintf(&text[textpointer],10,"\020%.0f\016\016%%\017",fCNS);
     text[textpointer++] = '\n';
     text[textpointer++] = '\r';
-    text[textpointer++] = '\t';
+    text[textpointer++] = '\002';
     if (pDecoinfoFuture->output_time_to_surface_seconds < 1000 * 60)
     	textpointer += snprintf(&text[textpointer],10,"\020%i'", (pDecoinfoFuture->output_time_to_surface_seconds + 59) / 60);
     else
@@ -4213,7 +4218,7 @@ void t7_SummaryOfLeftCorner(void)
     if (isScrubberTimerEnabled(pSettings)) {
         text[textpointer++] = '\n';
         text[textpointer++] = '\r';
-        text[textpointer++] = '\t';
+        text[textpointer++] = '\002';
 
         textpointer += printScrubberText(&text[textpointer], 10, stateUsed->scrubberDataDive, pSettings, false);
     }
