@@ -1,0 +1,24 @@
+Binary data format:
+
+0x00: binary length (4)
+0x04: type (1) / offset (3)
+0x08: header_checksum (4)
+0x0c: version (4)
+0x10: binary (length)
+
+length + 16: binary CRC32 (4)
+
+overall data length required: 0x1fff0
+
+Custom block at end of binary:
+
+typedef struct
+{
+    uint32_t Reserved;		/* for future use */
+    uint32_t Type;			/* type => block purpose */
+    uint32_t fletcher;		/* fletcher check sum */
+    uint32_t length;		/* length of block starting from 0x08100000 */
+} customBlockInfo_t;
+
+type: blockInfo.Type & 0x0000FF00)== 0x0100)
+
