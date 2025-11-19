@@ -48,11 +48,6 @@ while test $# -gt 0; do
         shift
 
         ;;
-    --do-bootloader)
-        DO_BOOTLOADER=1
-        shift
-
-        ;;
     --no-date)
         NO_DATE=1
         shift

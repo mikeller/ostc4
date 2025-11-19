@@ -1632,6 +1632,15 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
+static bool isValidBootloaderBlock(const customBlockInfo_t *info, uint32_t checksum)
+{
+    if (info == NULL) {
+        return false;
+    }
+
+    return (info->Type & 0x0000FF00) == 0x0100 && checksum == info->fletcher;
+}
+
 customBlockInfo_t blockInfo;
 
 void openEdit_Maintenance(void)
@@ -1646,6 +1655,8 @@ void openEdit_Maintenance(void)
     blockInfo.Type = swapBytes(pCustumBlockInfo->Type);
     blockInfo.fletcher = swapBytes(pCustumBlockInfo->fletcher);
     blockInfo.length = swapBytes(pCustumBlockInfo->length);
+
+    uint32_t checksum = CalcFletcher32(0x08100000,0x0811FFEF);	/* last nibble contains block info => exclude */
 
     resetMenuEdit(CLUT_MenuPageSystem);
 
@@ -1689,9 +1700,8 @@ void openEdit_Maintenance(void)
     	}
     }
 
-    if((blockInfo.Type & 0x0000FF00)== 0x0100)
-    {
-    	snprintf(text,32,"Flash Bootloader");
+    if (isValidBootloaderBlock(&blockInfo, checksum)) {
+        snprintf(text,32,"Flash Bootloader");
 		write_field_button(StMSYS5_FlashBoot,			30, 800, ME_Y_LINE4,  &FontT48, text);
     }
 
@@ -1718,8 +1728,7 @@ void openEdit_Maintenance(void)
     setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
 #endif
 
-    if((blockInfo.Type & 0x0000FF00)== 0x0100)
-    {
+    if (isValidBootloaderBlock(&blockInfo, checksum)) {
     	setEvent(StMSYS5_FlashBoot, (uint32_t)OnAction_FlashBootloader);
     }
 
@@ -1954,8 +1963,7 @@ uint8_t OnAction_FlashBootloader (uint32_t editId, uint8_t blockNumber, uint8_t 
     blockInfo.fletcher = swapBytes(pCustumBlockInfo->fletcher);
     blockInfo.length = swapBytes(pCustumBlockInfo->length);
 
-    if(checksum == blockInfo.fletcher)
-    {
+    if (isValidBootloaderBlock(&blockInfo, checksum)) {
 		memcpy (&HwInfo, hardwareDataGetPointer(), sizeof(SHardwareData)); /* create backup copy because data will be overwritten during flash erase */
 
 		bootloader_eraseFlashMemory();
