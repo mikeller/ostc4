@@ -20,5 +20,5 @@ typedef struct
     uint32_t length;		/* length of block starting from 0x08100000 */
 } customBlockInfo_t;
 
-type: blockInfo.Type & 0x0000FF00)== 0x0100)
+type: (blockInfo.Type & 0x0000FF00)== 0x0100)
 
