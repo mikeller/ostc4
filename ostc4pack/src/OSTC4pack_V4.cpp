@@ -436,9 +436,38 @@ int main(int argc, char** argv) {
 	}
 	len = fread(buf, sizeof(char), sizeof(buf), fp);
 	printf("%d bytes read (hex: %#x )\n", (uint32_t)len, (uint32_t)len);
+
+        if (type == 3) {
+		if (len > 0x01fff0) {
+			printf("Error: File too large for type 2.\n");
+			return -1;
+		}
+		len = 0x01fff0;
+		unsigned int internalChecksum = CRC_CalcBlockCRC((uint32_t *)buf, (uint32_t)(len/4));
+		printf("Internal checksum for type 3: %#x\n", internalChecksum);
+
+		buf[len++] = 0x00; // reserved
+		buf[len++] = 0x00;
+		buf[len++] = 0x00;
+		buf[len++] = 0x00;
+		buf[len++] = 0x00; // type == bootloader
+		buf[len++] = 0x01;
+		buf[len++] = 0x00;
+		buf[len++] = 0x00;
+     		buf[len++] = 0xFF & (internalChecksum >> 24);
+     		buf[len++] = 0xFF & (internalChecksum >> 16);
+     		buf[len++] = 0xFF & (internalChecksum >> 8);
+     		buf[len++] = 0xFF & internalChecksum;
+     		buf[len++] = 0xFF & (len >> 24);
+     		buf[len++] = 0xFF & (len >> 16);
+     		buf[len++] = 0xFF & (len >> 8);
+     		buf[len++] = 0xFF & len;
+	}
+	printf("The length is %#x\n", (unsigned int)len);
+
 //	unsigned int checksum = crc32c_checksum(buf, len);
 	unsigned int checksum = CRC_CalcBlockCRC((uint32_t *)buf, (uint32_t)(len/4));
-	printf("The checksum of %s is %#x\n", file, checksum);
+	printf("The checksum is %#x\n", checksum);
 	
 	fclose(fp);
 	if(type == 0)
@@ -473,6 +502,18 @@ int main(int argc, char** argv) {
 		bufVersion[3] = buf[0x03];
 	}
 	else
+	if(type == 3)
+	{
+		buf3offset[0] = 0x10;
+		buf3offset[1] = 0x00;
+		buf3offset[2] = 0x00;
+		buf3offset[3] = 0x00;
+		bufVersion[0] = buf[0x00];
+		bufVersion[1] = buf[0x01];
+		bufVersion[2] = buf[0x02];
+		bufVersion[3] = buf[0x03];
+	}
+	else
 	if(type == 0)
 	{
 		buf3offset[0] = 0xFE;
@@ -496,6 +537,10 @@ int main(int argc, char** argv) {
 		bufVersion[3] = buf[0x10003];
 	}
 	
+    if (type == 2 || type == 3) {
+    	printf("The offset is %#x\n", ((256 * buf3offset[1] + buf3offset[2]) * 256 + buf3offset[3]) * 256);
+    }
+
     fwrite(buf3offset,sizeof(char),4,fp);
     
     pruefsumme = len + (256*256*256*buf3offset[0]) + (256*256*buf3offset[1]) + (256*buf3offset[2]) + buf3offset[3];
