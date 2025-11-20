@@ -560,20 +560,13 @@ uint8_t bootloader_programFlashMemory(uint8_t *pBuffer1, uint32_t length1, SHard
 
 uint32_t CalcFletcher32(uint32_t startAddr, uint32_t endAddr)
 {
-	uint32_t fletcher = 0;
-	uint16_t* pData = (uint16_t*) startAddr;
-	uint32_t index = 0;
-
 	uint16_t sum1 = 0;
 	uint16_t sum2 = 0;
-	for(index = startAddr; index <= endAddr; index +=2)
-	{
-		sum1 = sum1 + *pData++;
-	    sum2 = (sum2 + sum1);
+	for (uint16_t *index = (uint16_t *)startAddr; index <= (uint16_t *)endAddr; index++) {
+		sum1 = sum1 + *index;
+		sum2 = (sum2 + sum1);
 	}
-	fletcher = (sum2 << 16) | sum1;
-
-	return fletcher;
+	return (sum2 << 16) | sum1;
 }
 
 
