@@ -71,14 +71,20 @@ int main(int argc, char** argv)
 {
 	int index = 1;
 	bool useDate = false;
-	bool useType = false;
+	char *fileType = NULL;
 	bool useVersion = false;
 	bool printVersionOnly = false;
 	while (index < argc && strncmp(argv[index], "-", 1) == 0) {
 		if (strcmp(argv[index], "--date") == 0) {
 			useDate = true;
 		} else if (strcmp(argv[index], "--type") == 0) {
-			useType = true;
+            if (index + 1 >= argc) {
+                printf("Missing argument for --type\n");
+
+                return -1;
+            }
+            index++;
+            fileType = argv[index];
 #if defined(INCLUDE_VERSION_SUPPORT)
 		} else if (strcmp(argv[index], "--version") == 0) {
 			useVersion = true;
@@ -107,7 +113,7 @@ int main(int argc, char** argv)
 
 		break;
 	default:
-		printf("Invalid number of arguments. Usage: checksum_final_add_fletcher <file1> [(<file2>|null) [<file3>]]\n");
+		printf("Invalid number of arguments. Usage: checksum_final_add_fletcher [--date] [--type <type name>] [--version] [--print-version-only] <file1> [<file2> [<file3>]]\n");
 
 		return -1;
 	}
@@ -145,9 +151,9 @@ int main(int argc, char** argv)
 	unsigned char buf[2000000];
 	unsigned char buf2[4];
 
-   	printf("1: %s\n",  file);
-   	printf("2: %s\n",  file2);
-   	printf("3: %s\n",  file3);
+   	printf("1: %s\n", file);
+   	printf("2: %s\n", file2 ? file2 : "(none)");
+   	printf("3: %s\n", file3 ? file3 : "(none)");
    	printf("\n");
      
 	
@@ -169,8 +175,7 @@ int main(int argc, char** argv)
 	printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 	fclose(fp);
 
-	unsigned typeFlags = 0x00;
-	if(file2 && strcmp(file2, "null") != 0)
+	if(file2)
 	{
 		if (NULL == (fp = fopen(file2, "rb")))
 		{
@@ -181,8 +186,6 @@ int main(int argc, char** argv)
 		lenTotal += lenTemp;
 		printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 		fclose(fp);
-
-		typeFlags |= 0x01;
 	}
 	if(file3)
 	{
@@ -195,8 +198,6 @@ int main(int argc, char** argv)
 		lenTotal += lenTemp;
 		printf("%d bytes read (hex: %#x )\n", (uint32_t)lenTemp, (uint32_t)lenTemp);
 		fclose(fp);
-
-		typeFlags |= 0x02;
 	}
 
    	printf("\n");
@@ -204,29 +205,7 @@ int main(int argc, char** argv)
 
 //	sprintf(filenameout,"fwupdate_%s.bin",ctime(&rawtime));
 
-	char type[10] = "";
-	if (useType) {
-		switch (typeFlags) {
-		case 0x00:
-			sprintf(type, "_firmware");
-
-			break;
-		case 0x01:
-			sprintf(type, "_fontpack");
-
-			break;
-		case 0x02:
-			sprintf(type, "_rte");
-
-			break;
-		case 0x03:
-			sprintf(type, "_all");
-
-			break;
-		}
-	}
-
-	sprintf(filenameout, "OSTC4update%s%s.bin", type, versionName);
+    snprintf(filenameout, sizeof(filenameout), "OSTC4update%s%s%s.bin", fileType ? "_" : "", fileType ? fileType : "", versionName);
 
     fpout = fopen(filenameout, "wb");     
     for (size_t i = 0; i < lenTotal; i++)
