@@ -452,14 +452,13 @@ int main(int argc, char** argv) {
 	len = fread(buf, sizeof(char), sizeof(buf), fp);
 	printf("%d bytes read (hex: %#x )\n", (uint32_t)len, (uint32_t)len);
 
-        if (type == 3) {
+    if (type == 3) {
 		if (len > 0x01fff0) {
-			printf("Error: File too large for type 2.\n");
+			printf("Error: File too large for type 3.\n");
 			return -1;
 		}
         unsigned int binaryLength = len;
         memset(buf + len, 0xFF, 0x01fff0 - len);
-len = 0x01fff0;
 		len = 0x01fff0;
 		unsigned int internalChecksum = CalcFletcher32((uint32_t *)buf, (uint32_t *)&buf[len - 1]);
 		printf("Internal checksum for type 3: %#x\n", internalChecksum);
@@ -508,24 +507,17 @@ len = 0x01fff0;
 
 	unsigned char buf3offset[4];
 	unsigned char bufVersion[4];
-	if(type == 2)
-	{
+	if (type == 2 || type == 3) {
 		buf3offset[0] = 0x10;
-		buf3offset[1] = 0x00;
-		buf3offset[2] = 0x03;
-		buf3offset[3] = 0x20;
-		bufVersion[0] = buf[0x00];
-		bufVersion[1] = buf[0x01];
-		bufVersion[2] = buf[0x02];
-		bufVersion[3] = buf[0x03];
-	}
-	else
-	if(type == 3)
-	{
-		buf3offset[0] = 0x10;
-		buf3offset[1] = 0x00;
-		buf3offset[2] = 0x00;
-		buf3offset[3] = 0x00;
+	    if (type == 3) {
+		    buf3offset[1] = 0x00;
+		    buf3offset[2] = 0x00;
+		    buf3offset[3] = 0x00;
+        } else {
+		    buf3offset[1] = 0x00;
+		    buf3offset[2] = 0x03;
+		    buf3offset[3] = 0x20;
+        }
 		bufVersion[0] = buf[0x00];
 		bufVersion[1] = buf[0x01];
 		bufVersion[2] = buf[0x02];
