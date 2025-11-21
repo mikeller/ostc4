@@ -72,7 +72,7 @@ $(BUILD_DIR)/Discovery/Src/text_multilanguage.c \
 $(BUILD_DIR)/Discovery/Src/timer.c \
 $(BUILD_DIR)/Discovery/Src/unit.c \
 $(BUILD_DIR)/Discovery/Src/vpm.c \
-$(BUILD_DIR)/Discovery/Src/firmwareEraseProgram.c
+$(BUILD_DIR)/OtherSources/firmwareEraseProgram.c
 
 OBJS += \
 ./Discovery/Src/base.o \
@@ -741,7 +741,7 @@ Discovery/Src/vpm.o: $(BUILD_DIR)/Discovery/Src/vpm.c
 	@echo 'Finished building: $<'
 	@echo ' '
 
-Discovery/Src/firmwareEraseProgram.o: $(BUILD_DIR)/Discovery/Src/firmwareEraseProgram.c
+Discovery/Src/firmwareEraseProgram.o: $(BUILD_DIR)/OtherSources/firmwareEraseProgram.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)

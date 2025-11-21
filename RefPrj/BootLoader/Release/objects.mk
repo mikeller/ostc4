@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lOSTC4_FontPack
+LIBS :=
 
