@@ -42,6 +42,7 @@
 #include "motion.h"
 #include "t7.h"
 #include "math.h"
+#include "firmwareEraseProgram.h"
 
 
 /*#define HAVE_DEBUG_VIEW */
@@ -1709,7 +1710,7 @@ void openEdit_Maintenance(void)
     text[0] = TXT_2BYTE;
     text[1] = TXT2BYTE_SetSampleIndex;
     text[2] = 0;
-    write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE4,  &FontT48, text);
+    write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE3,  &FontT48, text);
 #endif
 
     setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
