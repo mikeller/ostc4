@@ -1247,6 +1247,75 @@ void GFX_draw_header(GFX_DrawCfgScreen *hgfx, uint8_t colorId)
 	}
 }
 
+static void gfx_flip(point_t *p1, point_t *p2)
+{
+    point_t temp;
+    
+    temp = *p1;
+    *p1 = *p2;
+    *p2 = temp;
+}
+
+void GFX_draw_line(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color)
+{
+    uint16_t* pDestination;
+    uint32_t j;
+
+    /* horizontal line */
+    if(start.x == stop.x)
+    {
+        if(start.y > stop.y) gfx_flip(&start,&stop);
+
+        pDestination = (uint16_t*)hgfx->FBStartAdress;
+        pDestination += start.x * hgfx->ImageHeight;
+        pDestination += start.y;
+        for (j = stop.y - start.y; j > 0; j--)                                       
+        {                                                                            
+                *(__IO uint16_t*)pDestination = 0xFF00 + color;
+                pDestination++;
+        }
+    }
+    else /* vertical line ? */
+    if(start.y == stop.y)
+    {
+        if(start.x > stop.x) gfx_flip(&start,&stop);
+        pDestination = (uint16_t*)hgfx->FBStartAdress;
+
+        pDestination += start.x * hgfx->ImageHeight;
+        pDestination += start.y;
+
+        for (j = stop.x - start.x; j > 0; j--)
+        {
+            *(__IO uint16_t*)pDestination = 0xFF00 + color;
+            pDestination += hgfx->ImageHeight;
+        }
+    }
+    else /* diagonal */
+    {
+        int x0 = start.x;
+        int y0 = start.y;
+        int x1 = stop.x;
+        int y1 = stop.y;
+        int dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
+        int dy = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+        int err = (dx>dy ? dx : -dy)/2, e2;
+     
+        for(;;)
+        {
+            pDestination = (uint16_t*)hgfx->FBStartAdress;
+
+            pDestination += ((x0 * hgfx->ImageHeight) + y0);
+
+            *(__IO uint16_t*)pDestination = 0xFF00 + color;
+            if (x0==x1 && y0==y1) break;
+            e2 = err;
+            if (e2 >-dx) { err -= dy; x0 += sx; }
+            if (e2 < dy) { err += dx; y0 += sy; }
+        }
+    }
+}
+
+
 void GFX_draw_box2(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color, uint8_t roundCorners)
 {
 	point_t point2, point4;
