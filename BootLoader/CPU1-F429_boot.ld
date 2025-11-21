@@ -212,9 +212,9 @@ SECTIONS
 .lower_fonts 	0x0801F000  : {
 	 *(.lower_fonts.image_data_*)
 	 *(.lower_fonts.*)
-	 *(.upper_fonts.image_data_FontT48*) 
+	 *(.upper_fonts.image_data_FontT48*)
 	 *(.upper_fonts.FontT48*)
-	 *(.upper_fonts.image_data_FontT24*) 
+	 *(.upper_fonts.image_data_FontT24*)
 	 *(.upper_fonts.FontT24*)
 } > ROM_BOOT
 
