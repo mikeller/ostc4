@@ -1,15 +1,19 @@
-SCRIPT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+# Command line settings
 
-BUILD_DIR ?= $(SCRIPT_DIR)
-export BUILD_DIR
-
-FIRMWARE_INSTALLER := subsurface-downloader
+# Don't build the firmware by setting NO_FIRMWARE
 
 # For the 'install' target
 BUILD_TYPE := firmware
 MODEL := "OSTC 4/5"
 DEVICE := /dev/rfcomm0
 FORCE :=
+
+SCRIPT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
+BUILD_DIR ?= $(SCRIPT_DIR)
+export BUILD_DIR
+
+FIRMWARE_INSTALLER := subsurface-downloader
 
 NUM_CORES := $(shell \
   command -v nproc >/dev/null 2>&1 && nproc || \
@@ -22,11 +26,23 @@ MAKEFLAGS += j$(NUM_CORES)
 firmware: firmware_binary packer
 	ostc4pack/create_full_update_bin.sh --version --no-rte --no-fonts
 
+ifdef NO_FIRMWARE
+
+fontpack: fontpack_binary packer
+	ostc4pack/create_full_update_bin.sh --version --no-rte --no-firmware
+
+rte: rte_binary packer
+	ostc4pack/create_full_update_bin.sh --version --no-fonts --no-firmware
+
+else
+
 fontpack: firmware_binary fontpack_binary packer
 	ostc4pack/create_full_update_bin.sh --version --no-rte
 
 rte: firmware_binary rte_binary packer
 	ostc4pack/create_full_update_bin.sh --version --no-fonts
+
+endif
 
 bootloader: bootloader_binary packer
 	ostc4pack/create_full_update_bin.sh --version --no-rte --no-fonts --do-bootloader
