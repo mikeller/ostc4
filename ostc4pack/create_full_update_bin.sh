@@ -36,6 +36,11 @@ while test $# -gt 0; do
         shift
 
         ;;
+    --no-firmware)
+        NO_FIRMWARE=1
+        shift
+
+        ;;
     --do-bootloader)
         DO_BOOTLOADER=1
         TYPE="bootloader"
@@ -58,7 +63,7 @@ while test $# -gt 0; do
 
         ;;
     *)
-        echo "Invalid parameter. Usage: create_full_update_bin.sh [--no-fonts] [--no-rte] [--no-date]"
+        echo "Invalid parameter. Usage: create_full_update_bin.sh [--no-fonts] [--no-rte] [--no-firmware] [--no-date] [--version] [--print-version-only] [--do-bootloader]"
         exit 1
 
         ;;
@@ -95,7 +100,7 @@ fi
 mkdir -p ./$BUILD_TYPE
 cd ./$BUILD_TYPE
 
-if [ -z "${DO_BOOTLOADER:+x}" ]; then
+if [ -z "${NO_FIRMWARE:+x}" ]; then
     pushd $BUILD_PATH/$CPU1_DISCOVERY/$BUILD_TYPE/
     $PACKAGE_TOOL_DIR/OSTC4pack_V4 1 ${PROJECT_NAME_PREFIX}${CPU1_DISCOVERY}.bin
     CHECKSUM_COMMAND_PARAMETERS="${CHECKSUM_COMMAND_PARAMETERS} $(pwd)/${PROJECT_NAME_PREFIX}${CPU1_DISCOVERY}_upload.bin"
