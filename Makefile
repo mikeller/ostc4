@@ -5,7 +5,8 @@ export BUILD_DIR
 
 FIRMWARE_INSTALLER := subsurface-downloader
 
-INSTALL_TARGET := firmware
+# For the 'install' target
+BUILD_TYPE := firmware
 MODEL := "OSTC 4/5"
 DEVICE := /dev/rfcomm0
 FORCE :=
@@ -48,10 +49,10 @@ rte_binary: arm_tools_install fontpack_library
 print_version:
 	@ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only
 
-install: $(INSTALL_TARGET)
+install: $(BUILD_TYPE)
 	$(eval VERSION := $(shell ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only))
 	$(eval DATE := $(shell date +%Y%m%d))
-	$(eval FILENAME := "Release/OSTC4update_$(INSTALL_TARGET)_$(VERSION)_$(DATE).bin")
+	$(eval FILENAME := "Release/OSTC4update_$(BUILD_TYPE)_$(VERSION)_$(DATE).bin")
 	$(FIRMWARE_INSTALLER) --update-firmware --dc-vendor="Heinrichs Weikamp" --dc-product=$(MODEL) --device=$(DEVICE) $(if $(FORCE),--force-update-firmware) --firmware-file=$(FILENAME)
 
 packer:
