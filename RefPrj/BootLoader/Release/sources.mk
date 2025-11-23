@@ -16,9 +16,7 @@ C_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-Common/Drivers/STM32F4xx_HAL_Driver/Src/Legacy \
+BootLoader/Src \
 Common/Drivers/STM32F4xx_HAL_Driver/Src \
 Common/Drivers/Src \
-Common/Src \
-BootLoader/Src \
-
+Discovery/Src
