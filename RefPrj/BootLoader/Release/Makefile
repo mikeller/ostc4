@@ -10,9 +10,9 @@ all: OSTC4_BootLoader.elf
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include BootLoader/Src/subdir.mk
--include Discovery/Src/subdir.mk
 -include Common/Drivers/Src/subdir.mk
 -include Common/Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
+-include Discovery/Src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
