@@ -204,8 +204,37 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
+    _erodata = .;      /* end of rodata */
   } >ROM_BOOT
- 	
+
+  /************ Initialized Data Sections into RAM & ROM Memory **************/
+  /* IMPORTANT: Place .data LMA right after .rodata to avoid overlapping
+   * with absolute-addressed sections. AT(_erodata) places it immediately after .rodata. */
+  .data : AT(_erodata)
+  {
+    . = ALIGN(4);
+    _sidata = LOADADDR(.data);  /* LMA for startup code */
+    _sdata = .;        /* create a global symbol at data start */
+    *(.data)           /* .data sections */
+    *(.data*)          /* .data* sections */
+	*(vtable)
+
+    . = ALIGN(4);
+    _edata = .;        /* define a global symbol at data end */
+  } >RAM
+  
+  /* CCRAM section - uninitialized fast memory (no flash overhead) */
+  .ccram (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _sccram = .;
+    *(.ccram)
+    *(.ccram*)
+    . = ALIGN(4);
+    _eccram = .;
+  } >CCRAM
+ 
+
     /* Define Known Address for Each Font */
     /* Flash Sector 23 is protected (bootloader font + image) => use end of sector 22 */
 
@@ -233,25 +262,6 @@ SECTIONS
 	*(.lower_image_directory*)
 } > ROM_BOOT
   
-  /* Used by the startup to initialize data */
-_sidata = LOADADDR(.data);
-
-  /************ Initialized Data Sections into RAM & ROM Memory **************/
-  .data : 
-  {
-    . = ALIGN(4);
-    
-    _sdata = .;        /* create a global symbol at data start */
-    *(.data)           /* .data sections */
-    *(.data*)          /* .data* sections */
-	*(vtable)
-
-    . = ALIGN(4);
-    _edata = .;        /* define a global symbol at data end */
-  } >RAM AT>ROM_BOOT
-  
- 
-
   /*************** Uninitialized Data Section into RAM Memory ****************/
   .bss :
   {
@@ -292,4 +302,9 @@ _sidata = LOADADDR(.data);
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+  
+  /* Bootloader must fit in 128KB ROM_BOOT region (0x08000000 - 0x0801FFFF) */
+  /* Check that all flash data (code + rodata + initialized data) fits */
+  _flash_end = LOADADDR(.data) + SIZEOF(.data);
+  ASSERT(_flash_end <= 0x08020000, "ERROR: Bootloader exceeds 128KB ROM_BOOT region!")
 }
