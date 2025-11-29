@@ -48,6 +48,7 @@ __IO ITStatus UartReadyHUD = RESET;
 /* Private types -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+static uint8_t hardwareDisplay = 255;
 
 /* Private variables with external access via get_xxx() function -------------*/
 
@@ -415,4 +416,22 @@ void MX_tell_reset_logik_alles_ok(void)
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     HAL_GPIO_Init(RESET_LOGIC_ALLES_OK_GPIO_PORT, &GPIO_InitStruct);
 #endif
+}
+
+void SetDisplayVersion(uint8_t version)
+{
+	if(version < 2)
+	{
+		hardwareDisplay = version;
+	}
+}
+
+uint8_t isNewDisplay()
+{
+	uint8_t ret = 0;
+	if(hardwareDisplay == DISPLAY_VERSION_NEW)
+	{
+		ret = 1;
+	}
+	return ret;
 }

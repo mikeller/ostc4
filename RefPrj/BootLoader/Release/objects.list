@@ -16,6 +16,7 @@
 "Discovery/Src/firmwareJumpToApplication.o"
 "Discovery/Src/gfx_colors.o"
 "Discovery/Src/startup_stm32f429xx.o"
+"Discovery/Src/stm32f4xx_it.o"
 "Common/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.o"
 "Common/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.o"
 "Common/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.o"

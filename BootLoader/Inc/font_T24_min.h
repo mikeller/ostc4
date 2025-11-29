@@ -56,155 +56,155 @@
 #include "gfx_fonts.h"
 
 
-static uint8_t image_data_FontT24_0x0030[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0030[364];
 
-static uint8_t image_data_FontT24_0x0031[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0031[364];
 
-static uint8_t image_data_FontT24_0x0032[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0032[364];
 
-static uint8_t image_data_FontT24_0x0033[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0033[364];
 
-static uint8_t image_data_FontT24_0x0034[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0034[364];
 
-static uint8_t image_data_FontT24_0x0035[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0035[364];
 
-static uint8_t image_data_FontT24_0x0036[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0036[364];
 
-static uint8_t image_data_FontT24_0x0037[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0037[364];
 
-static uint8_t image_data_FontT24_0x0038[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0038[364];
 
-static uint8_t image_data_FontT24_0x0039[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0039[364];
 
-static uint8_t image_data_FontT24_0x003a[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x003a[252];
 
-static uint8_t image_data_FontT24_0x003b[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x003b[252];
 
-static uint8_t image_data_FontT24_0x003c[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x003c[364];
 
-static uint8_t image_data_FontT24_0x003d[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x003d[364];
 
-static uint8_t image_data_FontT24_0x003e[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x003e[364];
 
-static uint8_t image_data_FontT24_0x003f[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x003f[252];
 
-static uint8_t image_data_FontT24_0x0040[532];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0040[532];
 
-static uint8_t image_data_FontT24_0x0041[420];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0041[420];
 
-static uint8_t image_data_FontT24_0x0042[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0042[392];
 
-static uint8_t image_data_FontT24_0x0043[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0043[392];
 
-static uint8_t image_data_FontT24_0x0044[420];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0044[420];
 
-static uint8_t image_data_FontT24_0x0045[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0045[364];
 
-static uint8_t image_data_FontT24_0x0046[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0046[364];
 
-static uint8_t image_data_FontT24_0x0047[448];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0047[448];
 
-static uint8_t image_data_FontT24_0x0048[448];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0048[448];
 
-static uint8_t image_data_FontT24_0x0049[196];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0049[196];
 
-static uint8_t image_data_FontT24_0x004a[308];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x004a[308];
 
-static uint8_t image_data_FontT24_0x004b[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x004b[392];
 
-static uint8_t image_data_FontT24_0x004c[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x004c[336];
 
-static uint8_t image_data_FontT24_0x004d[476];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x004d[476];
 
-static uint8_t image_data_FontT24_0x004e[420];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x004e[420];
 
-static uint8_t image_data_FontT24_0x004f[448];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x004f[448];
 
-static uint8_t image_data_FontT24_0x0050[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0050[364];
 
-static uint8_t image_data_FontT24_0x0051[476];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0051[476];
 
-static uint8_t image_data_FontT24_0x0052[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0052[392];
 
-static uint8_t image_data_FontT24_0x0053[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0053[336];
 
-static uint8_t image_data_FontT24_0x0054[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0054[392];
 
-static uint8_t image_data_FontT24_0x0055[448];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0055[448];
 
-static uint8_t image_data_FontT24_0x0056[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0056[392];
 
-static uint8_t image_data_FontT24_0x0057[560];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0057[560];
 
-static uint8_t image_data_FontT24_0x0058[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0058[364];
 
-static uint8_t image_data_FontT24_0x0059[392];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0059[392];
 
-static uint8_t image_data_FontT24_0x005a[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x005a[364];
 
-static uint8_t image_data_FontT24_0x005b[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x005b[252];
 
-static uint8_t image_data_FontT24_0x005c[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x005c[252];
 
-static uint8_t image_data_FontT24_0x005d[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x005d[252];
 
-static uint8_t image_data_FontT24_0x005e[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x005e[364];
 
-static uint8_t image_data_FontT24_0x005f[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x005f[364];
 
-static uint8_t image_data_FontT24_0x0060[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0060[364];
 
-static uint8_t image_data_FontT24_0x0061[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0061[364];
 
-static uint8_t image_data_FontT24_0x0062[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0062[364];
 
-static uint8_t image_data_FontT24_0x0063[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0063[336];
 
-static uint8_t image_data_FontT24_0x0064[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0064[364];
 
-static uint8_t image_data_FontT24_0x0065[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0065[364];
 
-static uint8_t image_data_FontT24_0x0066[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0066[252];
 
-static uint8_t image_data_FontT24_0x0067[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0067[336];
 
-static uint8_t image_data_FontT24_0x0068[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0068[364];
 
-static uint8_t image_data_FontT24_0x0069[196];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0069[196];
 
-static uint8_t image_data_FontT24_0x006a[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x006a[252];
 
-static uint8_t image_data_FontT24_0x006b[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x006b[336];
 
-static uint8_t image_data_FontT24_0x006c[196];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x006c[196];
 
-static uint8_t image_data_FontT24_0x006d[560];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x006d[560];
 
-static uint8_t image_data_FontT24_0x006e[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x006e[364];
 
-static uint8_t image_data_FontT24_0x006f[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x006f[364];
 
-static uint8_t image_data_FontT24_0x0070[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0070[364];
 
-static uint8_t image_data_FontT24_0x0071[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0071[364];
 
-static uint8_t image_data_FontT24_0x0072[252];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0072[252];
 
-static uint8_t image_data_FontT24_0x0073[280];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0073[280];
 
-static uint8_t image_data_FontT24_0x0074[280];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0074[280];
 
-static uint8_t image_data_FontT24_0x0075[364];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0075[364];
 
-static uint8_t image_data_FontT24_0x0076[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0076[336];
 
-static uint8_t image_data_FontT24_0x0077[504];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0077[504];
 
-static uint8_t image_data_FontT24_0x0078[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0078[336];
 
-static uint8_t image_data_FontT24_0x0079[336];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x0079[336];
 
-static uint8_t image_data_FontT24_0x007a[308];
+static uint8_t __attribute__((section(".ccram"))) image_data_FontT24_0x007a[308];
 
 static const tImage FontT24_0x0030 __attribute__(( section(".upper_fonts.FontT24_0x0030") )) = {   image_data_FontT24_0x0030, 13, 28};
 static const tImage FontT24_0x0031 __attribute__(( section(".upper_fonts.FontT24_0x0031") )) = {   image_data_FontT24_0x0031, 13, 28};
