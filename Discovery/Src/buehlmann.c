@@ -344,7 +344,7 @@ void buehlmann_super_saturation_calculator(SLifeData* pLifeData, SDecoinfo * pDe
 			inertgas_b = ( ( buehlmann_N2_b[ci] *  gTissue_nitrogen_bar[ci]) + ( buehlmann_He_b[ci] * gTissue_helium_bar[ci]) ) / tissue_inertgas_saturation;
 		}
 
-		M_surf = inertgas_a + inertgas_b * pres_surface;
+		M_surf = pres_surface / inertgas_b + inertgas_a;
 		if (M_surf > pres_surface)
 		{
 			gf_surf = (tissue_inertgas_saturation - pres_surface) / (M_surf - pres_surface);
