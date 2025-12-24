@@ -62,7 +62,7 @@ fontpack_binary: arm_tools_install fontpack_library
 rte_binary: arm_tools_install fontpack_library
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile
 
-bootloader_binary: arm_tools_install fontpack_library
+bootloader_binary: arm_tools_install
 	$(MAKE) -C RefPrj/BootLoader/Release -f Makefile
 
 print_version:
