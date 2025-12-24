@@ -228,12 +228,15 @@ void MX_Bluetooth_PowerOn(void)
     HAL_GPIO_Init(BLE_NENABLE_GPIO_PORT, &GPIO_InitStruct);
     HAL_GPIO_WritePin(BLE_NENABLE_GPIO_PORT,BLE_NENABLE_PIN,GPIO_PIN_RESET);
 
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    GPIO_InitStruct.Pin = BLE_UBLOX_DSR_PIN;
-    HAL_GPIO_Init(BLE_UBLOX_DSR_GPIO_PORT, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
+    if(isNewDisplay())
+    {
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+        GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+        GPIO_InitStruct.Pin = BLE_UBLOX_DSR_PIN;
+        HAL_GPIO_Init(BLE_UBLOX_DSR_GPIO_PORT, &GPIO_InitStruct);
+        HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
+    }
 }
 
 
@@ -246,7 +249,11 @@ void MX_Bluetooth_PowerOff(void)
     GPIO_InitStruct.Pin = BLE_NENABLE_PIN;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(BLE_NENABLE_GPIO_PORT, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
+
+    if(isNewDisplay())
+    {
+        HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
+    }
 }
 
 

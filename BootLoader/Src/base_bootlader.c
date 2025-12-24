@@ -691,18 +691,19 @@ GPIO_test_I2C_lines();
 	tInfo_newpage("bootloader 251115");
 	tInfo_write("start bluetooth");
 	tInfo_write(textVersion);
-#if 0
-	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
-#else
-	if(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF)
-#endif
+	/*
+	 * For the old Stollmann module (OSTC4), just run the normal config sequence.
+	 * The module should already be configured; it only needs ATE0, silence, escape delay, etc.
+	 * For new u-blox module (OSTC5), we can run full init if needed.
+	 */
+	if (isNewDisplay())
 	{
 		tInfo_write("init bluetooth");
 		tComm_StartBlueModBaseInit();
 	}
 	else
 	{
-		tInfo_write("bluetooth set");
+		tInfo_write("config bluetooth");
 		tComm_StartBlueModConfig();
 	}
 
