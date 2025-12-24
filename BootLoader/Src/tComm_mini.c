@@ -162,28 +162,35 @@ void tComm_init(void)
 uint8_t tComm_control(void)
 {
     uint8_t answer  = 0;
+    static uint8_t postInitDelayDone = 0;
 
     if(BmTmpConfig != BM_CONFIG_DONE)
     {
     	tComm_HandleBlueModConfig();
+    	postInitDelayDone = 0;
     }
     else
     {
-    /*##-2- Put UART peripheral in reception process ###########################*/
+    	/* Give the Bluetooth module a brief settle time after init before listening. */
+    	if(!postInitDelayDone)
+    	{
+    		HAL_Delay(500);
+    		postInitDelayDone = 1;
+    		tInfo_write("BT Ready");
+    	}
 
-		if((UartReady == RESET) && StartListeningToUART)
+		/* Use polling receive instead of interrupt to debug */
+		receiveStartByteUart = 0;
+		if(HAL_UART_Receive(&UartHandle, &receiveStartByteUart, 1, 100) == HAL_OK)
 		{
-				StartListeningToUART = 0;
-				if(HAL_UART_Receive_IT(&UartHandle, &receiveStartByteUart, 1) != HAL_OK)
-						tComm_Error_Handler();
-		}
-		/* Reset transmission flag */
-		if(UartReady == SET)
-		{
-				UartReady = RESET;
+				static const char hexChars[] = "0123456789ABCDEF";
+				char debugMsg[8] = "RX:0x";
+				debugMsg[5] = hexChars[(receiveStartByteUart >> 4) & 0x0F];
+				debugMsg[6] = hexChars[receiveStartByteUart & 0x0F];
+				debugMsg[7] = '\0';
+				tInfo_write(debugMsg);
 				if((receiveStartByteUart == BYTE_DOWNLOAD_MODE) || (receiveStartByteUart == BYTE_SERVICE_MODE))
 					answer = openComm(receiveStartByteUart);
-				StartListeningToUART = 1;
 				return answer;
 		}
     }
@@ -1685,7 +1692,19 @@ void tComm_EvaluateBluetoothStrength(void)
 
 void tComm_StartBlueModBaseInit()
 {
-	BmTmpConfig = BM_INIT_POWEROFF;
+    /* Pick the correct init state machine depending on the module generation.
+     * Old modules (OSTC4) expect a full power cycle starting at POWEROFF.
+     * New modules (OSTC5) start with the trigger-on state machine and never
+     * handle BM_INIT_POWEROFF, so keep them out of that dead state.
+     */
+    if (isNewDisplay())
+    {
+        BmTmpConfig = BM_INIT_TRIGGER_ON;
+    }
+    else
+    {
+        BmTmpConfig = BM_INIT_POWEROFF;
+    }
 }
 
 
@@ -1754,9 +1773,9 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 
 void tComm_StartBlueModConfig()
 {
-	HAL_UART_Init(&UartHandle);
-
     if (isNewDisplay()) {
+	    HAL_UART_Init(&UartHandle);
+
 	    uint8_t answer = HAL_OK;
 	    uint8_t RxBuffer[UART_CMD_BUF_SIZE];
 	    uint8_t index = 0;
@@ -1768,7 +1787,63 @@ void tComm_StartBlueModConfig()
 		    if(index < UART_CMD_BUF_SIZE) index++;
 	    }while(answer == HAL_OK);
     } else {
-	    BmTmpConfig = BM_CONFIG_ECHO;  /* Old module (OSTC4) needs configuration */
+	    /*
+	     * Old Stollmann module: When connected via Bluetooth, the module is in
+	     * transparent data mode and won't respond to AT commands. Skip config
+	     * and go directly to listening for service mode bytes.
+	     * Disable hardware flow control on the STM32 UART side.
+	     */
+
+	    /* Full UART reset and reinit */
+	    HAL_UART_DeInit(&UartHandle);
+
+	    UartHandle.Instance        = USART1;
+	    UartHandle.Init.BaudRate   = 115200;
+	    UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
+	    UartHandle.Init.StopBits   = UART_STOPBITS_1;
+	    UartHandle.Init.Parity     = UART_PARITY_NONE;
+	    UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
+	    UartHandle.Init.Mode       = UART_MODE_TX_RX;
+	    if (HAL_UART_Init(&UartHandle) != HAL_OK) {
+		    tInfo_write("UART init fail");
+	    } else {
+		    tInfo_write("UART OK");
+	    }
+
+	    /*
+	     * Configure RTS pin (PA12) as output LOW to signal to the Bluetooth module
+	     * that we are ready to receive data.
+	     */
+	    GPIO_InitTypeDef GPIO_InitStruct;
+	    __GPIOA_CLK_ENABLE();
+	    GPIO_InitStruct.Pin = GPIO_PIN_12;  /* RTS pin */
+	    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	    GPIO_InitStruct.Pull = GPIO_NOPULL;
+	    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+	    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);  /* RTS active LOW */
+
+	    /*
+	     * Leave CTS pin (PA11) as input - don't force it.
+	     * The module's RTS output drives this pin.
+	     */
+	    GPIO_InitStruct.Pin = GPIO_PIN_11;  /* CTS pin */
+	    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	    GPIO_InitStruct.Pull = GPIO_NOPULL;
+	    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	    /* Send test message continuously */
+	    for (int i = 0; i < 5; i++) {
+		    uint8_t testMsg[] = "BOOT\r\n";
+		    HAL_StatusTypeDef txResult = HAL_UART_Transmit(&UartHandle, testMsg, sizeof(testMsg)-1, 1000);
+		    if (txResult != HAL_OK) {
+			    tInfo_write("TX fail");
+		    }
+		    HAL_Delay(200);
+	    }
+	    tInfo_write("TX done");
+
+	    BmTmpConfig = BM_CONFIG_DONE;
     }
 }
 
