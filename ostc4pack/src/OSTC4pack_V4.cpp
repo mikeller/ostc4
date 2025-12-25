@@ -455,6 +455,7 @@ int main(int argc, char** argv) {
     if (type == 3) {
 		if (len > 0x01fff0) {
 			printf("Error: File too large for type 3.\n");
+			fclose(fp);
 			return -1;
 		}
         unsigned int binaryLength = len;
