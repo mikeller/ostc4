@@ -640,9 +640,15 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
   
     /**USART1 GPIO Configuration    
     PA9     ------> USART1_TX
-    PA10     ------> USART1_RX 
+    PA10     ------> USART1_RX
+    PA11     ------> USART1_CTS
+    PA12     ------> USART1_RTS
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_10);
+
+#ifdef USARTx_CTS_PIN
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11|GPIO_PIN_12);
+#endif
 
   /* USER CODE BEGIN USART1_MspDeInit 1 */
 
