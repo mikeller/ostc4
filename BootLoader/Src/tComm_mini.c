@@ -131,6 +131,7 @@ static uint8_t openComm(uint8_t aRxByte);
 uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence);
 uint8_t prompt4D4C(uint8_t mode);
 uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr);
+static void tComm_StollmannRecovery(void);
 
 
 static uint8_t receive_update_data_cpu2(void);
@@ -176,19 +177,19 @@ uint8_t tComm_control(void)
     	{
     		HAL_Delay(500);
     		postInitDelayDone = 1;
+
+    		/* Clear any UART error flags */
+    		__HAL_UART_CLEAR_OREFLAG(&UartHandle);
+    		__HAL_UART_CLEAR_NEFLAG(&UartHandle);
+    		__HAL_UART_CLEAR_FEFLAG(&UartHandle);
+
     		tInfo_write("BT Ready");
     	}
 
-		/* Use polling receive instead of interrupt to debug */
+		/* Poll for incoming data */
 		receiveStartByteUart = 0;
 		if(HAL_UART_Receive(&UartHandle, &receiveStartByteUart, 1, 100) == HAL_OK)
 		{
-				static const char hexChars[] = "0123456789ABCDEF";
-				char debugMsg[8] = "RX:0x";
-				debugMsg[5] = hexChars[(receiveStartByteUart >> 4) & 0x0F];
-				debugMsg[6] = hexChars[receiveStartByteUart & 0x0F];
-				debugMsg[7] = '\0';
-				tInfo_write(debugMsg);
 				if((receiveStartByteUart == BYTE_DOWNLOAD_MODE) || (receiveStartByteUart == BYTE_SERVICE_MODE))
 					answer = openComm(receiveStartByteUart);
 				return answer;
@@ -1703,7 +1704,13 @@ void tComm_StartBlueModBaseInit()
     }
     else
     {
-        BmTmpConfig = BM_INIT_POWEROFF;
+        /* For Stollmann module: Run comprehensive recovery that tries multiple
+         * baud rates and uses escape sequence to enter command mode.
+         * This handles the case where the module was misconfigured by the
+         * previously buggy code that sent u-blox commands to it.
+         */
+        tComm_StollmannRecovery();
+        BmTmpConfig = BM_CONFIG_ECHO;
     }
 }
 
@@ -1773,78 +1780,131 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 
 void tComm_StartBlueModConfig()
 {
-    if (isNewDisplay()) {
-	    HAL_UART_Init(&UartHandle);
+	HAL_UART_Init(&UartHandle);
 
-	    uint8_t answer = HAL_OK;
-	    uint8_t RxBuffer[UART_CMD_BUF_SIZE];
-	    uint8_t index = 0;
+	uint8_t answer = HAL_OK;
+	uint8_t RxBuffer[UART_CMD_BUF_SIZE];
+	uint8_t index = 0;
 
-	    BmTmpConfig = BM_CONFIG_ECHO;
-	    do	/* flush RX buffer */
-	    {
-		    answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&RxBuffer[index], 1, 10);
-		    if(index < UART_CMD_BUF_SIZE) index++;
-	    }while(answer == HAL_OK);
-    } else {
-	    /*
-	     * Old Stollmann module: When connected via Bluetooth, the module is in
-	     * transparent data mode and won't respond to AT commands. Skip config
-	     * and go directly to listening for service mode bytes.
-	     * Disable hardware flow control on the STM32 UART side.
-	     */
+	/* Flush any pending RX data */
+	do
+	{
+		answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&RxBuffer[index], 1, 10);
+		if(index < UART_CMD_BUF_SIZE) index++;
+	} while(answer == HAL_OK);
 
-	    /* Full UART reset and reinit */
-	    HAL_UART_DeInit(&UartHandle);
+	/* Start configuration state machine */
+	BmTmpConfig = BM_CONFIG_ECHO;
+}
 
-	    UartHandle.Instance        = USART1;
-	    UartHandle.Init.BaudRate   = 115200;
-	    UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
-	    UartHandle.Init.StopBits   = UART_STOPBITS_1;
-	    UartHandle.Init.Parity     = UART_PARITY_NONE;
-	    UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
-	    UartHandle.Init.Mode       = UART_MODE_TX_RX;
-	    if (HAL_UART_Init(&UartHandle) != HAL_OK) {
-		    tInfo_write("UART init fail");
-	    } else {
-		    tInfo_write("UART OK");
-	    }
-
-	    /*
-	     * Configure RTS pin (PA12) as output LOW to signal to the Bluetooth module
-	     * that we are ready to receive data.
-	     */
-	    GPIO_InitTypeDef GPIO_InitStruct;
-	    __GPIOA_CLK_ENABLE();
-	    GPIO_InitStruct.Pin = GPIO_PIN_12;  /* RTS pin */
-	    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	    GPIO_InitStruct.Pull = GPIO_NOPULL;
-	    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-	    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);  /* RTS active LOW */
-
-	    /*
-	     * Leave CTS pin (PA11) as input - don't force it.
-	     * The module's RTS output drives this pin.
-	     */
-	    GPIO_InitStruct.Pin = GPIO_PIN_11;  /* CTS pin */
-	    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	    GPIO_InitStruct.Pull = GPIO_NOPULL;
-	    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	    /* Send test message continuously */
-	    for (int i = 0; i < 5; i++) {
-		    uint8_t testMsg[] = "BOOT\r\n";
-		    HAL_StatusTypeDef txResult = HAL_UART_Transmit(&UartHandle, testMsg, sizeof(testMsg)-1, 1000);
-		    if (txResult != HAL_OK) {
-			    tInfo_write("TX fail");
-		    }
-		    HAL_Delay(200);
-	    }
-	    tInfo_write("TX done");
-
-	    BmTmpConfig = BM_CONFIG_DONE;
-    }
+/**
+ * @brief Comprehensive Stollmann Bluetooth module recovery
+ * 
+ * Tries to recover a misconfigured Stollmann BlueMod+S module by:
+ * 1. Temporarily disabling flow control (module may have been factory reset)
+ * 2. Trying multiple common baud rates (115200, 460800)
+ * 3. Using +++ escape sequence to enter command mode
+ * 4. Configuring standard settings matching original firmware expectations
+ * 5. Storing configuration with AT&W
+ */
+static void tComm_StollmannRecovery(void)
+{
+	static const uint32_t baudRates[] = {115200, 460800};
+	uint8_t recovered = 0;
+	uint8_t dummy;
+	int i;
+	uint32_t savedFlowCtl;
+	
+	tInfo_write("BT Recovery");
+	
+	/* Save original flow control setting */
+	savedFlowCtl = UartHandle.Init.HwFlowCtl;
+	
+	/* Power cycle the module first */
+	MX_Bluetooth_PowerOff();
+	HAL_Delay(500);
+	MX_Bluetooth_PowerOn();
+	HAL_Delay(500);
+	
+	/* Try each baud rate, first without flow control then with */
+	for (i = 0; i < 4 && !recovered; i++) {
+		/* Configure UART: try without flow control first (indices 0,1), then with (2,3) */
+		HAL_UART_DeInit(&UartHandle);
+		HAL_Delay(10);
+		UartHandle.Init.BaudRate = baudRates[i % 2];
+		UartHandle.Init.HwFlowCtl = (i < 2) ? UART_HWCONTROL_NONE : savedFlowCtl;
+		HAL_UART_Init(&UartHandle);
+		
+		/* Flush RX buffer */
+		while (HAL_UART_Receive(&UartHandle, &dummy, 1, 10) == HAL_OK);
+		
+		/* Try direct AT command first */
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"AT\r", 3, 500);
+		if (tComm_CheckAnswerOK() == HAL_OK) {
+			goto do_config;
+		}
+		
+		/* Try +++ escape sequence (1s guard before, send +++, 1s guard after) */
+		HAL_Delay(1100);
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"+++", 3, 500);
+		HAL_Delay(1100);
+		if (tComm_CheckAnswerOK() == HAL_OK) {
+			goto do_config;
+		}
+		continue;
+		
+do_config:
+		/* Disable echo first */
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"ATE0\r", 5, 500);
+		tComm_CheckAnswerOK();
+		HAL_Delay(100);
+		
+		/* Set 115200 baud (AT%B8) - this is what firmware expects at startup */
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"AT%B8\r", 6, 500);
+		if (tComm_CheckAnswerOK() != HAL_OK) {
+			continue;
+		}
+		
+		/* Switch STM32 to 115200 if we were at 460800 */
+		if (UartHandle.Init.BaudRate != 115200) {
+			HAL_UART_DeInit(&UartHandle);
+			HAL_Delay(10);
+			UartHandle.Init.BaudRate = 115200;
+			HAL_UART_Init(&UartHandle);
+		}
+		HAL_Delay(100);
+		
+		/* Disable silence/startup message: ATS30=0 */
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"ATS30=0\r", 8, 500);
+		tComm_CheckAnswerOK();
+		HAL_Delay(100);
+		
+		/* Set escape delay: ATS12=10 */
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"ATS12=10\r", 9, 500);
+		tComm_CheckAnswerOK();
+		HAL_Delay(100);
+		
+		/* Store configuration to EEPROM */
+		HAL_UART_Transmit(&UartHandle, (uint8_t*)"AT&W\r", 5, 500);
+		if (tComm_CheckAnswerOK() == HAL_OK) {
+			/* Reset module to apply settings */
+			HAL_UART_Transmit(&UartHandle, (uint8_t*)"AT+RESET\r", 9, 500);
+			HAL_Delay(1000);
+			recovered = 1;
+			tInfo_write("Recovery OK");
+		}
+	}
+	
+	if (!recovered) {
+		tInfo_write("Recovery FAIL");
+	}
+	
+	/* Restore to 115200 with original flow control */
+	HAL_UART_DeInit(&UartHandle);
+	HAL_Delay(10);
+	UartHandle.Init.BaudRate = 115200;
+	UartHandle.Init.HwFlowCtl = savedFlowCtl;
+	HAL_UART_Init(&UartHandle);
 }
 
 uint32_t time_elapsed_ms(uint32_t ticksstart,uint32_t ticksnow)
@@ -1915,7 +1975,11 @@ uint8_t tComm_HandleBlueModConfig()
         }
 
         if (!isNewDisplay()) {
-	/* the procedure below is just needed for the initial bluetooth module initialization */
+	/*
+	 * Old Stollmann BlueMod+S module (OSTC4) initialization.
+	 * Uses Stollmann AT command set.
+	 * This will factory reset the module to recover from any corrupted configuration.
+	 */
 		    switch (BmTmpConfig) {
 			    case BM_INIT_POWEROFF:		MX_Bluetooth_PowerOff();
 										    HAL_Delay(1000);
@@ -1926,44 +1990,45 @@ uint8_t tComm_HandleBlueModConfig()
 										    BmTmpConfig++;
 									    break;
 			    case BM_INIT_COMMAND_ON:	HAL_Delay(2600);
+										    /* DSR pin triggers command mode on Stollmann module */
 										    HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
 										    BmTmpConfig++;
 									    break;
-#if 0
-			    case BM_INIT_TRIGGER_OFF:	HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_SET);
-										    HAL_Delay(2000);
+			    case BM_INIT_TRIGGER_ON:	HAL_Delay(500);
 										    BmTmpConfig++;
 									    break;
-#endif
+			    case BM_INIT_TRIGGER_OFF:	HAL_Delay(500);
+										    BmTmpConfig++;
+									    break;
 			    case BM_INIT_ECHO:
-			    case BM_INIT_ECHO2:			sprintf(TxBuffer,"ATE0\r");
+			    case BM_INIT_ECHO2:			sprintf(TxBuffer,"ATE0\r");		/* Disable echo */
 				    break;
-			    case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");      /*Set to factory defined configuration */
+			    case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT&F1\r");    /* Stollmann: Factory reset */
 									    break;
-			    case BM_INIT_MODE:			sprintf(TxBuffer,"AT+UMSM=1\r");        /* start in Data mode */
+			    case BM_INIT_MODE:			BmTmpConfig++;					/* Stollmann: No explicit mode command needed */
 									    break;
-			    case BM_INIT_BLE:			sprintf(TxBuffer,"AT+UBTLE=2\r"); 		/* Bluetooth low energy Peripheral */
+			    case BM_INIT_BLE:			BmTmpConfig++;					/* Stollmann: No BLE command */
 									    break;
-			    case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC5-12345\r"); /* Bluetooth name */
-										    if(hardwareDataGetPointer()->primarySerial != 0xFFFF) /* module reinit? => restore old name */
+			    case BM_INIT_NAME:			sprintf(TxBuffer,"AT+BNAME=OSTC4-12345\r"); /* Stollmann: Bluetooth name */
+										    if(hardwareDataGetPointer()->primarySerial != 0xFFFF)
 										    {
 											    gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
 											    hardware_programmPrimaryBluetoothNameSet();
 										    }
 									    break;
-			    case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");    /* Disable SPP Server on ID0 */
+			    case BM_INIT_SSP_IDO_OFF:	BmTmpConfig++;					/* Stollmann: No SPP config needed */
 									    break;
-			    case BM_INIT_SSP_IDO_ON:	sprintf(TxBuffer,"AT+UDSC=0,3\r"); 	  /* SPP Server on ID0 */
+			    case BM_INIT_SSP_IDO_ON:	BmTmpConfig++;
 									    break;
-			    case BM_INIT_SSP_ID1_OFF:	sprintf(TxBuffer,"AT+UDSC=1,0\r");    /* Disable SPS Server on ID1 */
+			    case BM_INIT_SSP_ID1_OFF:	BmTmpConfig++;
 									    break;
-			    case BM_INIT_SSP_ID1_ON:	sprintf(TxBuffer,"AT+UDSC=1,6\r");	  /* SPS Server on ID1 */
+			    case BM_INIT_SSP_ID1_ON:	BmTmpConfig++;
 									    break;
-			    case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W0\r");	      /* write settings into eeprom */
+			    case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W\r");	    /* Stollmann: Write settings to EEPROM */
 									    break;
-			    case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+CPWROFF\r");	  /* reboot module */
+			    case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+RESET\r"); /* Stollmann: Soft reset */
 									    break;
-			    case BM_INIT_DONE:			tInfo_write("Done");
+			    case BM_INIT_DONE:			tInfo_write("BT Init Done");
 										    BmTmpConfig = BM_CONFIG_DONE;
 										    HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
 									    break;
@@ -1971,6 +2036,10 @@ uint8_t tComm_HandleBlueModConfig()
 				    break;
 		    }
         } else {
+	/*
+	 * New u-blox module (OSTC5) initialization.
+	 * Uses u-blox AT command set.
+	 */
 		    switch (BmTmpConfig) {
 		    case BM_INIT_TRIGGER_ON:	HAL_Delay(2000);
 									    BmTmpConfig++;
@@ -1981,30 +2050,30 @@ uint8_t tComm_HandleBlueModConfig()
 		    case BM_INIT_ECHO:
 		    case BM_INIT_ECHO2:			sprintf(TxBuffer,"ATE0\r");
 			    break;
-		    case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT&F1\r");      /*Set to factory defined configuration */
+		    case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT+UFACTORY\r");  /* u-blox: Factory reset */
 								    break;
-		    case BM_INIT_MODE:			BmTmpConfig++;
+		    case BM_INIT_MODE:			sprintf(TxBuffer,"AT+UMSM=1\r");    /* u-blox: Start in Data mode */
 								    break;
-		    case BM_INIT_BLE:			BmTmpConfig++;
+		    case BM_INIT_BLE:			sprintf(TxBuffer,"AT+UBTLE=2\r");   /* u-blox: BLE Peripheral mode */
 								    break;
-		    case BM_INIT_NAME:			sprintf(TxBuffer,"AT+BNAME=OSTC4-12345\r"); /* Bluetooth name */
-									    if(hardwareDataGetPointer()->primarySerial != 0xFFFF) /* module reinit? => restore old name */
+		    case BM_INIT_NAME:			sprintf(TxBuffer,"AT+UBTLN=OSTC5-12345\r"); /* u-blox: Bluetooth name */
+									    if(hardwareDataGetPointer()->primarySerial != 0xFFFF)
 									    {
 										    gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
 										    hardware_programmPrimaryBluetoothNameSet();
 									    }
 								    break;
-		    case BM_INIT_SSP_IDO_OFF:	BmTmpConfig++;
+		    case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UDSC=0,0\r");  /* u-blox: Disable SPP on ID0 */
 								    break;
-		    case BM_INIT_SSP_IDO_ON:	BmTmpConfig++;
+		    case BM_INIT_SSP_IDO_ON:	sprintf(TxBuffer,"AT+UDSC=0,3\r");  /* u-blox: SPP Server on ID0 */
 								    break;
-		    case BM_INIT_SSP_ID1_OFF:	BmTmpConfig++;
+		    case BM_INIT_SSP_ID1_OFF:	sprintf(TxBuffer,"AT+UDSC=1,0\r");  /* u-blox: Disable SPS on ID1 */
 								    break;
-		    case BM_INIT_SSP_ID1_ON:	BmTmpConfig++;
+		    case BM_INIT_SSP_ID1_ON:	sprintf(TxBuffer,"AT+UDSC=1,6\r");  /* u-blox: SPS Server on ID1 */
 								    break;
-		    case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W\r");	          /* write settings into eeprom */
+		    case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W0\r");        /* u-blox: Write settings to NVM */
 								    break;
-		    case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+RESET\r");	  /* reboot module */
+		    case BM_INIT_RESTART:		sprintf(TxBuffer,"AT+CPWROFF\r");   /* u-blox: Reboot module */
 								    break;
 		    case BM_INIT_DONE:			BmTmpConfig = BM_CONFIG_ECHO;
 								    break;
@@ -2074,11 +2143,26 @@ uint8_t tComm_HandleBlueModConfig()
 			ConfigRetryCnt++;
 			if(ConfigRetryCnt > 3)		/* Configuration failed => switch off module */
 			{
-				MX_Bluetooth_PowerOff();
-				tInfo_write("Failed");
-				BmTmpConfig = BM_CONFIG_OFF;
+                if (!isNewDisplay()) {
+                    /*
+                     * Old Stollmann module: If AT commands fail, the module is likely
+                     * already in data mode (user connected via rfcomm before bootloader
+                     * started). This is normal - just proceed to listen for service bytes.
+                     * Don't power off the module!
+                     */
+                    /* Check CTS pin state (PA11) - 0 means clear to send */
+                    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11) == GPIO_PIN_SET)
+                        tInfo_write("CTS:HIGH");
+                    else
+                        tInfo_write("CTS:LOW");
+                    tInfo_write("BT Ready");
+                    ConfigRetryCnt = 0;
+                    BmTmpConfig = BM_CONFIG_DONE;
+                } else {
+				    MX_Bluetooth_PowerOff();
+				    tInfo_write("Failed");
+				    BmTmpConfig = BM_CONFIG_OFF;
 
-                if (isNewDisplay()) {
 				    if(RestartModule)
 				    {
 					    RestartModule = 0;      /* only one try */
