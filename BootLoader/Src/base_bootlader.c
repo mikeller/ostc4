@@ -694,20 +694,20 @@ GPIO_test_I2C_lines();
 	tInfo_newpage("bootloader 251115");
 	tInfo_write("start bluetooth");
 	tInfo_write(textVersion);
-	/*
-	 * RECOVERY: Always run full Bluetooth module initialization to recover
-	 * from any corrupted configuration. The previous bootloader code had the
-	 * command sets swapped between old (Stollmann) and new (u-blox) modules,
-	 * which caused the Stollmann module to be misconfigured.
-	 *
-	 * This will:
-	 * - Power cycle the module
-	 * - Send factory reset command (AT&F1 for Stollmann, AT+UFACTORY for u-blox)
-	 * - Reconfigure the module with correct settings
-	 * - Store the configuration to EEPROM
-	 */
-	tInfo_write("BT factory reset");
-	tComm_StartBlueModBaseInit();
+#if 0
+	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
+#else
+	if(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF)
+#endif
+	{
+		tInfo_write("init bluetooth");
+		tComm_StartBlueModBaseInit();
+	}
+	else
+	{
+		tInfo_write("bluetooth set");
+		tComm_StartBlueModConfig();
+	}
 
 	set_globalState_Base();
 
@@ -827,6 +827,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			if(action == ACTION_BUTTON_BACK)
 			{
 				reset_to_firmware_using_Watchdog();
+			}
+			if(action == ACTION_BUTTON_ENTER)
+			{
+				tComm_StartBlueModBaseInit(); /* factory reset bluetooth */
 			}
 	}
 	else
