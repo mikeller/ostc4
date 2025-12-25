@@ -89,7 +89,7 @@ clean:
 	$(MAKE) -C RefPrj/FontPack/Release -f Makefile clean
 	$(MAKE) -C RefPrj/RTE/Release -f Makefile clean
 	$(MAKE) -C RefPrj/BootLoader/Release -f Makefile clean
-	$(RM) -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin
+	$(RM) -f Release/OSTC4_Firmware*.bin Release/OSTC4_FontPack*.bin Release/OSTC4_RTE*.bin Release/OSTC4_BootLoader*.bin
 
 distclean:: clean packer_clean
 	$(RM) -f Release/OSTC4update_*.bin
