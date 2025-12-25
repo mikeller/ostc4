@@ -1768,19 +1768,30 @@ void tComm_StartBlueModConfig()
 {
 	HAL_UART_Init(&UartHandle);
 
-	if (!isNewDisplay()) {
-		/* Old Stollmann module (OSTC4) */
-		uint8_t answer = HAL_OK;
-		uint8_t RxBuffer[UART_CMD_BUF_SIZE];
-		uint8_t index = 0;
+    if (!isNewDisplay()) {
+        /* Old Stollmann module (OSTC4) */
+        uint8_t answer = HAL_OK;
+        uint8_t RxBuffer[UART_CMD_BUF_SIZE];
+        uint8_t index = 0;
+        uint8_t dummy = 0;
 
-		BmTmpConfig = BM_CONFIG_ECHO;
-		do	/* flush RX buffer */
-		{
-			answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&RxBuffer[index], 1, 10);
-			if(index < UART_CMD_BUF_SIZE) index++;
-		}while(answer == HAL_OK);
-	} else {
+        BmTmpConfig = BM_CONFIG_ECHO;
+        do	/* flush RX buffer */
+        {
+            if(index < UART_CMD_BUF_SIZE)
+            {
+                answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&RxBuffer[index], 1, 10);
+                if(answer == HAL_OK)
+                {
+                    index++;
+                }
+            }
+            else
+            {
+                answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&dummy, 1, 10);
+            }
+        }while(answer == HAL_OK);
+    } else {
 		/* New u-blox module (OSTC5) */
 		BmTmpConfig = BM_CONFIG_DONE;
 	}
