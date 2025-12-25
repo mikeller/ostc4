@@ -48,7 +48,7 @@ __IO ITStatus UartReadyHUD = RESET;
 /* Private types -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-static uint8_t hardwareDisplay = 255;
+static uint8_t hardwareDisplay = 0;
 
 /* Private variables with external access via get_xxx() function -------------*/
 
