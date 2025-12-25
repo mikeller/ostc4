@@ -397,12 +397,12 @@ uint32_t CalcFletcher32(const uint32_t *startAddr, const uint32_t *endAddr)
     const uint16_t *ptr = (const uint16_t *)startAddr;
     const uint16_t *end = (const uint16_t *)endAddr;
 
-    uint32_t sum1 = 0;
-    uint32_t sum2 = 0;
+    uint16_t sum1 = 0;
+    uint16_t sum2 = 0;
 
-    while (ptr < end) {
-        sum1 = (sum1 + *ptr++) % 0xFFFF;
-        sum2 = (sum2 + sum1) % 0xFFFF;
+    while (ptr <= end) {
+        sum1 = sum1 + *ptr++;
+        sum2 = sum2 + sum1;
     }
 
     return ((uint32_t)sum2 << 16) | sum1;
