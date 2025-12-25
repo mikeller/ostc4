@@ -344,8 +344,8 @@ void MX_UART_Init(void)
       - Word Length = 8 Bits
       - Stop Bit = One Stop bit
       - Parity = None
-      - BaudRate = 9600 baud
-      - Hardware flow control disabled (RTS and CTS signals) */
+      - BaudRate = 115200 baud
+      - Hardware flow control: RTS/CTS for old module */
 
 #ifdef USARTx_CTS_PIN
     UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_RTS_CTS;

@@ -684,7 +684,10 @@ GPIO_test_I2C_lines();
 
 	TIM_init();
 	MX_UART_Init();
+
+	/* Don't power cycle Bluetooth - connection may already be established from firmware */
 	MX_Bluetooth_PowerOn();
+
 	tComm_init();
 
 	tInfo_button_text("exit","","sleep");
@@ -692,20 +695,19 @@ GPIO_test_I2C_lines();
 	tInfo_write("start bluetooth");
 	tInfo_write(textVersion);
 	/*
-	 * For the old Stollmann module (OSTC4), just run the normal config sequence.
-	 * The module should already be configured; it only needs ATE0, silence, escape delay, etc.
-	 * For new u-blox module (OSTC5), we can run full init if needed.
+	 * RECOVERY: Always run full Bluetooth module initialization to recover
+	 * from any corrupted configuration. The previous bootloader code had the
+	 * command sets swapped between old (Stollmann) and new (u-blox) modules,
+	 * which caused the Stollmann module to be misconfigured.
+	 *
+	 * This will:
+	 * - Power cycle the module
+	 * - Send factory reset command (AT&F1 for Stollmann, AT+UFACTORY for u-blox)
+	 * - Reconfigure the module with correct settings
+	 * - Store the configuration to EEPROM
 	 */
-	if (isNewDisplay())
-	{
-		tInfo_write("init bluetooth");
-		tComm_StartBlueModBaseInit();
-	}
-	else
-	{
-		tInfo_write("config bluetooth");
-		tComm_StartBlueModConfig();
-	}
+	tInfo_write("BT factory reset");
+	tComm_StartBlueModBaseInit();
 
 	set_globalState_Base();
 
