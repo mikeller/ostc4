@@ -1261,7 +1261,7 @@ void GFX_draw_line(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t
     uint16_t* pDestination;
     uint32_t j;
 
-    /* horizontal line */
+    /* vertical line */
     if(start.x == stop.x)
     {
         if(start.y > stop.y) gfx_flip(&start,&stop);
