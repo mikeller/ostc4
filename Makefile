@@ -34,7 +34,7 @@ fontpack: fontpack_binary packer
 rte: rte_binary packer
 	ostc4pack/create_full_update_bin.sh --version --no-fonts --no-firmware
 
-bootloader: firmware_binary bootloader_binary packer
+bootloader: bootloader_binary packer
 	ostc4pack/create_full_update_bin.sh --version --no-rte --no-fonts --do-bootloader --no-firmware
 
 else

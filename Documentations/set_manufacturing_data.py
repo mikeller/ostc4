@@ -10,13 +10,81 @@ This script implements the OSTC4 service mode protocol to set:
 The device must be in bootloader mode and connected via Bluetooth.
 """
 
+import argparse
 import serial
 import struct
 import sys
 import time
+from datetime import datetime
 
 # Service mode bytes
 BYTE_SERVICE_MODE = 0xAA
+
+# Validation constants
+MIN_SERIAL = 1
+MAX_SERIAL = 65535
+MIN_LICENCE = 0
+MAX_LICENCE = 255
+MIN_REVISION = 0
+MAX_REVISION = 255
+MIN_REASON = 0
+MAX_REASON = 255
+MIN_YEAR = 0
+MAX_YEAR = 99
+MIN_MONTH = 1
+MAX_MONTH = 12
+MIN_DAY = 1
+MAX_DAY = 31
+MAX_PROD_INFO_LEN = 44
+MAX_SEC_INFO_LEN = 4
+
+
+class ValidationError(Exception):
+    """Raised when input validation fails"""
+    pass
+
+
+def validate_serial(value, name="Serial"):
+    """Validate serial number is in valid range"""
+    if not isinstance(value, int) or value < MIN_SERIAL or value > MAX_SERIAL:
+        raise ValidationError(f"{name} must be an integer between {MIN_SERIAL} and {MAX_SERIAL}, got {value}")
+    return value
+
+
+def validate_byte(value, min_val, max_val, name):
+    """Validate a byte value is in valid range"""
+    if not isinstance(value, int) or value < min_val or value > max_val:
+        raise ValidationError(f"{name} must be an integer between {min_val} and {max_val}, got {value}")
+    return value
+
+
+def validate_date(year, month, day):
+    """Validate date components"""
+    validate_byte(year, MIN_YEAR, MAX_YEAR, "Year")
+    validate_byte(month, MIN_MONTH, MAX_MONTH, "Month")
+    validate_byte(day, MIN_DAY, MAX_DAY, "Day")
+    
+    # Check if day is valid for the month
+    full_year = 2000 + year
+    try:
+        datetime(full_year, month, day)
+    except ValueError as e:
+        raise ValidationError(f"Invalid date: {full_year}-{month:02d}-{day:02d}: {e}")
+    
+    return year, month, day
+
+
+def validate_info_string(value, max_len, name):
+    """Validate info string is ASCII and within length limit"""
+    if not isinstance(value, str):
+        raise ValidationError(f"{name} must be a string")
+    try:
+        value.encode('ascii')
+    except UnicodeEncodeError:
+        raise ValidationError(f"{name} must contain only ASCII characters")
+    if len(value) > max_len:
+        raise ValidationError(f"{name} must be at most {max_len} characters, got {len(value)}")
+    return value
 
 def send_service_mode_init(ser):
     """Send service mode initialization sequence: 0xAA 0xAB 0xCD 0xEF"""
@@ -58,7 +126,17 @@ def write_production_data(ser, serial_num, licence, revision, year, month, day, 
     - month: production month (1-12)
     - day: production day (1-31)
     - info: production info string (max 44 chars)
+    
+    Raises:
+        ValidationError: If any parameter is invalid
     """
+    # Validate all inputs
+    validate_serial(serial_num, "Primary serial")
+    validate_byte(licence, MIN_LICENCE, MAX_LICENCE, "Licence")
+    validate_byte(revision, MIN_REVISION, MAX_REVISION, "Revision")
+    validate_date(year, month, day)
+    validate_info_string(info, MAX_PROD_INFO_LEN, "Production info")
+    
     # Build 52-byte buffer
     buffer = bytearray(52)
     
@@ -113,7 +191,17 @@ def write_secondary_serial(ser, serial_num, licence, reason, year, month, day, i
     - month: month (1-12)
     - day: day (1-31)
     - info: secondary info string (max 4 chars)
+    
+    Raises:
+        ValidationError: If any parameter is invalid
     """
+    # Validate all inputs
+    validate_serial(serial_num, "Secondary serial")
+    validate_byte(licence, MIN_LICENCE, MAX_LICENCE, "Secondary licence")
+    validate_byte(reason, MIN_REASON, MAX_REASON, "Reason")
+    validate_date(year, month, day)
+    validate_info_string(info, MAX_SEC_INFO_LEN, "Secondary info")
+    
     # Build 12-byte buffer
     buffer = bytearray(12)
     
@@ -171,41 +259,101 @@ def exit_service_mode(ser):
     ser.write(bytes([0xFF]))
     print("Exited service mode")
 
+
+def parse_date(date_str):
+    """Parse date string in YYYY-MM-DD format, return (year_offset, month, day)"""
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        year_offset = dt.year - 2000
+        if year_offset < 0 or year_offset > 99:
+            raise ValueError(f"Year must be between 2000 and 2099")
+        return year_offset, dt.month, dt.day
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(f"Invalid date '{date_str}': {e}")
+
+
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Set manufacturing data on OSTC4 via Bluetooth serial connection.",
+        epilog="""
+Examples:
+  # Set primary manufacturing data
+  %(prog)s /dev/rfcomm0 --serial 428 --date 2018-02-12 --info "OSTC 4 end-2019 hardware"
+  
+  # Set primary and secondary serial
+  %(prog)s /dev/rfcomm0 --serial 428 --date 2018-02-12 --secondary-serial 428 --secondary-date 2024-12-25
+  
+  # Only set Bluetooth name (device must have serial already set)
+  %(prog)s /dev/rfcomm0 --set-bluetooth-name
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    parser.add_argument('port', help='Serial port (e.g., /dev/rfcomm0)')
+    
+    # Primary manufacturing data
+    primary = parser.add_argument_group('Primary manufacturing data (command 0x80)')
+    primary.add_argument('--serial', '-s', type=int, 
+                        help=f'Primary serial number ({MIN_SERIAL}-{MAX_SERIAL})')
+    primary.add_argument('--licence', '-l', type=int, default=0xFF,
+                        help=f'Licence byte ({MIN_LICENCE}-{MAX_LICENCE}, default: 255)')
+    primary.add_argument('--revision', '-r', type=int, default=0x02,
+                        help=f'Hardware revision ({MIN_REVISION}-{MAX_REVISION}, default: 2)')
+    primary.add_argument('--date', '-d', type=parse_date,
+                        help='Production date in YYYY-MM-DD format')
+    primary.add_argument('--info', '-i', type=str, default='',
+                        help=f'Production info string (max {MAX_PROD_INFO_LEN} chars)')
+    
+    # Secondary serial data  
+    secondary = parser.add_argument_group('Secondary serial data (command 0x81)')
+    secondary.add_argument('--secondary-serial', type=int,
+                          help=f'Secondary serial number ({MIN_SERIAL}-{MAX_SERIAL})')
+    secondary.add_argument('--secondary-licence', type=int, default=0xFF,
+                          help=f'Secondary licence ({MIN_LICENCE}-{MAX_LICENCE}, default: 255)')
+    secondary.add_argument('--secondary-reason', type=int, default=0x00,
+                          help=f'Reason code ({MIN_REASON}-{MAX_REASON}, default: 0)')
+    secondary.add_argument('--secondary-date', type=parse_date,
+                          help='Secondary date in YYYY-MM-DD format')
+    secondary.add_argument('--secondary-info', type=str, default='',
+                          help=f'Secondary info string (max {MAX_SEC_INFO_LEN} chars)')
+    
+    # Bluetooth name
+    bt = parser.add_argument_group('Bluetooth name (command 0x82)')
+    bt.add_argument('--set-bluetooth-name', '-b', action='store_true',
+                   help='Set Bluetooth name based on serial number')
+    
+    # Other options
+    parser.add_argument('--timeout', '-t', type=float, default=5.0,
+                       help='Serial timeout in seconds (default: 5.0)')
+    
+    args = parser.parse_args()
+    
+    # Validation: at least one action must be specified
+    has_primary = args.serial is not None
+    has_secondary = args.secondary_serial is not None
+    has_bt = args.set_bluetooth_name
+    
+    if not has_primary and not has_secondary and not has_bt:
+        parser.error("At least one of --serial, --secondary-serial, or --set-bluetooth-name must be specified")
+    
+    # If primary serial is set, date is required
+    if has_primary and args.date is None:
+        parser.error("--date is required when setting primary serial")
+    
+    # If secondary serial is set, secondary date is required
+    if has_secondary and args.secondary_date is None:
+        parser.error("--secondary-date is required when setting secondary serial")
+    
+    return args
+
+
 def main():
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <serial_port> [--secondary]")
-        print()
-        print("This script sets manufacturing data for OSTC4 serial 428.")
-        print("The device must be in bootloader mode and connected via Bluetooth.")
-        print()
-        print("Options:")
-        print("  --secondary   Also set secondary serial to 428")
-        sys.exit(1)
-    
-    port = sys.argv[1]
-    set_secondary = '--secondary' in sys.argv
-    
-    # Manufacturing data for serial 428 (from backup)
-    PRIMARY_SERIAL = 428
-    PRIMARY_LICENCE = 0xFF
-    REVISION = 0x02
-    PROD_YEAR = 18  # 2018
-    PROD_MONTH = 2
-    PROD_DAY = 12
-    PROD_INFO = "       OSTC 4 end-2019 hardware            "
-    
-    # Secondary serial data
-    SECONDARY_SERIAL = 428
-    SECONDARY_LICENCE = 0xFF
-    SECONDARY_REASON = 0x00
-    SEC_YEAR = 24  # 2024
-    SEC_MONTH = 12
-    SEC_DAY = 25
-    SEC_INFO = "    "
+    args = parse_args()
     
     try:
-        print(f"Opening {port}...")
-        ser = serial.Serial(port, 115200, timeout=5)
+        print(f"Opening {args.port}...")
+        ser = serial.Serial(args.port, 115200, timeout=args.timeout)
         time.sleep(0.5)  # Give the connection time to stabilize
         
         # Flush any pending data
@@ -215,29 +363,46 @@ def main():
         # Initialize service mode
         send_service_mode_init(ser)
         
-        # Write production data
-        write_production_data(ser, PRIMARY_SERIAL, PRIMARY_LICENCE, REVISION,
-                            PROD_YEAR, PROD_MONTH, PROD_DAY, PROD_INFO)
+        # Write primary production data if specified
+        if args.serial is not None:
+            year, month, day = args.date
+            # Pad info to 44 chars with spaces
+            info = args.info.ljust(MAX_PROD_INFO_LEN)[:MAX_PROD_INFO_LEN]
+            write_production_data(ser, args.serial, args.licence, args.revision,
+                                year, month, day, info)
         
-        if set_secondary:
-            # Write secondary serial
-            write_secondary_serial(ser, SECONDARY_SERIAL, SECONDARY_LICENCE, 
-                                 SECONDARY_REASON, SEC_YEAR, SEC_MONTH, SEC_DAY, SEC_INFO)
+        # Write secondary serial if specified
+        if args.secondary_serial is not None:
+            year, month, day = args.secondary_date
+            # Pad info to 4 chars with spaces
+            info = args.secondary_info.ljust(MAX_SEC_INFO_LEN)[:MAX_SEC_INFO_LEN]
+            write_secondary_serial(ser, args.secondary_serial, args.secondary_licence,
+                                 args.secondary_reason, year, month, day, info)
         
-        # Set Bluetooth name based on serial
-        set_bluetooth_name(ser)
+        # Set Bluetooth name if requested
+        if args.set_bluetooth_name:
+            set_bluetooth_name(ser)
+            print("\nThe device will now configure the Bluetooth module.")
+            print("Wait for the bootloader to finish and reconnect.")
         
-        print("\nAll done! The device will now configure the Bluetooth module.")
-        print("Wait for the bootloader to finish and reconnect.")
+        if not args.set_bluetooth_name:
+            # Exit service mode cleanly if we didn't trigger BT name setting
+            # (BT name setting causes device to exit comm mode automatically)
+            exit_service_mode(ser)
         
+        print("\nDone!")
         ser.close()
         
     except serial.SerialException as e:
-        print(f"Serial error: {e}")
+        print(f"Serial error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except ValidationError as e:
+        print(f"Validation error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main()
