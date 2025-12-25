@@ -72,7 +72,7 @@ install: $(BUILD_TYPE)
 	$(eval VERSION := $(shell ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only))
 	$(eval DATE := $(shell date +%Y%m%d))
 	$(eval FILENAME := "Release/OSTC4update_$(BUILD_TYPE)_$(VERSION)_$(DATE).bin")
-	$(FIRMWARE_INSTALLER) --update-firmware -v --dc-vendor="Heinrichs Weikamp" --dc-product=$(MODEL) --device=$(DEVICE) $(if $(FORCE),--force-update-firmware) --firmware-file=$(FILENAME)
+	$(FIRMWARE_INSTALLER) --update-firmware --dc-vendor="Heinrichs Weikamp" --dc-product=$(MODEL) --device=$(DEVICE) $(if $(FORCE),--force-update-firmware) --firmware-file=$(FILENAME)
 
 packer:
 	$(MAKE) -C ostc4pack/src
