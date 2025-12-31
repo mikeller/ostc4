@@ -112,6 +112,7 @@ uint8_t OnAction_RebootRTE				(uint32_t editId, uint8_t blockNumber, uint8_t dig
 uint8_t OnAction_ResetDeco		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ResetAll			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ResetLogbook	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_ResetIcon	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_RebootMainCPU		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Nothing			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_LogbookOffset(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -1523,41 +1524,19 @@ void openEdit_Reset(void)
     text[0] = TXT_2BYTE;
     text[2] = 0;
 
-    text[1] = TXT2BYTE_ResetAll;
-    write_field_button(StMSYS5_ResetAll,		30, 800, ME_Y_LINE2,  &FontT48, text);
-
-    text[1] = TXT2BYTE_ResetDeco;
-    write_field_button(StMSYS5_ResetDeco,		30, 800, ME_Y_LINE3,  &FontT48, text);
+    text[1] = TXT2BYTE_ResetMenu;
+    write_field_button(StMSYS5_Reset,		30, 800, ME_Y_LINE2,  &FontT48, text);
 
     text[1] = TXT2BYTE_Reboot;
-    write_field_button(StMSYS5_Reboot,			30, 800, ME_Y_LINE4,  &FontT48, text);
+    write_field_button(StMSYS5_Reboot,			30, 800, ME_Y_LINE3,  &FontT48, text);
 
     text[1] = TXT2BYTE_Maintenance;
-    write_field_button(StMSYS5_Maintenance,	30, 800, ME_Y_LINE5,  &FontT48, text);
-
-#ifndef RESETLOGBLOCK
-    text[1] = TXT2BYTE_ResetLogbook;
-    write_field_button(StMSYS5_ResetLogbook,30, 800, ME_Y_LINE6,  &FontT48, text);
-#else
-    text[0] = '\031';
-    text[1] = TXT_2BYTE;
-    text[2] = TXT2BYTE_ResetLogbook;
-    text[3] = 0;
-    write_field_button(StMSYS5_ResetLogbook,30, 800, ME_Y_LINE6,  &FontT48, text);
-    text[0] = TXT_2BYTE;
-    text[2] = 0;
-#endif
+    write_field_button(StMSYS5_Maintenance,	30, 800, ME_Y_LINE4,  &FontT48, text);
 
     setEvent(StMSYS5_LogbookOffset,	(uint32_t)OnAction_LogbookOffset);
-    setEvent(StMSYS5_ResetAll, 			(uint32_t)OnAction_Confirm);
-    setEvent(StMSYS5_ResetDeco, 		(uint32_t)OnAction_Confirm);
-    setEvent(StMSYS5_Reboot, 				(uint32_t)OnAction_Confirm);
-    setEvent(StMSYS5_Maintenance,		(uint32_t)OnAction_Maintenance);
-#ifndef RESETLOGBLOCK
-    setEvent(StMSYS5_ResetLogbook,	(uint32_t)OnAction_Confirm);
-#else
-    setEvent(StMSYS5_ResetLogbook,	(uint32_t)OnAction_Nothing);
-#endif
+    setEvent(StMSYS5_Reset, 		(uint32_t)OnAction_Confirm);
+    setEvent(StMSYS5_Reboot, 		(uint32_t)OnAction_Confirm);
+    setEvent(StMSYS5_Maintenance,	(uint32_t)OnAction_Maintenance);
 
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
@@ -1566,6 +1545,8 @@ void openEdit_Reset(void)
 void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
 {
     char text[32];
+	SIconHeader* pIconHeader = (SIconHeader*) ICON_HEADER_ADDR;
+
 
     resetMenuEdit(CLUT_MenuPageSystem);
 
@@ -1602,30 +1583,31 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
         write_label_var(			30, 800, ME_Y_LINE4,  &FontT48, text);
         break;
 
+    case StMSYS5_Reset:
     case StMSYS5_ResetDeco:
-        text[1] = TXT2BYTE_ResetDeco;
-        write_field_button(editIdOfCaller,			30, 800, ME_Y_LINE2,  &FontT48, text);
-        setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-        setEvent(editIdOfCaller, (uint32_t)OnAction_ResetDeco);
-        text[0] = '\025';
-        text[1] = TXT_2BYTE;
-        text[2] = TXT2BYTE_DecoDataLost;
-        text[3] = 0;
-        write_label_var(			30, 800, ME_Y_LINE4,  &FontT48, text);
-        break;
-
     case StMSYS5_ResetAll:
-        text[1] = TXT2BYTE_ResetAll;
-        write_field_button(editIdOfCaller,			30, 800, ME_Y_LINE2,  &FontT48, text);
-        setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-        setEvent(editIdOfCaller, (uint32_t)OnAction_ResetAll);
-        break;
-
     case StMSYS5_ResetLogbook:
+    case StMSYS5_ResetIcon:
+    	text[1] = TXT2BYTE_ResetDeco;
+        write_field_button(StMSYS5_ResetDeco,			30, 800, ME_Y_LINE2,  &FontT48, text);
+        text[1] = TXT2BYTE_ResetAll;
+        write_field_button(StMSYS5_ResetAll,			30, 800, ME_Y_LINE3,  &FontT48, text);
         text[1] = TXT2BYTE_ResetLogbook;
-        write_field_button(editIdOfCaller,			30, 800, ME_Y_LINE2,  &FontT48, text);
+        write_field_button(StMSYS5_ResetLogbook,			30, 800, ME_Y_LINE4,  &FontT48, text);
+
+        if(pIconHeader->type == 0x20)
+        {
+			text[1] = TXT2BYTE_ResetIcon;
+			write_field_button(StMSYS5_ResetIcon,			30, 800, ME_Y_LINE5,  &FontT48, text);
+        }
         setEvent(StMSYS5_Exit, (uint32_t)OnAction_Exit);
-        setEvent(editIdOfCaller, (uint32_t)OnAction_ResetLogbook);
+        setEvent(StMSYS5_ResetDeco, (uint32_t)OnAction_ResetDeco);
+        setEvent(StMSYS5_ResetAll, (uint32_t)OnAction_ResetAll);
+        setEvent(StMSYS5_ResetLogbook, (uint32_t)OnAction_ResetLogbook);
+        if(pIconHeader->type == 0x20)
+        {
+        	setEvent(StMSYS5_ResetIcon, (uint32_t)OnAction_ResetIcon);
+        }
         break;
     }
 
@@ -1826,6 +1808,18 @@ uint8_t OnAction_ResetLogbook	(uint32_t editId, uint8_t blockNumber, uint8_t dig
     return EXIT_TO_MENU;
 }
 
+uint8_t OnAction_ResetIcon	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SIconHeader* pIconHeader = (SIconHeader*) ICON_HEADER_ADDR;
+	uint32_t Address = (uint32_t)&(pIconHeader->type);
+	uint64_t clear = 0x0;
+
+	HAL_FLASH_Unlock();
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, Address, clear);
+	HAL_FLASH_Lock();
+	GFX_build_logo_frame();
+    return EXIT_TO_MENU;
+}
 uint8_t OnAction_RebootMainCPU		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     settingsGetPointer()->showDebugInfo = 0;

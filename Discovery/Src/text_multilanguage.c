@@ -738,6 +738,13 @@ static uint8_t text_FR_ResetLogbook[] = "RaZ carnet"; // RaZ
 static uint8_t text_IT_ResetLogbook[] = "Ripristina logbook";
 static uint8_t text_ES_ResetLogbook[] = "Borrar diario";
 
+// Menu SYS2 sub
+static uint8_t text_EN_ResetIcon[] = "Reset icon";
+static uint8_t text_DE_ResetIcon[] = "Icon zurücksetzen";
+static uint8_t text_FR_ResetIcon[] = "Icône de réinitialisation"; // RaZ
+static uint8_t text_IT_ResetIcon[] = "Reimposta icona";
+static uint8_t text_ES_ResetIcon[] = "Icono de reinicio";
+
 // Surface warning
 static uint8_t text_EN_PleaseUpdate[] = "Please update";
 static uint8_t text_DE_PleaseUpdate[] = "Bitte updaten:";
@@ -2126,6 +2133,7 @@ const tText text_array2[] =
     {(uint8_t)TXT2BYTE_ResetAll,		{text_EN_ResetAll, text_DE_ResetAll, text_FR_ResetAll, text_IT_ResetAll, text_ES_ResetAll}},
     {(uint8_t)TXT2BYTE_ResetDeco,		{text_EN_ResetDeco, text_DE_ResetDeco, text_FR_ResetDeco, text_IT_ResetDeco, text_ES_ResetDeco}},
     {(uint8_t)TXT2BYTE_ResetLogbook,	{text_EN_ResetLogbook, text_DE_ResetLogbook, text_FR_ResetLogbook, text_IT_ResetLogbook, text_ES_ResetLogbook}},
+	{(uint8_t)TXT2BYTE_ResetIcon,		{text_EN_ResetIcon, text_DE_ResetIcon, text_FR_ResetIcon, text_IT_ResetIcon, text_ES_ResetIcon}},
     {(uint8_t)TXT2BYTE_RebootMainCPU,   {text_EN_StartBootloader, text_DE_StartBootloader, text_FR_StartBootloader, text_IT_StartBootloader, text_ES_StartBootloader}},
     {(uint8_t)TXT2BYTE_Exit,			{text_EN_Exit, text_DE_Exit, text_FR_Exit, text_IT_Exit, text_ES_Exit}},
     {(uint8_t)TXT2BYTE_ShowDebug,		{text_EN_ShowDebug, text_DE_ShowDebug, text_FR_ShowDebug, text_IT_ShowDebug, text_ES_ShowDebug}},

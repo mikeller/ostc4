@@ -169,6 +169,7 @@ extern const tText text_array2[];
 		TXT2BYTE_ResetAll,
 		TXT2BYTE_ResetDeco,
 		TXT2BYTE_ResetLogbook,
+		TXT2BYTE_ResetIcon,
 		TXT2BYTE_RebootMainCPU,
 		TXT2BYTE_Exit,
 		/* */
