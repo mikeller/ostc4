@@ -79,6 +79,12 @@ typedef struct
         int bottom;
 } SWindowGimpStyle;
 
+typedef struct {
+    uint32_t    length;
+    uint8_t   type, dummy5, dummy6, dummy7;
+    uint32_t    checksum;
+} SIconHeader;
+
 /* Exported variables --------------------------------------------------------*/
 
 /**

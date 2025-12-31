@@ -30,7 +30,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
-
+#include "configuration.h"
 
 /* types */
 typedef enum
@@ -45,6 +45,12 @@ typedef enum
 		BM_CONFIG_RETRY,
 		BM_CONFIG5_ESCAPE1 = 50,
 		BM_CONFIG5_ESCAPE2,
+#ifdef ENABLE_PULSE_SENSOR_BT
+		BM_CONFIG5_CHECKMODE,
+		BM_CONFIG5_SETMODE,
+		BM_CONFIG5_WRITECONF,
+		BM_CONFIG5_RESTART,
+#endif
 		BM_CONFIG5_BAUD,
 		BM_CONFIG5_DATAMODE,
 		BM_INIT_POWEROFF = 100,
@@ -75,6 +81,12 @@ typedef enum
 	BT_CMD_BAUDRATE_460,
 	BT_CMD_SILENCE,
 	BT_CMD_NAME,
+#ifdef ENABLE_PULSE_SENSOR_BT
+	BT_CMD_REQMODE,
+	BT_CMD_SETMODE,
+	BT_CMD_WRITECONF,
+	BT_CMD_RESTART,
+#endif
 	BT_CMD_EXIT_CMD
 } BTCmd;
 /* Exported functions --------------------------------------------------------*/

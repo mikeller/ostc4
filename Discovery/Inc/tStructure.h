@@ -34,7 +34,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
-
+#include "configuration.h"
 /** @addtogroup Template
 	* @{
 	*/
@@ -366,6 +366,8 @@
 #define StMSYS5_SetSampleIndx   _MB(2,9,6,13,0)
 #define StMSYS5_AdjustSurfPres  _MB(2,9,6,14,0)
 #define StMSYS5_FlashBoot		_MB(2,9,6,15,0)
+#define StMSYS5_Reset			_MB(2,9,6,16,0)
+#define StMSYS5_ResetIcon		_MB(2,9,6,17,0)
 
 #else
 

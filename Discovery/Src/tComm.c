@@ -116,6 +116,7 @@ uint8_t updateSettingsAndMenuOnExit = 0;
 const uint8_t id_Region1_firmware = 0xFF;
 const uint8_t id_RTE = 0xFE;
 const uint8_t id_FONT = 0x10;
+const uint8_t id_ICON = 0x20;
 const uint8_t id_FONT_OLD = 0x00;
 
 static BlueModTmpConfig_t BmTmpConfig = BM_CONFIG_OFF;	/* Config BlueMod without storing the changes */
@@ -691,7 +692,6 @@ uint8_t select_mode(uint8_t type)
         case 0x87: // hw ext_flash_repair_SPECIAL_dive_numbers_starting_count_with memory(x)
         case 0x88: /* read entire sample memory  */
         case 0x89: /* write entire sample memory */
-
 #endif
         case 0xC1: // 	Start low-level bootloader
             if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBuffer, 1, UART_OPERATION_TIMEOUT)!= HAL_OK)
@@ -1005,10 +1005,12 @@ uint8_t select_mode(uint8_t type)
     case 0x6C: /* Display Bluetooth signal strength */
     case 0x6D: // get all compact headers (16 byte)
     case 0x6E: // display text
+    case 0x6F: /* set icon */
     case 0x70: // read min, default, max setting
     case 0x72: // read setting
     case 0x77: // write setting
     case 0x78: // reset all settings
+
         if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBuffer, 1, 1000)!= HAL_OK)
             return 0;
         break;
@@ -1318,6 +1320,17 @@ uint8_t select_mode(uint8_t type)
         updateSettingsAndMenuOnExit = 1;
         aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
         break;
+    case 0x6F:
+        answer = receive_update_flex(1);
+        if(answer == 0)
+        {
+            return 0;
+        }
+        else
+        {
+        	aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
+        }
+    	break;
 #else
     /* bootloader dummies */
     // full headers (256 byte)
@@ -1550,10 +1563,11 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     uint32_t lengthTotal, offsetTotal;
     uint32_t checksum, checksumCalc = 0;
     uint8_t id;
-    const uint8_t id_Region1_firmware = 0xFF;
-    const uint8_t id_RTE = 0xFE;
     uint8_t textpointer = 0;
     uint32_t index = 0;
+
+    uint8_t* pWork1 = pBuffer1;	/* the icon does not have an header included => data needs to be inserted before reading the image */
+    uint32_t length1Work = 0;
 
     //Get length
     if(HAL_UART_Receive(&UartHandle, sBuffer, 4,5000)!= HAL_OK) // 58000
@@ -1561,7 +1575,7 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
         return 0;
     }
     lengthTotal = 256 * 256 * 256 * (uint32_t)sBuffer[0] +  256 * 256 * (uint32_t)sBuffer[1] + 256 * (uint32_t)sBuffer[2] + sBuffer[3];
-
+    length1Work = lengthTotal;
     //Get offset and/or id (id is 0xFF for RTE, 0xFE for firmware and offset if var)
     if(HAL_UART_Receive(&UartHandle, sBuffer, 4,5000)!= HAL_OK) // 58000
     {
@@ -1573,9 +1587,16 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     checksumCalc += lengthTotal;
     //old, does no longer work because of the fonts: checksumCalc = lengthTotal + offsetTotal;
 
-    if((id != id_Region1_firmware) && (id != id_RTE) && (id != id_FONT) && (id != id_FONT_OLD))
+    if((id != id_Region1_firmware) && (id != id_RTE) && (id != id_FONT) && (id != id_FONT_OLD) && (id != id_ICON))
     {
         return 0;
+    }
+
+    if(id == id_ICON)
+    {
+    	memcpy (pWork1, &lengthTotal,4);
+    	pWork1 +=4;
+    	length1Work += 4;
     }
 
     // neu 110212
@@ -1587,6 +1608,13 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     else
         offsetTotal = 256 * 256 * 256 * (uint32_t)sBuffer[0] +  256 * 256 * (uint32_t)sBuffer[1] + 256 * (uint32_t)sBuffer[2] + sBuffer[3];
 
+    if(id == id_ICON)
+    {
+    	memcpy (pWork1, sBuffer,4);
+    	pWork1 +=4;
+    	length1Work += 4;
+    }
+
     // get checksum, bytes are in different order on Dev C++ code!!!
     if(HAL_UART_Receive(&UartHandle, sBuffer, 4,5000)!= HAL_OK) // 58000
     {
@@ -1594,6 +1622,12 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     }
     checksum = 256 * 256 * 256 * (uint32_t)sBuffer[3] +  256 * 256 * (uint32_t)sBuffer[2] + 256 * (uint32_t)sBuffer[1] + sBuffer[0];
 
+    if(id == id_ICON)
+    {
+    	memcpy (pWork1, sBuffer,4);
+    	pWork1 +=4;
+    	length1Work += 4;
+    }
 
     if(checksumCalc != checksum)
     {
@@ -1629,7 +1663,7 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
         return 0;
 
     //get Code
-    if(receive_uart_large_size(&UartHandle, pBuffer1, length1)!= HAL_OK)
+    if(receive_uart_large_size(&UartHandle, pWork1, length1)!= HAL_OK)
         return 0;
 
     if(length2)
@@ -1645,8 +1679,16 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     if(length2)
         checksumCalc = CRC_CalcBlockCRC_moreThan768000((uint32_t*)pBuffer1, (uint32_t*)pBuffer2, lengthTotal/4);
     else
-        checksumCalc = CRC_CalcBlockCRC((uint32_t*)pBuffer1, length1/4);
-
+    {
+    	if(id == id_ICON)
+    	{
+    		checksumCalc = CRC_CalcBlockCRC((uint32_t*)(pBuffer1 + 12), length1/4);	/* exclude header */
+    	}
+    	else
+    	{
+    		checksumCalc = CRC_CalcBlockCRC((uint32_t*)pBuffer1, length1/4);
+    	}
+    }
     /* check id now */
     /*
     if(region == 2)
@@ -1785,6 +1827,13 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
                 ByteCompareStatus++;
         }
     }
+    else
+    if(id == id_ICON)
+    {
+    	firmware2_variable_upperpart_eraseFlashMemory(length1Work,0);		/* flash is not in use => can be written immediately */
+    	firmware2_variable_upperpart_programFlashMemory(length1Work,0,pBuffer1,length1Work,0);
+    	ByteCompareStatus = 0;											/* trust flashing for image use case */
+    }
 
     releaseFrame(20,(uint32_t)pBufferCompare);
 
@@ -1796,7 +1845,14 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     }
     else
     {
-        strcpy(&display_text[0],"\n\rready to install.");
+    	if(id == id_ICON)
+    	{
+    		strcpy(&display_text[0],"\n\ricon stored.");
+    	}
+    	else
+    	{
+    		strcpy(&display_text[0],"\n\rready to install.");
+    	}
         display_text[255] = 21;
         return 1;
     }
@@ -2021,11 +2077,10 @@ void tComm_RequestBluetoothStrength(void)
 }
 
 /* read, validate the modul answer and flush rx que if necessary */
-uint8_t tComm_CheckAnswerOK()
+uint8_t tComm_CheckAnswer(char* pAnswerExcepted)
 {
-    char answerOkay[] = "\r\nOK\r\n";
     char aRxBuffer[UART_CMD_BUF_SIZE];
-    uint8_t sizeAnswer = sizeof(answerOkay) -1;
+    uint8_t sizeAnswer =strlen(pAnswerExcepted) -1;
 	uint8_t result = HAL_OK;
 	uint8_t indexRef = 0;
 	uint8_t indexBuf = 0;
@@ -2036,7 +2091,7 @@ uint8_t tComm_CheckAnswerOK()
 	{
 		do
 		{
-			if(answerOkay[indexRef] == aRxBuffer[indexBuf])
+			if(pAnswerExcepted[indexRef] == aRxBuffer[indexBuf])
 			{
 				indexRef++;
 			}
@@ -2044,7 +2099,7 @@ uint8_t tComm_CheckAnswerOK()
 			{
 				if(indexRef != 0)
 				{
-					if((answerOkay[0] == aRxBuffer[indexBuf]))
+					if((pAnswerExcepted[0] == aRxBuffer[indexBuf]))
 					{
 						indexRef = 1;
 					}
@@ -2066,7 +2121,7 @@ uint8_t tComm_CheckAnswerOK()
 				{
 					answer = HAL_UART_Receive(&UartHandle, (uint8_t*)&aRxBuffer[indexBuf], 1, 10);
 
-					if(answerOkay[indexRef] == aRxBuffer[indexBuf])
+					if(pAnswerExcepted[indexRef] == aRxBuffer[indexBuf])
 					{
 						indexRef++;
 					}
@@ -2094,6 +2149,19 @@ uint8_t tComm_CheckAnswerOK()
 
 }
 
+/* read, validate the modul answer and flush rx que if necessary */
+uint8_t tComm_CheckAnswerOK()
+{
+    char answerOkay[] = "\r\nOK\r\n";
+    return tComm_CheckAnswer(answerOkay);
+}
+
+uint8_t tComm_CheckAnswerMode(uint8_t reqMode)
+{
+    char answerExpected[15];
+	sprintf(answerExpected,"+UBTAD:%d\r\n",reqMode);
+	return tComm_CheckAnswer(answerExpected);
+}
 
 void tComm_EvaluateBluetoothStrength(void)
 {
@@ -2255,6 +2323,20 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 									}
 									ret = 1;
 			break;
+#ifdef ENABLE_PULSE_SENSOR_BT
+		case BT_CMD_REQMODE:		strcpy(pCmdStr,"AT+UBTLE?\r");		/* only available for OSTC5 */
+									ret = 1;
+			break;
+		case BT_CMD_SETMODE:		strcpy(pCmdStr,"AT+UBTLE=3\r");		/* only available for OSTC5 */
+									ret = 1;
+			break;
+
+
+		case BT_CMD_WRITECONF:		sprintf(pCmdStr,"AT&W0\r");	    /* write settings into eeprom */
+								break;
+		case BT_CMD_RESTART:		sprintf(pCmdStr,"AT+CPWROFF\r");	  	/* reboot module */
+
+#endif
 		default:
 			break;
 	}
@@ -2339,14 +2421,29 @@ uint8_t tComm_HandleBlueModConfig()
 											BmTmpConfig++;
 										}
 				break;
-			case BM_CONFIG5_BAUD:		if(time_elapsed_ms(configTick, HAL_GetTick()) > 1100)
+#ifdef ENABLE_PULSE_SENSOR_BT
+			case BM_CONFIG5_CHECKMODE:	if(time_elapsed_ms(configTick, HAL_GetTick()) > 1100)
+										{
+											tComm_GetBTCmdStr(BT_CMD_REQMODE, TxBuffer);
+										}
+				break;
+			case BM_CONFIG5_SETMODE:	tComm_GetBTCmdStr(BT_CMD_SETMODE, TxBuffer);
+				break;
+			case BM_CONFIG5_WRITECONF:	tComm_GetBTCmdStr(BT_CMD_WRITECONF, TxBuffer);
+				break;
+			case BM_CONFIG5_RESTART:	tComm_GetBTCmdStr(BT_CMD_RESTART, TxBuffer);
+				break;
+#endif
+			case BM_CONFIG5_BAUD:
+#ifndef ENABLE_PULSE_SENSOR_BT
+										if(time_elapsed_ms(configTick, HAL_GetTick()) > 1100)
+#endif
 										{
 											tComm_GetBTCmdStr(BT_CMD_BAUDRATE_460, TxBuffer);
 										}
 				break;
 			case BM_CONFIG5_DATAMODE:	tComm_GetBTCmdStr(BT_CMD_EXIT_CMD, TxBuffer);
 				break;
-
 			default:
 				break;
 		}
@@ -2356,8 +2453,24 @@ uint8_t tComm_HandleBlueModConfig()
 			result = HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer,CmdSize, 500);
 			if(result == HAL_OK)
 			{
-				result = tComm_CheckAnswerOK();
-
+#ifdef ENABLE_PULSE_SENSOR_BT
+				if(BmTmpConfig == BM_CONFIG5_CHECKMODE)
+				{
+					result = tComm_CheckAnswerMode(3);
+					if (result == HAL_OK)
+					{
+						BmTmpConfig = BM_CONFIG5_RESTART; /* mode correct => skip reconfig */
+					}
+					else
+					{
+						BmTmpConfig = BM_CONFIG5_SETMODE;
+					}
+				}
+				else
+#endif
+				{
+					result = tComm_CheckAnswerOK();
+				}
 				if(((BmTmpConfig == BM_CONFIG_BAUD) || (BmTmpConfig == BM_CONFIG5_BAUD)) && (result == HAL_OK) && (UartHandle.Init.BaudRate != 460800)) /* is com already switched to fast speed? */
 				{
 					HAL_UART_DeInit(&UartHandle);
@@ -2388,7 +2501,17 @@ uint8_t tComm_HandleBlueModConfig()
 					else
 					{
 						HAL_GPIO_WritePin(BLE_UBLOX_DSR_GPIO_PORT,BLE_UBLOX_DSR_PIN,GPIO_PIN_RESET);
-						BmTmpConfig = BM_CONFIG_DONE;
+#ifdef ENABLE_PULSE_SENSOR_BT
+						if(BmTmpConfig == BM_CONFIG5_RESTART)
+						{
+							settingsGetPointer()->bluetoothActive = 0;
+							BmTmpConfig = BM_CONFIG_OFF;
+						}
+						else
+#endif
+						{
+							BmTmpConfig = BM_CONFIG_DONE;
+						}
 					}
 				}
 			}

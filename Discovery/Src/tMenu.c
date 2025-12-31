@@ -50,6 +50,7 @@
 #include "tMenuSystem.h"
 #include "tMenuXtra.h"
 #include "tMenuCustom.h"
+#include "tStructure.h"
 
 /* Private types -------------------------------------------------------------*/
 #define MAXPAGES 		12

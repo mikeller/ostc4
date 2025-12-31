@@ -291,6 +291,14 @@ void GFX_build_logo_frame(void)
 	GFX_DrawCfgScreen	tLogoTemp;
 	SWindowGimpStyle windowGimp;
 	
+	SIconHeader* pIconHeader = (SIconHeader*) ICON_HEADER_ADDR;
+	tImage Image;
+	Image.data= (uint8_t*) (ICON_HEADER_ADDR + 12 + (256 * 4));	/* Offset Header + CLUT */
+
+	Image.width = ((pIconHeader->dummy7 & 0x0F) << 8) | pIconHeader->dummy5;
+	Image.height = ((pIconHeader->dummy7 & 0xF0) << 4) | pIconHeader->dummy6;
+
+
 	pLogoFrame = getFrame(1);
 	logoStatus = LOGOOFF;
 
@@ -299,10 +307,21 @@ void GFX_build_logo_frame(void)
 	tLogoTemp.ImageWidth = 800;
 	tLogoTemp.LayerIndex = 1;
 
-	windowGimp.left = (800 - 400) / 2;
-	windowGimp.top =  (480 -  46) / 2;
-	
-	GFX_draw_image_color(&tLogoTemp, windowGimp, &ImgHWcolor);
+	if(pIconHeader->type == 0x20)
+	{
+		windowGimp.left = (800 - Image.width) / 2;
+		windowGimp.top =  (480 -  Image.height) / 2;
+
+		GFX_draw_image_color(&tLogoTemp, windowGimp, &Image);
+	}
+	else
+	{
+		windowGimp.left = (800 - ImgHWcolor.width) / 2;
+		windowGimp.top =  (480 -  ImgHWcolor.height) / 2;
+		GFX_draw_image_color(&tLogoTemp, windowGimp, &ImgHWcolor);
+	}
+
+
 /*	
 	char localtext[256];
 	uint8_t ptr = 0;
@@ -497,6 +516,11 @@ void GFX_change_LTDC(void)
 	uint8_t change_size = 0;
 	uint8_t nextBottomBackup = FrameHandler.NextBottomRead;		/* Restore entry value in case off logo handling */
 
+	SIconHeader* pIconHeader = (SIconHeader*) ICON_HEADER_ADDR;
+	uint32_t* pCLUT;
+	pCLUT = (uint32_t *)indexHWcolor;
+
+
 	// Top Frame
 	if(FrameHandler.NextTopRead != FrameHandler.NextTopWrite)
 	{
@@ -528,9 +552,13 @@ void GFX_change_LTDC(void)
 		switch(logoStatus)
 			{
 			case LOGOSTART:
+				if(pIconHeader->type == 0x20)
+				{
+					pCLUT = (uint32_t *)(pIconHeader + 1);		/* First address behind the header */
+				}
 				HAL_LTDC_SetAlpha(&LtdcHandle, 0, 1);
 				HAL_LTDC_SetAlpha(&LtdcHandle, 34, 0);
-				HAL_LTDC_ConfigCLUT(&LtdcHandle, (uint32_t *)indexHWcolor, indexHWcolorSIZE, 0);
+				HAL_LTDC_ConfigCLUT(&LtdcHandle, pCLUT, indexHWcolorSIZE, 0);
 				HAL_LTDC_SetAddress(&LtdcHandle, pLogoFrame, 0);
 				HAL_LTDC_SetWindowSize(&LtdcHandle, 480, 800, 0);
 				HAL_LTDC_SetWindowPosition(&LtdcHandle, 0, 0, 0);
@@ -587,7 +615,7 @@ void GFX_change_LTDC(void)
 		switch(backgroundHwStatus)
 			{
 			case LOGOSTART:
-				HAL_LTDC_ConfigCLUT(&LtdcHandle, (uint32_t *)indexHWcolor, indexHWcolorSIZE, 0);
+				HAL_LTDC_ConfigCLUT(&LtdcHandle, pCLUT, indexHWcolorSIZE, 0);
 				HAL_LTDC_SetAddress(&LtdcHandle, pBackgroundHwFrame, 0);
 				HAL_LTDC_SetWindowSize(&LtdcHandle, 480, 800, 0);
 				HAL_LTDC_SetWindowPosition(&LtdcHandle, 0, 0, 0);

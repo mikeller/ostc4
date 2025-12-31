@@ -42,6 +42,8 @@
 // #include "ostc_hw1.h"
 #endif
 
+#define ICON_HEADER_ADDR						(0x8100000)
+
 #define SDRAM_TIMEOUT                            ((uint32_t)0xFFFF)
 #define SDRAM_MEMORY_WIDTH                       FMC_SDRAM_MEM_BUS_WIDTH_16
 #define SDCLOCK_PERIOD                           FMC_SDRAM_CLOCK_PERIOD_3
