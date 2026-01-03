@@ -3201,34 +3201,44 @@ void t7_set_field_to_primary(void)
 
 void t7_change_field(void)
 {
+	SSettings *settings = settingsGetPointer();
     selection_custom_field++;
 
-    if((stateUsed->diveSettings.deco_type.ub.standard == VPM_MODE) && ((selection_custom_field == LLC_GF) || (selection_custom_field == LCC_GF_SURF))) /* no GF if in VPM mode */
+    uint8_t checkAgain = 0;
+
+    do
     {
-    	selection_custom_field++;
-    }
-    SSettings *settings = settingsGetPointer();
-    if (selection_custom_field == LLC_ScrubberTime && !isScrubberTimerEnabled(settings)) {
-    	selection_custom_field++;
-    }
+    	checkAgain = 0;
+		if((stateUsed->diveSettings.deco_type.ub.standard == VPM_MODE) && ((selection_custom_field == LLC_GF) || (selection_custom_field == LCC_GF_SURF))) /* no GF if in VPM mode */
+		{
+			selection_custom_field++;
+			checkAgain = 1;
+		}
+
+		if ((selection_custom_field == LLC_ScrubberTime) && ((!isScrubberTimerEnabled(settings)) || (!isLoopMode(stateUsed->diveSettings.diveMode))))
+		{
+			selection_custom_field++;
+			checkAgain = 1;
+		}
 #ifdef ENABLE_PSCR_MODE
-    if((selection_custom_field == LCC_SimPpo2) && (settings->dive_mode != DIVEMODE_PSCR))
-    {
-    	selection_custom_field++;
-    }
+		if((selection_custom_field == LCC_SimPpo2) && (settings->dive_mode != DIVEMODE_PSCR))
+		{
+			selection_custom_field++;
+			checkAgain = 1;
+		}
 #endif
 #ifdef ENABLE_CO2_SUPPORT
-    if((selection_custom_field == LCC_CO2) && (settings->co2_sensor_active == 0))
-    {
-       	selection_custom_field++;
-    }
-
+		if((selection_custom_field == LCC_CO2) && (settings->co2_sensor_active == 0))
+		{
+			selection_custom_field++;
+			checkAgain = 1;
+		}
 #endif
-
-    if(selection_custom_field >= LLC_END)
-    {
-        selection_custom_field = LLC_Empty;
-    }
+		if(selection_custom_field >= LLC_END)
+		{
+			selection_custom_field = LLC_Empty;
+		}
+    } while (checkAgain);
 }
 
 
