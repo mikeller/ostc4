@@ -1830,9 +1830,16 @@ uint8_t receive_update_data_flex(uint8_t* pBuffer1, uint8_t* pBuffer2, uint8_t R
     else
     if(id == id_ICON)
     {
-    	firmware2_variable_upperpart_eraseFlashMemory(length1Work,0);		/* flash is not in use => can be written immediately */
-    	firmware2_variable_upperpart_programFlashMemory(length1Work,0,pBuffer1,length1Work,0);
-    	ByteCompareStatus = 0;											/* trust flashing for image use case */
+    	if(length1Work < 0x20000)				/* Flash sectors 12-16 are used for icon => limited to 128K */
+    	{
+			firmware2_variable_upperpart_eraseFlashMemory(length1Work,0);		/* flash is not in use => can be written immediately */
+			firmware2_variable_upperpart_programFlashMemory(length1Work,0,pBuffer1,length1Work,0);
+			ByteCompareStatus = 0;											/* trust flashing for image use case */
+    	}
+    	else
+    	{
+    		ByteCompareStatus = 1;
+    	}
     }
 
     releaseFrame(20,(uint32_t)pBufferCompare);
