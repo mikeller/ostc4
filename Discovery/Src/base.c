@@ -555,6 +555,10 @@ int main(void)
             if(stateUsed == stateSimGetPointer())
             {
                 simulation_UpdateLifeData(1);
+                if(stateUsed != stateSimGetPointer())	/* simulation end? => reset timeout */
+                {
+                	time_without_button_pressed_deciseconds = 0;
+                }
             }
             check_warning();
             updateMiniLiveLogbook(1);
@@ -583,11 +587,12 @@ int main(void)
         		t3_handleAutofocus();
         	}
 #ifdef SIM_WRITES_LOGBOOK
-        if(stateUsed == stateSimGetPointer())
-            logbook_InitAndWrite(stateUsed);
-#endif
+			if(stateUsed == stateSimGetPointer())
+				logbook_InitAndWrite((SDiveState*)stateUsed);
+#else
         	if(stateUsed == stateRealGetPointer())	/* Handle log entries while in dive mode*/
                 logbook_InitAndWrite((SDiveState*)stateUsed);
+#endif
         }
 #ifdef T7_DEBUG_RUNTIME
     	timeMainLoop = time_elapsed_ms(startTimeMainLoop, HAL_GetTick());
