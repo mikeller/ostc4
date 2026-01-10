@@ -269,6 +269,7 @@ void logbook_initNewdiveProfile(const SDiveState* pInfo, SSettings* pSettings)
 		gheader.decoModel = 1;
 		gheader.gfLow_or_Vpm_conservatism = pInfo->diveSettings.gf_low;
 		gheader.gfHigh = pInfo->diveSettings.gf_high;
+		gheader.gfAtEnd = 0x0FF;
 	}
 	else
 	{
@@ -1467,6 +1468,14 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 		else
 		{
 			gheader.batteryCharge = 0.0;
+		}
+		if(pStateReal->diveSettings.deco_type.ub.standard == GF_MODE)
+		{
+			gheader.gfAtEnd = pStateReal->lifeData.gf_surf_log;
+		}
+		else
+		{
+			gheader.gfAtEnd = 0;
 		}
 		logbook_EndDive();
 		bDiveMode = 0;

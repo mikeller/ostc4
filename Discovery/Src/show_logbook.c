@@ -435,6 +435,9 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
     wintemp.bottom = 479 - 40;
     char timeSuffix;
     uint8_t hoursToDisplay;
+    uint8_t fw_first = 0;
+    uint8_t fw_second = 0;
+    uint8_t fw_third = 0;
 
     SLogbookHeader logbookHeader;
     logbook_getHeader(StepBackwards ,&logbookHeader);
@@ -678,6 +681,29 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
     text[2] = 0;
 
     Gfx_write_label_var(hgfx, start, 300,top, &FontT42,CLUT_GasSensor4,text);
+
+    if(logbookHeader.decoModel ==  GF_MODE)
+    {
+    	firmwareVersionfrom16bit(logbookHeader.firmwareVersionHigh, logbookHeader.firmwareVersionLow, &fw_first, &fw_second, &fw_third);
+    	if((fw_first >= GF_SURF_FW_FIRST) && (fw_second >= GF_SURF_FW_SECOND) && (fw_third >= GF_SURF_FW_THIRD))
+    	{
+        	top+= 50;
+        	start = 30;
+    	 	snprintf(text,20,"%u",logbookHeader.gfAtEnd);
+    	 	Gfx_write_label_var(hgfx, start, 300,top, &FontT42,CLUT_GasSensor1,text);
+    	 	start += FontT42.spacesize2Monospaced + 5;
+    	 	if(logbookHeader.gfAtEnd > 99)
+    	 	{
+    	 		start += FontT42.spacesize2Monospaced * 2;
+    	 	}
+    	 	if(logbookHeader.gfAtEnd > 9)
+    	 	{
+    	 		start += FontT42.spacesize2Monospaced;
+    	 	}
+    	 	snprintf(text,20,"%c%c",TXT_2BYTE,TXT2BYTE_GFSurf);
+    	 	Gfx_write_label_var(hgfx, start, 300,top, &FontT24,CLUT_GasSensor4,text);
+    	}
+    }
 
     // CNS
     snprintf(text,20,"CNS: %i %%",logbookHeader.maxCNS);

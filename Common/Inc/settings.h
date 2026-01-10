@@ -357,6 +357,7 @@ const SFirmwareData* firmwareDataGetPointer(void);
 const SHardwareData* hardwareDataGetPointer(void);
 uint8_t firmwareVersion_16bit_high(void);
 uint8_t firmwareVersion_16bit_low(void);
+void firmwareVersionfrom16bit(uint8_t high16, uint8_t low16, uint8_t* fw_first, uint8_t* fw_second, uint8_t* fw_third);
 void hardwareBatchCode(uint8_t *high, uint8_t *low);
 
 uint8_t RTEminimum_required_high(void);

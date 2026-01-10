@@ -289,6 +289,8 @@ typedef struct
 	 float ppo2Simulated_bar;
 /* GNSS data */
 	 SGnssInfo gnssData;
+/*	 last GF_Surf when shallow area was entered */
+	 uint8_t gf_surf_log;
 
 } 	SLifeData;
 

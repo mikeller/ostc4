@@ -845,6 +845,7 @@ static float getTemperature(SDataExchangeSlaveToMaster *d)
 void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 {
 	static uint16_t getDeviceDataAfterStartOfMainCPU = 20;
+	static uint16_t lastcounterSecondsShallowDepth = 0;
 
 	SDiveState *pStateReal = stateRealGetPointerWrite();
 	uint8_t idx;
@@ -1188,6 +1189,20 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		pStateReal->lifeData.CO2_data.CO2_ppm = pStateReal->lifeData.CO2_data.CO2_ppm / (1.0 + (CO2Corr * ((stateRealGetPointer()->lifeData.pressure_surface_bar * 1000) - ((stateRealGetPointer()->lifeData.ppO2Sensor_bar[2] *1000)))));
 #endif
 	}
+
+	/* close to surface ? */
+	if((pStateReal->lifeData.counterSecondsShallowDepth != 0) && (lastcounterSecondsShallowDepth == 0))
+	{
+		if( (pStateReal->decolistBuehlmann.gf_surf * 100.0) < 255.0)
+		{
+			pStateReal->lifeData.gf_surf_log = pStateReal->decolistBuehlmann.gf_surf * 100.0;
+		}
+		else
+		{
+			pStateReal->lifeData.gf_surf_log = 255;
+		}
+	}
+	lastcounterSecondsShallowDepth = pStateReal->lifeData.counterSecondsShallowDepth;
 
 	/* apnea specials
 	 */

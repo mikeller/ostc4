@@ -300,7 +300,20 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
         if(!(stateSimGetPointer()->lifeData.counterSecondsShallowDepth))
         {
             if(pDiveState->diveSettings.diveMode != DIVEMODE_Apnea)
+            {
                 pDiveState->lifeData.counterSecondsShallowDepth = settingsGetPointer()->timeoutDiveReachedZeroDepth - 15;
+                if(pDiveState->diveSettings.deco_type.ub.standard == GF_MODE)
+                {
+					if((stateDeco.decolistBuehlmann.gf_surf * 100.0) < 255.0)
+					{
+						pDiveState->lifeData.gf_surf_log = stateDeco.decolistBuehlmann.gf_surf *100.0;
+					}
+					else
+					{
+						pDiveState->lifeData.gf_surf_log = 255;
+					}
+                }
+            }
             else
             {
                 pDiveState->lifeData.apnea_last_dive_time_seconds = pDiveState->lifeData.dive_time_seconds;
@@ -351,7 +364,13 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     {
             stateSimGetPointerWrite()->lifeData.counterSecondsShallowDepth += 1;
             if(stateSimGetPointer()->lifeData.counterSecondsShallowDepth >= settingsGetPointer()->timeoutDiveReachedZeroDepth)
+            {
+#ifdef SIM_WRITES_LOGBOOK
+				pDiveState->mode = MODE_SURFACE;
+				logbook_InitAndWrite((SDiveState*)pDiveState);
+#endif
                 simulation_exit();
+            }
     }
     vpm_crush(pDiveState);
 }

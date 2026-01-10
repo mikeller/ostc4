@@ -2008,6 +2008,12 @@ void hardwareBatchCode(uint8_t *high, uint8_t *low)
     }
 }
 
+void firmwareVersionfrom16bit(uint8_t high16, uint8_t low16, uint8_t* fw_first, uint8_t* fw_second, uint8_t* fw_third)
+{
+	*fw_first = (high16 >> 3);
+	*fw_second = ((high16 & 0x3) << 2) | (low16 >> 6);
+	*fw_third = (low16 & 0x1F) >> 1; /* discard beta information */
+}
 
 uint8_t firmwareVersion_16bit_high(void)
 {

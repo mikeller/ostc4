@@ -30,6 +30,11 @@
 #include "data_central.h"
 #include "settings.h"
 
+/* FW requirement for GF_Surf data entry */
+#define GF_SURF_FW_FIRST	(1)
+#define GF_SURF_FW_SECOND	(7)
+#define GF_SURF_FW_THIRD	(5)
+
 typedef struct
 {
     uint8_t setpoint_cbar;
