@@ -108,11 +108,67 @@ def send_command(ser, cmd_byte):
     print(f"Command 0x{cmd_byte:02X} acknowledged (echo)")
 
 def wait_for_prompt(ser):
-    """Wait for the prompt byte (0x4D)"""
+    """Wait for the prompt byte (0x4D or 0x4C)"""
     prompt = ser.read(1)
-    if len(prompt) != 1 or prompt[0] != 0x4D:
-        raise Exception(f"Expected prompt 0x4D, got {prompt.hex() if prompt else 'nothing'}")
+    if len(prompt) != 1 or prompt[0] not in (0x4D, 0x4C):
+        raise Exception(f"Expected prompt 0x4D or 0x4C, got {prompt.hex() if prompt else 'nothing'}")
     print("Received prompt")
+
+def read_hardware_data(ser):
+    """Read hardware data (command 0x71) and display it"""
+    print("\nReading hardware data...")
+    send_command(ser, 0x71)
+    
+    # Read 64 bytes of hardware data
+    data = ser.read(64)
+    if len(data) != 64:
+        raise Exception(f"Expected 64 bytes, got {len(data)}")
+    
+    # Parse primary manufacturing data (first 52 bytes)
+    primary_serial = int.from_bytes(data[0:2], byteorder='little')
+    primary_licence = data[2]
+    primary_revision = data[3]
+    primary_year = data[4]
+    primary_month = data[5]
+    primary_day = data[6]
+    primary_info = data[7:51].rstrip(b'\x00\xff').decode('ascii', errors='replace')
+    primary_checksum = data[51]
+    
+    # Parse secondary manufacturing data (last 12 bytes)
+    secondary_serial = int.from_bytes(data[52:54], byteorder='little')
+    secondary_year = data[54]
+    secondary_month = data[55]
+    secondary_day = data[56]
+    secondary_reason = data[57]
+    secondary_info = data[58:62].rstrip(b'\x00\xff').decode('ascii', errors='replace')
+    secondary_checksum = data[62]
+    
+    # Display primary data
+    print("\n=== Primary Manufacturing Data ===")
+    print(f"Serial Number: {primary_serial} (0x{primary_serial:04X})")
+    print(f"Licence: {primary_licence}")
+    print(f"Revision: {primary_revision}")
+    if primary_year != 0xFF:
+        print(f"Production Date: 20{primary_year:02d}-{primary_month:02d}-{primary_day:02d}")
+    else:
+        print("Production Date: Not set")
+    if primary_info:
+        print(f"Info: {primary_info}")
+    print(f"Checksum: 0x{primary_checksum:02X}")
+    
+    # Display secondary data
+    print("\n=== Secondary Manufacturing Data ===")
+    if secondary_serial != 0xFFFF:
+        print(f"Secondary Serial: {secondary_serial} (0x{secondary_serial:04X})")
+        print(f"Secondary Date: 20{secondary_year:02d}-{secondary_month:02d}-{secondary_day:02d}")
+        print(f"Reason Code: {secondary_reason}")
+        if secondary_info:
+            print(f"Info: {secondary_info}")
+        print(f"Checksum: 0x{secondary_checksum:02X}")
+    else:
+        print("Secondary Serial: Not set")
+    
+    wait_for_prompt(ser)
 
 def write_production_data(ser, serial_num, licence, revision, year, month, day, info):
     """
@@ -323,6 +379,10 @@ Examples:
     bt.add_argument('--set-bluetooth-name', '-b', action='store_true',
                    help='Set Bluetooth name based on serial number')
     
+    # Read command
+    parser.add_argument('--read', action='store_true',
+                       help='Read current manufacturing data (command 0x71)')
+    
     # Other options
     parser.add_argument('--timeout', '-t', type=float, default=5.0,
                        help='Serial timeout in seconds (default: 5.0)')
@@ -333,9 +393,10 @@ Examples:
     has_primary = args.serial is not None
     has_secondary = args.secondary_serial is not None
     has_bt = args.set_bluetooth_name
+    has_read = args.read
     
-    if not has_primary and not has_secondary and not has_bt:
-        parser.error("At least one of --serial, --secondary-serial, or --set-bluetooth-name must be specified")
+    if not has_primary and not has_secondary and not has_bt and not has_read:
+        parser.error("At least one of --serial, --secondary-serial, --set-bluetooth-name, or --read must be specified")
     
     # If primary serial is set, date is required
     if has_primary and args.date is None:
@@ -362,6 +423,16 @@ def main():
         
         # Initialize service mode
         send_service_mode_init(ser)
+        
+        # Read hardware data if requested
+        if args.read:
+            read_hardware_data(ser)
+            if not args.serial and not args.secondary_serial and not args.set_bluetooth_name:
+                # Only reading, exit cleanly
+                exit_service_mode(ser)
+                print("\nDone!")
+                ser.close()
+                return
         
         # Write primary production data if specified
         if args.serial is not None:
