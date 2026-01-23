@@ -77,6 +77,7 @@ typedef enum
 	BT_CMD_BAUDRATE_460,
 	BT_CMD_SILENCE,
 	BT_CMD_NAME,
+    BT_CMD_BLE_NAME,
 	BT_CMD_EXIT_CMD
 } BTCmd;
 /* Exported functions --------------------------------------------------------*/
