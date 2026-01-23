@@ -89,6 +89,7 @@ typedef enum
 	BT_CMD_WRITECONF,
 	BT_CMD_RESTART,
 #endif
+    BT_CMD_BLE_NAME,
 	BT_CMD_EXIT_CMD
 } BTCmd;
 /* Exported functions --------------------------------------------------------*/

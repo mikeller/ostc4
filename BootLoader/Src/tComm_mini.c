@@ -271,8 +271,17 @@ void tComm_exit(void)
         MX_Bluetooth_PowerOff();
         HAL_Delay(1000);
         MX_Bluetooth_PowerOn();
-        tComm_Set_Bluetooth_Name(1);
-        tComm_StartBlueModConfig();
+        HAL_Delay(1000);
+        /* Trigger full Bluetooth module re-initialization to set BLE name */
+        BmTmpConfig = BM_INIT_TRIGGER_ON;
+        
+        /* Wait for state machine to complete all initialization states */
+        uint32_t timeout = HAL_GetTick() + 30000;  /* 30 second timeout */
+        while((BmTmpConfig != BM_CONFIG_DONE) && (HAL_GetTick() < timeout))
+        {
+            tComm_control();  /* Drive the Bluetooth initialization state machine */
+            HAL_Delay(10);
+        }
     }
 
     updateSettingsAndMenuOnExit = 0;
