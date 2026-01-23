@@ -322,6 +322,7 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     uint8_t answer = HAL_OK;
     uint8_t aRxBuffer[50];
     char aTxBufferName[50];
+    char aTxBufferBLEName[50];
 
 //	char aTxFactoryDefaults[50] = "AT&F1\r";
 
@@ -334,6 +335,11 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     char answerOkay[6] = "\r\nOK\r\n";
 
     gfx_number_to_string(5,1,&aTxBufferName[15],serial);
+
+    // For Stollmann module: prepare BLE name command using proper enum
+    // This ensures the correct AT command is sent for each module type
+    tComm_GetBTCmdStr(BT_CMD_BLE_NAME, aTxBufferBLEName);
+    gfx_number_to_string(5,1,&aTxBufferBLEName[15],serial);
 
     // store active configuration in non-volatile memory
     char aTxBufferWrite[50] = "AT&W\r";
@@ -355,6 +361,7 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
             answer = HAL_ERROR;
     }
 
+    // Send classic BT name command (AT+BNAME=OSTC4-xxxxx)
     aRxBuffer[0] = 0;
     if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBufferName, 21, 2000)!= HAL_OK)
         answer = HAL_ERROR;
@@ -370,6 +377,23 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
 
     HAL_Delay(200);
 
+    // Send BLE name command (AT+UBTLN=OSTC4-xxxxx)
+    aRxBuffer[0] = 0;
+    if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBufferBLEName, 21, 2000)!= HAL_OK)
+        answer = HAL_ERROR;
+    HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer, 21+6, 2000);
+
+    for(int i=0;i<21;i++)
+    if(aRxBuffer[i] != aTxBufferBLEName[i])
+        answer = HAL_ERROR;
+
+    for(int i=0;i<6;i++)
+    if(aRxBuffer[21+i] != answerOkay[i])
+        answer = HAL_ERROR;
+
+    HAL_Delay(200);
+
+    // Store both names in non-volatile memory (AT&W)
     if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBufferWrite, 5, 2000)!= HAL_OK)
         answer = HAL_ERROR;
     HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer, 5+6, 2000);
@@ -1732,6 +1756,9 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 			case BT_CMD_NAME:			strcpy(pCmdStr,"AT+BNAME=OSTC4-12345\r");
 										ret = 1;
 				break;
+			case BT_CMD_BLE_NAME:		strcpy(pCmdStr,"AT+UBTLN=OSTC4-12345\r");
+									ret = 1;
+				break;
 			case BT_CMD_EXIT_CMD:		strcpy(pCmdStr,"ATO\r");
 										ret = 1;
 				break;
@@ -1754,9 +1781,9 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 			case BT_CMD_NAME:			strcpy(pCmdStr,"AT+UBTLN=OSTC5-12345\r");
 										ret = 1;
 				break;
-			case BT_CMD_EXIT_CMD:		strcpy(pCmdStr,"ATO1\r");
-										ret = 1;
-				break;
+		case BT_CMD_BLE_NAME:		strcpy(pCmdStr,"AT+UBTLN=OSTC5-12345\r");
+									ret = 1;
+			break;
 			default:
 				break;
 		}
@@ -1828,6 +1855,8 @@ uint8_t tComm_HandleBlueModConfig()
 	if(time_elapsed_ms(cmdStartTick, HAL_GetTick()) > 100)
 	{
 		cmdStartTick = HAL_GetTick();
+        /* Clear first byte to avoid re-sending stale commands when a step is skipped */
+        TxBuffer[0] = 0;
 		switch (BmTmpConfig)
 		{
 			case BM_CONFIG_ECHO: 			tComm_GetBTCmdStr (BT_CMD_ECHO, TxBuffer);
@@ -1938,24 +1967,28 @@ uint8_t tComm_HandleBlueModConfig()
 					break;
 				case BM_INIT_FACTORY:		sprintf(TxBuffer,"AT&F1\r");      /* Stollmann: Factory reset */
 										break;
-				case BM_INIT_MODE:			BmTmpConfig++;
+                case BM_INIT_MODE:			TxBuffer[0] = 0; /* Stollmann: No mode command needed, skip this step */
+                                        break;
+                case BM_INIT_BLE:			TxBuffer[0] = 0; /* Stollmann: Skip, will use UBTLN after BNAME */
+                                        break;
+                case BM_INIT_NAME:			sprintf(TxBuffer,"AT+BNAME=OSTC4-12345\r"); /* Stollmann: Classic Bluetooth name */
+                                        if(hardwareDataGetPointer()->primarySerial != 0xFFFF)
+                                        {
+                                            gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
+                                            hardware_programmPrimaryBluetoothNameSet();
+                                        }
 										break;
-				case BM_INIT_BLE:			BmTmpConfig++;
+                case BM_INIT_SSP_IDO_OFF:	sprintf(TxBuffer,"AT+UBTLN=OSTC4-12345\r"); /* Stollmann: BLE Device Name (after classic name) */
+                                        if(hardwareDataGetPointer()->primarySerial != 0xFFFF)
+                                        {
+                                            gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
+                                        }
+                                        break;
+                case BM_INIT_SSP_IDO_ON:	TxBuffer[0] = 0; /* Stollmann: No SSP command needed, skip */
+                                        break;
+				case BM_INIT_SSP_ID1_OFF:	TxBuffer[0] = 0; /* Stollmann: No SSP command needed, skip */
 										break;
-				case BM_INIT_NAME:			sprintf(TxBuffer,"AT+BNAME=OSTC4-12345\r"); /* Stollmann: Bluetooth name */
-											if(hardwareDataGetPointer()->primarySerial != 0xFFFF)
-											{
-												gfx_number_to_string(5,1,&TxBuffer[15],hardwareDataGetPointer()->primarySerial);
-												hardware_programmPrimaryBluetoothNameSet();
-											}
-										break;
-				case BM_INIT_SSP_IDO_OFF:	BmTmpConfig++;
-										break;
-				case BM_INIT_SSP_IDO_ON:	BmTmpConfig++;
-										break;
-				case BM_INIT_SSP_ID1_OFF:	BmTmpConfig++;
-										break;
-				case BM_INIT_SSP_ID1_ON:	BmTmpConfig++;
+				case BM_INIT_SSP_ID1_ON:	TxBuffer[0] = 0; /* Stollmann: No SSP command needed, skip */
 										break;
 				case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W\r");	      /* Stollmann: Write settings to EEPROM */
 										break;
