@@ -401,6 +401,8 @@
 #define StMSYS5_SetSampleIndx   _MB(2,9,5,13,0)
 #define StMSYS5_AdjustSurfPres  _MB(2,9,5,14,0)
 #define StMSYS5_FlashBoot		_MB(2,9,5,15,0)
+#define StMSYS5_Reset			_MB(2,9,5,16,0)
+#define StMSYS5_ResetIcon		_MB(2,9,5,17,0)
 #endif
 
 /* Temporary line markers for dive mode custom view configuration */
