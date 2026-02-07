@@ -382,7 +382,10 @@ void tMEGas_check_switch_to_bailout(void)
 /* surface mode */
 void openEdit_Gas(uint8_t line, uint8_t ccr)
 {
-    uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off ;//, bottleSizeLiter;
+    uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off ;
+#ifdef ENABLE_ADVANCED_GAS
+    uint8_t bottleSizeLiter;
+#endif
 
     char text[32];
     char textMOD[32];
@@ -422,7 +425,9 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
     travel = editGasPage.pGasLine[gasID].note.ub.travel;
     off = editGasPage.pGasLine[gasID].note.ub.off;
 
-    //bottleSizeLiter = editGasPage.pGasLine[gasID].bottle_size_liter;
+#ifdef ENABLE_ADVANCED_GAS
+    bottleSizeLiter = editGasPage.pGasLine[gasID].bottle_size_liter;
+#endif
 
     if(active)
         inactive = 0;
@@ -525,15 +530,14 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
             text[txtptr++] = 0;
             write_label_var(  20 ,800, ME_Y_LINE4, &FontT48, text);
         }
-/*
+#ifdef ENABLE_ADVANCED_GAS
         txtptr = 0;
         text[txtptr++] = TXT_2BYTE;
         text[txtptr++] = TXT2BYTE_Bottle;
         text[txtptr++] = 0;
         write_label_var(  20 ,800, ME_Y_LINE5, &FontT48, text);
         write_field_2digit(StMOG_Bottle,		600, 710, ME_Y_LINE5, &FontT48,"## ltr", (uint32_t)bottleSizeLiter, 0, 0, 0);
-
-*/
+#endif
         stop_cursor_fields();
 
         textMOD[0] = '#';
@@ -558,9 +562,9 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
             setEvent(StMOG_ChangeDepth,		(uint32_t)OnAction_ChangeDepth);
             setEvent(StMOG_SetToMOD,		(uint32_t)OnAction_SetToMOD);
         }
-/*
+#ifdef ENABLE_ADVANCED_GAS
         setEvent(StMOG_Bottle, 				(uint32_t)OnAction_BottleSize);
-*/
+#endif
         write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
     }
 }

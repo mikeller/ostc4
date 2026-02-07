@@ -79,8 +79,10 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
     float fPpO2limitHigh = 0;
     float fPpO2ofGasAtThisDepth = 0;
     //uint8_t senderCode, depthDown,;
-    //uint16_t bar;
-    uint16_t textPointer, mod, ltr;
+#ifdef ENABLE_ADVANCED_GAS
+    uint16_t bar, ltr;
+#endif
+    uint16_t textPointer, mod;
 
     if(actual_menu_content == MENU_SURFACE)
     {
@@ -142,8 +144,10 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
             first = pGasLine[gasId].note.ub.first;
             typeDeco = pGasLine[gasId].note.ub.deco;
             mod = calc_MOD(gasId);
+#ifdef ENABLE_ADVANCED_GAS
             ltr = pGasLine[gasId].bottle_size_liter;
-            //bar = stateUsed->lifeData.bottle_bar[gasId];
+            bar = stateUsed->lifeData.bottle_bar[gasId];
+#endif
 
 #ifdef ENABLE_UNUSED_GAS_HIDING
             if(pGasLine[gasId].note.ub.off)
@@ -176,43 +180,32 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
             if(gasMode == OCGAS_BAILOUT_INACTIVE)
             {
                 textPointer += snprintf(&text[textPointer], 59,\
-                    "\024"
-                    " Bailout"
-                    "\031"
-                    "\034"
-                    " %3u"
-                    "\016\016"
-                    " %c%c"
-                    "\017"
-                    "\035"
+                    "\024 Bailout\031\034 %3u\016\016%c%c\017"
+#ifdef ENABLE_ADVANCED_GAS
+
+#endif
+                	"\035"
                     "\n\r",
                     unit_depth_integer(mod),
                     unit_depth_char1(),
-                    unit_depth_char2()
-                );
-/*
-                textPointer += snprintf(&text[textPointer], 57,\
-                    "\024"
-                    " Bailout"
-                    "\031"
-                    "\034"
-                    " %3u"
-                    "\016\016"
-                    "m"
-                    "\017"
-                    "  %2u"
-                    "\016\016"
-                    "ltr"
-                    "\017"
-                    " %3u"
-                    "\016\016"
-                    "bar"
-                    "\017"
-                    "\035"
-                    "\n\r",
-                    mod, ltr, bar
-                );
-*/
+                    unit_depth_char2());
+#ifdef ENABLE_ADVANCED_GAS
+					if( ltr != 0)
+					{
+						textPointer += snprintf(&text[textPointer], 20,"\007 %2u\016\016ltr\017",ltr);
+					}
+					else
+					{
+						text[textPointer++] = '\007';
+						text[textPointer++] = '\007';
+						text[textPointer++] = '\007';
+					}
+                	if( bar != 0)
+                	{
+                		textPointer += snprintf(&text[textPointer], 20,"\007 %2u\016\016bar\017",bar);
+                	}
+
+#endif
             }
             else
             {
@@ -253,7 +246,7 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                     "%c"
                     "%3u"
                     "\016\016"
-                    " %c%c"
+                    "%c%c"
                     "\017",
                     color[0],
                     unit_depth_integer(mod),
@@ -268,7 +261,7 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                         "%c"
                         "%3u"
                         "\016\016"
-                        " %c%c"
+                        "%c%c"
                         "\017",
                         color[1],
                         unit_depth_integer(depthUp),
@@ -283,27 +276,36 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                     text[textPointer++] = 3*25 + 20;
                 }
                 /* liter */
-/*
-                textPointer += snprintf(&text[textPointer], 12,\
-                    "%c"
-                    "  %2u"
-                    "\016\016"
-                    "ltr"
-                    "\017"
-                    , color[2],ltr
-                );
-*/
+#ifdef ENABLE_ADVANCED_GAS
+                if(ltr != 0)
+                {
+					textPointer += snprintf(&text[textPointer], 12,\
+						"%c"
+						"\007\007%2u"
+						"\016\016"
+						"ltr"
+						"\017"
+						, color[2],ltr
+					);
+                }
+                else
+                {
+                	text[textPointer++] = '\007';
+                	text[textPointer++] = '\007';
+                	text[textPointer++] = '\007';
+                }
                 /* bar */
-/*
-                textPointer += snprintf(&text[textPointer], 12,\
-                    "%c"
-                    " %3u"
-                    "\016\016"
-                    "bar"
-                    "\017",
-                    color[3], bar
-                );
-*/
+                if(bar != 0)
+                {
+					textPointer += snprintf(&text[textPointer], 12,\
+						"%c"
+						"\007%3u"
+						"\016\016"
+						"bar"
+						"\017",
+						color[3], bar);
+                }
+#endif
                 text[textPointer++] = '\035';
                 text[textPointer++] = '\n';
                 text[textPointer++] = '\r';
