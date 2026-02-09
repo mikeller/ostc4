@@ -131,6 +131,7 @@ static uint8_t openComm(uint8_t aRxByte);
 uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence);
 uint8_t prompt4D4C(uint8_t mode);
 uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr);
+void tComm_RecoverBluetoothModule(void);
 
 
 static uint8_t receive_update_data_cpu2(void);
@@ -157,6 +158,252 @@ void tComm_init(void)
     tCwindow.WindowY1 = 479;
 
     StartListeningToUART = 1;
+}
+
+/* Debug structure to track Bluetooth recovery attempts - visible via ST-Link */
+typedef struct {
+    uint32_t current_baud_rate;
+    uint8_t baud_index;
+    uint8_t cmd_index;
+    uint8_t response_received;
+    uint8_t response_buffer[32];
+    uint8_t response_length;
+    uint32_t working_baud_found;
+    uint8_t state;  /* 0=idle, 1=testing, 2=found_working, 3=setting_baud, 4=saving, 5=failed */
+    uint32_t power_cycle_count;
+    uint8_t last_test_baud_rates[15];  /* indices of tested baud rates */
+    uint8_t last_test_responses[15];   /* response flags: 0=no resp, 1=got response, 2=got OK */
+} BT_RecoveryDebug_t;
+
+/* Make this global so GDB can inspect it */
+BT_RecoveryDebug_t bt_debug = {0};
+
+/**
+ * Assert RTS (PA12) LOW as a regular GPIO output.
+ * This tells the Bluetooth module it's OK to transmit.
+ * Needed when UART flow control is disabled on the MCU side but the module
+ * still has flow control enabled (e.g. after AT&F1 factory reset).
+ */
+static void tComm_AssertRTS(void)
+{
+    GPIO_InitTypeDef gpio;
+    gpio.Pin   = GPIO_PIN_12;  /* PA12 = USART1_RTS */
+    gpio.Mode  = GPIO_MODE_OUTPUT_PP;
+    gpio.Pull  = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FAST;
+    HAL_GPIO_Init(GPIOA, &gpio);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);  /* LOW = RTS active */
+}
+
+/**
+ * Try to get a response from the BT module at the current UART settings.
+ * Sends cmd, waits up to timeout_ms for any data back.
+ * Returns number of bytes received (0 = no response).
+ */
+static uint8_t tComm_ProbeModule(const char* cmd, uint8_t* rxBuf, uint16_t timeout_ms)
+{
+    uint8_t index = 0;
+    uint32_t start_tick;
+
+    /* Flush stale RX data */
+    start_tick = HAL_GetTick();
+    while ((HAL_GetTick() - start_tick) < 100)
+        HAL_UART_Receive(&UartHandle, &rxBuf[0], 1, 5);
+
+    /* Send command */
+    if (HAL_UART_Transmit(&UartHandle, (uint8_t*)cmd, strlen(cmd), 500) != HAL_OK)
+        return 0;
+
+    HAL_Delay(200);  /* Let module process */
+
+    /* Collect response */
+    memset(rxBuf, 0, UART_CMD_BUF_SIZE);
+    start_tick = HAL_GetTick();
+    while ((HAL_GetTick() - start_tick) < timeout_ms && index < UART_CMD_BUF_SIZE)
+    {
+        if (HAL_UART_Receive(&UartHandle, &rxBuf[index], 1, 30) == HAL_OK)
+            index++;
+    }
+    return index;
+}
+
+/**
+ * Initialise UART at given baud rate with flow control disabled,
+ * then manually assert RTS so the module can respond.
+ */
+static HAL_StatusTypeDef tComm_InitUartNoFC(uint32_t baud)
+{
+    HAL_StatusTypeDef rc;
+    UartHandle.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    UartHandle.Init.BaudRate  = baud;
+    rc = HAL_UART_Init(&UartHandle);
+    if (rc == HAL_OK)
+        tComm_AssertRTS();   /* PA12 LOW so module sees CTS# active */
+    return rc;
+}
+
+void tComm_RecoverBluetoothModule(void)
+{
+    uint8_t RxBuffer[UART_CMD_BUF_SIZE];
+    uint8_t rxLen;
+    uint8_t recovery_success = 0;
+    uint32_t working_baud = 0;
+    uint8_t saved_flow_control;
+
+    bt_debug.state = 1;  /* testing */
+    bt_debug.power_cycle_count = 0;
+    memset(bt_debug.last_test_baud_rates, 0xFF, sizeof(bt_debug.last_test_baud_rates));
+    memset(bt_debug.last_test_responses, 0, sizeof(bt_debug.last_test_responses));
+
+    saved_flow_control = UartHandle.Init.HwFlowCtl;
+
+    /* Baud rates to try – factory default 115200 first */
+    const uint32_t baud_rates[] = {
+        115200, 9600, 460800, 38400, 19200,
+        57600, 230400, 4800, 2400, 1200,
+        921600, 14400, 28800, 76800, 153600
+    };
+    const uint8_t num_baud_rates = sizeof(baud_rates) / sizeof(baud_rates[0]);
+
+    /* ---- Power cycle ---- */
+    MX_Bluetooth_PowerOff();
+    bt_debug.power_cycle_count++;
+    HAL_Delay(3000);
+    MX_Bluetooth_PowerOn();
+    HAL_Delay(4000);   /* Module datasheet: ~2 s boot time */
+
+    /* ---- Phase 1: try WITH hardware flow control at 115200 ----
+     * After AT&F1 factory reset, Stollmann defaults to 115200 + RTS/CTS.
+     * With proper AF pins (fixed ifdef in MspInit), both sides should talk. */
+    UartHandle.Init.HwFlowCtl = UART_HWCONTROL_RTS_CTS;
+    UartHandle.Init.BaudRate  = 115200;
+    if (HAL_UART_Init(&UartHandle) == HAL_OK)
+    {
+        bt_debug.current_baud_rate = 115200;
+        bt_debug.baud_index = 0;
+        bt_debug.last_test_baud_rates[0] = 0;
+
+        rxLen = tComm_ProbeModule("AT\r", RxBuffer, 1000);
+        if (rxLen >= 2)
+        {
+            recovery_success = 1;
+            working_baud = 115200;
+            bt_debug.last_test_responses[0] = 2;
+        }
+    }
+
+    /* ---- Phase 2: scan all baud rates WITHOUT flow control,
+     *               but manually assert RTS (PA12 LOW) so the module's
+     *               CTS# input is satisfied and it can transmit. ---- */
+    for (uint8_t baud_idx = 0; baud_idx < num_baud_rates && !recovery_success; baud_idx++)
+    {
+        bt_debug.baud_index = baud_idx;
+        bt_debug.current_baud_rate = baud_rates[baud_idx];
+        bt_debug.last_test_baud_rates[baud_idx] = baud_idx;
+
+        if (tComm_InitUartNoFC(baud_rates[baud_idx]) != HAL_OK)
+            continue;
+
+        HAL_Delay(100);
+
+        /* Try several AT commands */
+        const char* test_cmds[] = { "AT\r", "ATE0\r", "ATI\r", "+++" };
+        for (uint8_t cmd_idx = 0; cmd_idx < 4 && !recovery_success; cmd_idx++)
+        {
+            bt_debug.cmd_index = cmd_idx;
+            bt_debug.response_received = 0;
+
+            rxLen = tComm_ProbeModule(test_cmds[cmd_idx], RxBuffer, 1000);
+            if (rxLen > 0)
+            {
+                bt_debug.response_received = 1;
+                bt_debug.last_test_responses[baud_idx] = 1;
+                memcpy(bt_debug.response_buffer, RxBuffer,
+                       rxLen < 32 ? rxLen : 32);
+                bt_debug.response_length = rxLen < 32 ? rxLen : 32;
+            }
+            if (rxLen >= 2)
+            {
+                recovery_success = 1;
+                working_baud = baud_rates[baud_idx];
+                bt_debug.last_test_responses[baud_idx] = 2;
+            }
+        }
+    }
+
+    /* ---- Phase 3: additional power cycles at common rates ---- */
+    for (uint8_t cycle = 0; cycle < 2 && !recovery_success; cycle++)
+    {
+        bt_debug.power_cycle_count++;
+        MX_Bluetooth_PowerOff();
+        HAL_Delay(2000);
+        MX_Bluetooth_PowerOn();
+        HAL_Delay(3000);
+
+        const uint32_t retry_rates[] = { 115200, 9600, 460800 };
+        for (uint8_t i = 0; i < 3 && !recovery_success; i++)
+        {
+            if (tComm_InitUartNoFC(retry_rates[i]) != HAL_OK)
+                continue;
+
+            bt_debug.current_baud_rate = retry_rates[i];
+            rxLen = tComm_ProbeModule("AT\r", RxBuffer, 1000);
+            if (rxLen >= 2)
+            {
+                recovery_success = 1;
+                working_baud = retry_rates[i];
+            }
+        }
+    }
+
+    /* ---- Apply configuration if we found the module ---- */
+    if (recovery_success && working_baud != 0)
+    {
+        bt_debug.state = 2;  /* found_working */
+        bt_debug.working_baud_found = working_baud;
+
+        /* Re-init at working baud (no FC + RTS asserted) if not already */
+        tComm_InitUartNoFC(working_baud);
+        HAL_Delay(100);
+
+        /* 1. Disable flow control on the module (Stollmann: AT\Q0) */
+        tComm_ProbeModule("AT\\Q0\r", RxBuffer, 500);
+        HAL_Delay(100);
+
+        /* 2. Set baud rate to 115200 if needed (Stollmann: AT%B8) */
+        if (working_baud != 115200)
+        {
+            bt_debug.state = 3;  /* setting_baud */
+            tComm_ProbeModule("AT%B8\r", RxBuffer, 500);
+            HAL_Delay(300);
+
+            /* Switch MCU to 115200 */
+            tComm_InitUartNoFC(115200);
+            HAL_Delay(200);
+        }
+
+        /* 3. Turn off echo */
+        tComm_ProbeModule("ATE0\r", RxBuffer, 300);
+
+        /* 4. Save to NVM */
+        bt_debug.state = 4;  /* saving */
+        tComm_ProbeModule("AT&W\r", RxBuffer, 500);
+        HAL_Delay(200);
+
+        /* Verify we can still talk after save */
+        rxLen = tComm_ProbeModule("AT\r", RxBuffer, 500);
+        if (rxLen < 2)
+            bt_debug.state = 5;  /* save may have failed */
+    }
+    else
+    {
+        bt_debug.state = 5;  /* failed – no response at any baud rate */
+    }
+
+    /* Restore UART to normal operating config */
+    UartHandle.Init.BaudRate  = 115200;
+    UartHandle.Init.HwFlowCtl = saved_flow_control;
+    HAL_UART_Init(&UartHandle);
 }
 
 uint8_t tComm_control(void)
