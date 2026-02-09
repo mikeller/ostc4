@@ -91,5 +91,6 @@ uint8_t tComm_Set_Bluetooth_Name(uint8_t force);
 void tComm_StartBlueModBaseInit(void);
 void tComm_StartBlueModConfig(void);
 void tComm_RequestBluetoothStrength(void);
+void tComm_RecoverBluetoothModule(void);
 
 #endif /* TCOMM_H */
