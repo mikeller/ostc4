@@ -679,6 +679,9 @@ GPIO_test_I2C_lines();
 	TIM_init();
 	MX_UART_Init();
 
+	/* Recovery: try to reconfigure a factory-reset Bluetooth module */
+	tComm_RecoverBluetoothModule();
+
 	/* Don't power cycle Bluetooth - connection may already be established from firmware */
 	MX_Bluetooth_PowerOn();
 
