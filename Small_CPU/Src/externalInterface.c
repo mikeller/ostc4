@@ -83,6 +83,8 @@ static uint16_t externalCO2SignalStrength;
 static uint16_t externalCO2Status = 0;
 static float 	externalCO2Scale = 0.0;
 
+static uint8_t externalBottleBar[PRESSURE_BOTTLE_CNT] = {0,0};
+
 static uint8_t lastSensorDataId = 0;
 static SSensorDataDiveO2 sensorDataDiveO2[EXT_INTERFACE_SENSOR_CNT];
 static externalInterfaceAutoDetect_t externalAutoDetect = DETECTION_OFF;
@@ -139,6 +141,8 @@ void externalInterface_InitDatastruct(void)
 	externalCO2SignalStrength = 0;
 	externalCO2Status = 0;
 	externalCO2Scale = 0.0;
+	externalBottleBar[0] = 0;
+	externalBottleBar[1] = 0;
 	externalAutoDetect = DETECTION_OFF;
 
 	for(index = 0; index < MAX_ADC_CHANNEL; index++)
@@ -507,6 +511,25 @@ void externalInterface_SetCO2State(uint16_t state)
 uint16_t externalInterface_GetCO2State(void)
 {
 	return externalCO2Status;
+}
+
+void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar)
+{
+	if(bottle < PRESSURE_BOTTLE_CNT)
+	{
+		externalBottleBar[bottle] = bar;
+	}
+}
+
+uint8_t externalInterface_GetBottlePressure(uint8_t bottle)
+{
+	uint8_t ret = 0;
+
+	if(bottle < PRESSURE_BOTTLE_CNT)
+	{
+		ret = externalBottleBar[bottle];
+	}
+	return ret;
 }
 
 
@@ -991,6 +1014,10 @@ static	uint8_t detectionDelayCnt = 0;
 										if(cntUARTSensor != 0)
 										{
 											externalInterfaceMuxReqIntervall = REQUEST_INT_SENSOR_MS / cntUARTSensor;
+											if(foundSensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends combined data */
+											{
+												externalInterfaceMuxReqIntervall = 4000;
+											}
 										}
 									}
 									memcpy(SensorMap, foundSensorMap, sizeof(foundSensorMap));
@@ -1023,7 +1050,7 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 												memcpy(SensorMap, MasterSensorMap, sizeof(MasterSensorMap));
 												for(index = 0; index < EXT_INTERFACE_SENSOR_CNT; index++)
 												{
-													if((SensorMap[index] == SENSOR_DIGO2) || (SensorMap[index] == SENSOR_CO2) || (SensorMap[index] == SENSOR_GNSS))
+													if((SensorMap[index] == SENSOR_DIGO2) || (SensorMap[index] == SENSOR_CO2) || (SensorMap[index] == SENSOR_GNSS) || (SensorMap[index] == SENSOR_SENTINEL))
 													{
 														cntUARTSensor++;
 													}
@@ -1033,6 +1060,11 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 												{
 													externalInterfaceMuxReqIntervall = REQUEST_INT_SENSOR_MS / cntUARTSensor;
 													activeUartChannel = 0xFF;
+
+													if(SensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends compined data */
+													{
+														externalInterfaceMuxReqIntervall = 4000;
+													}
 												}
 												else
 												{
@@ -1166,7 +1198,7 @@ void externalInterface_HandleUART()
 			timeToTrigger = 1;
 			retryRequest = 0;
 		}
-		else if(((retryRequest == 0)		/* timeout or error */
+		else if(((retryRequest == 0) && (pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET] != SENSOR_SENTINEL)		/* timeout or error */
 				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (externalInterface_SensorState[activeSensorId] != UART_O2_IDLE))	/* retry if no answer after half request interval */
 					|| (externalInterface_SensorState[activeSensorId] == UART_O2_ERROR))))
 		{
@@ -1189,7 +1221,8 @@ void externalInterface_HandleUART()
 						|| (externalInterface_SensorState[activeSensorId] == UART_O2_REQ_RAW)
 						|| (externalInterface_SensorState[activeSensorId] == UART_CO2_OPERATING)
 						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_PVT)
-						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_SAT))
+						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_SAT)
+						|| (externalInterface_SensorState[activeSensorId] == UART_SENTINEL_OPERATING))
 				{
 					forceMuxChannel = 1;
 					externalInterface_SensorState[activeSensorId] = UART_O2_IDLE;
@@ -1199,6 +1232,12 @@ void externalInterface_HandleUART()
 							break;
 						case SENSOR_CO2: externalInterface_SetCO2Value(0.0);
 										 externalInterface_SetCO2State(0);
+							break;
+						case SENSOR_SENTINEL: setExternalInterfaceChannel(0,0.0);
+											  setExternalInterfaceChannel(1,0.0);
+											  setExternalInterfaceChannel(2,0.0);
+											  externalInterface_SetBottlePressure(0,0);
+											  externalInterface_SetBottlePressure(1,0);
 							break;
 						default:
 							break;
@@ -1264,13 +1303,4 @@ void externalInterface_HandleUART()
 			}
 		}
 	}
-
-#if 0
-#ifdef ENABLE_SENTINEL_MODE
-		if(externalInterface_GetUARTProtocol() & (EXT_INTERFACE_UART_SENTINEL))
-		{
-			UART_HandleSentinelData();
-		}
-#endif
-#endif
 }

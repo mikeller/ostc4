@@ -26,7 +26,7 @@
 
 
 #ifdef ENABLE_SENTINEL_MODE
-static uint8_t SentinelConnected = 0;						/* Binary indicator if a sensor is connected or not */
+static uint8_t SentinelConnected = 0;						/* Binary indicator if a sensor (and what type of subsensor) is connected or not */
 static receiveStateSentinel_t rxState = SENTRX_Ready;
 
 extern sUartComCtrl Uart1Ctrl;
@@ -65,6 +65,10 @@ void uartSentinel_Control(void)
 		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_SENTINEL_IDLE;
 	}
+	if(localComState == UART_SENTINEL_IDLE)
+	{
+		localComState = UART_SENTINEL_OPERATING;		/* state is only used for timeout detection */
+	}
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);
 }
 
@@ -82,14 +86,14 @@ void uartSentinel_ProcessData(uint8_t data)
 
 	switch(rxState)
 	{
-			case SENTRX_Ready:	if((data >= 'a') && (data <= 'z'))
+			case SENTRX_Ready:	if((data >= 'a') && (data <= 'z'))			/* Alive byte */
 							{
 								rxState = SENTRX_DetectStart;
 								checksum = 0;
 							}
 					break;
 
-			case SENTRX_DetectStart: 	checksum += data;
+			case SENTRX_DetectStart: 	checksum += data;					/* data available */
 									if(data == '1')
 								 	{
 								 		rxState = SENTRX_SelectData;
@@ -102,11 +106,20 @@ void uartSentinel_ProcessData(uint8_t data)
 									}
 					break;
 
-			case SENTRX_SelectData:		checksum += data;
+			case SENTRX_SelectData:		checksum += data;					/* data type */
 									switch(data)
 									{
-										case 'T':	dataType = data;
+										case UART_SENTINEL_PRESSURE_O2:	/* no '0' spacing for pressure sensors */
+										case UART_SENTINEL_PRESSURE_D:	dataType = data;
+																		rxState = SENTRX_Data0;
+																		dataValueIdx = 0;
+																		dataValue[0] = 0;
 											break;
+										case UART_SENTINEL_O2_P:
+										case UART_SENTINEL_O2_S:
+										case UART_SENTINEL_TEMPSTICK:	dataType = data;
+											break;
+
 										case '0': 	if(dataType != 0xff)
 													{
 														rxState = SENTRX_Data0;
@@ -135,7 +148,14 @@ void uartSentinel_ProcessData(uint8_t data)
 							if((data >= '0') && (data <= '9'))
 							{
 								dataValue[dataValueIdx] = dataValue[dataValueIdx] * 10 + (data - '0');
-								rxState++;
+								if((rxState == SENTRX_Data2) && ((dataType == UART_SENTINEL_PRESSURE_O2) || (dataType == UART_SENTINEL_PRESSURE_D)))
+								{
+									rxState = SENTRX_CheckSum;
+								}
+								else
+								{
+									rxState++;
+								}
 							}
 							else
 							{
@@ -147,35 +167,45 @@ void uartSentinel_ProcessData(uint8_t data)
 			case SENTRX_Data7:	checksum += data;
 							if(data == '0')
 							{
-								rxState++;
 								dataValueIdx++;
 								dataValue[dataValueIdx] = 0;
+								rxState++;
 							}
 							else
 							{
 								rxState = SENTRX_Ready;
 							}
 					break;
-			case SENTRX_Data11: rxState = SENTRX_DataComplete;
-							ConvertByteToHexString(checksum,checksum_str);
-							if(data == checksum_str[0])
-							{
-								rxState = SENTRX_DataComplete;
-							}
-							else
-							{
-								rxState = SENTRX_Ready;
-							}
+			case SENTRX_CheckSum: ConvertByteToHexString(checksum,checksum_str);
+								if(data == checksum_str[0])
+								{
+									rxState = SENTRX_DataComplete;
+								}
+								else
+								{
+									rxState = SENTRX_Ready;
+								}
 
 				break;
 
 			case SENTRX_DataComplete:	if(data == checksum_str[1])
 									{
-										setExternalInterfaceChannel(0,(float)(dataValue[0] / 10.0));
-										setExternalInterfaceChannel(1,(float)(dataValue[1] / 10.0));
-										setExternalInterfaceChannel(2,(float)(dataValue[2] / 10.0));
-										SentinelConnected = 1;
-										localComState = UART_SENTINEL_OPERATING;
+										switch(dataType)
+										{
+											case UART_SENTINEL_O2_P: 	setExternalInterfaceChannel(0,(float)(dataValue[0] / 10.0));
+																		setExternalInterfaceChannel(1,(float)(dataValue[1] / 10.0));
+																		setExternalInterfaceChannel(2,(float)(dataValue[2] / 10.0));
+																		SentinelConnected |= SENTINEL_O2;
+												break;
+											case UART_SENTINEL_PRESSURE_O2:	externalInterface_SetBottlePressure(0,dataValue[0]);
+																			SentinelConnected |= SENTINEL_PRESSURE;
+												break;
+											case UART_SENTINEL_PRESSURE_D: externalInterface_SetBottlePressure(1,dataValue[0]);
+																			SentinelConnected |= SENTINEL_PRESSURE;
+												break;
+											case UART_SENTINEL_TEMPSTICK: SentinelConnected |= SENTINEL_TEMPSTICK;
+										}
+										localComState = UART_SENTINEL_IDLE;
 									}
 									rxState = SENTRX_Ready;
 				break;

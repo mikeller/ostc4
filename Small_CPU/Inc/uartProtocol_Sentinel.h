@@ -31,6 +31,21 @@
 #include "configuration.h"
 #include "stm32f4xx_hal.h"
 
+/* Bit flags for different sensor types provided by Sentinel or Red Head/Bare */
+
+#define SENTINEL_O2			0x01
+#define SENTINEL_CO2		0x02
+#define SENTINEL_PRESSURE	0x04
+#define SENTINEL_TEMPSTICK	0x08
+
+
+
+#define	UART_SENTINEL_O2_P 	'T'				/* Primary O2 sensor */
+#define	UART_SENTINEL_O2_S	'S'				/* Secondary O2 sensor */
+#define	UART_SENTINEL_PRESSURE_O2 	'I'		/* O2 pressure */
+#define	UART_SENTINEL_PRESSURE_D	'J'		/* Diluent pressure */
+#define	UART_SENTINEL_TEMPSTICK		'Y'		/* Sector value of the tempstick */
+
  typedef enum
   {
 	UART_SENTINEL_INIT = 0,		/* Default Status for every sensor type */
@@ -55,8 +70,7 @@
  	SENTRX_Data8,
  	SENTRX_Data9,
  	SENTRX_Data10,
- 	SENTRX_Data11,
- 	SENTRX_Data12,
+ 	SENTRX_CheckSum,
  	SENTRX_DataComplete
   } receiveStateSentinel_t;
 
