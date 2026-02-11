@@ -71,9 +71,6 @@ void uartCo2_Control(void)
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 	uartCO2Status_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
 
-	uint8_t *pmap = externalInterface_GetSensorMapPointer(0);
-
-
 	if(localComState == UART_CO2_ERROR)
 	{
 		localComState = lastComState;
@@ -95,8 +92,12 @@ void uartCo2_Control(void)
 		}
 		else
 		{
-			localComState = UART_CO2_IDLE;
+			localComState = UART_CO2_MODE;
 		}
+	}
+	else if(localComState == UART_CO2_MODE)
+	{
+		uartCo2_SendCmd(CO2CMD_MODE_POLL, cmdString, &cmdLength);
 	}
 	else
 	{
@@ -105,9 +106,8 @@ void uartCo2_Control(void)
 			uartCo2_SendCmd(CO2CMD_CALIBRATE, cmdString, &cmdLength);
 			localComState = UART_CO2_IDLE;
 		}
-		else if(pmap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)		/* sensor is working in polling mode if mux is connected to avoid interference with other sensors */
+		else 
 		{
-			//if(cmdLength == 0)							/* poll data */
 			if(localComState == UART_CO2_IDLE)
 			{
 				if(externalInterface_GetCO2Scale() == 0.0)
@@ -127,11 +127,6 @@ void uartCo2_Control(void)
 				cmdLength = 0;
 			}
 		}
-		else
-		{
-			localComState = UART_CO2_OPERATING;					/* sensor in streaming mode if not connected to mux => operating */
-			UART_StartDMA_Receiption(&Uart1Ctrl);
-		}
 	}
 	lastComState = localComState;
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);
@@ -150,6 +145,7 @@ void uartCo2_ProcessData(uint8_t data)
 		switch(data)
 		{
 			case 'G':
+			case 'K':
 			case 'l':
 			case 'D':
 			case 'Z':
@@ -187,17 +183,22 @@ void uartCo2_ProcessData(uint8_t data)
 		if(rxState == CO2RX_DataComplete)
 		{
 			CO2Connected = 1;
-			if(localComState == UART_CO2_SETUP)
+			switch(localComState)
 			{
-				if(dataType == '.')
-				{
-					localComState = UART_CO2_IDLE;
-				}
+				case UART_CO2_SETUP:	if(dataType == '.')
+										{
+											localComState = UART_CO2_IDLE;
+										}
+					break;
+				case UART_CO2_MODE:		if((dataType == 'K') && (dataValue == 2))
+										{
+											localComState = UART_CO2_IDLE;
+										}
+					break;
+				default: localComState = UART_CO2_IDLE;
+					break;
 			}
-			else
-			{
-				localComState = UART_CO2_IDLE;
-			}
+
 			if(externalInterface_GetCO2State() == 0)
 			{
 				externalInterface_SetCO2State(EXT_INTERFACE_33V_ON);

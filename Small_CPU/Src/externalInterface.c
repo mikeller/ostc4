@@ -836,14 +836,7 @@ static	uint8_t detectionDelayCnt = 0;
 										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_CO2;
 										externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
 										externalInterface_CheckBaudrate(SENSOR_CO2);
-										if(foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)		/* switch sensor operation mode depending on HW config */
-										{
-											uartCo2_SendCmd(CO2CMD_MODE_POLL, cmdString, &cmdLength);
-										}
-										else
-										{
-											uartCo2_SendCmd(CO2CMD_MODE_STREAM, cmdString, &cmdLength);
-										}
+										uartCo2_SendCmd(CO2CMD_MODE_POLL, cmdString, &cmdLength);
 									}
 				break;
 			case DETECTION_CO2_0:
