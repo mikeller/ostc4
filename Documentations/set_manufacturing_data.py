@@ -411,6 +411,7 @@ Examples:
 
 def main():
     args = parse_args()
+    needs_reinit_for_bt_name = False
     
     try:
         print(f"Opening {args.port}...")
@@ -439,8 +440,17 @@ def main():
             year, month, day = args.date
             # Pad info to 44 chars with spaces
             info = args.info.ljust(MAX_PROD_INFO_LEN)[:MAX_PROD_INFO_LEN]
-            write_production_data(ser, args.serial, args.licence, args.revision,
-                                year, month, day, info)
+            try:
+                write_production_data(ser, args.serial, args.licence, args.revision,
+                                    year, month, day, info)
+            except Exception as e:
+                # If the flash area is already programmed, the bootloader returns
+                # without sending a prompt. Allow continuing to BT name set.
+                if args.set_bluetooth_name and "Expected prompt" in str(e):
+                    print(f"Warning: {e}. Assuming production data already set; continuing to Bluetooth name.")
+                    needs_reinit_for_bt_name = True
+                else:
+                    raise
         
         # Write secondary serial if specified
         if args.secondary_serial is not None:
@@ -452,7 +462,29 @@ def main():
         
         # Set Bluetooth name if requested
         if args.set_bluetooth_name:
-            set_bluetooth_name(ser)
+            try:
+                # First try in the current session (often still in service mode)
+                set_bluetooth_name(ser)
+            except Exception as e:
+                if needs_reinit_for_bt_name and "not echoed" in str(e):
+                    print(f"Warning: {e}. Bluetooth disconnected after 0x80.")
+                    print("Please reconnect /dev/rfcomm0 now (e.g. via rfcomm), then press Enter.")
+                    try:
+                        ser.close()
+                    except Exception:
+                        pass
+                    try:
+                        input()
+                    except EOFError:
+                        raise Exception("Reconnection required but no input available.")
+                    ser = serial.Serial(args.port, 115200, timeout=args.timeout)
+                    time.sleep(0.5)
+                    ser.reset_input_buffer()
+                    ser.reset_output_buffer()
+                    send_service_mode_init(ser)
+                    set_bluetooth_name(ser)
+                else:
+                    raise
             print("\nThe device will now configure the Bluetooth module.")
             print("Wait for the bootloader to finish and reconnect.")
         
