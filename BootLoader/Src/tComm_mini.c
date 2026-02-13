@@ -116,7 +116,6 @@ static BlueModTmpConfig_t BmTmpConfig = BM_CONFIG_OFF;	/* Config BlueMod without
 static uint8_t EvaluateBluetoothSignalStrength = 0;
 
 /* Private function prototypes -----------------------------------------------*/
-static void tComm_Error_Handler(void);
 static uint8_t select_mode(uint8_t aRxByte);
 static uint8_t tComm_CheckAnswerOK(void);
 static uint8_t tComm_HandleBlueModConfig(void);
@@ -540,7 +539,7 @@ void tComm_exit(void)
     {
     	set_globalState_Base();
     }
-    MX_Bluetooth_PowerOff();						// Power down Bluetooth on the way out
+    /* Keep Bluetooth powered while bootloader runs */
 }
 
 
@@ -877,6 +876,7 @@ uint8_t select_mode(uint8_t type)
 
         case 0x82:
             setForcedBluetoothName = 1;
+            set_returnFromComm();
             return 0;
 
         case 0x74:
@@ -917,23 +917,31 @@ uint8_t select_mode(uint8_t type)
         case 0x80:
             if(HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer,  52, 5000)!= HAL_OK)
                 return 0;
-            if(hardware_programmProductionData(aRxBuffer) == HAL_OK)
             {
-                aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
+                uint8_t prog = hardware_programmProductionData(aRxBuffer);
+                /* 0xE0 means data already programmed; keep comm alive. */
+                if((prog == HAL_OK) || (prog == 0xE0))
+                {
+                    aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
+                }
+                else
+                    return 0;
             }
-            else
-                return 0;
             break;
 
         case 0x81:
             if(HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer,  12, 1000)!= HAL_OK)
                 return 0;
-            if(hardware_programmSecondarySerial(aRxBuffer) == HAL_OK)
             {
-                aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
+                uint8_t prog = hardware_programmSecondarySerial(aRxBuffer);
+                /* 0xE0 means data already programmed; keep comm alive. */
+                if((prog == HAL_OK) || (prog == 0xE0))
+                {
+                    aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
+                }
+                else
+                    return 0;
             }
-            else
-                return 0;
             break;
 
         }
@@ -2351,10 +2359,4 @@ uint8_t tComm_HandleBlueModConfig()
 		}
 	}
 	return result;
-}
-
-static void tComm_Error_Handler(void)
-{
-  while(1)
-  {}
 }
