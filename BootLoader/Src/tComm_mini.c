@@ -420,22 +420,21 @@ uint8_t tComm_control(void)
     else
     {
     /*##-2- Put UART peripheral in reception process ###########################*/
+    /* Use polling receive instead of interrupt-based to avoid overrun errors.
+     * With IT-based receive, the ISR captures byte 0 (e.g. 0xAA) but no IT
+     * receive is active while the main loop processes it and enters openComm().
+     * At 460800 baud, subsequent bytes arrive ~22us apart and are lost to ORE
+     * before openComm's blocking receive starts.
+     * Polling avoids this: we read byte 0 from DR and immediately enter
+     * openComm(), which starts HAL_UART_Receive for the remaining bytes
+     * before the next byte finishes clocking in. */
 
-		if((UartReady == RESET) && StartListeningToUART)
+		receiveStartByteUart = 0;
+		if(HAL_UART_Receive(&UartHandle, &receiveStartByteUart, 1, 100) == HAL_OK)
 		{
-				StartListeningToUART = 0;
-				receiveStartByteUart = 0;
-				if(HAL_UART_Receive_IT(&UartHandle, &receiveStartByteUart, 1) != HAL_OK)
-						tComm_Error_Handler();
-		}
-		/* Reset transmission flag */
-		if(UartReady == SET)
-		{
-				UartReady = RESET;
-				if((receiveStartByteUart == BYTE_DOWNLOAD_MODE) || (receiveStartByteUart == BYTE_SERVICE_MODE))
-					answer = openComm(receiveStartByteUart);
-				StartListeningToUART = 1;
-				return answer;
+			if((receiveStartByteUart == BYTE_DOWNLOAD_MODE) || (receiveStartByteUart == BYTE_SERVICE_MODE))
+				answer = openComm(receiveStartByteUart);
+			return answer;
 		}
     }
     return 0;
