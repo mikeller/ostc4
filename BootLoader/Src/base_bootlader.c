@@ -445,9 +445,7 @@ GPIO_test_I2C_lines();
 		i = 0;
 	}
 	else
-	if(			(firmware_MainCodeIsProgammed() == 0)
-			||	(HardwareData->primarySerial == 0xFFFF)
-			||	(HardwareData->production_bluetooth_name_set == 0xFF))
+	if(			(firmware_MainCodeIsProgammed() == 0))
 	{
 		i = 1;
 	}
@@ -679,10 +677,6 @@ GPIO_test_I2C_lines();
 	TIM_init();
 	MX_UART_Init();
 
-	/* Recovery: try to reconfigure a factory-reset Bluetooth module */
-	tComm_RecoverBluetoothModule();
-
-	/* Don't power cycle Bluetooth - connection may already be established from firmware */
 	MX_Bluetooth_PowerOn();
 
 	tComm_init();
