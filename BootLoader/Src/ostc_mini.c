@@ -45,6 +45,8 @@ UART_HandleTypeDef UartIR_HUD_Handle;
 __IO ITStatus UartReady = RESET;
 __IO ITStatus UartReadyHUD = RESET;
 
+extern uint8_t StartListeningToUART;  /* defined in tComm_mini.c */
+
 /* Private types -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -347,11 +349,11 @@ void MX_UART_Init(void)
       - BaudRate = 115200 baud
       - Hardware flow control: RTS/CTS for old module */
 
-#ifdef USARTx_CTS_PIN
-    UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_RTS_CTS;
-#else
+    /* Original bootloader: no hardware flow control.
+     * PA11/PA12 are NOT configured as AF in stm32f4xx_hal_msp_hw1.c
+     * (USART1_CTS_PIN is not defined). The UART transmits freely and
+     * the module's FC is handled by external pin levels. */
     UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
-#endif
     UartHandle.Instance        = USARTx;
     UartHandle.Init.BaudRate   = 115200;
     UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
@@ -400,6 +402,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if(huart == &UartIR_HUD_Handle)
     {
 		UartReadyHUD = SET;
+    }
+}
+
+
+/**
+ * Called by HAL when a UART error (ORE, FE, NE, PE) occurs during IT receive.
+ * ORE (overrun) aborts the IT receive silently; we must restart it.
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if(huart == &UartHandle)
+    {
+        /* Signal main loop to restart HAL_UART_Receive_IT */
+        StartListeningToUART = 1;
     }
 }
 
