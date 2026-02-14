@@ -247,7 +247,7 @@ void tComm_RecoverBluetoothModule(void)
     uint8_t rxLen;
     uint8_t recovery_success = 0;
     uint32_t working_baud = 0;
-    uint8_t saved_flow_control;
+    uint32_t saved_flow_control;
 
     bt_debug.state = 1;  /* testing */
     bt_debug.power_cycle_count = 0;
@@ -405,7 +405,11 @@ void tComm_RecoverBluetoothModule(void)
     /* Restore UART to normal operating config */
     UartHandle.Init.BaudRate  = 115200;
     UartHandle.Init.HwFlowCtl = saved_flow_control;
-    HAL_UART_Init(&UartHandle);
+    if (HAL_UART_Init(&UartHandle) != HAL_OK)
+    {
+        /* Log UART restore failure for debugging via ST-Link */
+        bt_debug.state = 5;  /* restore_failed */
+    }
 }
 
 uint8_t tComm_control(void)
@@ -524,12 +528,23 @@ void tComm_exit(void)
         /* Trigger full Bluetooth module re-initialization to set BLE name */
         BmTmpConfig = BM_INIT_TRIGGER_ON;
         
-        /* Wait for state machine to complete all initialization states */
-        uint32_t timeout = HAL_GetTick() + 30000;  /* 30 second timeout */
-        while((BmTmpConfig != BM_CONFIG_DONE) && (HAL_GetTick() < timeout))
+        /* Wait for state machine to complete all initialization states.
+         * Note: setForcedBluetoothName is cleared above, so even if tComm_control()
+         * triggers set_returnFromComm(), tComm_exit() won't re-enter this block.
+         * This deferred-exit behavior is intentional and safe. */
+          uint32_t startTick = HAL_GetTick();
+          while((BmTmpConfig != BM_CONFIG_DONE)
+              && (time_elapsed_ms(startTick, HAL_GetTick()) < 30000))
         {
             tComm_control();  /* Drive the Bluetooth initialization state machine */
             HAL_Delay(10);
+        }
+        
+        /* Check if initialization completed successfully or timed out */
+        if (BmTmpConfig != BM_CONFIG_DONE)
+        {
+            /* Initialization timed out - module may not be properly configured */
+            bt_debug.state = 0xFF;  /* Mark as failed */
         }
     }
 
@@ -588,14 +603,11 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     // limit is 19 chars, with 7 chars shown in BLE advertising mode
     //________________________123456789012345678901
 
-    tComm_GetBTCmdStr(BT_CMD_NAME, aTxBufferName);
-
     char answerOkay[6] = "\r\nOK\r\n";
 
+    tComm_GetBTCmdStr(BT_CMD_NAME, aTxBufferName);
     gfx_number_to_string(5,1,&aTxBufferName[15],serial);
 
-    // For Stollmann module: prepare BLE name command using proper enum
-    // This ensures the correct AT command is sent for each module type
     tComm_GetBTCmdStr(BT_CMD_BLE_NAME, aTxBufferBLEName);
     gfx_number_to_string(5,1,&aTxBufferBLEName[15],serial);
 
@@ -603,7 +615,6 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     char aTxBufferWrite[50] = "AT&W\r";
 
 //	char aTxBufferReset[50] = "AT+RESET\r";
-
 
     HAL_Delay(1010);
     if(withEscapeSequence)
@@ -615,39 +626,39 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
         HAL_Delay(1010);
 
         for(int i=0;i<3;i++)
-        if(aRxBuffer[i] != '+')
-            answer = HAL_ERROR;
+            if(aRxBuffer[i] != '+')
+                answer = HAL_ERROR;
     }
 
-    // Send classic BT name command (AT+BNAME=OSTC4-xxxxx)
+    // Send classic BT name command
     aRxBuffer[0] = 0;
     if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBufferName, 21, 2000)!= HAL_OK)
         answer = HAL_ERROR;
     HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer, 21+6, 2000);
 
     for(int i=0;i<21;i++)
-    if(aRxBuffer[i] != aTxBufferName[i])
-        answer = HAL_ERROR;
+        if(aRxBuffer[i] != aTxBufferName[i])
+            answer = HAL_ERROR;
 
     for(int i=0;i<6;i++)
-    if(aRxBuffer[21+i] != answerOkay[i])
-        answer = HAL_ERROR;
+        if(aRxBuffer[21+i] != answerOkay[i])
+            answer = HAL_ERROR;
 
     HAL_Delay(200);
 
-    // Send BLE name command (AT+UBTLN=OSTC4-xxxxx)
+    // Send BLE name command
     aRxBuffer[0] = 0;
     if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBufferBLEName, 21, 2000)!= HAL_OK)
         answer = HAL_ERROR;
     HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer, 21+6, 2000);
 
     for(int i=0;i<21;i++)
-    if(aRxBuffer[i] != aTxBufferBLEName[i])
-        answer = HAL_ERROR;
+        if(aRxBuffer[i] != aTxBufferBLEName[i])
+            answer = HAL_ERROR;
 
     for(int i=0;i<6;i++)
-    if(aRxBuffer[21+i] != answerOkay[i])
-        answer = HAL_ERROR;
+        if(aRxBuffer[21+i] != answerOkay[i])
+            answer = HAL_ERROR;
 
     HAL_Delay(200);
 
@@ -657,14 +668,13 @@ uint8_t HW_Set_Bluetooth_Name(uint16_t serial, uint8_t withEscapeSequence)
     HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer, 5+6, 2000);
 
     for(int i=0;i<5;i++)
-    if(aRxBuffer[i] != aTxBufferWrite[i])
-        answer = HAL_ERROR;
+        if(aRxBuffer[i] != aTxBufferWrite[i])
+            answer = HAL_ERROR;
 
     for(int i=0;i<6;i++)
-    if(aRxBuffer[5+i] != answerOkay[i])
-        answer = HAL_ERROR;
+        if(aRxBuffer[5+i] != answerOkay[i])
+            answer = HAL_ERROR;
 
-    answer = HAL_OK;
     return answer;
 }
 
@@ -2025,9 +2035,9 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 			case BT_CMD_NAME:			strcpy(pCmdStr,"AT+BNAME=OSTC4-12345\r");
 										ret = 1;
 				break;
-			case BT_CMD_BLE_NAME:		strcpy(pCmdStr,"AT+UBTLN=OSTC4-12345\r");
-									ret = 1;
-				break;
+            case BT_CMD_BLE_NAME:		strcpy(pCmdStr,"AT+BNAME=OSTC4-12345\r");
+                                    ret = 1;
+                break;
 			case BT_CMD_EXIT_CMD:		strcpy(pCmdStr,"ATO\r");
 										ret = 1;
 				break;
@@ -2050,9 +2060,13 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 			case BT_CMD_NAME:			strcpy(pCmdStr,"AT+UBTLN=OSTC5-12345\r");
 										ret = 1;
 				break;
-		case BT_CMD_BLE_NAME:		strcpy(pCmdStr,"AT+UBTLN=OSTC5-12345\r");
-									ret = 1;
-			break;
+			case BT_CMD_BLE_NAME:		strcpy(pCmdStr,"AT+UBTLN=OSTC5-12345\r");
+										ret = 1;
+				break;
+			case BT_CMD_EXIT_CMD:
+				/* No explicit exit from command mode required for u-blox (OSTC5).
+				 * Keep ret == 0 so callers know no command string was generated. */
+				break;
 			default:
 				break;
 		}
@@ -2231,7 +2245,7 @@ uint8_t tComm_HandleBlueModConfig()
                                             hardware_programmPrimaryBluetoothNameSet();
                                         }
 										break;
-                case BM_INIT_SSP_IDO_OFF:	BmTmpConfig++; /* Stollmann: AT+UBTLN is u-blox only, skip */
+                case BM_INIT_SSP_IDO_OFF:	BmTmpConfig++; /* Stollmann: No SPP ID0 disable command needed, skip */
                                         break;
                 case BM_INIT_SSP_IDO_ON:	sprintf(TxBuffer,"ATS30=0\r"); /* Stollmann: Show CONNECT/RING text (saved by AT&W) */
                                         break;
