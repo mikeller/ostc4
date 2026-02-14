@@ -445,7 +445,9 @@ GPIO_test_I2C_lines();
 		i = 0;
 	}
 	else
-	if(			(firmware_MainCodeIsProgammed() == 0))
+	if(			(firmware_MainCodeIsProgammed() == 0)
+			|| (HardwareData->primarySerial == 0xFFFF)
+			|| (HardwareData->production_bluetooth_name_set == 0xFF))
 	{
 		i = 1;
 	}
