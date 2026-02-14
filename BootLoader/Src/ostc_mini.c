@@ -408,13 +408,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 /**
  * Called by HAL when a UART error (ORE, FE, NE, PE) occurs during IT receive.
- * ORE (overrun) aborts the IT receive silently; we must restart it.
+ * Note: This callback currently has no effect because the bootloader now uses
+ * polling-based UART receive (not interrupt-based) in tComm_control().
+ * The StartListeningToUART flag is set but not checked in the polling implementation.
+ * This callback is kept for compatibility but may be removed in the future.
  */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     if(huart == &UartHandle)
     {
-        /* Signal main loop to restart HAL_UART_Receive_IT */
+        /* Flag is no longer used in polling-based implementation */
         StartListeningToUART = 1;
     }
 }

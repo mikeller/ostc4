@@ -125,23 +125,26 @@ def read_hardware_data(ser):
         raise Exception(f"Expected 64 bytes, got {len(data)}")
     
     # Parse primary manufacturing data (first 52 bytes)
+    # Structure: serial(2) + licence(1) + revision(1) + date(3) + bt_name_set(1) + info(44)
     primary_serial = int.from_bytes(data[0:2], byteorder='little')
     primary_licence = data[2]
     primary_revision = data[3]
     primary_year = data[4]
     primary_month = data[5]
     primary_day = data[6]
-    primary_info = data[7:51].rstrip(b'\x00\xff').decode('ascii', errors='replace')
-    primary_checksum = data[51]
+    # data[7] = production_bluetooth_name_set (skip)
+    primary_info = data[8:52].rstrip(b'\x00\xff').decode('ascii', errors='replace')
     
     # Parse secondary manufacturing data (last 12 bytes)
+    # Structure: serial(2) + licence(1) + reason(1) + date(3) + bt_name_set(1) + info(4)
     secondary_serial = int.from_bytes(data[52:54], byteorder='little')
-    secondary_year = data[54]
-    secondary_month = data[55]
-    secondary_day = data[56]
-    secondary_reason = data[57]
-    secondary_info = data[58:62].rstrip(b'\x00\xff').decode('ascii', errors='replace')
-    secondary_checksum = data[62]
+    secondary_licence = data[54]
+    secondary_reason = data[55]
+    secondary_year = data[56]
+    secondary_month = data[57]
+    secondary_day = data[58]
+    # data[59] = secondary_bluetooth_name_set (skip)
+    secondary_info = data[60:64].rstrip(b'\x00\xff').decode('ascii', errors='replace')
     
     # Display primary data
     print("\n=== Primary Manufacturing Data ===")
@@ -154,17 +157,19 @@ def read_hardware_data(ser):
         print("Production Date: Not set")
     if primary_info:
         print(f"Info: {primary_info}")
-    print(f"Checksum: 0x{primary_checksum:02X}")
     
     # Display secondary data
     print("\n=== Secondary Manufacturing Data ===")
     if secondary_serial != 0xFFFF:
         print(f"Secondary Serial: {secondary_serial} (0x{secondary_serial:04X})")
-        print(f"Secondary Date: 20{secondary_year:02d}-{secondary_month:02d}-{secondary_day:02d}")
+        print(f"Secondary Licence: {secondary_licence}")
+        if secondary_year != 0xFF:
+            print(f"Secondary Date: 20{secondary_year:02d}-{secondary_month:02d}-{secondary_day:02d}")
+        else:
+            print("Secondary Date: Not set")
         print(f"Reason Code: {secondary_reason}")
         if secondary_info:
             print(f"Info: {secondary_info}")
-        print(f"Checksum: 0x{secondary_checksum:02X}")
     else:
         print("Secondary Serial: Not set")
     
@@ -468,11 +473,11 @@ def main():
             except Exception as e:
                 if needs_reinit_for_bt_name and "not echoed" in str(e):
                     print(f"Warning: {e}. Bluetooth disconnected after 0x80.")
-                    print("Please reconnect /dev/rfcomm0 now (e.g. via rfcomm), then press Enter.")
+                    print(f"Please reconnect {args.port} now (e.g. via rfcomm), then press Enter.")
                     try:
                         ser.close()
-                    except Exception:
-                        pass
+                    except Exception as close_err:
+                        print(f"Note: could not close port: {close_err}")
                     try:
                         input()
                     except EOFError:
