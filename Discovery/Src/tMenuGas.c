@@ -222,8 +222,10 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                     if(typeDeco && depthUp)
                         color[1] = '\020';
                     /* ltr */
+#ifdef ENABLE_ADVANCED_GAS
                     if(ltr)
                         color[2] = '\020';
+#endif
                     /* bar */
 
                     if(mod < depthUp)
