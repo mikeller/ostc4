@@ -10,3 +10,4 @@ RefPrj/RTE/OSTC4_RTE2.xml
 tools/
 
 *.swp
+.vscode
