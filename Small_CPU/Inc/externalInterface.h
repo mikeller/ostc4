@@ -109,8 +109,6 @@ void externalInterface_SetCO2Value(uint16_t CO2_ppm);
 void externalInterface_SetCO2SignalStrength(uint16_t LED_qa);
 uint16_t externalInterface_GetCO2Value(void);
 uint16_t externalInterface_GetCO2SignalStrength(void);
-void externalInterface_SetCO2State(uint16_t state);
-uint16_t externalInterface_GetCO2State(void);
 void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar);
 uint8_t externalInterface_GetBottlePressure(uint8_t bottle);
 uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct);

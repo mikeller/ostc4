@@ -440,25 +440,28 @@ void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips process
 		while((!UART_isEndIndication(pUartCtrl, localRX)) || (moreData))
 		{
 			moreData = 0;
-			switch (sensorType)
+			if(flush == 0)
 			{
-				case SENSOR_MUX:
-				case SENSOR_DIGO2:	uartO2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
-					break;
-	#ifdef ENABLE_CO2_SUPPORT
-				case SENSOR_CO2:	uartCo2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
-					break;
-	#endif
-	#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-					case SENSOR_GNSS:	uartGnss_ProcessData(pUartCtrl->pRxBuffer[localRX]);
-							break;
-	#endif
-	#ifdef ENABLE_SENTINEL_MODE
-				case SENSOR_SENTINEL:	uartSentinel_ProcessData(pUartCtrl->pRxBuffer[localRX]);
-					break;
-	#endif
-				default:
-					break;
+				switch (sensorType)
+				{
+					case SENSOR_MUX:
+					case SENSOR_DIGO2:	uartO2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+						break;
+#ifdef ENABLE_CO2_SUPPORT
+					case SENSOR_CO2:	uartCo2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+						break;
+#endif
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
+						case SENSOR_GNSS:	uartGnss_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+								break;
+#endif
+#ifdef ENABLE_SENTINEL_MODE
+					case SENSOR_SENTINEL:	uartSentinel_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+						break;
+#endif
+					default:
+						break;
+				}
 			}
 			if(localRX % 2)
 			{

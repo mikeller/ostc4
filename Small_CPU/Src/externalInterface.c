@@ -75,6 +75,7 @@ static uint8_t delayAdcConversion = 0;
 static uint32_t startTickADC = 0;
 
 float externalChannel_mV[MAX_ADC_CHANNEL];
+float externalChannel_History_mV[MAX_ADC_CHANNEL][3];
 static uint8_t  externalV33_On = 0;
 static uint8_t  externalADC_On = 0;
 static uint8_t  externalUART_Protocol = 0;
@@ -148,6 +149,9 @@ void externalInterface_InitDatastruct(void)
 	for(index = 0; index < MAX_ADC_CHANNEL; index++)
 	{
 		externalChannel_mV[index] = 0.0;
+		externalChannel_History_mV[index][0] = 0.0;
+		externalChannel_History_mV[index][1] = 0.0;
+		externalChannel_History_mV[index][2] = 0.0;
 	}
 	memset(externalInterface_SensorState,UART_COMMON_INIT,sizeof(externalInterface_SensorState));
 	externalInface_MapUartToLegacyADC(SensorMap);
@@ -182,11 +186,9 @@ uint8_t externalInterface_ReadAndSwitch()
 		{
 			if(delayAdcConversion)
 			{
-				if(UART_isComActive(activeUartChannel) == 0)
-				{
-					externalInterface_StartConversion(activeChannel);
-					delayAdcConversion = 0;
-				}
+				externalInterface_StartConversion(activeChannel);
+				delayAdcConversion = 0;
+				timeoutCnt = 0;
 			}
 			else if(I2C_Master_Receive(DEVICE_EXTERNAL_ADC, recBuf, ADC_ANSWER_LENGTH) == HAL_OK)
 			{
@@ -199,12 +201,12 @@ uint8_t externalInterface_ReadAndSwitch()
 						nextChannel = 0;
 					}
 
-					while((psensorMap[nextChannel] != SENSOR_ANALOG) && (nextChannel != activeChannel))
+					while((psensorMap[nextChannel] != SENSOR_ANALOG) && (nextChannel != 0))
 					{
 						if(nextChannel == MAX_ADC_CHANNEL)
 						{
 							nextChannel = 0;
-							startTickADC = HAL_GetTick();
+							break;
 						}
 						else
 						{
@@ -215,29 +217,23 @@ uint8_t externalInterface_ReadAndSwitch()
 					activeChannel = nextChannel;
 					if(activeChannel == 0)
 					{
+						startTickADC = HAL_GetTick();
 						delayAdcConversion = 1;		/* wait for next cycle interval */
 					}
 					else
 					{
-						if(UART_isComActive(activeUartChannel) == 0)
-						{
-							externalInterface_StartConversion(activeChannel);
-						}
-						else
-						{
-							delayAdcConversion = 1;
-						}
+						externalInterface_StartConversion(activeChannel);
 					}
 					timeoutCnt = 0;
 				}
-			}
 
-		if(timeoutCnt++ >= ADC_TIMEOUT)
-		{
-			externalInterface_StartConversion(activeChannel);
-			delayAdcConversion = 0;
-			timeoutCnt = 0;
-		}
+				if(timeoutCnt++ >= ADC_TIMEOUT)
+				{
+					externalInterface_StartConversion(activeChannel);
+					delayAdcConversion = 0;
+					timeoutCnt = 0;
+				}
+			}
 		}
 	}
 	return retval;
@@ -246,6 +242,7 @@ float externalInterface_CalculateADCValue(uint8_t channel)
 {
 	int32_t rawvalue = 0;
 	float retValue = 0.0;
+	float newValue = 0.0;
 	if(channel < MAX_ADC_CHANNEL)
 	{
 
@@ -262,18 +259,28 @@ float externalInterface_CalculateADCValue(uint8_t channel)
 											{
 												rawvalue &= 0x0000FFFF;
 											}
-											externalChannel_mV[channel] = ADC_REF_VOLTAGE_MV * 2.0 / (float) pow(2,ADC_RESOLUTION_16BIT_VALUE);	/* calculate bit resolution */
+											newValue = ADC_REF_VOLTAGE_MV * 2.0 / (float) pow(2,ADC_RESOLUTION_16BIT_VALUE);	/* calculate bit resolution */
 				break;
 			case ADC_RESOLUTION_18BIT:		if(rawvalue & (0x1 << (ADC_RESOLUTION_18BIT_VALUE-1)))			/* MSB set => negative number */
 											{
 												rawvalue |= 0xFFFE0000; 	/* set MSB for int32 */
 											}
-											externalChannel_mV[channel] = ADC_REF_VOLTAGE_MV * 2.0 / (float) pow(2,ADC_RESOLUTION_18BIT_VALUE);	/* calculate bit resolution */
+											newValue = ADC_REF_VOLTAGE_MV * 2.0 / (float) pow(2,ADC_RESOLUTION_18BIT_VALUE);	/* calculate bit resolution */
 							break;
 			default: rawvalue = 0;
 				break;
 		}
-		externalChannel_mV[channel] = externalChannel_mV[channel] * rawvalue / ADC_GAIN_8_VALUE;
+		newValue = newValue * rawvalue / ADC_GAIN_8_VALUE;
+
+		externalChannel_History_mV[channel][0] = externalChannel_History_mV[channel][1];		/* oldest value */
+		externalChannel_History_mV[channel][1] = externalChannel_History_mV[channel][2];		/* return value */
+		externalChannel_History_mV[channel][2] = newValue;
+
+		if((externalChannel_History_mV[channel][1] > externalChannel_History_mV[channel][0]) && (externalChannel_History_mV[channel][1] > externalChannel_History_mV[channel][2]))	/* peak condition */
+		{
+			externalChannel_History_mV[channel][1] = (externalChannel_History_mV[channel][0] + externalChannel_History_mV[channel][2]) / 2.0; /* build avarage as replacement value */
+		}
+		externalChannel_mV[channel] = externalChannel_History_mV[channel][1];
 		retValue = externalChannel_mV[channel];
 	}
 	return retValue;
@@ -454,7 +461,7 @@ uint8_t externalInterface_GetSensorState(uint8_t sensorIdx)
 /* The supported sensors from GSS have different scaling factors depending on their accuracy. The factor may be read out of the sensor */
 void externalInterface_SetCO2Scale(float CO2Scale)
 {
-	if((CO2Scale == 10) || (CO2Scale == 100))
+	if((CO2Scale == 0.0) || (CO2Scale == 10.0) || (CO2Scale == 100.0))
 	{
 		externalCO2Scale = CO2Scale;
 	}
@@ -500,17 +507,6 @@ uint16_t externalInterface_GetCO2Value(void)
 uint16_t externalInterface_GetCO2SignalStrength(void)
 {
 	return externalCO2SignalStrength;
-}
-
-
-void externalInterface_SetCO2State(uint16_t state)
-{
-	externalCO2Status = state;
-}
-
-uint16_t externalInterface_GetCO2State(void)
-{
-	return externalCO2Status;
 }
 
 void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar)
@@ -702,10 +698,6 @@ static	uint8_t detectionDelayCnt = 0;
 
 	uint8_t cntSensor = 0;
 	uint8_t cntUARTSensor = 0;
-#ifdef ENABLE_CO2_SUPPORT
-	uint8_t cmdString[10];
-	uint8_t cmdLength = 0;
-#endif
 
 	if(externalAutoDetect != DETECTION_OFF)
 	{
@@ -836,7 +828,6 @@ static	uint8_t detectionDelayCnt = 0;
 										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_CO2;
 										externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
 										externalInterface_CheckBaudrate(SENSOR_CO2);
-										uartCo2_SendCmd(CO2CMD_MODE_POLL, cmdString, &cmdLength);
 									}
 				break;
 			case DETECTION_CO2_0:
@@ -860,7 +851,6 @@ static	uint8_t detectionDelayCnt = 0;
 										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET + uartMuxChannel] = SENSOR_CO2;
 										externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET + uartMuxChannel] = UART_COMMON_INIT;
 										externalInterface_CheckBaudrate(SENSOR_CO2);
-										uartCo2_SendCmd(CO2CMD_MODE_POLL, cmdString, &cmdLength);
 										externalAutoDetect++;
 										uartMuxChannel++;
 									}
@@ -1152,6 +1142,7 @@ void externalInterface_HandleUART()
 	uint32_t tick =  HAL_GetTick();
 	uint8_t *pmap = externalInterface_GetSensorMapPointer(0);
 	uint8_t forceMuxChannel = 0;
+	static uint8_t flushUART = 0;
 
 
 	if(externalInterfaceMuxReqIntervall != 0xFFFF)
@@ -1181,8 +1172,9 @@ void externalInterface_HandleUART()
 
 		if(externalInterface_SensorState[activeSensorId] != UART_COMMON_INIT)
 		{
-			UART_ReadData(pmap[activeSensorId], 0);
+			UART_ReadData(pmap[activeSensorId], flushUART);
 			UART_WriteData(&Uart1Ctrl);
+			flushUART = 0;
 		}
 		if(externalInterface_SensorState[activeSensorId] == UART_COMMON_INIT)
 		{
@@ -1191,9 +1183,9 @@ void externalInterface_HandleUART()
 			timeToTrigger = 1;
 			retryRequest = 0;
 		}
-		else if(((retryRequest == 0) && (pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET] != SENSOR_SENTINEL)		/* timeout or error */
-				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (externalInterface_SensorState[activeSensorId] != UART_O2_IDLE))	/* retry if no answer after half request interval */
-					|| (externalInterface_SensorState[activeSensorId] == UART_O2_ERROR))))
+		else if(((retryRequest == 0) && (pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET] != SENSOR_SENTINEL))		/* timeout or error */
+				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (externalInterface_SensorState[activeSensorId] != UART_COMMON_IDLE))	/* retry if no answer after half request interval */
+					|| (externalInterface_SensorState[activeSensorId] == UART_COMMON_ERROR)))
 		{
 			/* The channel switch will cause the sensor to respond with an error message. */
 			/* The sensor needs ~30ms to recover before he is ready to receive the next command => transmission delay needed */
@@ -1224,7 +1216,7 @@ void externalInterface_HandleUART()
 						case SENSOR_DIGO2: setExternalInterfaceChannel(activeSensorId,0.0);
 							break;
 						case SENSOR_CO2: externalInterface_SetCO2Value(0.0);
-										 externalInterface_SetCO2State(0);
+										 externalInterface_SetCO2SignalStrength(0);
 							break;
 						case SENSOR_SENTINEL: setExternalInterfaceChannel(0,0.0);
 											  setExternalInterfaceChannel(1,0.0);
@@ -1245,6 +1237,7 @@ void externalInterface_HandleUART()
 
 				if(pmap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX) /* select next sensor if mux is connected */
 				{
+
 					if(activeUartChannel < MAX_MUX_CHANNEL)
 					{
 						index = ExternalInterface_SelectUsedMuxChannel(activeUartChannel);
@@ -1252,7 +1245,9 @@ void externalInterface_HandleUART()
 						{
 							forceMuxChannel = 0;
 							timeToTrigger = 100;
+							lastRequestTick = tick;
 							activeUartChannel = index;
+							flushUART = 1;	/* discard data which might be received while switching to new channel */
 							switch(pmap[index + EXT_INTERFACE_MUX_OFFSET])
 							{
 								case SENSOR_DIGO2: uartO2_SetChannel(activeUartChannel);
