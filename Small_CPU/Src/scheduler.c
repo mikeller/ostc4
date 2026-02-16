@@ -1802,21 +1802,10 @@ void copyExtCO2data()
 	global.dataSendToMaster.boolADCO2Data &= ~DATA_BUFFER_CO2;
 	boolCO2Buffer &= DATA_BUFFER_CO2;
 
-	if(externalInterface_GetCO2State())
-	{
-		value = externalInterface_GetCO2Value();
-		global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].CO2_ppm = value;
-		value = externalInterface_GetCO2SignalStrength();
-		global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].CO2_signalStrength = value;
-		global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].externalInterface_CmdAnswer = externalInterface_GetCO2State();
-		externalInterface_SetCO2State(EXT_INTERFACE_33V_ON); 	/* clear command responses */
-	}
-	else
-	{
-		global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].CO2_ppm = 0;
-		global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].CO2_signalStrength = 0;
-		global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].externalInterface_CmdAnswer = 0;
-	}
+	value = externalInterface_GetCO2Value();
+	global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].CO2_ppm = value;
+	value = externalInterface_GetCO2SignalStrength();
+	global.dataSendToMaster.data[(boolCO2Buffer && DATA_BUFFER_CO2)].CO2_signalStrength = value;
 	global.dataSendToMaster.boolADCO2Data |= boolCO2Buffer;
 }
 
