@@ -4,7 +4,7 @@
 
 # For the 'install' target
 BUILD_TYPE := firmware
-MODEL := "OSTC 4/5"
+MODEL := "OSTC 4"
 DEVICE := /dev/rfcomm0
 FORCE :=
 
