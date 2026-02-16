@@ -447,7 +447,8 @@ GPIO_test_I2C_lines();
 	else
 	if(			(firmware_MainCodeIsProgammed() == 0)
 			|| (HardwareData->primarySerial == 0xFFFF)
-			|| (HardwareData->production_bluetooth_name_set == 0xFF))
+			|| (HardwareData->production_bluetooth_name_set == 0xFF)
+			|| (HardwareData->production_bluetooth_name_set == 0xF0))
 	{
 		i = 1;
 	}
@@ -560,7 +561,7 @@ GPIO_test_I2C_lines();
 	/* here comes the variable upper firmware loader */
 	if((i == 0) && (status == HAL_OK))
 	{
-		tInfo_newpage("load fontpack data");
+		tInfo_newpage("load extra data");
 		uint8_t* pBuffer = (uint8_t*)((uint32_t)0xD0000000); /* blocked via  GFX_init1_no_DMA */
 		firmware_load_result = ext_flash_read_firmware2(&pOffset, pBuffer,768000*2,0,0);
 
@@ -683,24 +684,33 @@ GPIO_test_I2C_lines();
 
 	tComm_init();
 
-	tInfo_button_text("exit","","sleep");
+	tInfo_button_text("reboot","BT Reset","sleep");
 	tInfo_newpage("bootloader 251115");
-	tInfo_write("start bluetooth");
-	tInfo_write(textVersion);
-#if 0
-	if(tComm_Set_Bluetooth_Name(0) == 0xFF)
-#else
-	if(hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF)
-#endif
+	
+	/* Check if Bluetooth name needs initialization.
+	 * 0xFF = uninitialized, 0xF0 = corrupted/partial initialization (e.g., device 428)
+	 * Anything other than these values = fully initialized (0x00, etc.)
+	 */
+	if((hardwareDataGetPointer()->production_bluetooth_name_set == 0xFF) ||
+	   (hardwareDataGetPointer()->production_bluetooth_name_set == 0xF0))
 	{
-		tInfo_write("init bluetooth");
+		tInfo_write("bt init");
+		if(isNewDisplay())
+			tInfo_write("(u-blox)");
+		else
+			tInfo_write("(Stollmann)");
 		tComm_StartBlueModBaseInit();
 	}
 	else
 	{
-		tInfo_write("bluetooth set");
+		tInfo_write("bt ready");
+		if(isNewDisplay())
+			tInfo_write("(u-blox)");
+		else
+			tInfo_write("(Stollmann)");
 		tComm_StartBlueModConfig();
 	}
+	tInfo_write(textVersion);
 
 	set_globalState_Base();
 
@@ -752,8 +762,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		tComm_exit();
 		returnFromCommCleanUpRequest = 0;
 		GFX_hwBackgroundOn();
-		tInfo_button_text("exit","","sleep");
-		tInfo_newpage("bluetooth disonnected");
+		tInfo_button_text("reboot","BT Reset","sleep");
+		tInfo_newpage("bluetooth disconnected");
 		tInfo_write("");
 		tInfo_write("");
 		tInfo_write("");
@@ -817,38 +827,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 	if(status.base == BaseComm)
 	{
-			if(action == ACTION_BUTTON_BACK)
-			{
+		switch (action)
+		{
+			case ACTION_BUTTON_BACK:
 				reset_to_firmware_using_Watchdog();
-			}
-			if(action == ACTION_BUTTON_ENTER)
-			{
+				break;
+			case ACTION_BUTTON_ENTER:
 				tComm_StartBlueModBaseInit(); /* factory reset bluetooth */
-			}
+				break;
+			case ACTION_BUTTON_NEXT: /* right button: sleep */
+#ifdef BUTTON_CUSTOM_PIN
+			case ACTION_BUTTON_CUSTOM:
+#endif
+				gotoSleep();
+				break;
+			default:
+				break;
+		}
 	}
 	else
 	{
 		switch (action)
 		{
-			case ACTION_BUTTON_NEXT: if((counterToPreventSleep == 255) && (get_globalState() == StS))
-										{
-											while(1)
-											{
-												MX_tell_reset_logik_alles_ok();
-												DataEX_call();
-												HAL_Delay(100);
-											}
-										}
+			case ACTION_BUTTON_BACK:
+				reset_to_firmware_using_Watchdog();
 				break;
-			case ACTION_BUTTON_BACK:	reset_to_firmware_using_Watchdog();
+			case ACTION_BUTTON_ENTER:
+				tComm_StartBlueModBaseInit(); /* factory reset bluetooth */
 				break;
-			case ACTION_BUTTON_CUSTOM:	if(get_globalState() == StS)
-										{
-											gotoSleep();
-										}
-				break;
-			case ACTION_BUTTON_ENTER:	/* reset_to_update_using_system_reset(); old function */
-										tComm_StartBlueModBaseInit(); /* new: factory reset bluetooth */
+			case ACTION_BUTTON_NEXT: /* right button: sleep */
+#ifdef BUTTON_CUSTOM_PIN
+			case ACTION_BUTTON_CUSTOM:
+#endif
+				if(get_globalState() == StS)
+					gotoSleep();
 				break;
 			default:
 				break;
