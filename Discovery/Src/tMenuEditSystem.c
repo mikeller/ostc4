@@ -42,6 +42,7 @@
 #include "motion.h"
 #include "t7.h"
 #include "math.h"
+#include "firmwareEraseProgram.h"
 
 
 /*#define HAVE_DEBUG_VIEW */
@@ -1507,6 +1508,9 @@ void openEdit_Reset(void)
 {
     char text[32];
 
+    resetMenuEdit(CLUT_MenuPageSystem);
+    setBackMenu((uint32_t)openEdit_System, 0, 5);
+
     text[0] = '\001';
     text[1] = TXT_2BYTE;
     text[2] = TXT2BYTE_ResetMenu;
@@ -1549,6 +1553,7 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
 
 
     resetMenuEdit(CLUT_MenuPageSystem);
+    setBackMenu((uint32_t)openEdit_Reset, 0, 0);
 
     text[0] = '\001';
     text[1] = TXT_2BYTE;
@@ -1614,12 +1619,79 @@ void openEdit_ResetConfirmation(uint32_t editIdOfCaller)
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
+
+static bool isValidBootloaderBlock(const customBlockInfo_t *info, uint32_t checksum)
+{
+    if (info == NULL) {
+        return false;
+    }
+
+    return (info->Type & 0x0000FF00) == 0x0100 && checksum == info->fletcher;
+}
+
 customBlockInfo_t blockInfo;
+
+static bool isBootloaderEqualToSource(const customBlockInfo_t *info)
+{
+    if (info == NULL) {
+        return false;
+    }
+
+    const uint8_t *pSource = (const uint8_t *)0x08100000;
+
+    /* We only compare the bootloader bytes actually present in the source
+     * image (info->length). Hardware data is device-specific and must be
+     * skipped in both flash and source when overlapping. */
+
+    const uint32_t boot_start = FLASH_BOOT_START_ADDR;
+    const uint32_t hw_off = HARDWAREDATA_ADDRESS - FLASH_BOOT_START_ADDR;
+    const uint32_t total_boot_capacity = (FLASH_BOOT_END_ADDR - FLASH_BOOT_START_ADDR) + 1;
+
+    /* Bound total to compare by the source-provided length and boot capacity */
+    uint32_t total = info->length;
+    if (total > total_boot_capacity) {
+        total = total_boot_capacity;
+    }
+
+    /* Region 1: from start to just before hardware data (if covered) */
+    uint32_t r1_len = (total > hw_off) ? hw_off : total;
+    if (r1_len) {
+        if (memcmp((void *)boot_start, pSource, r1_len) != 0) {
+            return false;
+        }
+    }
+
+    /* If total is within the hardware block, there's nothing more to compare */
+    if (total <= hw_off) {
+        return true;
+    }
+
+    /* Skip hardware block overlap in both flash and source */
+    uint32_t after_hw_in_source = hw_off + sizeof(SHardwareData);
+    uint32_t bytes_past_hw = 0;
+    if (total > after_hw_in_source) {
+        bytes_past_hw = total - after_hw_in_source;
+    } else {
+        /* Source length ends within or at the end of the hardware block */
+        return true;
+    }
+
+    /* Region 2: bytes after hardware data */
+    uint32_t r2_flash = HARDWAREDATA_ADDRESS + sizeof(SHardwareData);
+    uint32_t r2_src   = after_hw_in_source;
+
+    if (memcmp((void *)r2_flash, pSource + r2_src, bytes_past_hw) != 0) {
+        return false;
+    }
+
+    return true;
+}
 
 void openEdit_Maintenance(void)
 {
     char text[32];
     unsigned char index = 0;
+    unsigned char nextLine = ME_Y_LINE3;
     SSettings *pSettings = settingsGetPointer();
     SSensorDataDiveO2* pDiveO2Data = NULL;
 
@@ -1629,7 +1701,10 @@ void openEdit_Maintenance(void)
     blockInfo.fletcher = swapBytes(pCustumBlockInfo->fletcher);
     blockInfo.length = swapBytes(pCustumBlockInfo->length);
 
+    uint32_t checksum = CalcFletcher32(0x08100000,0x0811FFEF);	/* last nibble contains block info => exclude */
+
     resetMenuEdit(CLUT_MenuPageSystem);
+    setBackMenu((uint32_t)openEdit_Reset, 0, 5);
 
     text[0] = '\001';
     text[1] = TXT_2BYTE;
@@ -1652,6 +1727,16 @@ void openEdit_Maintenance(void)
         write_field_button(StMSYS5_SetBattCharge,			30, 800, ME_Y_LINE2,  &FontT48, text);
     }
 
+    /* No need to remember line; we'll update the field text directly */
+
+#ifdef ENABLE_ANALYSE_SAMPLES
+    text[0] = TXT_2BYTE;
+    text[1] = TXT2BYTE_SetSampleIndex;
+    text[2] = 0;
+    write_field_button(StMSYS5_SetSampleIndx,			30, 800, nextLine,  &FontT48, text);
+    nextLine += ME_Y_LINE_STEP;
+#endif
+
     if((pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_ANADIG) || (pSettings->ppo2sensors_source == O2_SENSOR_SOURCE_DIGITAL))
     {
     	for (index = 0; index < 3; index++)
@@ -1664,25 +1749,23 @@ void openEdit_Maintenance(void)
 					snprintf(text,32,"%c%c (%1.3lf => %1.3f)\016\016Bar",TXT_2BYTE,TXT2BYTE_AdjustAmbPressure,(float)(pDiveO2Data->pressure/1000000.0),
 																stateRealGetPointer()->lifeData.pressure_surface_bar);
 
-					write_field_button(StMSYS5_AdjustSurfPres,			30, 800, ME_Y_LINE4,  &FontT48, text);
+					write_field_button(StMSYS5_AdjustSurfPres,			30, 800, nextLine,  &FontT48, text);
+					nextLine += ME_Y_LINE_STEP;
     			}
      			break;
     		}
     	}
     }
 
-    if((blockInfo.Type & 0x0000FF00)== 0x0100)
-    {
-    	snprintf(text,32,"Flash Bootloader");
-		write_field_button(StMSYS5_FlashBoot,			30, 800, ME_Y_LINE4,  &FontT48, text);
+    if (isValidBootloaderBlock(&blockInfo, checksum)) {
+        if (!isBootloaderEqualToSource(&blockInfo)) {
+            snprintf(text,32,"Flash Bootloader");
+            if (nextLine < ME_Y_LINE5) {
+                write_field_button(StMSYS5_FlashBoot,			30, 800, nextLine,  &FontT48, text);
+                nextLine += ME_Y_LINE_STEP;
+            }
+        }
     }
-
-#ifdef ENABLE_ANALYSE_SAMPLES
-    text[0] = TXT_2BYTE;
-    text[1] = TXT2BYTE_SetSampleIndex;
-    text[2] = 0;
-    write_field_button(StMSYS5_SetSampleIndx,			30, 800, ME_Y_LINE4,  &FontT48, text);
-#endif
 
     setEvent(StMSYS5_SetFactoryBC, (uint32_t)OnAction_SetFactoryDefaults);
     if(stateRealGetPointer()->lifeData.battery_charge <= 0)
@@ -1700,12 +1783,9 @@ void openEdit_Maintenance(void)
     setEvent(StMSYS5_SetSampleIndx, (uint32_t)OnAction_RecoverSampleIdx);
 #endif
 
-    if((blockInfo.Type & 0x0000FF00)== 0x0100)
-    {
-    	setEvent(StMSYS5_FlashBoot, (uint32_t)OnAction_FlashBootloader);
+    if (isValidBootloaderBlock(&blockInfo, checksum) && !isBootloaderEqualToSource(&blockInfo)) {
+        setEvent(StMSYS5_FlashBoot, (uint32_t)OnAction_FlashBootloader);
     }
-
-
 
     text[0] = TXT_2BYTE;
     text[1] = TXT2BYTE_WarnBatteryLow;
@@ -1829,6 +1909,7 @@ uint8_t OnAction_RebootMainCPU		(uint32_t editId, uint8_t blockNumber, uint8_t d
 }
 
 
+
 uint8_t OnAction_SetFactoryDefaults(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     settingsWriteFactoryDefaults(settingsGetPointer()->ButtonResponsiveness[3], settingsGetPointer()->buttonBalance);
@@ -1941,6 +2022,11 @@ uint8_t OnAction_FlashBootloader (uint32_t editId, uint8_t blockNumber, uint8_t 
     customBlockInfo_t blockInfo;
     uint32_t checksum;
     uint8_t* pSource = (uint8_t *) 0x08100000;
+    uint8_t eraseResult;
+    uint8_t progResult;
+
+    // Update the button's text directly to show progress
+    tMenuEdit_newButtonText(editId, "Flashing, please wait");
 
     checksum = CalcFletcher32(0x08100000,0x0811FFEF);	/* last nibble contains block info => exclude */
 
@@ -1948,12 +2034,35 @@ uint8_t OnAction_FlashBootloader (uint32_t editId, uint8_t blockNumber, uint8_t 
     blockInfo.fletcher = swapBytes(pCustumBlockInfo->fletcher);
     blockInfo.length = swapBytes(pCustumBlockInfo->length);
 
-    if(checksum == blockInfo.fletcher)
-    {
+    if (isValidBootloaderBlock(&blockInfo, checksum)) {
 		memcpy (&HwInfo, hardwareDataGetPointer(), sizeof(SHardwareData)); /* create backup copy because data will be overwritten during flash erase */
 
-		bootloader_eraseFlashMemory();
-		bootloader_programFlashMemory(pSource, blockInfo.length, &HwInfo);
+        eraseResult = bootloader_eraseFlashMemory();
+        if (eraseResult != 0) {
+            // Lock flash before returning on error
+            HAL_FLASH_Lock();
+            // Show error on the button itself
+            tMenuEdit_newButtonText(editId, "Erase failed!");
+            return UNSPECIFIC_RETURN;
+        }
+		
+        progResult = bootloader_programFlashMemory(pSource, blockInfo.length, &HwInfo);
+        if (progResult != 0) {
+            // Lock flash before returning on error (in case program failed before locking)
+            HAL_FLASH_Lock();
+            // Show error on the button itself
+            tMenuEdit_newButtonText(editId, "Program failed!");
+            return UNSPECIFIC_RETURN;
+        }
+
+        // Show success on the button itself
+        tMenuEdit_newButtonText(editId, "Flash complete");
+
+        // Give user time to see the message, then return to the previous menu
+        // which will cause a refresh and hide the "Flash Bootloader" button
+        HAL_Delay(1500);
+
+        return EXIT_TO_MENU;
     }
 	return UNSPECIFIC_RETURN;
 }
