@@ -177,7 +177,7 @@ static uint8_t text_IT_CompassCalib[] = "Calibrazione bussola";
 static uint8_t text_ES_CompassCalib[] = "Calibrar brujula";
 
 static uint8_t text_EN_GFSurf[] = "GF Surface";
-static uint8_t text_DE_GFSurf[] = "";
+static uint8_t text_DE_GFSurf[] = "Surface GF";
 static uint8_t text_FR_GFSurf[] = "";
 static uint8_t text_IT_GFSurf[] = "";
 static uint8_t text_ES_GFSurf[] = "";
