@@ -69,6 +69,8 @@ extern sUartComCtrl Uart1Ctrl;
 
 #define activeSensorId (activeUartChannel + EXT_INTERFACE_MUX_OFFSET)	/* Used if UART channels are applied to Sensor map */
 
+#define PRESSURE_BOTTLE_CNT 3
+
 static uint8_t activeChannel = 0;			/* channel which is in request */
 static uint8_t recBuf[ADC_ANSWER_LENGTH];
 static uint8_t timeoutCnt = 0;
