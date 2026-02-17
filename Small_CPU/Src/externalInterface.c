@@ -201,12 +201,11 @@ uint8_t externalInterface_ReadAndSwitch()
 						nextChannel = 0;
 					}
 
-					while((psensorMap[nextChannel] != SENSOR_ANALOG) && (nextChannel != 0))
+					while((psensorMap[nextChannel] != SENSOR_ANALOG) && (nextChannel != activeChannel))
 					{
 						if(nextChannel == MAX_ADC_CHANNEL)
 						{
 							nextChannel = 0;
-							break;
 						}
 						else
 						{
@@ -214,17 +213,18 @@ uint8_t externalInterface_ReadAndSwitch()
 						}
 					}
 
-					activeChannel = nextChannel;
-					if(activeChannel == 0)
+
+					if(nextChannel <= activeChannel)	/* new cycle or only one sensor connected */
 					{
 						startTickADC = HAL_GetTick();
-						delayAdcConversion = 1;		/* wait for next cycle interval */
+						delayAdcConversion = 1;			/* wait for next cycle interval */
 					}
 					else
 					{
-						externalInterface_StartConversion(activeChannel);
+						externalInterface_StartConversion(nextChannel);
 					}
 					timeoutCnt = 0;
+					activeChannel = nextChannel;
 				}
 
 				if(timeoutCnt++ >= ADC_TIMEOUT)
