@@ -660,19 +660,20 @@ uint8_t select_mode(uint8_t type)
 #endif
 
         // Exit communication on Text like RING, CONNECT, ... or 0xFF command
-        if((type < 0x60) || (type == 0xFF))
+        if ((type < 0x60 && type != 0x20) || type == 0xFF)
             return 0;
 
         // return of command for (almost) all commands
         switch(type)
         {
-        // not supported yet case 0x20: // 	send hi:lo:temp1 bytes starting from ext_flash_address:3
+        // when adding support for any of these, don't forget to adjust the filter above!
         // not supported yet case 0x22: // 	Resets all logbook pointers and the logbook (!)
         // not supported yet case 0x23: // 	Resets battery gauge registers
         // not supported yet case 0x30: // 	write bytes starting from ext_flash_address:3 (Stop when timeout)
         // not supported yet case 0x40: // 	erases 4kB block from ext_flash_address:3 (Warning: No confirmation or built-in security here...)
         // not supported yet case 0x42: // 	erases range in 4kB steps (Get 3 bytes address and 1byte amount of 4kB blocks)
         // not supported yet case 0x50: // 	sends firmware from external flash from 0x3E0000 to 0x3FD000 (118784bytes) via comm
+        case 0x20: // read memory block
         case 0xFE: // hw unit_tests
         case 0x71: // hw read manufacturing data
         case 0x73: // hw update FLEX
@@ -704,6 +705,44 @@ uint8_t select_mode(uint8_t type)
         // now send content or update firmware
         switch(type)
         {
+        // get memory block
+        case 0x20:
+            if (HAL_UART_Receive(&UartHandle, (uint8_t*)aRxBuffer, 6, 1000) != HAL_OK)
+                return 0;
+
+            uint32_t address = ((uint32_t)aRxBuffer[0] << 24)
+                             | ((uint32_t)aRxBuffer[1] << 16)
+                             | ((uint32_t)aRxBuffer[2] << 8);
+            uint32_t length  = ((uint32_t)aRxBuffer[3] << 16)
+                             | ((uint32_t)aRxBuffer[4] << 8)
+                             |  (uint32_t)aRxBuffer[5];
+
+            if (length == 0) {
+                return 0;
+            }
+
+            uint32_t endAddress = address + length;
+
+            if (endAddress < address) {
+                return 0; /* overflow */
+            }
+
+            while (address < endAddress) {
+                uint16_t chunkSize = 0x8000;
+                if ((endAddress - address) < 0x8000) {
+                    chunkSize = (uint16_t)(endAddress - address);
+                }
+                if (HAL_UART_Transmit(&UartHandle, (uint8_t*)address, chunkSize, 60000) != HAL_OK) {
+                    return 0;
+                }
+
+                address += chunkSize;
+            }
+
+            aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
+
+            break;
+
         case 0xFE:
             // work to do :-)  12. Oct. 2015
             // 256 bytes output
