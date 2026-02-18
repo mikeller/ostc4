@@ -2255,16 +2255,20 @@ uint8_t tComm_HandleBlueModConfig()
 										break;
 				case BM_INIT_STORE:			sprintf(TxBuffer,"AT&W\r");	      /* Stollmann: Write settings to EEPROM */
 										break;
-				case BM_INIT_RESTART:		BmTmpConfig++; /* Stollmann: AT+RESET not confirmed to work; AT&W already saved, skip */
-										break;
+				case BM_INIT_RESTART:		{
+											/* Stollmann: Software reboot so BLE advertising picks up saved name.
+											 * The module reboots immediately — no OK response expected.
+											 * Send the command directly and advance to BM_INIT_DONE. */
+											sprintf(TxBuffer,"AT+RESET\r");
+											HAL_UART_Transmit(&UartHandle, (uint8_t*)TxBuffer, strlen(TxBuffer), 500);
+											TxBuffer[0] = 0;		/* Don't re-send in the normal path below */
+											BmTmpConfig = BM_INIT_DONE;
+											return result;
+										}
 				case BM_INIT_DONE:			{
-											/* Power-cycle the module so BT stack reinitializes
-											 * with the saved settings (AT&F1+ATE0+BNAME+ATS30=0+AT&W).
-											 * Without restart, the module may not properly
-											 * accept incoming SPP connections. */
-											MX_Bluetooth_PowerOff();
-											HAL_Delay(100);
-											MX_Bluetooth_PowerOn();
+											/* Give the module time to complete the reset and
+											 * reinitialize with saved settings (name, etc.).
+											 * Then run normal CONFIG sequence. */
 											HAL_Delay(3000);
 											tComm_AssertRTS();
 
