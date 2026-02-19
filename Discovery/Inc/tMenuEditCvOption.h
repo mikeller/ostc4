@@ -35,6 +35,10 @@
 #include "settings.h"
 #include "data_central.h"
 
+
+typedef void (*openFunc_t)(void);
+void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index);
+
 void openEdit_CvOption(uint8_t line);
 void refresh_CompassEdit(void);
 uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);

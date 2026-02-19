@@ -29,6 +29,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "tMenu.h"
 #include "tMenuCvOption.h"
+#include "tMenuCvOptionText.h"
 #include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
 #include "t7.h"
 
@@ -36,54 +37,31 @@
 
 /* Exported functions --------------------------------------------------------*/
 
+
 uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 {
-    SSettings *data;
     uint8_t textPointer;
-
-    data = settingsGetPointer();
+    refreshFunc_t* pRefreshTable;
+    uint8_t activeLines;
+    uint8_t index = 0;
     textPointer = 0;
-    *tab = 300;
+    *tab = 450;
     *subtext = 0;
 
     resetLineMask(StMOption);
 
-    if((line == 0) || (line == 1))
-    {
-        text[textPointer++] = TXT_2BYTE;
-        text[textPointer++] = TXT2BYTE_Compass;
-        text[textPointer++] = '\t';
+    activeLines = tMCvOptText_GetTableItemCnt();
+    pRefreshTable = tMCvOptText_GetTable();
 
-        if(settingsGetPointer()->compassBearing != 0)
-        {
-            textPointer += snprintf(&text[textPointer], 20, "(%03u`)", settingsGetPointer()->compassBearing % 360);
-        }
-        text[textPointer] = 0;
-    }
-    nextline(text,&textPointer);
-    if (line == 0 || line == 2)
-    {
-    	if(t7_customview_disabled(CVIEW_Timer))
-    	{
-    		text[textPointer++] = '\031';		/* change text color */
-    	    textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-            text[textPointer++] = '\020';		/* restore text color */
-    	}
-    	else
-    	{
-    		textPointer += snprintf(&text[textPointer], 21, "%c%c\t%u:%02u \016\016[m:ss]\017", TXT_2BYTE, TXT2BYTE_Timer, data->timerDurationS / 60, data->timerDurationS % 60);
-    	}
-    }
-    nextline(text,&textPointer);
-
-#ifdef ENABLE_PULSE_SENSOR_BT
-    if (line == 0 || line == 3)
-    {
-   		textPointer += snprintf(&text[textPointer], 21, "%c%c", TXT_2BYTE, TXT2BYTE_Pulse);
-    }
-    nextline(text,&textPointer);
-
-#endif
+   	for(index = 1; index <= activeLines; index++)
+   	{
+   		if((line == 0) || (index == line))
+   		{
+   			textPointer += pRefreshTable[index - 1](&text[textPointer]);
+   		}
+   		nextline(text,&textPointer);
+   	}
+    text[textPointer] = 0;
 
     return StMOption;
 }

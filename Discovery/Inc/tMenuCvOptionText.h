@@ -2,13 +2,13 @@
 /// -*- coding: UTF-8 -*-
 ///
 /// \file   Discovery/Inc/tMenuCvOption.h
-/// \brief  Header file of Menu Lines for System settings
+/// \brief  Header file text line provider functions
 /// \author heinrichs weikamp gmbh
-/// \date   24-April-2025
+/// \date   03-Feb-2026
 ///
 /// $Id$
 ///////////////////////////////////////////////////////////////////////////////
-/// \par Copyright (c) 2014-2025 Heinrichs Weikamp gmbh
+/// \par Copyright (c) 2014-2026 Heinrichs Weikamp gmbh
 ///
 ///     This program is free software: you can redistribute it and/or modify
 ///     it under the terms of the GNU General Public License as published by
@@ -25,23 +25,40 @@
 //////////////////////////////////////////////////////////////////////////////
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef TMENU_CVOPTION_H
-#define TMENU_CVOPTION_H
+#ifndef TMENU_CVOPTIONTEXT_H
+#define TMENU_CVOPTIONTEXT_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "gfx_engine.h"
-
 /** @addtogroup Template
 	* @{
 	*/
+#include <stdint.h>
+
+enum CVOPTIONS						/* the order defines the priority as well */
+{
+		CVOPT_Compass = 0,
+		CVOPT_O2_Sensor,
+		CVOPT_CO2_Sensor,
+		CVOPT_Pressure_Sensor,
+		CVOPT_Timer,
+		CVOPT_END
+};
+
+typedef uint8_t (*refreshFunc_t)(char *);
+
 /* Exported variables --------------------------------------------------------*/
 
 
 
 /* Exported functions --------------------------------------------------------*/
 
-uint32_t tMCvOption_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);
-void tMCvOption_checkLineStatus(void);
+uint8_t tMCvOptText_BuildDynamicContentList();
+refreshFunc_t* tMCvOptText_GetTable();
+uint8_t tMCvOptText_GetTableItemCnt();
 
-#endif /* TMENU_CVOPTION_H */
+uint8_t tMCvOptText_refreshCompass(char* pText);
+uint8_t tMCvOptText_refreshTimer(char* pText);
+uint8_t tMCvOptText_refreshO2(char* pText);
+uint8_t tMCvOptText_refreshCO2(char* pText);
+
+#endif /* TMENU_CVOPTIONTEXT_H */

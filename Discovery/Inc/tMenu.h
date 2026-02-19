@@ -55,6 +55,7 @@ enum MENU_MODE
 /* Exported constants --------------------------------------------------------*/
 
 #define MAX_PAGE_TEXTSIZE 65 * 6
+#define MAXLINES	6
 
 /* Exported variables --------------------------------------------------------*/
 

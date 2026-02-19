@@ -42,6 +42,7 @@
 #include "tMenuEditSystem.h"
 #include "tMenuEditXtra.h"
 #include "tMenuEditCustom.h"
+#include "tMenuCvOptionText.h"
 #include "tMenuEditCvOption.h"
 #include "tMenuGas.h"
 #include "tMenuHardware.h"
@@ -64,7 +65,6 @@
 #define TAB_BAR_SPACING	5
 
 #define SLOW_UPDATE_CNT	10	/* Some content shall not be update in short intervals => add prescalar */
-#define MAXLINES	6
 
 typedef struct
 {
@@ -656,6 +656,7 @@ void tM_build_pages(void)
     id = tMCustom_refresh(0, text, &tabPosition, subtext);
     tM_build_page(id, text, tabPosition, subtext);
 
+    tMCvOptText_BuildDynamicContentList();
     id = tMCvOption_refresh(0, text, &tabPosition, subtext);
     tM_build_page(id, text, tabPosition, subtext);
 }
@@ -690,11 +691,19 @@ void tM_refresh_live_content(void)
     						update_content_with_new_frame(page, text, tabPosition, subtext);
     					}
     		break;
-        case StMCG:		if((actual_menu_content != MENU_SURFACE) && (slowUpdate == 0))
+        case StMCG:
+#ifndef ENABLE_ADVANCED_GAS
+        				if((actual_menu_content != MENU_SURFACE) && (slowUpdate == 0))
+#else
+        				if(slowUpdate == 0)
+#endif
         				{
         					tMCG_refresh(0, text, &tabPosition, subtext);
         					update_content_with_new_frame(page, text, tabPosition, subtext);
         				}
+    		break;
+        case StMOption:	tMCvOption_refresh(0, text, &tabPosition, subtext);
+    		    		update_content_with_new_frame(page, text, tabPosition, subtext);
     		break;
     	default:
     		break;

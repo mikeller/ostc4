@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "tMenuEditCvOption.h"
+#include "tMenuCvOptionText.h"
 #include "tMenuEdit.h"
 
 #include "gfx_fonts.h"
@@ -36,6 +37,9 @@
 #include "tHome.h"
 
 #include "cv_heartbeat.h"
+
+
+static openFunc_t openFctPointerTable[MAXLINES];		/* function pointer for refresh */
 
 /* Private function prototypes -----------------------------------------------*/
 static void openEdit_Timer(void);
@@ -51,22 +55,30 @@ static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digi
 
 /* Exported functions --------------------------------------------------------*/
 
+
+void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index)
+{
+	if(index < MAXLINES)
+	{
+		switch(cvOptId)
+		{
+			case CVOPT_Compass:	openFctPointerTable[index] = openEdit_Compass;
+				break;
+			case CVOPT_Timer: openFctPointerTable[index] = openEdit_Timer;
+				break;
+			case CVOPT_END: openFctPointerTable[index] = NULL;
+				break;
+			default: break;
+		}
+	}
+}
+
+
 void openEdit_CvOption(uint8_t line)
 {
-    set_globalState_Menu_Line(line);
-
-    switch(line)
+    if(openFctPointerTable[line - 1] != NULL)
     {
-		case 1:
-		default:	resetMenuEdit(CLUT_MenuPageHardware);
-					openEdit_Compass();
-			break;
-		case 2:		openEdit_Timer();
-			break;
-#ifdef ENABLE_PULSE_SENSOR_BT
-		case 3: 	openEdit_Heartbeat();
-#endif
-			break;
+    	openFctPointerTable[line  - 1]();
     }
 }
 
