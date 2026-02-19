@@ -3255,7 +3255,10 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
 #ifdef ENABLE_BOTTLE_SENSOR
     uint16_t agedColor = 0;
 #endif
-
+#ifdef ENABLE_ADVANCED_GAS
+    static uint8_t gasIdO2 = 0;
+    static uint8_t gasIdDiluent = 0;
+#endif
     SDivetime Stopwatch = {0,0,0,0};
     float fAverageDepth, fAverageDepthAbsolute;
     const SDecoinfo * pDecoinfoStandard;
@@ -3388,6 +3391,32 @@ void t7_refresh_divemode_userselected_left_lower_corner(void)
         headerText[2] = TXT_AtemGasVorrat;
         tinyHeaderFont = 1;
         snprintf(text,TEXTSIZE,"%d\016\016\017", stateUsed->lifeData.bottle_bar[stateUsed->lifeData.actualGas.GasIdInSettings]);
+        break;
+#endif
+
+#ifdef ENABLE_ADVANCED_GAS
+    case LCC_BottleBar:
+        headerText[2] = TXT_AtemGasVorrat;
+        tinyHeaderFont = 1;
+        if(isLoopMode(stateUsed->diveSettings.diveMode))
+        {
+        	if((gasIdO2 == 0) && (gasIdDiluent == 0))
+        	{
+        		DataEX_helper_Get_ID_Of_O2_Diluent(&gasIdO2, &gasIdDiluent);
+        	}
+        	if(gasIdO2 != 0)
+        	{
+        		textpointer = snprintf(text,TEXTSIZE,"\020\016\016%u",stateUsed->lifeData.bottle_bar[gasIdO2]);
+        	}
+        	if(gasIdDiluent != 0)
+        	{
+        		textpointer = snprintf(&text[textpointer],TEXTSIZE,"\n\r%u",stateUsed->lifeData.bottle_bar[gasIdDiluent]);
+        	}
+        }
+        else
+        {
+        	snprintf(text,TEXTSIZE,"%d\016\016\017", stateUsed->lifeData.bottle_bar[stateUsed->lifeData.actualGas.GasIdInSettings]);
+        }
         break;
 #endif
 #ifdef ENABLE_CO2_SUPPORT

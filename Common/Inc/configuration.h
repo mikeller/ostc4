@@ -111,5 +111,7 @@
 /* Enable to have the possibility to switch between four individual sets of settings */
 /* #define ENABLE_SETTING_PROFILES */
 
+/* Enable to have advanced gas information lite bottle size and pressure available */
+/* #define ENABLE_ADVANCED_GAS */
 
 #endif

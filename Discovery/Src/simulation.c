@@ -225,6 +225,12 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
         pDiveState->lifeData.bottle_bar[pDiveState->lifeData.actualGas.GasIdInSettings] = pRealState->lifeData.bottle_bar[pRealState->lifeData.actualGas.GasIdInSettings];
         pDiveState->lifeData.bottle_bar_age_MilliSeconds[pDiveState->lifeData.actualGas.GasIdInSettings] = pRealState->lifeData.bottle_bar_age_MilliSeconds[pRealState->lifeData.actualGas.GasIdInSettings];
 #endif
+#ifdef ENABLE_ADVANCED_GAS
+       for(index = 0; index < NUM_GASES * 2; index++)
+       {
+           pDiveState->lifeData.bottle_bar[index] = pRealState->lifeData.bottle_bar[index];
+       }
+#endif
     }
     else if(pDiveState->lifeData.depth_meter <= (float)(decom_get_actual_deco_stop(pDiveState) + 0.001))
     {

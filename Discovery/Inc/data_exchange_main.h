@@ -51,6 +51,7 @@ void DataEX_control_connection_while_asking_for_sleep(void);
 uint8_t DataEX_check_RTE_version__needs_update(void);
 void setAvgDepth(SDiveState *pStateReal);
 uint8_t DataEX_external_ADC_Present(void);
+void DataEX_helper_Get_ID_Of_O2_Diluent(uint8_t* pIdO2, uint8_t* pIdDiluent);
 
 SDataReceiveFromMaster * dataOutGetPointer(void);
 

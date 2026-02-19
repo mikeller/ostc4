@@ -58,6 +58,8 @@
 #define GNSS_ALIVE_STATE_TIME		(0x02u)		/* Time information valid */
 #define GNSS_ALIVE_BACKUP_POS		(0x04u)		/* Backup position not older than x hours */
 
+#define PRESSURE_BOTTLE_CNT			(0x2u)		/* Number of bottle information (max 255 bar) */
+
 enum MODE
 {
 	MODE_SURFACE	= 0,
@@ -196,7 +198,8 @@ typedef struct
 		uint8_t externalInterface_SensorID;						/* Used to identify how to read the sensor data array */
 		uint8_t sensor_data[EXTIF_SENSOR_INFO_SIZE];			/* sensor specific data array. Content may vary from sensor type to sensor type */
 		uint8_t sensor_map[EXT_INTERFACE_SENSOR_CNT];
-		uint8_t SPARE_OldWireless[5]; 							/* 64 - 12 for extADC - 6 for CO2 - 34 for sensor (+dummmy) - sensor map*/
+		uint8_t pressure_bottle[PRESSURE_BOTTLE_CNT];
+		uint8_t SPARE_OldWireless[3]; 							/* 64 - 12 for extADC - 6 for CO2 - 34 for sensor (+dummmy) - sensor map - pressure*/
 		// PIC data
 		uint8_t button_setting[4]; /* see dependency to SlaveData->buttonPICdata */
 		uint8_t SPARE1;

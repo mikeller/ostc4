@@ -632,6 +632,27 @@ static uint8_t DataEX_helper_Check_And_Correct_Date_deviceData(SDeviceLine *line
 }
 
 
+void DataEX_helper_Get_ID_Of_O2_Diluent(uint8_t* pIdO2, uint8_t* pIdDiluent)
+{
+	const SDiveState *pStateReal = stateRealGetPointer();
+	uint8_t index = 0;
+
+	*pIdO2 = 0xff;
+	*pIdDiluent = 0xff;
+
+	for (index = NUM_GASES; index <= NUM_GASES*2; index++)		/* search for o2 and start gas in diluent table */
+	{
+		if(pStateReal->diveSettings.gas[index].note.ub.first)
+		{
+			*pIdDiluent = index;
+		}
+		if(pStateReal->diveSettings.gas[index].oxygen_percentage >= 99)
+		{
+			*pIdO2 = index;
+		}
+	}
+}
+
 static uint8_t DataEX_helper_Check_And_Correct_Value_deviceData(SDeviceLine *lineWrite, int32_t from, int32_t to, uint8_t defaulttofrom)
 {
 	uint8_t retval = 0;
@@ -847,6 +868,9 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 	static uint16_t getDeviceDataAfterStartOfMainCPU = 20;
 	static uint16_t lastcounterSecondsShallowDepth = 0;
 
+	static uint8_t pressureIdO2 = 0xFF;
+	static uint8_t pressureIdDiluent = 0xFF;
+
 	SDiveState *pStateReal = stateRealGetPointerWrite();
 	uint8_t idx;
 	float meter = 0;
@@ -1007,7 +1031,6 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 
 	if(pStateReal->data_old__lost_connection_to_slave == 0)
 	{
-
 		pStateReal->lifeData.extIf_sensor_Id = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_ADC)].externalInterface_SensorID;
 		if(pStateReal->lifeData.extIf_sensor_Id < 3)
 		{
@@ -1015,7 +1038,6 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			memcpy(pStateReal->lifeData.extIf_sensor_data[pStateReal->lifeData.extIf_sensor_Id], dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_ADC)].sensor_data, 32);
 		}
 		memcpy(pStateReal->lifeData.extIf_sensor_map, dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_ADC)].sensor_map, EXT_INTERFACE_SENSOR_CNT);
-
 
 		meter = getSampleDepth(&dataIn, pStateReal);
 
@@ -1027,6 +1049,22 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		pStateReal->lifeData.timeBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_tr;
 
 		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
+
+		if((dataIn.data[dataIn.boolPressureData].pressure_bottle[0] != 0) || (dataIn.data[dataIn.boolPressureData].pressure_bottle[1] != 0))
+		{
+			if((pressureIdO2 == 0xFF) || (pressureIdDiluent == 0xFF))
+			{
+				DataEX_helper_Get_ID_Of_O2_Diluent(&pressureIdO2, &pressureIdDiluent);
+			}
+			if(pressureIdO2 != 0xFF)
+			{
+				pStateReal->lifeData.bottle_bar[pressureIdO2] = dataIn.data[dataIn.boolPressureData].pressure_bottle[0];
+			}
+			if(pressureIdDiluent != 0xFF)
+			{
+				pStateReal->lifeData.bottle_bar[pressureIdDiluent] = dataIn.data[dataIn.boolPressureData].pressure_bottle[1];
+			}
+		}
 	}
 
 	if(pStateReal->data_old__lost_connection_to_slave == 0)
