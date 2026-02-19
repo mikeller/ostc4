@@ -42,15 +42,19 @@ void uartCo2_SendCmd(uint8_t CO2Cmd, uint8_t *cmdString, uint8_t *cmdLength)
 
 	switch (CO2Cmd)
 	{
-		case CO2CMD_MODE_POLL:		*cmdLength = snprintf((char*)cmdString, 10, "K 2\r\n");
+		case CO2CMD_MODE_POLL:		*cmdLength = snprintf((char*)cmdString, 20, "K 2\r\n");
 				break;
-		case CO2CMD_MODE_STREAM:	*cmdLength = snprintf((char*)cmdString, 10, "K 1\r\n");
+		case CO2CMD_MODE_STREAM:	*cmdLength = snprintf((char*)cmdString, 20, "K 1\r\n");
 				break;
-		case CO2CMD_CALIBRATE:		*cmdLength = snprintf((char*)cmdString, 10, "G\r\n");
+		case CO2CMD_CALIBRATE_H:	*cmdLength = snprintf((char*)cmdString, 20, "P 10 1\r\n");		/* set 400ppm as reference => 1 (256) and 144 */
 				break;
-		case CO2CMD_GETDATA:		*cmdLength = snprintf((char*)cmdString, 10, "Q\r\n");
+		case CO2CMD_CALIBRATE_L:	*cmdLength = snprintf((char*)cmdString, 20, "P 11 144\r\n");
 				break;
-		case CO2CMD_GETSCALE:		*cmdLength = snprintf((char*)cmdString, 10, ".\r\n");
+		case CO2CMD_CALIBRATE:		*cmdLength = snprintf((char*)cmdString, 20, "G\r\n");
+				break;
+		case CO2CMD_GETDATA:		*cmdLength = snprintf((char*)cmdString, 20, "Q\r\n");
+				break;
+		case CO2CMD_GETSCALE:		*cmdLength = snprintf((char*)cmdString, 20, ".\r\n");
 				break;
 		default: *cmdLength = 0;
 			break;
@@ -64,7 +68,7 @@ void uartCo2_SendCmd(uint8_t CO2Cmd, uint8_t *cmdString, uint8_t *cmdLength)
 
 void uartCo2_Control(void)
 {
-	static uint8_t cmdString[10];
+	static uint8_t cmdString[20];
 	static uint8_t cmdLength = 0;
 	static uint8_t lastComState = UART_CO2_INIT;
 
@@ -97,6 +101,10 @@ void uartCo2_Control(void)
 			break;
 		case UART_CO2_MODE:		uartCo2_SendCmd(CO2CMD_MODE_POLL, cmdString, &cmdLength);
 			break;
+		case UART_CO2_CALIBRATE_H:	uartCo2_SendCmd(CO2CMD_CALIBRATE_H, cmdString, &cmdLength);
+			break;
+		case UART_CO2_CALIBRATE_L:	uartCo2_SendCmd(CO2CMD_CALIBRATE_L, cmdString, &cmdLength);
+			break;
 		case UART_CO2_CALIBRATE:	uartCo2_SendCmd(CO2CMD_CALIBRATE, cmdString, &cmdLength);
 									localComState = UART_CO2_IDLE;
 			break;
@@ -125,7 +133,8 @@ void uartCo2_Control(void)
 void uartCo2_ProcessData(uint8_t data)
 {
 	static uint8_t dataType = 0;
-	static uint32_t dataValue = 0;
+	static uint32_t dataValue[3];
+	static uint8_t dataIndex = 0;
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 	uartCO2Status_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
 
@@ -133,6 +142,7 @@ void uartCo2_ProcessData(uint8_t data)
 	{
 		switch(data)
 		{
+			case 'P':
 			case 'G':
 			case 'K':
 			case 'l':
@@ -140,7 +150,8 @@ void uartCo2_ProcessData(uint8_t data)
 			case 'Z':
 			case '.':			dataType = data;
 								rxState = CO2RX_Data0;
-								dataValue = 0;
+								dataValue[0] = 0;
+								dataIndex = 0;
 				break;
 			case '?':			localComState = UART_CO2_ERROR;
 								rxState = CO2RX_Ready;
@@ -151,17 +162,36 @@ void uartCo2_ProcessData(uint8_t data)
 	}
 	else if((data >= '0') && (data <= '9'))
 	{
-		if((rxState >= CO2RX_Data0) && (rxState <= CO2RX_Data4))
+		if((rxState >= CO2RX_Data0) && (rxState <= CO2RX_Data9))
 		{
-			dataValue = dataValue * 10 + (data - '0');
+			dataValue[dataIndex] = dataValue[dataIndex] * 10 + (data - '0');
 
-			if((rxState == CO2RX_Data4))
+			switch (dataType)
 			{
-				rxState = CO2RX_DataComplete;
-			}
-			else
-			{
-				rxState++;
+				case 'G':
+				case 'K':
+				case 'l':
+				case 'D':
+				case 'Z':
+				case '.':
+				default:	if((rxState == CO2RX_Data4))
+							{
+								rxState = CO2RX_DataComplete;	/* just one value to be received */
+							}
+							else
+							{
+								rxState++;
+							}
+					break;
+				case 'P':		if(rxState == CO2RX_Data9)		/* get second parameter */
+								{
+									rxState = CO2RX_DataComplete;
+								}
+								else
+								{
+									rxState++;
+								}
+						break;
 			}
 		}
 		else	/* protocol error data has max 5 digits */
@@ -184,10 +214,28 @@ void uartCo2_ProcessData(uint8_t data)
 											localComState = UART_CO2_MODE;
 										}
 					break;
-				case UART_CO2_MODE:		if((dataType == 'K') && (dataValue == 2))
+				case UART_CO2_MODE:		if((dataType == 'K') && (dataValue[dataIndex] == 2))
 										{
 											localComState = UART_CO2_IDLE;
 										}
+					break;
+				case UART_CO2_CALIBRATE_H:	if((dataType == 'P') && (dataValue[0] == 10) && (dataValue[1] == 1))
+											{
+												localComState = UART_CO2_CALIBRATE_L;
+											}
+											else
+											{
+												localComState = UART_CO2_IDLE;
+											}
+					break;
+				case UART_CO2_CALIBRATE_L:	if((dataType == 'P') && (dataValue[0] == 11) && (dataValue[1] == 144))
+											{
+												localComState = UART_CO2_CALIBRATE;
+											}
+											else
+											{
+												localComState = UART_CO2_IDLE;
+											}
 					break;
 				default: localComState = UART_CO2_IDLE;
 					break;
@@ -195,20 +243,34 @@ void uartCo2_ProcessData(uint8_t data)
 
 			switch(dataType)
 			{
-				case 'D':			externalInterface_SetCO2SignalStrength(dataValue);
+				case 'D':			externalInterface_SetCO2SignalStrength(dataValue[dataIndex]);
 					break;
-				case 'l':			LED_ZeroOffset = dataValue;
+				case 'l':			LED_ZeroOffset = dataValue[dataIndex];
 					break;
-				case 'Z':			externalInterface_SetCO2Value(dataValue);
+				case 'Z':			externalInterface_SetCO2Value(dataValue[dataIndex]);
 					break;
-				case '.':			externalInterface_SetCO2Scale(dataValue);
+				case '.':			externalInterface_SetCO2Scale(dataValue[dataIndex]);
 					break;
 				default:			rxState = CO2RX_Ready;
 					break;
 			}
 			rxState = CO2RX_Ready;
 		}
-		if(rxState != CO2RX_Data0)	/* reset state machine because message in wrong format */
+		else	/* multi parameter */
+		{
+			if(rxState == CO2RX_Data5)
+			{
+				switch(dataType)
+				{
+					case 'P':	dataIndex++;
+								dataValue[dataIndex] = 0;
+						break;
+					default:
+						break;
+				}
+			}
+		}
+		if((rxState != CO2RX_Data0) && (rxState != CO2RX_Data5))	/* reset state machine because message in wrong format */
 		{
 			rxState = CO2RX_Ready;
 		}

@@ -1062,7 +1062,7 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 										}
 										if(SensorMap[index] == SENSOR_CO2)
 										{
-											externalInterface_SensorState[index] = UART_CO2_CALIBRATE;
+											externalInterface_SensorState[index] = UART_CO2_CALIBRATE_H;
 										}
 			break;
 		case EXT_INTERFACE_O2_INDICATE:	index = (Cmd >> 8) & 0x000F;

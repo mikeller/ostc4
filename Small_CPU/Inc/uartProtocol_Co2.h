@@ -39,7 +39,9 @@
  	UART_CO2_SETUP = 10,	/* collecting data needed to be read out of the sensor once at startup */
 	UART_CO2_MODE,			/* set operation mode for sensor */
   	UART_CO2_OPERATING,		/* normal operation */
-	UART_CO2_CALIBRATE		/* request calibration */
+	UART_CO2_CALIBRATE_H,	/* request calibration */
+	UART_CO2_CALIBRATE_L,
+	UART_CO2_CALIBRATE
   } uartCO2Status_t;
 
   typedef enum
@@ -68,7 +70,9 @@
  {
  	CO2CMD_MODE_POLL,		/* Set operation mode of sensor to polling => only send data if requested */
  	CO2CMD_MODE_STREAM,		/* Set operation mode of sensor to streaming => send data every two seconds */
- 	CO2CMD_CALIBRATE,		/* Calibrate sensor */
+ 	CO2CMD_CALIBRATE_H,		/* Calibrate sensor, send HIGH reference */
+	CO2CMD_CALIBRATE_L,		/* Send low reference */
+	CO2CMD_CALIBRATE,		/* Execute calibration */
  	CO2CMD_GETSCALE,		/* Get scaling factor */
  	CO2CMD_GETDATA			/* Read sensor data */
  } co2SensorCmd_t;
