@@ -77,6 +77,7 @@ void updateSpecificMenu(uint32_t id);
 void sendActionToMenu(uint8_t sendAction);
 void exitMenu(void);
 
+void tM_setLinesForPage(uint32_t pageID, uint8_t lineCnt);
 void tM_check_content(void);
 void tM_refresh_live_content(void);
 void tM_rebuild_menu_after_tComm(void);

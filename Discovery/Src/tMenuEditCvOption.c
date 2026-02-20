@@ -29,6 +29,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "tMenuEditCvOption.h"
 #include "tMenuCvOptionText.h"
+#include "tMenuEditHardware.h"
 #include "tMenuEdit.h"
 
 #include "gfx_fonts.h"
@@ -68,7 +69,12 @@ void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index)
 				break;
 			case CVOPT_END: openFctPointerTable[index] = NULL;
 				break;
-			default: break;
+			case CVOPT_O2_Sensor: openFctPointerTable[index] = openEdit_SensorsO2;
+				break;
+			case CVOPT_CO2_Sensor: openFctPointerTable[index] = openEdit_SensorsCO2;
+							break;
+			default:
+				break;
 		}
 	}
 }

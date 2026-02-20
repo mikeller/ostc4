@@ -963,6 +963,17 @@ static void block_diluent_handler(_Bool Unblock)
     }
 }
 
+tM_setLinesForPage(uint32_t pageID, uint8_t lineCnt)
+{
+	SStateList list;
+	get_idSpecificStateList(pageID, &list);
+
+	if(list.page < MAXPAGES)
+	{
+		 menu.linesAvailableForPage[list.page] = lineCnt;
+	}
+}
+
 void block_diluent_page(void)
 {
     block_diluent_handler(0);

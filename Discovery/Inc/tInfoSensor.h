@@ -28,8 +28,11 @@
 #ifndef TINFO_SENSOR_H
 #define TINFO_SENSOR_H
 
+#include "data_central.h"
+
 /* Exported functions --------------------------------------------------------*/
 void openInfo_Sensor(uint8_t sensorId);
+void openInfo_SetSensorType(externalInterfaceSensorType Type);
 void refreshInfo_Sensor(GFX_DrawCfgScreen s);
 void sendActionToInfoSensor(uint8_t sendAction);
 

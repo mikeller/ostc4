@@ -39,12 +39,13 @@
 #include <string.h>
 #include <inttypes.h>
 
-extern void openEdit_O2Sensors(void);
+extern void openEdit_Sensors(uint8_t filter);
 uint8_t OnAction_Sensor	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 /* Private variables ---------------------------------------------------------*/
 static uint8_t	activeSensorId = 0;
 static uint8_t sensorActive = 0;
+static externalInterfaceSensorType sensorType = SENSOR_NONE;
 /* Exported functions --------------------------------------------------------*/
 void openInfo_Sensor(uint8_t sensorId)
 {
@@ -53,39 +54,36 @@ void openInfo_Sensor(uint8_t sensorId)
     set_globalState(StISENINFO);
     switch (activeSensorId)
     {
-    	case 2: setBackMenu((uint32_t)openEdit_O2Sensors,0,3);
+    	case 2: setBackMenu((uint32_t)openEdit_Sensors,SENSOR_END,3);
     		break;
-    	case 1: setBackMenu((uint32_t)openEdit_O2Sensors,0,2);
+    	case 1: setBackMenu((uint32_t)openEdit_Sensors,SENSOR_END,2);
     	    		break;
     	default:
-    	case 0: setBackMenu((uint32_t)openEdit_O2Sensors,0,1);
+    	case 0: setBackMenu((uint32_t)openEdit_Sensors,SENSOR_END,1);
     	    		break;
     }
     sensorActive = 1;
-    if(pSettings->ppo2sensors_deactivated & (1 << (activeSensorId)))
+    switch(sensorType)	/* type has to be set using the set function before info dialog is used */
     {
-    	sensorActive = 0;
+    	case SENSOR_CO2:
+    	case SENSOR_CO2M:	sensorActive = pSettings->co2_sensor_active;
+    		break;
+    	case SENSOR_DIGO2:	DataEX_setExtInterface_Cmd(EXT_INTERFACE_O2_INDICATE, activeSensorId);
+    		/*no break*/
+    	default:			if(pSettings->ppo2sensors_deactivated & (1 << (activeSensorId)))
+    						{
+    							sensorActive = 0;
+    						}
+    		break;
     }
-    DataEX_setExtInterface_Cmd(EXT_INTERFACE_O2_INDICATE, activeSensorId);
+
+
 }
 
-
-uint8_t OnAction_Sensor(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+void openInfo_SetSensorType(externalInterfaceSensorType Type)
 {
-	if(settingsGetPointer()->ppo2sensors_deactivated & (1 << (activeSensorId)))
-	{
-		settingsGetPointer()->ppo2sensors_deactivated &= ~(1 << (activeSensorId));
-		tMenuEdit_set_on_off(editId, 1);
-	}
-	else
-	{
-		settingsGetPointer()->ppo2sensors_deactivated |= (1 << (activeSensorId));
-		tMenuEdit_set_on_off(editId, 0);
-	}
-    return UPDATE_DIVESETTINGS;
+	sensorType = Type;
 }
-
-
 
 uint64_t mod64(uint64_t a, uint64_t b)
 {
@@ -221,11 +219,12 @@ void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 	text[6] = 0;
 	tInfo_write_content_simple(  30, 770, ME_Y_LINE_BASE, &FontT48, text, CLUT_MenuPageHardware);
 
-	switch(pStateReal->lifeData.extIf_sensor_map[activeSensorId])
+	switch(sensorType)
 	{
 		default:
 		case SENSOR_DIGO2M:	refreshInfo_SensorO2(s);
 			break;
+		case SENSOR_CO2:
 		case SENSOR_CO2M: refreshInfo_SensorCo2(s);
 			break;
 	}
@@ -233,32 +232,42 @@ void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 
 void sendActionToInfoSensor(uint8_t sendAction)
 {
+	SSettings *pSettings = settingsGetPointer();
+
     switch(sendAction)
     {
     	case ACTION_BUTTON_BACK:
     		exitMenuEdit_to_BackMenu();
     			break;
 
-    	case ACTION_BUTTON_ENTER:    	if(settingsGetPointer()->ppo2sensors_deactivated & (1 << (activeSensorId)))
-										{
-    										if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
-    										{
-    											settingsGetPointer()->co2_sensor_active = 1;
-    										}
-    										settingsGetPointer()->ppo2sensors_deactivated &= ~(uint8_t)(1 << (activeSensorId));
-											sensorActive = 1;
-										}
-										else
-										{
-											if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
-											{
-    											settingsGetPointer()->co2_sensor_active = 0;
-    										}
-											settingsGetPointer()->ppo2sensors_deactivated |= (uint8_t)(1 << (activeSensorId));
-											sensorActive = 0;
-										}
+    	case ACTION_BUTTON_ENTER: 	switch(sensorType)
+									{
+										 case SENSOR_CO2:
+										 case SENSOR_CO2M:   if(pSettings->co2_sensor_active)
+															 {
+																 pSettings->co2_sensor_active = 0;
+																 sensorActive = 0;
+															 }
+															 else
+															 {
+																 pSettings->co2_sensor_active = 1;
+																 sensorActive = 1;
+															 }
+												 break;
+										 default:			if(pSettings->ppo2sensors_deactivated & (1 << (activeSensorId)))
+															{
+																 pSettings->ppo2sensors_deactivated &= ~(1 << (activeSensorId));
+																 sensorActive = 1;
+															}
+															else
+															{
+																pSettings->ppo2sensors_deactivated |= (1 << (activeSensorId));
+																sensorActive = 0;
+															}
+											 break;
+									}
     		break;
-		case ACTION_BUTTON_NEXT:		if(stateRealGetPointer()->lifeData.extIf_sensor_map[activeSensorId] == SENSOR_CO2M)
+		case ACTION_BUTTON_NEXT:		if((sensorType == SENSOR_CO2M) || (sensorType == SENSOR_CO2))
 										{
 											DataEX_setExtInterface_Cmd(EXT_INTERFACE_CO2_CALIB, activeSensorId);
 										}

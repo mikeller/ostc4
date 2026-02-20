@@ -36,6 +36,9 @@
 #include "data_central.h"
 
 void openEdit_Hardware(uint8_t line);
+void openEdit_SensorsO2();
+void openEdit_SensorsCO2();
+
 void refresh_O2Sensors(void);
 void refresh_CompassEdit(void);
 void refresh_ButtonValuesFromPIC(void);

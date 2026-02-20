@@ -157,7 +157,7 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 	SSettings *settings = settingsGetPointer();
 
 	memset(SensorActive, 0, sizeof(SensorActive));
-
+	activeLines = 0;
 
 	for (index = 0; index < EXT_INTERFACE_SENSOR_CNT; index++)
 	{
@@ -223,7 +223,6 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 	{
 		tMCvOption_SetOpenFnct(CVOPT_END, index);
 	}
-
 	return activeLines;
 }
 
