@@ -48,6 +48,7 @@ $(BUILD_DIR)/Discovery/Src/tInfoSensor.c \
 $(BUILD_DIR)/Discovery/Src/tMenu.c \
 $(BUILD_DIR)/Discovery/Src/tMenuCustom.c \
 $(BUILD_DIR)/Discovery/Src/tMenuCvOption.c \
+$(BUILD_DIR)/Discovery/Src/tMenuCvOptionText.c \
 $(BUILD_DIR)/Discovery/Src/tMenuDeco.c \
 $(BUILD_DIR)/Discovery/Src/tMenuDecoParameter.c \
 $(BUILD_DIR)/Discovery/Src/tMenuEdit.c \
@@ -117,6 +118,7 @@ OBJS += \
 ./Discovery/Src/tMenu.o \
 ./Discovery/Src/tMenuCustom.o \
 ./Discovery/Src/tMenuCvOption.o \
+./Discovery/Src/tMenuCvOptionText.o \
 ./Discovery/Src/tMenuDeco.o \
 ./Discovery/Src/tMenuDecoParameter.o \
 ./Discovery/Src/tMenuEdit.o \
@@ -185,6 +187,7 @@ C_DEPS += \
 ./Discovery/Src/tMenu.d \
 ./Discovery/Src/tMenuCustom.d \
 ./Discovery/Src/tMenuCvOption.d \
+./Discovery/Src/tMenuCvOptionText.d \
 ./Discovery/Src/tMenuDeco.d \
 ./Discovery/Src/tMenuDecoParameter.d \
 ./Discovery/Src/tMenuEdit.d \
@@ -542,6 +545,13 @@ Discovery/Src/tMenuCustom.o: $(BUILD_DIR)/Discovery/Src/tMenuCustom.c
 	@echo ' '
 
 Discovery/Src/tMenuCvOption.o: $(BUILD_DIR)/Discovery/Src/tMenuCvOption.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+Discovery/Src/tMenuCvOptionText.o: $(BUILD_DIR)/Discovery/Src/tMenuCvOptionText.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
