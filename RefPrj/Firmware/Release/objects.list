@@ -129,6 +129,7 @@
 "Discovery/Src/tMenu.o"
 "Discovery/Src/tMenuCustom.o"
 "Discovery/Src/tMenuCvOption.o"
+"Discovery/Src/tMenuCvOptionText.o"
 "Discovery/Src/tMenuDeco.o"
 "Discovery/Src/tMenuDecoParameter.o"
 "Discovery/Src/tMenuEdit.o"
