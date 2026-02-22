@@ -963,7 +963,7 @@ static void block_diluent_handler(_Bool Unblock)
     }
 }
 
-tM_setLinesForPage(uint32_t pageID, uint8_t lineCnt)
+void tM_setLinesForPage(uint32_t pageID, uint8_t lineCnt)
 {
 	SStateList list;
 	get_idSpecificStateList(pageID, &list);

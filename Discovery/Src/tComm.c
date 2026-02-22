@@ -234,7 +234,10 @@ uint8_t tComm_control(void)
 		{
 				UartReady = RESET;
 				if((receiveStartByteUart == BYTE_DOWNLOAD_MODE) || (receiveStartByteUart == BYTE_SERVICE_MODE))
+				{
 					answer = openComm(receiveStartByteUart);
+					reset_ButtonLock();
+				}
 				StartListeningToUART = 1;
 				return answer;
 		}

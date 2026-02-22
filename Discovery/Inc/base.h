@@ -123,6 +123,7 @@ uint8_t font_update_required(void);
 void set_Backlight_Boost(uint8_t level);
 void StoreButtonAction(uint8_t action);
 SButtonLock get_ButtonLock(void);
+void reset_ButtonLock(void);
 
 #ifdef T7_DEBUG_RUNTIME
 uint32_t getMainLoopTime();

@@ -1098,6 +1098,10 @@ uint8_t get_lineOfID(uint32_t id)
 	return ret;
 }
 
+void reset_ButtonLock(void)
+{
+	ButtonLockState = LOCK_OFF;
+}
 SButtonLock get_ButtonLock(void)
 {
 	return ButtonLockState;

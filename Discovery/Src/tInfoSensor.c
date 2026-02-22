@@ -40,7 +40,6 @@
 #include <inttypes.h>
 
 extern void openEdit_Sensors(uint8_t filter);
-uint8_t OnAction_Sensor	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 /* Private variables ---------------------------------------------------------*/
 static uint8_t	activeSensorId = 0;
@@ -206,8 +205,6 @@ static void refreshInfo_SensorCo2(GFX_DrawCfgScreen s)
 //  ===============================================================================
 void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 {
-	const SDiveState *pStateReal = stateRealGetPointer();
-
     char text[31];
 
     text[0] = '\001';
