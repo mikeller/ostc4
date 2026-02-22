@@ -103,11 +103,11 @@ uint8_t tMCvOptText_refreshO2(char* pText)
 
 		if((pSettings->ext_sensor_map[0] == SENSOR_ANALOG) || (pSettings->ext_sensor_map[0] == SENSOR_DIGO2M) || (pSettings->ext_sensor_map[0] == SENSOR_SENTINELM))
 		{
-			textPointer += snprintf(&pText[textPointer],20,"%c%01.1f \020\007",sensorStatusColor[0], stateUsed->lifeData.ppO2Sensor_bar[0]);
+			textPointer += snprintf(&pText[textPointer],20,"%c%01.1f \020\033",sensorStatusColor[0], stateUsed->lifeData.ppO2Sensor_bar[0]);
 		}
 		if((pSettings->ext_sensor_map[1] == SENSOR_ANALOG) || (pSettings->ext_sensor_map[1] == SENSOR_DIGO2M) || (pSettings->ext_sensor_map[1] == SENSOR_SENTINELM))
 		{
-			textPointer += snprintf(&pText[textPointer],20,"%c%01.1f \020\007",sensorStatusColor[1], stateUsed->lifeData.ppO2Sensor_bar[1]);
+			textPointer += snprintf(&pText[textPointer],20,"%c%01.1f \020\033",sensorStatusColor[1], stateUsed->lifeData.ppO2Sensor_bar[1]);
 		}
 		if((pSettings->ext_sensor_map[2] == SENSOR_ANALOG) || (pSettings->ext_sensor_map[2] == SENSOR_DIGO2M) || (pSettings->ext_sensor_map[2] == SENSOR_SENTINELM))
 		{
@@ -140,7 +140,7 @@ uint8_t tMCvOptText_refreshCO2(char* pText)
 	/* Grey out */
 	if(pSettings->co2_sensor_active == 0) sensorStatusColor = '\031';
 
-	textPointer += snprintf(&pText[textPointer],20,"%c%ld \020\007",sensorStatusColor, stateUsed->lifeData.CO2_data.CO2_ppm);
+	textPointer += snprintf(&pText[textPointer],20,"%c%ld \020\033",sensorStatusColor, stateUsed->lifeData.CO2_data.CO2_ppm);
 
 	pText[textPointer++] = '\020';
 	pText[textPointer] = 0;

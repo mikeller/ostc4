@@ -106,7 +106,7 @@ typedef struct {
     *  ...
     * \027  color 8
     * \026	color 11
-    * \033 UNUSED \c ESC
+    * \033  50 pixel spacing \c ESC
     * \034	monospaced space large size mode
     * \035	standard space size mode
     * \040	space == begin of text

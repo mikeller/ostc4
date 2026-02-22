@@ -192,17 +192,17 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
 #ifdef ENABLE_ADVANCED_GAS
 					if( ltr != 0)
 					{
-						textPointer += snprintf(&text[textPointer], 20,"\007 %2u\016\016ltr\017",ltr);
+						textPointer += snprintf(&text[textPointer], 20,"\033 %2u\016\016ltr\017",ltr);
 					}
 					else
 					{
-						text[textPointer++] = '\007';
-						text[textPointer++] = '\007';
-						text[textPointer++] = '\007';
+						text[textPointer++] = '\033';
+						text[textPointer++] = '\033';
+						text[textPointer++] = '\033';
 					}
                 	if( bar != 0)
                 	{
-                		textPointer += snprintf(&text[textPointer], 20,"\007 %2u\016\016bar\017",bar);
+                		textPointer += snprintf(&text[textPointer], 20,"\033 %2u\016\016bar\017",bar);
                 	}
 
 #endif
@@ -283,7 +283,7 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                 {
 					textPointer += snprintf(&text[textPointer], 12,\
 						"%c"
-						"\007\007%2u"
+						"\033\033%2u"
 						"\016\016"
 						"ltr"
 						"\017"
@@ -292,16 +292,16 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                 }
                 else
                 {
-                	text[textPointer++] = '\007';
-                	text[textPointer++] = '\007';
-                	text[textPointer++] = '\007';
+                	text[textPointer++] = '\033';
+                	text[textPointer++] = '\033';
+                	text[textPointer++] = '\033';
                 }
                 /* bar */
                 if(bar != 0)
                 {
 					textPointer += snprintf(&text[textPointer], 12,\
 						"%c"
-						"\007%3u"
+						"\033%3u"
 						"\016\016"
 						"bar"
 						"\017",

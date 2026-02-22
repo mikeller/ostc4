@@ -2139,7 +2139,7 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 			if(*pText == '\r') // carriage return, no newline
 				settings.Xdelta = 0;
 			else
-			if((*pText == '\007')) /* jump to next 50 pixel offset */
+			if((*pText == '\033')) /* jump to next 50 pixel offset */
 			{
 					settings.Xdelta = ((settings.Xdelta / 50) + 1) * 50;
 			}
