@@ -997,9 +997,11 @@ void exitMenuProfil()
 		for(index = EF_PROFILE0; index <= EF_PROFILE3; index++)
 		ext_flash_write_settings(index,0);
 	}
-	if(profileActiveStart != settingsGetPointer()->activeProfile)
+	if(profileActiveStart != settingsGetPointer()->activeProfile)	/* changes need to be done because of profile switch ?*/
 	{
 		createDiveSettings();
+		reset_ButtonLock();
+		DataEX_setExtInterface_Cmd(EXT_INTERFACE_COPY_SENSORMAP, 0);
 	}
 	exitMenuEdit(1);
 }
