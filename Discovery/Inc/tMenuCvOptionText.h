@@ -37,6 +37,7 @@
 enum CVOPTIONS						/* the order defines the priority as well */
 {
 		CVOPT_Compass = 0,
+		CVOPT_HUD,
 		CVOPT_O2_Sensor,
 		CVOPT_CO2_Sensor,
 		CVOPT_Pressure_Sensor,

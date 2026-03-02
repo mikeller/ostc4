@@ -66,7 +66,8 @@ uint8_t OnAction_Sensor_Detect	(uint32_t editId, uint8_t blockNumber, uint8_t di
 uint8_t OnAction_Button			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ButtonBalance	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_ButtonLock		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
-
+uint8_t OnAction_LedSequence	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_LedBrightness	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 /* Exported functions --------------------------------------------------------*/
 
 
@@ -143,11 +144,13 @@ void openEdit_WarningBuz(void)
 
 void refresh_O2Sensors(void)
 {
-    char strSensorId[20];
-    char strSensorValue[20];
+	static uint8_t HUD_cmdUpdateCnt = 20;
+
+	char strSensorId[20];
+    char strSensorValue[30];
     uint16_t y_line;
     uint8_t index = 0;
-
+    uint8_t uartSensorCnt = 0;
 
     const SDiveState *pStateReal = stateRealGetPointer();
     SSettings *pSettings = settingsGetPointer();
@@ -213,6 +216,7 @@ void refresh_O2Sensors(void)
 	strSensorId[2] = 0;
 	write_topline(strSensorId);
 
+	memset(strSensorId,0,20);
 	strSensorId[0] = TXT_2BYTE;
 	strSensorId[1] = TXT2BYTE_Sensor;
 	strSensorId[2] = ' ';
@@ -253,6 +257,10 @@ void refresh_O2Sensors(void)
 				case SENSOR_GNSSM:		strSensorId[3] = 'G';
 	 	 	 	   	   	   	   	   	    strSensorId[4] = 'N';
 					break;
+				case SENSOR_HUD:  	strSensorId[3] = 'H';
+									strSensorId[4] = 'U';
+									strSensorId[5] = 'D';
+								break;
 				default:
 									  strSensorId[5] = 0;
 					break;
@@ -269,6 +277,17 @@ void refresh_O2Sensors(void)
 		else if(localSensorMap[index] == SENSOR_CO2M)
 		{
 			snprintf(strSensorValue, 20,"%ld ppm",  pStateReal->lifeData.CO2_data.CO2_ppm);
+		}
+		else if(localSensorMap[index] == SENSOR_HUD)
+		{
+			write_label_var(  30, 340, ME_Y_LINE2, &FontT48, "LED Sequence:");
+			tMenuEdit_newInput(StMHARD3_O2_Sensor2,	pStateReal->lifeData.HUD_led_sequence[0] - pStateReal->lifeData.HUD_led_sequence[1],
+													pStateReal->lifeData.HUD_led_sequence[2] - pStateReal->lifeData.HUD_led_sequence[3],
+													pStateReal->lifeData.HUD_led_sequence[4] - pStateReal->lifeData.HUD_led_sequence[5],
+													pStateReal->lifeData.HUD_led_sequence[6]);
+			snprintf(strSensorValue, 30,"LED Brightness:  %d",pStateReal->lifeData.HUD_led_brightness);
+			write_label_var(  30, 340, ME_Y_LINE3, &FontT48, strSensorValue);
+			snprintf(strSensorValue, 20,"o o o \023o");
 		}
 		y_line = ME_Y_LINE1 + (index * ME_Y_LINE_STEP);
 		if(strSensorValue[0] != 0)
@@ -311,6 +330,21 @@ void refresh_O2Sensors(void)
 		}
 
 	}
+	if(sensorFilter == SENSOR_NONE)
+	{
+		for(index = EXT_INTERFACE_MUX_OFFSET; index < EXT_INTERFACE_SENSOR_CNT; index++)
+		{
+			if(pSettings->ext_sensor_map[index] != SENSOR_NONE)
+			{
+				uartSensorCnt++;
+			}
+		}
+		if(uartSensorCnt != 0)
+		{
+			snprintf(strSensorId, 20,"%c: %d", TXT_o2Sensors, uartSensorCnt);
+			write_label_var(  30, 340, ME_Y_LINE5, &FontT48, strSensorId);
+		}
+	}
    	if((DataEX_external_ADC_Present()) && (sensorFilter == SENSOR_NONE))
    	{
 		strSensorId[0] = TXT_2BYTE;
@@ -341,6 +375,24 @@ void refresh_O2Sensors(void)
     {
     	write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
     }
+
+    if(localSensorMap[0] == SENSOR_HUD)
+    {
+		HUD_cmdUpdateCnt--;
+		if(HUD_cmdUpdateCnt == 0)
+		{
+			HUD_cmdUpdateCnt = 20;
+			for(index = EXT_INTERFACE_MUX_OFFSET; index < EXT_INTERFACE_SENSOR_CNT; index++)
+			{
+				if(pSettings->ext_sensor_map[index] == SENSOR_HUD)
+				{
+					DataEX_setExtInterface_Cmd(EXT_INTERFACE_HUD_UPDATE, index);
+					break;
+				}
+			}
+
+		}
+    }
 }
 
 
@@ -348,6 +400,7 @@ void openEdit_Sensors(uint8_t filter)
 {
 	static externalInterfaceSensorType lastFilter;
 	SSettings *pSettings = settingsGetPointer();
+	const SDiveState* pRealState = stateRealGetPointer();
     uint8_t sensorActive[3];
     uint8_t index = 0;
     char text[3];
@@ -387,7 +440,7 @@ void openEdit_Sensors(uint8_t filter)
 				sensorActive[index] = 1;
 			}
 		}
-		if(sensorFilter != SENSOR_CO2)
+		if((sensorFilter == SENSOR_NONE) || (sensorFilter == SENSOR_DIGO2))
 		{
 			if(((pSettings->ext_sensor_map[0] < SENSOR_OPTIC) || (pSettings->ext_sensor_map[0] >= SENSOR_TYPE_O2_END)))
 			{
@@ -438,9 +491,15 @@ void openEdit_Sensors(uint8_t filter)
 				}
 			}
 		}
-		else
+		else	/* single, none O2 sensors */
 		{
-			write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", pSettings->co2_sensor_active);	/* only one CO2 supporterd => show at first line */
+			switch(sensorFilter)
+			{
+				case SENSOR_CO2:	write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", pSettings->co2_sensor_active);	/* only one CO2 supporterd => show at first line */
+					break;
+				default:			write_field_button(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "");
+					break;
+			}
 			firstSensorId = StMHARD3_O2_Sensor1;
 		}
 		stateRealGetPointerWrite()->diveSettings.ppo2sensors_deactivated = pSettings->ppo2sensors_deactivated;
@@ -519,6 +578,21 @@ void openEdit_Sensors(uint8_t filter)
 			case SENSOR_CO2:	setEvent(StMHARD3_O2_Sensor1, (uint32_t)OnAction_Sensor1);
 								localSensorMap[0] = SENSOR_CO2M;
 				break;
+			case SENSOR_HUD:    write_label_var(  30, 340, ME_Y_LINE2, &FontT48, "LED Sequence:");
+								write_field_sdigit(StMHARD3_O2_Sensor2, 400, 800, ME_Y_LINE2, &FontT48, "###  ###  ###  ###",
+								pRealState->lifeData.HUD_led_sequence[0] - pRealState->lifeData.HUD_led_sequence[1],
+								pRealState->lifeData.HUD_led_sequence[2] - pRealState->lifeData.HUD_led_sequence[3],
+								pRealState->lifeData.HUD_led_sequence[4] - pRealState->lifeData.HUD_led_sequence[5],
+								pRealState->lifeData.HUD_led_sequence[6]);
+
+								write_field_button(StMHARD3_O2_Sensor3,	400, 800, ME_Y_LINE3, &FontT48, "");
+
+								setEvent(StMHARD3_O2_Sensor1, (uint32_t)OnAction_Sensor1);
+								setEvent(StMHARD3_O2_Sensor2, (uint32_t)OnAction_LedSequence);
+								setEvent(StMHARD3_O2_Sensor3, (uint32_t)OnAction_LedBrightness);
+
+								localSensorMap[0] = SENSOR_HUD;
+				break;
 		}
 
 		if (sensorFilter == SENSOR_CO2)
@@ -563,11 +637,14 @@ void openEdit_SensorsCO2()
 {
 	openEdit_Sensors(SENSOR_CO2);
 }
-
+void openEdit_SensorsHUD()
+{
+	openEdit_Sensors(SENSOR_HUD);
+}
 
 uint8_t OnAction_Sensor1(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	if((localSensorMap[0] == SENSOR_DIGO2M) || (localSensorMap[0] == SENSOR_CO2M) || (localSensorMap[0] == SENSOR_CO2M))
+	if((localSensorMap[0] == SENSOR_DIGO2M) || (localSensorMap[0] == SENSOR_CO2M) || (localSensorMap[0] == SENSOR_CO2M) || (localSensorMap[0] == SENSOR_HUD))
 	{
 		openInfo_SetSensorType(localSensorMap[0]);
 		return EXIT_TO_INFO_SENSOR;
@@ -966,3 +1043,103 @@ uint8_t OnAction_ButtonLock(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 
     return UNSPECIFIC_RETURN;
 }
+
+
+uint8_t OnAction_LedBrightness(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	 SDiveState * pStateReal = stateRealGetPointerWrite();
+
+    if(pStateReal->lifeData.HUD_led_brightness == 0)
+    {
+    	pStateReal->lifeData.HUD_led_brightness = 0xFF;
+    }
+    else
+    {
+    	pStateReal->lifeData.HUD_led_brightness = 0;
+    }
+
+    return UNSPECIFIC_RETURN;
+}
+
+uint8_t OnAction_LedSequence(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SDiveState * pStateReal = stateRealGetPointerWrite();
+    int32_t ledSeq[4];
+    uint8_t digitContentNew;
+    uint8_t index = 0;
+
+
+    switch (action) {
+    case ACTION_BUTTON_ENTER:
+
+        return digitContent;
+    case ACTION_BUTTON_ENTER_FINAL:
+        {
+            evaluateNewString(editId, (uint32_t*) &ledSeq[0], (uint32_t*)&ledSeq[1], (uint32_t*)&ledSeq[2], (uint32_t*)&ledSeq[3]);
+
+            for(index = 0; index < 3; index++)
+            {
+				if (ledSeq[index] > 16)
+				{
+					ledSeq[index] = 16;
+				} else if (ledSeq[index] < -16)
+				{
+					ledSeq[index] = -16;
+				}
+				pStateReal->lifeData.HUD_led_sequence[(index*2)] = 0;		/* every value handles 2 LEDs depending on +/- sign */
+				pStateReal->lifeData.HUD_led_sequence[(index*2)+1] = 0;
+				if(ledSeq[index] > 0)
+				{
+					pStateReal->lifeData.HUD_led_sequence[(index*2)] = ledSeq[index];
+				}
+				else
+				{
+					pStateReal->lifeData.HUD_led_sequence[(index*2 + 1)] = ledSeq[index] * -1;
+				}
+            }
+            pStateReal->lifeData.HUD_led_sequence[6] = ledSeq[3];
+            tMenuEdit_newInput(editId, ledSeq[0], ledSeq[1], ledSeq[2], ledSeq[3]);
+        }
+
+        break;
+    case ACTION_BUTTON_NEXT:
+        if ((blockNumber < 3) && (digitNumber == 0))
+        {
+            digitContentNew = togglePlusMinus(digitContent);
+        } else if (digitNumber == 1)
+        {
+            digitContentNew = digitContent + 1;
+            if (digitContentNew > '1') {
+                digitContentNew = '0';
+            }
+        } else
+        {
+            digitContentNew = digitContent + 1;
+            if (digitContentNew > '9') {
+                digitContentNew = '0';
+            }
+        }
+
+        return digitContentNew;
+    case ACTION_BUTTON_BACK:
+    	if ((blockNumber < 3) && (digitNumber == 0))
+    	{
+            digitContentNew = togglePlusMinus(digitContent);
+        } else if (digitNumber == 1)
+        {
+            digitContentNew = digitContent - 1;
+            if (digitContentNew < '0') {
+                digitContentNew = '1';
+            }
+        }else
+        {
+            digitContentNew = digitContent - 1;
+            if (digitContentNew < '0') {
+                digitContentNew = '9';
+            }
+        }
+        return digitContentNew;
+    }
+    return UNSPECIFIC_RETURN;
+}
+

@@ -202,6 +202,20 @@ static void refreshInfo_SensorCo2(GFX_DrawCfgScreen s)
 
 	tInfo_write_buttonTextline_simple(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_O2Calib);
 }
+
+static void refreshInfo_SensorHUD(GFX_DrawCfgScreen s)
+{
+	const SDiveState *pStateReal = stateRealGetPointer();
+    char text[50];
+
+    snprintf(text,50,"%s",pStateReal->lifeData.extIf_sensor_data[activeSensorId]);
+    tInfo_write_content_simple(  30, 770, ME_Y_LINE1, &FontT48, text, CLUT_Font020);
+
+	tInfo_write_buttonTextline_simple(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,0);
+}
+
+
+
 //  ===============================================================================
 void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 {
@@ -222,7 +236,9 @@ void refreshInfo_Sensor(GFX_DrawCfgScreen s)
 		case SENSOR_DIGO2M:	refreshInfo_SensorO2(s);
 			break;
 		case SENSOR_CO2:
-		case SENSOR_CO2M: refreshInfo_SensorCo2(s);
+		case SENSOR_CO2M: 	refreshInfo_SensorCo2(s);
+			break;
+		case SENSOR_HUD:	refreshInfo_SensorHUD(s);
 			break;
 	}
 }

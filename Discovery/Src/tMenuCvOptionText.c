@@ -147,6 +147,13 @@ uint8_t tMCvOptText_refreshCO2(char* pText)
 	return strlen(pText);
 }
 
+uint8_t tMCvOptText_refreshHUD(char* pText)
+{
+	uint8_t textPointer = 0;
+	textPointer += snprintf(&pText[textPointer],20,"HUD");
+	pText[textPointer] = 0;
+	return strlen(pText);
+}
 
 uint8_t tMCvOptText_BuildDynamicContentList()
 {
@@ -172,6 +179,10 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 				break;
 #if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
 			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;
+				break;
+#endif
+#ifdef ENABLE_HUD_SUPPORT
+			case SENSOR_HUD:	SensorActive[SENSOR_HUD] = 1;
 				break;
 #endif
 			default:
@@ -207,7 +218,13 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 										refreshFctPointerTable[activeLines] = tMCvOptText_refreshCO2;
 										CvOptAvailable = 1;
 									}
-						break;
+				break;
+			case CVOPT_HUD:			if(SensorActive[SENSOR_HUD])
+									{
+										refreshFctPointerTable[activeLines] = tMCvOptText_refreshHUD;
+										CvOptAvailable = 1;
+									}
+				break;
 			default:
 				break;
 		}

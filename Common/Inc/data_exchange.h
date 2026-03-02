@@ -34,8 +34,7 @@
 /* Command definitions for control of external interface */
 /* 1st nibble binary on/off states */
 /* 2nd nibble target sensor ID (if sensor command is active) */
-/* 3rd nibble sensor commands */
-/* 4th nibble control channel */
+/* 3 + 4th nibble control channel */
 #define EXT_INTERFACE_33V_ON		(0x8000u)	/* Bit set to enable 3.3V power interface */
 #define EXT_INTERFACE_ADC_ON		(0x4000u)	/* Bit set to enable ADC conversion */
 #define EXT_INTERFACE_BUZZER_ON		(0x2000u)	/* Bit set to enable the buzzer */
@@ -44,7 +43,9 @@
 #define EXT_INTERFACE_AUTODETECT 	(0x0001u)	/* Start auto detection of connected sensors	*/
 #define EXT_INTERFACE_COPY_SENSORMAP (0x0002u)	/* Use the sensor map provided by master for internal operations */
 #define EXT_INTERFACE_CO2_CALIB 	(0x0010u)	/* Request calibration of CO2Sensor */
-#define EXT_INTERFACE_O2_INDICATE	(0x0020u)	/* Request LED to blink*/
+#define EXT_INTERFACE_O2_INDICATE	(0x0020u)	/* Request LED to blink */
+#define EXT_INTERFACE_HUD_UPDATE	(0x0030u)	/* Update status sequence */
+#define EXT_INTERFACE_HUD_ABORT		(0x0031u)	/* Abort status sequence */
 
 #define DATA_BUFFER_ADC				(0x01u)
 #define DATA_BUFFER_CO2				(0x02u)
@@ -222,7 +223,10 @@ typedef struct
 
 		uint8_t externalInterface_SensorMap[EXT_INTERFACE_SENSOR_CNT];
 
-		float UNUSED1[16-1];//VPM_adjusted_critical_radius_he[16];
+		uint8_t externalInterface_HUD_Update[EXT_INTERFACE_HUD_LED_MAX];
+		uint8_t externalInterface_HUD_Brightness;
+		uint8_t UNUSED0[3];
+		float UNUSED1[16-6];//VPM_adjusted_critical_radius_he[16]; => Reuse HUD_Update
 		float UNUSED2[16];//VPM_adjusted_critical_radius_n2[16];
 		float UNUSED3[16];//VPM_adjusted_crushing_pressure_he[16];
 		float UNUSED4[16];//VPM_adjusted_crushing_pressure_n2[16];

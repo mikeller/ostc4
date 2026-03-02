@@ -72,7 +72,9 @@ void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index)
 			case CVOPT_O2_Sensor: openFctPointerTable[index] = openEdit_SensorsO2;
 				break;
 			case CVOPT_CO2_Sensor: openFctPointerTable[index] = openEdit_SensorsCO2;
-							break;
+				break;
+			case CVOPT_HUD: openFctPointerTable[index] = openEdit_SensorsHUD;
+				break;
 			default:
 				break;
 		}

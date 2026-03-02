@@ -48,6 +48,8 @@
 #define EXT_INTERFACE_BUZZER_PING_TIME_MS (1000u)	/* max time the buzzer should be active for single ping */
 #define EXT_INTERFACE_BUZZER_STABLE_TIME_MS (500u)	/* min time a state (ON / OFF) should be stable before it may be changed */
 
+#define EXT_INTERFACE_HUD_LED_MAX	(16u)			/* max number of supported LED for HUD operation */
+
 
 /* Helper structs ------------------------------------------------------------*/
 
@@ -215,7 +217,7 @@ typedef enum
 typedef struct
 {
 	/* from Small CPU */
-	uint8_t extIf_sensor_data[3][32]; /* The external sensor may contain a 64 bit ID. It has been placed at the beginning of the structure to avoid problems in alignment */
+	uint8_t extIf_sensor_data[EXT_INTERFACE_SENSOR_CNT][32]; /* The external sensor may contain a 64 bit ID. It has been placed at the beginning of the structure to avoid problems in alignment */
 	uint8_t extIf_sensor_map[EXT_INTERFACE_SENSOR_CNT];
 
 	int32_t dive_time_seconds;
@@ -292,6 +294,9 @@ typedef struct
 /*	 last GF_Surf when shallow area was entered */
 	 uint8_t gf_surf_log;
 
+/* HUD control data */
+	uint8_t HUD_led_sequence[EXT_INTERFACE_HUD_LED_MAX];
+	uint8_t HUD_led_brightness;
 } 	SLifeData;
 
 
@@ -516,6 +521,7 @@ typedef enum
 	 SENSOR_CO2M,
 	 SENSOR_GNSS,
 	 SENSOR_GNSSM,
+	 SENSOR_HUD,
 	 SENSOR_MUX,
 	 SENSOR_END
 } externalInterfaceSensorType;

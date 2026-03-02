@@ -470,7 +470,10 @@ void DateEx_copy_to_dataOut(void)
 	{
 		dataOut.displayVersion = 1;
 	}
-
+#ifdef ENABLE_HUD_SUPPORT
+	memcpy (dataOut.data.externalInterface_HUD_Update, pStateReal->lifeData.HUD_led_sequence, EXT_INTERFACE_HUD_LED_MAX);
+	dataOut.data.externalInterface_HUD_Brightness =  pStateReal->lifeData.HUD_led_brightness;
+#endif
 	if(DataEX_check_header_and_footer_ok() && !told_reset_logik_alles_ok)
 	{
 		MX_tell_reset_logik_alles_ok();
@@ -1032,9 +1035,8 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 	if(pStateReal->data_old__lost_connection_to_slave == 0)
 	{
 		pStateReal->lifeData.extIf_sensor_Id = dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_ADC)].externalInterface_SensorID;
-		if(pStateReal->lifeData.extIf_sensor_Id < 3)
+		if(pStateReal->lifeData.extIf_sensor_Id < EXT_INTERFACE_SENSOR_CNT)
 		{
-
 			memcpy(pStateReal->lifeData.extIf_sensor_data[pStateReal->lifeData.extIf_sensor_Id], dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_ADC)].sensor_data, 32);
 		}
 		memcpy(pStateReal->lifeData.extIf_sensor_map, dataIn.data[(dataIn.boolADCO2Data && DATA_BUFFER_ADC)].sensor_map, EXT_INTERFACE_SENSOR_CNT);

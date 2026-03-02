@@ -113,5 +113,7 @@
 
 /* Enable to have advanced gas information lite bottle size and pressure available */
 /* #define ENABLE_ADVANCED_GAS */
+/* Enable to have protocol support for external HUD */
+/* #define ENABLE_HUD_SUPPORT */
 
 #endif
