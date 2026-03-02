@@ -82,6 +82,12 @@ enum									/* Definitions for supported UART protocols */
 	DETECTION_SENTINEL,		/* check UART channel for connected Sentinel */
 	DETECTION_SENTINEL2,
 #endif
+#ifdef ENABLE_HUD_SUPPORT
+	DETECTION_HUD_0,
+	DETECTION_HUD_1,
+	DETECTION_HUD_2,
+	DETECTION_HUD_3,
+#endif
 	DETECTION_DONE
  } externalInterfaceAutoDetect_t;
 
@@ -111,6 +117,8 @@ uint16_t externalInterface_GetCO2Value(void);
 uint16_t externalInterface_GetCO2SignalStrength(void);
 void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar);
 uint8_t externalInterface_GetBottlePressure(uint8_t bottle);
+void externalInterface_GetHUDSequence(uint8_t* pSequence, uint8_t* brightness);
+void externalInterface_SetHUDSequence(uint8_t* pSequence, uint8_t brightness);
 uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct);
 void externalInterface_SetSensorData(uint8_t sensorId, uint8_t* pDataStruct);
 void externalInface_SetSensorMap(uint8_t* pMap);

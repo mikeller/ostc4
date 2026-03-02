@@ -24,6 +24,7 @@
 #include "uartProtocol_Co2.h"
 #include "uartProtocol_Sentinel.h"
 #include "uartProtocol_GNSS.h"
+#include "uartProtocol_HUD.h"
 #include "externalInterface.h"
 #include "data_exchange.h"
 #include "gpio.h"
@@ -199,11 +200,8 @@ void UART_MUX_SelectAddress(uint8_t muxAddress)
 	}
 }
 
-
-void UART_SendCmdString(uint8_t *cmdString)
+void UART_SendCmdRaw(const uint8_t *cmd, uint8_t cmdLength)
 {
-	uint8_t cmdLength = strlen((char*)cmdString);
-
 	if(Uart1Ctrl.dmaTxActive == 0)
 	{
 		if(cmdLength < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
@@ -212,7 +210,7 @@ void UART_SendCmdString(uint8_t *cmdString)
 			{
 				UART_StartDMA_Receiption(&Uart1Ctrl);
 			}
-			memcpy(txBuffer, cmdString, cmdLength);
+			memcpy(txBuffer, cmd, cmdLength);
 			if(HAL_OK == HAL_UART_Transmit_DMA(&huart1,txBuffer,cmdLength))
 			{
 				Uart1Ctrl.dmaTxActive = 1;
@@ -222,9 +220,16 @@ void UART_SendCmdString(uint8_t *cmdString)
 	}
 	else
 	{
-		memcpy(txBufferQue, cmdString, cmdLength);
+		memcpy(txBufferQue, cmd, cmdLength);
 		Uart1Ctrl.txBufferQueLen = cmdLength;
 	}
+}
+
+void UART_SendCmdString(uint8_t *cmdString)
+{
+	uint8_t cmdLength = strlen((char*)cmdString);
+
+	UART_SendCmdRaw(cmdString, cmdLength);
 }
 
 void UART_AddFletcher(uint8_t* pBuffer, uint8_t length)
@@ -457,6 +462,10 @@ void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips process
 #endif
 #ifdef ENABLE_SENTINEL_MODE
 					case SENSOR_SENTINEL:	uartSentinel_ProcessData(pUartCtrl->pRxBuffer[localRX]);
+						break;
+#endif
+#ifdef ENABLE_HUD_SUPPORT
+					case SENSOR_HUD:	uartHUD_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 						break;
 #endif
 					default:

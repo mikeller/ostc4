@@ -74,6 +74,9 @@ void UART_HandleGnssData(void);
 #ifdef ENABLE_SENTINEL_MODE
 void UART_HandleSentinelData(void);
 #endif
+#ifdef ENABLE_HUD_SUPPORT
+void UART_HandleHUDData(void);
+#endif
 void UART_SetGnssCtrl(sUartComCtrl* pTarget);
 sUartComCtrl* UART_GetGnssCtrl();
 void UART_clearRxBuffer(sUartComCtrl* pUartCtrl);
@@ -81,6 +84,7 @@ uint8_t UART_isCO2Connected();
 uint8_t UART_isSentinelConnected();
 void UART_setTargetChannel(uint8_t channel);
 void  UART_MUX_SelectAddress(uint8_t muxAddress);
+void UART_SendCmdRaw(const uint8_t *cmd, uint8_t cmdLength);
 void UART_SendCmdString(uint8_t *cmdString);
 void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len);
 void UART_ReadData(uint8_t sensorType, uint8_t flush);

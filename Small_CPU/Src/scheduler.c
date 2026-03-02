@@ -336,7 +336,10 @@ void scheduleSpecial_Evaluate_DataSendToSlave(void)
 	{
 		externalInterface_SwitchADC(1-externalInterface_isEnabledADC());
 	}
-
+	if((global.dataSendToSlave.data.externalInterface_Cmd & 0x00FF) == EXT_INTERFACE_HUD_UPDATE)	/* update HUD sequence */
+	{
+		externalInterface_SetHUDSequence(global.dataSendToSlave.data.externalInterface_HUD_Update, global.dataSendToSlave.data.externalInterface_HUD_Brightness);
+	}
 	externalInface_SetSensorMap(global.dataSendToSlave.data.externalInterface_SensorMap);
 	if(global.dataSendToSlave.data.externalInterface_Cmd & 0x00FF)	/* lowest nibble for commands */
 	{

@@ -36,6 +36,7 @@
 #include "uartProtocol_Co2.h"
 #include "uartProtocol_Sentinel.h"
 #include "uartProtocol_GNSS.h"
+#include "uartProtocol_HUD.h"
 
 extern SGlobal global;
 extern UART_HandleTypeDef huart1;
@@ -85,9 +86,12 @@ static uint16_t externalCO2Status = 0;
 static float 	externalCO2Scale = 0.0;
 
 static uint8_t externalBottleBar[PRESSURE_BOTTLE_CNT] = {0,0};
+static uint8_t externalHUDBrightness = 0;
+static uint8_t externalHUDSequence[EXT_INTERFACE_HUD_LED_MAX];
+
 
 static uint8_t lastSensorDataId = 0;
-static SSensorDataDiveO2 sensorDataDiveO2[EXT_INTERFACE_SENSOR_CNT];
+static uint8_t sensorData[EXT_INTERFACE_SENSOR_CNT][EXTIF_SENSOR_INFO_SIZE];
 static externalInterfaceAutoDetect_t externalAutoDetect = DETECTION_OFF;
 static externalInterfaceSensorType SensorMap[EXT_INTERFACE_SENSOR_CNT] ={ SENSOR_OPTIC, SENSOR_OPTIC, SENSOR_OPTIC, SENSOR_NONE, SENSOR_NONE};
 static externalInterfaceSensorType tmpSensorMap[EXT_INTERFACE_SENSOR_CNT];
@@ -399,39 +403,12 @@ void externalInterface_SwitchADC(uint8_t state)
 
 void externalInterface_SwitchUART(uint8_t protocol)
 {
-	switch(protocol)
+	lastSensorDataId = 0;
+	externalUART_Protocol = protocol;
+	MX_USART1_UART_DeInit();
+	if( protocol != EXT_INTERFACE_UART_OFF)
 	{
-		case EXT_INTERFACE_UART_OFF:
-		case EXT_INTERFACE_UART_CO2:
-		case EXT_INTERFACE_UART_O2:
-		case EXT_INTERFACE_UART_SENTINEL:
-		case EXT_INTERFACE_UART_GNSS:
-				if((externalAutoDetect <= DETECTION_START)
-					|| ((protocol == EXT_INTERFACE_UART_O2) && (externalAutoDetect >= DETECTION_UARTMUX) && (externalAutoDetect <= DETECTION_DIGO2_3))
-
-#ifdef ENABLE_CO2_SUPPORT
-					|| ((externalAutoDetect >= DETECTION_CO2_0) && (externalAutoDetect <= DETECTION_CO2_3))
-#endif
-#ifdef ENABLE_GNSS_EXTERN
-					|| ((externalAutoDetect >= DETECTION_GNSS_0) && (externalAutoDetect <= DETECTION_GNSS_3))
-#endif
-
-#ifdef ENABLE_SENTINEL_MODE
-														   || ((protocol == EXT_INTERFACE_UART_SENTINEL) && (externalAutoDetect == DETECTION_SENTINEL))
-#endif
-					)
-				{
-					lastSensorDataId = 0;
-					externalUART_Protocol = protocol;
-					MX_USART1_UART_DeInit();
-					if( protocol != 0)
-					{
-						MX_USART1_UART_Init();
-					}
-				}
-			break;
-		default:
-			break;
+		MX_USART1_UART_Init();
 	}
 }
 
@@ -509,12 +486,17 @@ uint16_t externalInterface_GetCO2SignalStrength(void)
 	return externalCO2SignalStrength;
 }
 
-void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar)
+
+void externalInterface_GetHUDSequence(uint8_t* pSequence, uint8_t* brightness)
 {
-	if(bottle < PRESSURE_BOTTLE_CNT)
-	{
-		externalBottleBar[bottle] = bar;
-	}
+	memcpy(pSequence, externalHUDSequence, EXT_INTERFACE_HUD_LED_MAX);
+	*brightness = externalHUDBrightness;
+}
+
+void externalInterface_SetHUDSequence(uint8_t* pSequence, uint8_t brightness)
+{
+	memcpy(externalHUDSequence, pSequence, EXT_INTERFACE_HUD_LED_MAX);
+	externalHUDBrightness = brightness;
 }
 
 uint8_t externalInterface_GetBottlePressure(uint8_t bottle)
@@ -528,6 +510,30 @@ uint8_t externalInterface_GetBottlePressure(uint8_t bottle)
 	return ret;
 }
 
+void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar)
+{
+	if(bottle < PRESSURE_BOTTLE_CNT)
+	{
+		externalBottleBar[bottle] = bar;
+	}
+}
+
+void externalInterface_CopySensorData(uint8_t sensorId, uint8_t* target, uint8_t* source)
+{
+	if(sensorId < EXT_INTERFACE_SENSOR_CNT)
+	{
+		switch(SensorMap[sensorId])
+		{
+			case SENSOR_DIGO2M:
+			case SENSOR_DIGO2:	memcpy(target, source, sizeof(SSensorDataDiveO2));
+				break;
+			case SENSOR_HUD:	memcpy(target, source, HUD_INFO_DATA_LENGTH);
+				break;
+			default:
+			break;
+		}
+	}
+}
 
 uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 {
@@ -540,7 +546,7 @@ uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 
 	if((pDataStruct != NULL) && (localId <= EXT_INTERFACE_SENSOR_CNT))
 	{
-		memcpy(pDataStruct, &sensorDataDiveO2[localId], sizeof(SSensorDataDiveO2));
+		externalInterface_CopySensorData(localId, pDataStruct, &sensorData[localId][0]);
 	}
 	else
 	{
@@ -568,7 +574,7 @@ void externalInterface_SetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 	{
 		if((sensorId != 0xFF) && (sensorId < EXT_INTERFACE_SENSOR_CNT))
 		{
-			memcpy(&sensorDataDiveO2[sensorId], pDataStruct, sizeof(SSensorDataDiveO2));
+			externalInterface_CopySensorData(sensorId, &sensorData[sensorId][0], pDataStruct);
 			lastSensorDataId = sensorId;
 			if(sensorId >= MAX_ADC_CHANNEL)
 			{
@@ -576,7 +582,7 @@ void externalInterface_SetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 				{
 					if(Mux2ADCMap[index] == sensorId)
 					{
-						memcpy(&sensorDataDiveO2[index], pDataStruct, sizeof(SSensorDataDiveO2));
+						externalInterface_CopySensorData(index, &sensorData[index][0], pDataStruct);
 						lastSensorDataId = index;
 						break;
 					}
@@ -585,7 +591,7 @@ void externalInterface_SetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 		}
 		else
 		{
-			memset(&sensorDataDiveO2,0,sizeof(sensorDataDiveO2));
+			memset(&sensorData,0,EXTIF_SENSOR_INFO_SIZE * EXT_INTERFACE_SENSOR_CNT);
 			lastSensorDataId = 0xFF;
 		}
 	}
@@ -858,13 +864,17 @@ static	uint8_t detectionDelayCnt = 0;
 									{
 
 
-#if defined ENABLE_SENTINEL_MODE || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_SENTINEL_MODE || defined ENABLE_GNSS_EXTERN || defined ENABLE_HUD_SUPPORT
 #ifdef ENABLE_GNSS_EXTERN
 										externalAutoDetect = DETECTION_GNSS_0;
 										externalInterface_SwitchUART(EXT_INTERFACE_UART_GNSS);
 #else
 #ifdef ENABLE_SENTINEL_MODE
 										externalAutoDetect = DETECTION_SENTINEL;
+#else
+#ifdef ENABLE_HUD_SUPPORT
+										externalAutoDetect = DETECTION_HUD_0;
+#endif
 #endif
 #endif
 #else
@@ -958,6 +968,51 @@ static	uint8_t detectionDelayCnt = 0;
 									}
 									externalAutoDetect++;
 #endif
+
+#ifdef ENABLE_HUD_SUPPORT
+									if(externalAutoDetect == DETECTION_HUD_0)
+									{
+										tmpSensorMap[uartMuxChannel + EXT_INTERFACE_MUX_OFFSET] = SENSOR_NONE;
+										if(foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)
+										{
+											externalInterface_CheckBaudrate(SENSOR_DIGO2);
+											UART_MUX_SelectAddress(0);
+										}
+										activeUartChannel = 0;
+										tmpSensorMap[uartMuxChannel - 1 + EXT_INTERFACE_MUX_OFFSET] = SENSOR_NONE;
+										uartMuxChannel = 1;
+										tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = SENSOR_HUD;
+										externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
+										externalInterface_CheckBaudrate(SENSOR_HUD);
+										externalInterfaceMuxReqIntervall = 500;	/* iterations needed for module config */
+									}
+							break;
+			case DETECTION_HUD_0:
+			case DETECTION_HUD_1:
+			case DETECTION_HUD_2:
+			case DETECTION_HUD_3:
+										if(uartHUD_isSensorConnected())
+										{
+											foundSensorMap[EXT_INTERFACE_MUX_OFFSET + activeUartChannel] = SENSOR_HUD;
+											externalAutoDetect = DETECTION_DONE;		/* only one HUD sensor supported */
+										}
+										else if(foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)
+										{
+											externalInterface_CheckBaudrate(SENSOR_DIGO2);
+											UART_MUX_SelectAddress(uartMuxChannel);
+											activeUartChannel = uartMuxChannel;
+											tmpSensorMap[uartMuxChannel - 1 + EXT_INTERFACE_MUX_OFFSET] = SENSOR_NONE;
+											tmpSensorMap[EXT_INTERFACE_MUX_OFFSET + uartMuxChannel] = SENSOR_CO2;
+											externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET + uartMuxChannel] = UART_COMMON_INIT;
+											externalInterface_CheckBaudrate(SENSOR_HUD);
+											externalAutoDetect++;
+											uartMuxChannel++;
+										}
+										else
+										{
+											externalAutoDetect = DETECTION_DONE;
+										}
+#endif
 				break;
 			case DETECTION_DONE:	externalAutoDetect = DETECTION_OFF;
 									externalInterface_SwitchUART(EXT_INTERFACE_UART_OFF);
@@ -971,7 +1026,7 @@ static	uint8_t detectionDelayCnt = 0;
 											cntSensor++;
 										}
 
-										if((foundSensorMap[index] == SENSOR_DIGO2) || (foundSensorMap[index] == SENSOR_CO2) || (foundSensorMap[index] == SENSOR_GNSS))
+										if((foundSensorMap[index] == SENSOR_DIGO2) || (foundSensorMap[index] == SENSOR_CO2) || (foundSensorMap[index] == SENSOR_GNSS) || (foundSensorMap[index] == SENSOR_HUD))
 										{
 											cntUARTSensor++;
 										}
@@ -986,23 +1041,22 @@ static	uint8_t detectionDelayCnt = 0;
 									}
 									externalInface_MapUartToLegacyADC(foundSensorMap);
 									externalInterfaceMuxReqIntervall = 0xFFFF;
-									if(cntSensor == 0)		/* return default sensor map if no sensor at all has been detected */
+									if((cntSensor == 0)		/* return default sensor map if no sensor at all has been detected */
+										|| ((foundSensorMap[0] == SENSOR_NONE) && (foundSensorMap[1] == SENSOR_NONE) && (foundSensorMap[2] == SENSOR_NONE)))
 									{
 										foundSensorMap[0] = SENSOR_OPTIC;
 										foundSensorMap[1] = SENSOR_OPTIC;
 										foundSensorMap[2] = SENSOR_OPTIC;
 									}
-									else
+									if(cntUARTSensor != 0)
 									{
-										if(cntUARTSensor != 0)
+										externalInterfaceMuxReqIntervall = REQUEST_INT_SENSOR_MS / cntUARTSensor;
+										if(foundSensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends combined data */
 										{
-											externalInterfaceMuxReqIntervall = REQUEST_INT_SENSOR_MS / cntUARTSensor;
-											if(foundSensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends combined data */
-											{
-												externalInterfaceMuxReqIntervall = 4000;
-											}
+											externalInterfaceMuxReqIntervall = 4000;
 										}
 									}
+
 									memcpy(SensorMap, foundSensorMap, sizeof(foundSensorMap));
 									memset(externalInterface_SensorState, UART_COMMON_INIT, sizeof(externalInterface_SensorState));
 				break;
@@ -1075,7 +1129,20 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 											externalInterface_SensorState[index] = UART_O2_CHECK;
 										}
 			break;
-
+#ifdef ENABLE_HUD_SUPPORT
+		case EXT_INTERFACE_HUD_UPDATE:	index = (Cmd >> 8) & 0x000F;
+										if(SensorMap[index] == SENSOR_HUD)
+										{
+											externalInterface_SensorState[index] = UART_HUD_UPDATE;
+										}
+					break;
+		case EXT_INTERFACE_HUD_ABORT:	index = (Cmd >> 8) & 0x000F;
+										if(SensorMap[index] == SENSOR_HUD)
+										{
+											externalInterface_SensorState[index] = UART_HUD_ABORT;
+										}
+					break;
+#endif
 		default:
 			break;
 	}
@@ -1101,7 +1168,8 @@ uint8_t ExternalInterface_SelectUsedMuxChannel(uint8_t currentChannel)
 		}
 		if(((pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_DIGO2)
 				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_CO2)
-				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_GNSS))
+				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_GNSS)
+				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_HUD))
 				&& (index != activeUartChannel))
 		{
 			newChannel = index;
@@ -1122,6 +1190,7 @@ void externalInterface_CheckBaudrate(uint8_t sensorType)
 			case SENSOR_SENTINEL:
 			case SENSOR_CO2:		newBaudrate = 9600;
 				break;
+			case SENSOR_HUD:
 			case SENSOR_DIGO2:
 		default:	newBaudrate = 19200;
 			break;
@@ -1284,6 +1353,10 @@ void externalInterface_HandleUART()
 #endif
 #ifdef ENABLE_SENTINEL_MODE
 				case SENSOR_SENTINEL: uartSentinel_Control();
+				break;
+#endif
+#ifdef ENABLE_HUD_SUPPORT
+				case SENSOR_HUD: uartHUD_Control();
 				break;
 #endif
 				default:
