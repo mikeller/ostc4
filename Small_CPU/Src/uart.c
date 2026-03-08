@@ -302,12 +302,13 @@ void UART_StartDMA_Receiption(sUartComCtrl* pUartCtrl)
 {
 	if(pUartCtrl->dmaRxActive == 0)
 	{
-    	if(((pUartCtrl->rxWriteIndex / CHUNK_SIZE) != (pUartCtrl->rxReadIndex / CHUNK_SIZE)) || ((UART_isEndIndication(pUartCtrl, pUartCtrl->rxWriteIndex)) && (UART_isEndIndication(pUartCtrl, pUartCtrl->rxWriteIndex + 1))))	/* start next transfer if we did not catch up with read index */
-    	{
-			if(HAL_OK == HAL_UART_Receive_DMA (pUartCtrl->pHandle, &pUartCtrl->pRxBuffer[pUartCtrl->rxWriteIndex], CHUNK_SIZE))
-			{
-				pUartCtrl->dmaRxActive = 1;
-			}
+		if((pUartCtrl->rxWriteIndex / CHUNK_SIZE) == (pUartCtrl->rxReadIndex / CHUNK_SIZE)) /* write pointer catched up with read pointer (should never happen) => Reset read pointer to start of block */
+		{
+			pUartCtrl->rxReadIndex = pUartCtrl->rxWriteIndex;
+		}
+		if(HAL_OK == HAL_UART_Receive_DMA (pUartCtrl->pHandle, &pUartCtrl->pRxBuffer[pUartCtrl->rxWriteIndex], CHUNK_SIZE))
+		{
+			pUartCtrl->dmaRxActive = 1;
     	}
 	}
 }
