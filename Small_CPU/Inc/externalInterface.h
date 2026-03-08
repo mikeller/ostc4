@@ -62,32 +62,12 @@ enum									/* Definitions for supported UART protocols */
 	DETECTION_ANALOG1,		/* check ADC channels for connected sensors */
 	DETECTION_ANALOG2,
 	DETECTION_UARTMUX,		/* check if a uart multiplexer is present */
-	DETECTION_DIGO2_0,		/* check UART channel for connected DigO2 sensor */
-	DETECTION_DIGO2_1,
-	DETECTION_DIGO2_2,
-	DETECTION_DIGO2_3,
-#ifdef ENABLE_CO2_SUPPORT
-	DETECTION_CO2_0,			/* check UART channel for connected CO2 sensor */
-	DETECTION_CO2_1,
-	DETECTION_CO2_2,
-	DETECTION_CO2_3,
-#endif
-#ifdef ENABLE_GNSS_EXTERN
-	DETECTION_GNSS_0,			/* check UART channel for connected gnss sensor */
-	DETECTION_GNSS_1,
-	DETECTION_GNSS_2,
-	DETECTION_GNSS_3,
-#endif
-#ifdef ENABLE_SENTINEL_MODE
-	DETECTION_SENTINEL,		/* check UART channel for connected Sentinel */
-	DETECTION_SENTINEL2,
-#endif
-#ifdef ENABLE_HUD_SUPPORT
-	DETECTION_HUD_0,
-	DETECTION_HUD_1,
-	DETECTION_HUD_2,
-	DETECTION_HUD_3,
-#endif
+
+	DETECTION_UART0,		/* detect sensor connected to uart channel */
+	DETECTION_UART1,
+	DETECTION_UART2,
+	DETECTION_UART3,
+
 	DETECTION_DONE
  } externalInterfaceAutoDetect_t;
 
