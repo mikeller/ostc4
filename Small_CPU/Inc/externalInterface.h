@@ -101,6 +101,7 @@ void externalInterface_GetHUDSequence(uint8_t* pSequence, uint8_t* brightness);
 void externalInterface_SetHUDSequence(uint8_t* pSequence, uint8_t brightness);
 uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct);
 void externalInterface_SetSensorData(uint8_t sensorId, uint8_t* pDataStruct);
+void externalInterface_ResetSensorData(uint8_t sensorId);
 void externalInface_SetSensorMap(uint8_t* pMap);
 uint8_t* externalInterface_GetSensorMapPointer(uint8_t finalMap);
 void externalInterface_AutodetectSensor(void);

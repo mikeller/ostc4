@@ -103,7 +103,7 @@ void uartO2_Control(void)
 	if(localComState == UART_O2_INIT)
 	{
 		memset((char*) &tmpSensorDataDiveO2, 0, sizeof(tmpSensorDataDiveO2));
-		externalInterface_SetSensorData(0xFF,(uint8_t*)&tmpSensorDataDiveO2);
+		externalInterface_ResetSensorData(activeSensor + EXT_INTERFACE_MUX_OFFSET);
 
 		localComState = UART_O2_CHECK;
 		lastComState = UART_O2_CHECK;

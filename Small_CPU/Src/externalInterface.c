@@ -547,11 +547,25 @@ void externalInterface_CopySensorData(uint8_t sensorId, uint8_t* target, uint8_t
 
 uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 {
+	static uint8_t cyclingSensorId = 0;
 	uint8_t index = 0;
 	uint8_t localId = sensorId;
 	if(localId == 0xFF)
 	{
-		localId = lastSensorDataId;
+		if(lastSensorDataId != 0xFF)
+		{
+			localId = lastSensorDataId;
+			lastSensorDataId = 0xFF;
+		}
+		else
+		{
+			localId = cyclingSensorId;
+			cyclingSensorId++;
+			if(cyclingSensorId == EXT_INTERFACE_SENSOR_CNT)
+			{
+				cyclingSensorId = 0;
+			}
+		}
 	}
 
 	if((pDataStruct != NULL) && (localId <= EXT_INTERFACE_SENSOR_CNT))
@@ -576,33 +590,32 @@ uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 	return localId;
 }
 
+void externalInterface_ResetSensorData(uint8_t sensorId)
+{
+	if(sensorId < EXT_INTERFACE_SENSOR_CNT)
+	{
+		memset(&sensorData[sensorId],0,EXTIF_SENSOR_INFO_SIZE);
+	}
+}
 void externalInterface_SetSensorData(uint8_t sensorId, uint8_t* pDataStruct)
 {
 	uint8_t index = 0;
 
-	if(pDataStruct != NULL)
+	if((pDataStruct != NULL) && (sensorId < EXT_INTERFACE_SENSOR_CNT))
 	{
-		if((sensorId != 0xFF) && (sensorId < EXT_INTERFACE_SENSOR_CNT))
+		externalInterface_CopySensorData(sensorId, &sensorData[sensorId][0], pDataStruct);
+		lastSensorDataId = sensorId;
+		if(sensorId >= MAX_ADC_CHANNEL)
 		{
-			externalInterface_CopySensorData(sensorId, &sensorData[sensorId][0], pDataStruct);
-			lastSensorDataId = sensorId;
-			if(sensorId >= MAX_ADC_CHANNEL)
+			for(index = 0; index < MAX_ADC_CHANNEL; index++)
 			{
-				for(index = 0; index < MAX_ADC_CHANNEL; index++)
+				if(Mux2ADCMap[index] == sensorId)
 				{
-					if(Mux2ADCMap[index] == sensorId)
-					{
-						externalInterface_CopySensorData(index, &sensorData[index][0], pDataStruct);
-						lastSensorDataId = index;
-						break;
-					}
+					externalInterface_CopySensorData(index, &sensorData[index][0], pDataStruct);
+					lastSensorDataId = index;
+					break;
 				}
 			}
-		}
-		else
-		{
-			memset(&sensorData,0,EXTIF_SENSOR_INFO_SIZE * EXT_INTERFACE_SENSOR_CNT);
-			lastSensorDataId = 0xFF;
 		}
 	}
 }
