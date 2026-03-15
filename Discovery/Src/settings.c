@@ -40,6 +40,7 @@
 #include "motion.h"
 #include "t7.h"
 #include "data_central.h"
+#include "hud.h"
 
 static uint8_t settingsWarning = 0;		/* Active if setting values have been corrected */
 static SSettingsStatus SettingsStatus;  /* Structure containing number of corrections and first occurrence */
@@ -95,7 +96,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF002E,
+    .header = 0xFFFF002F,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -355,6 +356,12 @@ const SSettings SettingsStandard = {
     .profileName[2] = "MCCR____",
     .profileName[3] = "ECCR____",
 	.activeProfile = 0,
+	.hudFunction[0] = HUD_FCT_NONE,
+    .hudFunction[1] = HUD_FCT_NONE,
+    .hudFunction[2] = HUD_FCT_NONE,
+    .hudFunction[3] = HUD_FCT_NONE,
+    .hudFunction[4] = HUD_FCT_NONE,
+    .hudFunction[5] = HUD_FCT_NONE
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -667,7 +674,13 @@ void set_new_settings_missing_in_ext_flash(uint8_t whichSettings)
     	{
     		pSettings->tX_userselectedLeftLowerCornerPrimary++;
     	}
-
+    	// no break;
+    case 0xFFFF002E:	pSettings->hudFunction[0] = HUD_FCT_NONE;				/* todo: define default setup */
+    					pSettings->hudFunction[1] = HUD_FCT_NONE;
+    					pSettings->hudFunction[2] = HUD_FCT_NONE;
+    					pSettings->hudFunction[3] = HUD_FCT_NONE;
+    					pSettings->hudFunction[4] = HUD_FCT_NONE;
+    					pSettings->hudFunction[5] = HUD_FCT_NONE;
     	// no break;
     default:
         pSettings->header = pStandard->header;

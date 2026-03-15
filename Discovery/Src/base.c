@@ -239,6 +239,7 @@
 #include "tMenuEditSetpoint.h"
 #include "cv_heartbeat.h"
 #include "tInfoLogger.h"
+#include "hud.h"
 
 #ifdef DEMOMODE
 #include "demo.h"
@@ -488,7 +489,9 @@ int main(void)
     {
     	ButtonLockState = LOCK_FIRST_PRESS;
     }
-
+#ifdef ENABLE_HUD_SUPPORT
+    hud_Init();
+#endif
     /* @brief main LOOP
      *
      * this is executed while no IRQ interrupts it
@@ -586,6 +589,16 @@ int main(void)
         	{
         		t3_handleAutofocus();
         	}
+
+        /* handle HUD status */
+#ifdef ENABLE_HUD_SUPPORT
+        	if(hud_IsActive())
+        	{
+        		hud_UpdateStatus();
+        	}
+#endif
+
+
 #ifdef SIM_WRITES_LOGBOOK
 			if(stateUsed == stateSimGetPointer())
 				logbook_InitAndWrite((SDiveState*)stateUsed);

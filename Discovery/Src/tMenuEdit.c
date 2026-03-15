@@ -2301,4 +2301,8 @@ GFX_DrawCfgScreen* getMenuEditScreen()
 	return &tMEscreen;
 }
 
-
+uint8_t tMenuEdit_getActualId()
+{
+	uint8_t ret = actualId;
+	return ret;
+}

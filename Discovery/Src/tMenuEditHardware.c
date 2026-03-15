@@ -42,6 +42,7 @@
 #include "tComm.h"
 #include "data_exchange_main.h"
 #include "tMenuCvOptionText.h"
+#include "hud.h"
 
 
 //extern void tM_build_pages(void);
@@ -68,6 +69,11 @@ uint8_t OnAction_ButtonBalance	(uint32_t editId, uint8_t blockNumber, uint8_t di
 uint8_t OnAction_ButtonLock		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_LedSequence	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_LedBrightness	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+#ifdef TOBEUSEDIFMORETHAN4FUNCTIONS
+uint8_t OnAction_LedNumber		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+#endif
+uint8_t OnAction_LedFunction	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+
 /* Exported functions --------------------------------------------------------*/
 
 
@@ -78,6 +84,10 @@ static uint8_t	O2_calib_gas = 21;
 
 static externalInterfaceSensorType sensorFilter = SENSOR_NONE;		/* used to have only a specific type of sensor in the sensor list view */
 static externalInterfaceSensorType localSensorMap[3];				/* reduce the complete external sensor map to the three entries which are displayed by the menu */
+
+#ifdef TOBEUSEDIFMORETHAN4FUNCTIONS
+static uint8_t hudFunctionIndex = 0;								/* used for selection of the LED to function mapping */
+#endif
 
 void openEdit_Hardware(uint8_t line)
 {
@@ -150,8 +160,11 @@ void refresh_O2Sensors(void)
     char strSensorValue[30];
     uint16_t y_line;
     uint8_t index = 0;
+    uint8_t index2 = 0;
     uint8_t uartSensorCnt = 0;
-
+#ifndef ENABLE_HUD_TESTING
+    uint8_t line;
+#endif
     const SDiveState *pStateReal = stateRealGetPointer();
     SSettings *pSettings = settingsGetPointer();
 
@@ -188,6 +201,10 @@ void refresh_O2Sensors(void)
 					case SENSOR_CO2:
 					case SENSOR_CO2M:	pSettings->co2_sensor_active = 1;
 						break;
+#ifdef ENABLE_HUD_SUPPORT
+					case SENSOR_HUD:	hud_Init();
+						break;
+#endif
 #ifdef ENABLE_SENTINEL_MODE
 					case SENSOR_SENTINEL:
 					case SENSOR_SENTINELM:	pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_SENTINEL;
@@ -260,6 +277,9 @@ void refresh_O2Sensors(void)
 				case SENSOR_HUD:  	strSensorId[3] = 'H';
 									strSensorId[4] = 'U';
 									strSensorId[5] = 'D';
+#ifdef ENABLE_HUD_TESTING
+									strSensorId[4] = 'X';
+#endif
 								break;
 				default:
 									  strSensorId[5] = 0;
@@ -280,14 +300,52 @@ void refresh_O2Sensors(void)
 		}
 		else if(localSensorMap[index] == SENSOR_HUD)
 		{
-			write_label_var(  30, 340, ME_Y_LINE2, &FontT48, "LED Sequence:");
-			tMenuEdit_newInput(StMHARD3_O2_Sensor2,	pStateReal->lifeData.HUD_led_sequence[0] - pStateReal->lifeData.HUD_led_sequence[1],
+			snprintf(strSensorValue, 30,"LED Brightness:  %d",pStateReal->lifeData.HUD_led_brightness);
+			write_label_var(  30, 340, ME_Y_LINE6, &FontT48, strSensorValue);
+
+			for(index2 = 0; index2 < NUM_OF_HUD_FCT; index2++)
+			{
+				hud_GetString(pSettings->hudFunction[index2], (uint8_t*)strSensorId);
+				snprintf(strSensorValue, 30,"%c%c: %s",TXT_2BYTE, TXT2BYTE_FUNCTION, strSensorId);
+				write_label_var(  30, 340, ME_Y_LINE2 + (index2 * ME_Y_LINE_STEP), &FontT48, strSensorValue);
+			}
+
+#ifdef TOBEUSEDIFMORETHAN4FUNCTIONS
+			snprintf(strSensorValue, 30,"LED #:  %d", hudFunctionIndex);
+			write_label_var(  30, 340, ME_Y_LINE4, &FontT48, strSensorValue);
+
+			hud_GetString(pSettings->hudFunction[hudFunctionIndex], (uint8_t*)strSensorId);
+			snprintf(strSensorValue, 30,"LED %c%c: %s",TXT_2BYTE, TXT2BYTE_FUNCTION, strSensorId);
+			write_label_var(  30, 340, ME_Y_LINE5, &FontT48, strSensorValue);
+#endif
+
+#ifdef ENABLE_HUD_TESTING			/* overwrite first line with test field */
+
+			write_label_var(  30, 340, ME_Y_LINE1, &FontT48, "LED Sequence:");
+#if 0
+			tMenuEdit_newInput(StMHARD3_O2_Sensor1,	pStateReal->lifeData.HUD_led_sequence[0] - pStateReal->lifeData.HUD_led_sequence[1],
 													pStateReal->lifeData.HUD_led_sequence[2] - pStateReal->lifeData.HUD_led_sequence[3],
 													pStateReal->lifeData.HUD_led_sequence[4] - pStateReal->lifeData.HUD_led_sequence[5],
 													pStateReal->lifeData.HUD_led_sequence[6]);
-			snprintf(strSensorValue, 30,"LED Brightness:  %d",pStateReal->lifeData.HUD_led_brightness);
-			write_label_var(  30, 340, ME_Y_LINE3, &FontT48, strSensorValue);
-			snprintf(strSensorValue, 20,"o o o \023o");
+#endif
+			strSensorValue[0] = 0;
+
+#else
+			line = tMenuEdit_getActualId();
+			switch(line)
+			{
+				case 3:			snprintf(strSensorValue, 20,"\ao\a o o \023o");
+					break;
+				case 2:			snprintf(strSensorValue, 20,"o \ao\a o \023o");
+									break;
+				case 1:			snprintf(strSensorValue, 20,"o o \ao\a \023o");
+									break;
+				case 4:			snprintf(strSensorValue, 20,"o o o \023\ao\a");
+													break;
+				default: snprintf(strSensorValue, 20,"o o o \023o");
+					break;
+			}
+#endif
 		}
 		y_line = ME_Y_LINE1 + (index * ME_Y_LINE_STEP);
 		if(strSensorValue[0] != 0)
@@ -334,7 +392,7 @@ void refresh_O2Sensors(void)
 	{
 		for(index = EXT_INTERFACE_MUX_OFFSET; index < EXT_INTERFACE_SENSOR_CNT; index++)
 		{
-			if(pSettings->ext_sensor_map[index] != SENSOR_NONE)
+			if((pSettings->ext_sensor_map[index] != SENSOR_NONE) && (pSettings->ext_sensor_map[index] != SENSOR_SEARCH))
 			{
 				uartSensorCnt++;
 			}
@@ -400,7 +458,9 @@ void openEdit_Sensors(uint8_t filter)
 {
 	static externalInterfaceSensorType lastFilter;
 	SSettings *pSettings = settingsGetPointer();
+#ifdef ENABLE_HUD_TESTING
 	const SDiveState* pRealState = stateRealGetPointer();
+#endif
     uint8_t sensorActive[3];
     uint8_t index = 0;
     char text[3];
@@ -497,6 +557,11 @@ void openEdit_Sensors(uint8_t filter)
 			{
 				case SENSOR_CO2:	write_field_on_off(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "", pSettings->co2_sensor_active);	/* only one CO2 supporterd => show at first line */
 					break;
+				case SENSOR_HUD:
+#ifndef ENABLE_HUD_TESTING
+									write_field_button(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "");
+#endif
+					break;
 				default:			write_field_button(StMHARD3_O2_Sensor1,	 30, 95, ME_Y_LINE1,  &FontT48, "");
 					break;
 			}
@@ -578,19 +643,36 @@ void openEdit_Sensors(uint8_t filter)
 			case SENSOR_CO2:	setEvent(StMHARD3_O2_Sensor1, (uint32_t)OnAction_Sensor1);
 								localSensorMap[0] = SENSOR_CO2M;
 				break;
-			case SENSOR_HUD:    write_label_var(  30, 340, ME_Y_LINE2, &FontT48, "LED Sequence:");
-								write_field_sdigit(StMHARD3_O2_Sensor2, 400, 800, ME_Y_LINE2, &FontT48, "###  ###  ###  ###",
+			case SENSOR_HUD:
+#ifdef ENABLE_HUD_TESTING
+								write_label_var(  30, 340, ME_Y_LINE1, &FontT48, "LED Sequence:");
+								write_field_sdigit(StMHARD3_O2_Sensor1, 400, 800, ME_Y_LINE1, &FontT48, "###  ###  ###  ###",
 								pRealState->lifeData.HUD_led_sequence[0] - pRealState->lifeData.HUD_led_sequence[1],
 								pRealState->lifeData.HUD_led_sequence[2] - pRealState->lifeData.HUD_led_sequence[3],
 								pRealState->lifeData.HUD_led_sequence[4] - pRealState->lifeData.HUD_led_sequence[5],
 								pRealState->lifeData.HUD_led_sequence[6]);
+#endif
+								write_field_button(StMHARD3_O2_Sensor2,	400, 800, ME_Y_LINE2, &FontT48, "");		/* LED #0 */
+								write_field_button(StMHARD3_O2_Sensor3,	400, 800, ME_Y_LINE3, &FontT48, "");		/* LED #1 */
+								write_field_button(StMHARD3_O2_Calibrate,	400, 800, ME_Y_LINE4, &FontT48, "");	/* LED #2 */
+								write_field_button(StMHARD3_Sensor_Info,	400, 800, ME_Y_LINE5, &FontT48, "");	/* LED #3 */
+								write_field_button(StMHARD3_Sensor_Detect,	400, 800, ME_Y_LINE6, &FontT48, "");	/* LED brightness */
 
-								write_field_button(StMHARD3_O2_Sensor3,	400, 800, ME_Y_LINE3, &FontT48, "");
 
+#ifndef ENABLE_HUD_TESTING
 								setEvent(StMHARD3_O2_Sensor1, (uint32_t)OnAction_Sensor1);
-								setEvent(StMHARD3_O2_Sensor2, (uint32_t)OnAction_LedSequence);
-								setEvent(StMHARD3_O2_Sensor3, (uint32_t)OnAction_LedBrightness);
+#else
+								setEvent(StMHARD3_O2_Sensor1, (uint32_t)OnAction_LedSequence);
+#endif
 
+#ifdef TOBEUSEDIFMORETHAN4FUNCTIONS
+								setEvent(StMHARD3_O2_Calibrate, (uint32_t)OnAction_LedNumber);
+#endif
+								setEvent(StMHARD3_O2_Sensor2, (uint32_t)OnAction_LedFunction);
+								setEvent(StMHARD3_O2_Sensor3, (uint32_t)OnAction_LedFunction);
+								setEvent(StMHARD3_O2_Calibrate, (uint32_t)OnAction_LedFunction);
+								setEvent(StMHARD3_Sensor_Info, (uint32_t)OnAction_LedFunction);
+								setEvent(StMHARD3_Sensor_Detect, (uint32_t)OnAction_LedBrightness);
 								localSensorMap[0] = SENSOR_HUD;
 				break;
 		}
@@ -1142,4 +1224,42 @@ uint8_t OnAction_LedSequence(uint32_t editId, uint8_t blockNumber, uint8_t digit
     }
     return UNSPECIFIC_RETURN;
 }
+
+#ifdef TOBEUSEDIFMORETHAN4FUNCTIONS
+uint8_t OnAction_LedNumber(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	hudFunctionIndex++;
+	if(hudFunctionIndex == NUM_OF_HUD_FCT)
+	{
+		hudFunctionIndex = 0;
+	}
+
+    return UNSPECIFIC_RETURN;
+}
+#endif
+
+uint8_t OnAction_LedFunction(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
+	uint8_t hudFunctionIndex = 0;
+
+	switch (editId)
+	{
+		case StMHARD3_O2_Sensor2: hudFunctionIndex = 0;
+			break;
+		case StMHARD3_O2_Sensor3: hudFunctionIndex = 1;
+			break;
+		case StMHARD3_O2_Calibrate: hudFunctionIndex = 2;
+			break;
+		case StMHARD3_Sensor_Info: hudFunctionIndex = 3;
+			break;
+		default:
+			break;
+	}
+
+	pSettings->hudFunction[hudFunctionIndex] = hud_NextFct(pSettings->hudFunction[hudFunctionIndex], hudFunctionIndex);
+
+    return UNSPECIFIC_RETURN;
+}
+
 

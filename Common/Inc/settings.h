@@ -97,6 +97,8 @@
 
 #define NUMBER_OF_PROFILES		(4u)
 
+#define MAX_NUMBER_OF_HUD_FCTS	(6u)		/* number of functions which may be selected at once (is not equal to LEDs involved) */
+
 typedef enum
 {
 	O2_SENSOR_SOURCE_OPTIC = 0,
@@ -334,6 +336,8 @@ typedef struct
 	/* new in 0xFFFF002d */
 	uint8_t profileName[NUMBER_OF_PROFILES][9];
 	uint8_t activeProfile;
+	/* new in 0xFFFF002F */
+	uint8_t hudFunction[MAX_NUMBER_OF_HUD_FCTS];
 } SSettings;
 
 uint8_t writeData(uint8_t *);

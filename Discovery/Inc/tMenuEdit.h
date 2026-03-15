@@ -112,6 +112,7 @@ void exitMenuEdit_to_Menu_with_Menu_Update(void);
 void exitMenuEdit_to_Menu_with_Menu_Update_do_not_write_settings_for_this_only(void);
 void exitMenuEditField(void);
 void tMenuEdit_writeSettingsToFlash(void);
+uint8_t tMenuEdit_getActualId();
 
 GFX_DrawCfgScreen* getMenuEditScreen(void);
 #endif /* TMENU_EDIT_H */

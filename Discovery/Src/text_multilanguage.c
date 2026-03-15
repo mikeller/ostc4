@@ -2030,6 +2030,19 @@ static uint8_t text_FR_Logger[] = "";
 static uint8_t text_IT_Logger[] = "";
 static uint8_t text_ES_Logger[] = "";
 
+static uint8_t text_EN_Function[] = "Function";
+static uint8_t text_DE_Function[] = "Funktion";
+static uint8_t text_FR_Function[] = "";
+static uint8_t text_IT_Function[] = "";
+static uint8_t text_ES_Function[] = "";
+
+static uint8_t text_EN_AscentSpeed[] = "Ascent speed";
+static uint8_t text_DE_AscentSpeed[] = "Austiegsgeschwindigkeit";
+static uint8_t text_FR_AscentSpeed[] = "";
+static uint8_t text_IT_AscentSpeed[] = "";
+static uint8_t text_ES_AscentSpeed[] = "";
+
+
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2348,6 +2361,8 @@ const tText text_array2[] =
 
 	{(uint8_t)TXT2BYTE_Pulse, 			{text_EN_Pulse, text_DE_Pulse, text_FR_Pulse, text_IT_Pulse, text_ES_Pulse}},
 	{(uint8_t)TXT2BYTE_Logger, 			{text_EN_Logger, text_DE_Logger, text_FR_Logger, text_IT_Logger, text_ES_Logger}},
+	{(uint8_t)TXT2BYTE_FUNCTION, 		{text_EN_Function, text_DE_Function, text_FR_Function, text_IT_Function, text_ES_Function}},
+	{(uint8_t)TXT2BYTE_AscentSpeed, 	{text_EN_AscentSpeed, text_DE_AscentSpeed, text_FR_AscentSpeed, text_IT_AscentSpeed, text_ES_AscentSpeed}},
 
 
 };

@@ -35,6 +35,7 @@
 #include "tInfoSensor.h"
 #include "tMenuEdit.h"
 #include "data_exchange_main.h"
+#include "hud.h"
 
 #include <string.h>
 #include <inttypes.h>
@@ -207,10 +208,18 @@ static void refreshInfo_SensorHUD(GFX_DrawCfgScreen s)
 {
 	const SDiveState *pStateReal = stateRealGetPointer();
     char text[50];
+    char infostr[HUD_INFO_INFOSTR_LENGTH + 1];
 
-    snprintf(text,50,"%s",pStateReal->lifeData.extIf_sensor_data[activeSensorId]);
-    tInfo_write_content_simple(  30, 770, ME_Y_LINE1, &FontT48, text, CLUT_Font020);
+    uint8_t hudAddress = hud_GetAddress();
 
+    if(hudAddress < EXT_INTERFACE_SENSOR_CNT)
+    {
+		memcpy(infostr, (char*)&pStateReal->lifeData.extIf_sensor_data[hudAddress][HUD_INFO_INFOSTR_OFFSET], HUD_INFO_INFOSTR_LENGTH);
+		infostr[HUD_INFO_INFOSTR_LENGTH] = 0;
+
+		snprintf(text,50,"%s",infostr);
+		tInfo_write_content_simple(  30, 770, ME_Y_LINE1, &FontT48, text, CLUT_Font020);
+    }
 	tInfo_write_buttonTextline_simple(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,0);
 }
 

@@ -400,7 +400,12 @@ extern const tText text_array2[];
 		TXT2BYTE_Pulse,
 		TXT2BYTE_Logger,
 
+		TXT2BYTE_FUNCTION,
+		TXT2BYTE_AscentSpeed,
+
 		TXT2BYTE_END,
+
+		/* TODO: we are close to the end of TXT2BYTE_END => define function for additional entries... TXT3BYTE ? */
 };
 
 #endif /* TEXT_MULTILINGUAGE_H */
