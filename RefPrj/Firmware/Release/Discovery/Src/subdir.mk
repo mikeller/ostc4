@@ -73,6 +73,7 @@ $(BUILD_DIR)/Discovery/Src/text_multilanguage.c \
 $(BUILD_DIR)/Discovery/Src/timer.c \
 $(BUILD_DIR)/Discovery/Src/unit.c \
 $(BUILD_DIR)/Discovery/Src/vpm.c \
+$(BUILD_DIR)/Discovery/Src/hud.c \
 $(BUILD_DIR)/OtherSources/firmwareEraseProgram.c
 
 OBJS += \
@@ -143,6 +144,7 @@ OBJS += \
 ./Discovery/Src/timer.o \
 ./Discovery/Src/unit.o \
 ./Discovery/Src/vpm.o \
+./Discovery/Src/hud.o \
 ./Discovery/Src/firmwareEraseProgram.o
 
 C_DEPS += \
@@ -212,6 +214,7 @@ C_DEPS += \
 ./Discovery/Src/timer.d \
 ./Discovery/Src/unit.d \
 ./Discovery/Src/vpm.d \
+./Discovery/Src/hud.d \
 ./Discovery/Src/firmwareEraseProgram.d
 
 
@@ -744,6 +747,14 @@ Discovery/Src/unit.o: $(BUILD_DIR)/Discovery/Src/unit.c
 	@echo ' '
 
 Discovery/Src/vpm.o: $(BUILD_DIR)/Discovery/Src/vpm.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/hud.o: $(BUILD_DIR)/Discovery/Src/hud.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
