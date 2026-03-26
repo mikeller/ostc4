@@ -36,6 +36,7 @@
 	UART_CO2_INIT = 0,		/* Default Status for every sensor type */
 	UART_CO2_IDLE,			/* sensor detected and no communication pending */
 	UART_CO2_ERROR,
+	UART_CO2_DONE,			/* Signal that data was received and next channel may be processed */
  	UART_CO2_SETUP = 10,	/* collecting data needed to be read out of the sensor once at startup */
 	UART_CO2_MODE,			/* set operation mode for sensor */
   	UART_CO2_OPERATING,		/* normal operation */

@@ -51,7 +51,8 @@
 	UART_SENTINEL_INIT = 0,		/* Default Status for every sensor type */
 	UART_SENTINEL_IDLE,			/* sensor detected and no communication pending */
 	UART_SENTINEL_ERROR,
-  	UART_SENTINEL_OPERATING,		/* normal operation */
+	UART_SENTINEL_DONE,					/* Signal that data was received and next channel may be processed */
+  	UART_SENTINEL_OPERATING = 20,		/* normal operation */
   } uartSentinelStatus_t;
 
   typedef enum

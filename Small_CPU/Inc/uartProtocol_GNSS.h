@@ -36,7 +36,7 @@
 		UART_GNSS_INIT = 0,		/* Default Status for every sensor type */
 		UART_GNSS_IDLE,			/* sensor detected and no communication pending */
 		UART_GNSS_ERROR,		/* Error message received from sensor */
-		UART_GNSS_WARMUP = 10,
+		UART_GNSS_WARMUP = 40,
 		UART_GNSS_INACTIVE,		/* no requests to the receiver */
 		UART_GNSS_LOADCONF_0,
 		UART_GNSS_LOADCONF_1,

@@ -107,8 +107,14 @@ static uint8_t activeUartChannel = 0xff;
 
 /* list of uart sensor types which shall be detected during auto detection cycle */
 static externalInterfaceSensorType uartTypeDetection[] = { SENSOR_MUX, SENSOR_DIGO2,
+
+#ifdef ENABLE_SENTINEL_MODE
+															SENSOR_SENTINEL,
+															SENSOR_SENTINEL_CO2,
+#else
 #ifdef ENABLE_CO2_SUPPORT
 															SENSOR_CO2,
+#endif
 #endif
 #ifdef ENABLE_HUD_SUPPORT
 															SENSOR_HUD,
@@ -741,12 +747,14 @@ static externalInterfaceAutoDetect_t externalInterface_NextUartTypeDetection(ext
 			{
 				case SENSOR_DIGO2: uartO2_SetChannel(0);
 					break;
+				case SENSOR_SENTINEL: externalInterfaceMuxReqIntervall = 4000;
+					break;
 				case SENSOR_GNSS:	/* TODO: implement faster call cycles for external GNSS */
 				/*	externalInterfaceMuxReqIntervall = 500;	*/
 					/* iterations needed for module config */
 				/*	detectionDelayCnt = 6; */
 					break;
-				default:
+				default:		externalInterfaceMuxReqIntervall = 1100;
 					break;
 			}
 
@@ -866,6 +874,28 @@ static	uint8_t detectionDelayCnt = 0;
 											break;
 										case SENSOR_CO2:	if(uartCo2_isSensorConnected())	{	sensorFound = 1; nextType = 1;}
 											break;
+#ifdef ENABLE_SENTINEL_MODE
+										case SENSOR_SENTINEL: 	if(externalAutoDetect == DETECTION_UART0)		/* main channel */
+																{
+																	if(uartSentinel_isSensorConnected())
+																	{
+																		sensorFound = 1;
+																	}
+																	else
+																	{
+																		nextType = 1;	/* no O2 module => no co2 module */
+																	}
+																}
+																if(externalAutoDetect == DETECTION_UART1)		/* co2 channel */
+																{
+																	if(uartCo2_isSensorConnected())
+																	{
+																		sensorFound = 1;
+																	}
+																	nextType = 1;
+																}
+											break;
+#endif
 #ifdef ENABLE_HUD_SUPPORT
 										case SENSOR_HUD:	if(uartHUD_isSensorConnected())	{	sensorFound = 1; nextType = 1;}
 																					break;
@@ -875,7 +905,7 @@ static	uint8_t detectionDelayCnt = 0;
 									}
 									if(sensorFound)
 									{
-										foundSensorMap[externalAutoDetect - DETECTION_UART0 + EXT_INTERFACE_MUX_OFFSET] = currentUartType;
+										foundSensorMap[externalAutoDetect - DETECTION_UART0 + EXT_INTERFACE_MUX_OFFSET] = tmpSensorMap[externalAutoDetect - DETECTION_UART0 + EXT_INTERFACE_MUX_OFFSET];//currentUartType;
 									}
 									if((externalAutoDetect == DETECTION_UART0) && (foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX))
 									{
@@ -888,16 +918,18 @@ static	uint8_t detectionDelayCnt = 0;
 										UART_MUX_SelectAddress(uartMuxChannel);
 										externalInterface_SensorState[uartMuxChannel + EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
 										externalInterface_CheckBaudrate(currentUartType);
+										activeUartChannel = uartMuxChannel;
+										tmpSensorMap[uartMuxChannel + EXT_INTERFACE_MUX_OFFSET] = currentUartType;
 										switch(currentUartType)
 										{
 											case SENSOR_DIGO2: uartO2_SetChannel(uartMuxChannel);
 												break;
-											default:
+											case SENSOR_SENTINEL: externalInterfaceMuxReqIntervall = 1100;	/* second channel must be CO2 sensor */
+																  tmpSensorMap[EXT_INTERFACE_MUX_OFFSET + uartMuxChannel] = SENSOR_SENTINEL_CO2;
+												break;
+											default:	externalInterfaceMuxReqIntervall = 1100;
 												break;
 										}
-										activeUartChannel = uartMuxChannel;
-										tmpSensorMap[uartMuxChannel + EXT_INTERFACE_MUX_OFFSET] = currentUartType;
-
 										uartMuxChannel++;
 										externalAutoDetect++;
 									}
@@ -1063,6 +1095,8 @@ uint8_t ExternalInterface_SelectUsedMuxChannel(uint8_t currentChannel)
 		}
 		if(((pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_DIGO2)
 				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_CO2)
+				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_SENTINEL)
+				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_SENTINEL_CO2)
 				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_GNSS)
 				|| (pmap[index + EXT_INTERFACE_MUX_OFFSET] == SENSOR_HUD))
 				&& (index != activeUartChannel))
@@ -1083,6 +1117,7 @@ void externalInterface_CheckBaudrate(uint8_t sensorType)
 	{
 			case SENSOR_GNSS:
 			case SENSOR_SENTINEL:
+			case SENSOR_SENTINEL_CO2:
 			case SENSOR_CO2:		newBaudrate = 9600;
 				break;
 			case SENSOR_MUX:
@@ -1124,7 +1159,8 @@ void externalInterface_HandleUART()
 				case SENSOR_GNSS:
 				case SENSOR_CO2:
 				case SENSOR_HUD:
-				case SENSOR_SENTINEL: externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
+				case SENSOR_SENTINEL:
+				case SENSOR_SENTINEL_CO2:	externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
 					break;
 				default: 			externalInterface_CheckBaudrate(SENSOR_DIGO2);
 					break;
@@ -1160,7 +1196,7 @@ void externalInterface_HandleUART()
 			timeToTrigger = COMMAND_TX_DELAY;
 			retryRequest = 1;
 		}
-		else if(time_elapsed_ms(lastRequestTick,tick) > externalInterfaceMuxReqIntervall)	/* switch sensor and / or trigger next request */
+		else if((time_elapsed_ms(lastRequestTick,tick) > externalInterfaceMuxReqIntervall) || (externalInterface_SensorState[activeSensorId] == UART_COMMON_DONE))	/* switch sensor and / or trigger next request */
 		{
 			if(timeToTrigger == 0)	/* no pending action */
 			{
@@ -1181,7 +1217,9 @@ void externalInterface_HandleUART()
 					{
 						case SENSOR_DIGO2: setExternalInterfaceChannel(activeSensorId,0.0);
 							break;
-						case SENSOR_CO2: externalInterface_SetCO2Value(0.0);
+						case SENSOR_CO2:
+						case SENSOR_SENTINEL_CO2:
+										 externalInterface_SetCO2Value(0.0);
 										 externalInterface_SetCO2SignalStrength(0);
 							break;
 						case SENSOR_SENTINEL: setExternalInterfaceChannel(0,0.0);
@@ -1220,7 +1258,10 @@ void externalInterface_HandleUART()
 								/* no break */
 								case SENSOR_CO2:
 								case SENSOR_HUD:
-								case SENSOR_GNSS: 	externalInterface_CheckBaudrate(SENSOR_MUX);
+								case SENSOR_GNSS:
+								case SENSOR_SENTINEL:
+								case SENSOR_SENTINEL_CO2:
+													externalInterface_CheckBaudrate(SENSOR_MUX);
 													UART_MUX_SelectAddress(activeUartChannel);
 													externalInterface_CheckBaudrate(pmap[activeUartChannel + EXT_INTERFACE_MUX_OFFSET]);
 									break;
@@ -1250,6 +1291,7 @@ void externalInterface_HandleUART()
 						break;
 #endif
 #ifdef ENABLE_SENTINEL_MODE
+				case SENSOR_SENTINEL_CO2:
 				case SENSOR_SENTINEL: uartSentinel_Control();
 				break;
 #endif

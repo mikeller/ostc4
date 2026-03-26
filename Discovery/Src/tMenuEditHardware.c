@@ -209,6 +209,8 @@ void refresh_O2Sensors(void)
 					case SENSOR_SENTINEL:
 					case SENSOR_SENTINELM:	pSettings->ppo2sensors_source = O2_SENSOR_SOURCE_SENTINEL;
 									break;
+					case SENSOR_SENTINEL_CO2: pSettings->co2_sensor_active = 1;
+									break;
 #endif
 					default:
 									break;

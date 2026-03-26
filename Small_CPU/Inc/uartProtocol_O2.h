@@ -36,6 +36,7 @@
  	UART_COMMON_INIT = 0,	/* Default Status for every sensor type */
 	UART_COMMON_IDLE,		/* sensor detected and no communication pending */
 	UART_COMMON_ERROR,		/* Error message received from sensor */
+	UART_COMMON_DONE		/* Signal that data was received and next channel may be processed */
  } uartCommonStatus_t;
 
  typedef enum
@@ -43,7 +44,7 @@
 	UART_O2_INIT = UART_COMMON_INIT,		/* Default Status for every sensor type */
 	UART_O2_IDLE = UART_COMMON_IDLE,		/* sensor detected and no communication pending */
 	UART_O2_ERROR = UART_COMMON_ERROR,		/* Error message received from sensor */
- 	UART_O2_CHECK,							/* send blink command and check if sensor answers */
+ 	UART_O2_CHECK = 50,						/* send blink command and check if sensor answers */
  	UART_O2_REQ_INFO,						/* request information about available internal sensors of sensor */
 	UART_O2_REQ_ID,							/* request ID of sensor */
  	UART_O2_REQ_O2,							/* O2 value has been requested and is in receiption progress */

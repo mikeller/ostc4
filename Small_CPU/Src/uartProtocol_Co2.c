@@ -138,6 +138,8 @@ void uartCo2_ProcessData(uint8_t data)
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 	uartCO2Status_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
 
+	uint8_t *pMap = externalInterface_GetSensorMapPointer(0);
+
 	if(rxState == CO2RX_Ready)		/* identify data content */
 	{
 		switch(data)
@@ -237,7 +239,14 @@ void uartCo2_ProcessData(uint8_t data)
 												localComState = UART_CO2_IDLE;
 											}
 					break;
-				default: localComState = UART_CO2_IDLE;
+				default: 					if(pMap[activeSensor + EXT_INTERFACE_MUX_OFFSET] == SENSOR_SENTINEL_CO2)
+											{
+												localComState = UART_CO2_DONE;
+											}
+											else
+											{
+												localComState = UART_CO2_IDLE;
+											}
 					break;
 			}
 

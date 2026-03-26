@@ -45,7 +45,7 @@
 	UART_HUD_INIT = 0,		/* Default Status for every sensor type */
 	UART_HUD_IDLE,			/* sensor detected and no communication pending */
 	UART_HUD_ERROR,
- 	UART_HUD_SETUP = 10,	/* collecting data */
+ 	UART_HUD_SETUP = 30,	/* collecting data */
   	UART_HUD_UPDATE,		/* update the HUD status LEDs */
 	UART_HUD_ABORT,			/* abort status sequence */
   } uartHUDStatus_t;

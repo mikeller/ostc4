@@ -175,7 +175,8 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 			case SENSOR_SENTINEL:
 			case SENSOR_DIGO2M:	SensorActive[SENSOR_DIGO2] = 1;
 				break;
-			case SENSOR_CO2:	SensorActive[SENSOR_CO2] = 1;
+			case SENSOR_CO2:
+			case SENSOR_SENTINEL_CO2: SensorActive[SENSOR_CO2] = 1;
 				break;
 #if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
 			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;

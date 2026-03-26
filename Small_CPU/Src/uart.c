@@ -454,6 +454,7 @@ void UART_ReadData(uint8_t sensorType, uint8_t flush)	/* flush = 1 skips process
 					case SENSOR_DIGO2:	uartO2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 						break;
 #ifdef ENABLE_CO2_SUPPORT
+					case SENSOR_SENTINEL_CO2:		/* Sentinel used the same CO2 sensor but just in slave mode */
 					case SENSOR_CO2:	uartCo2_ProcessData(pUartCtrl->pRxBuffer[localRX]);
 						break;
 #endif

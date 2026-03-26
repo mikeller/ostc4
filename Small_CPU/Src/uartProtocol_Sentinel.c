@@ -64,9 +64,15 @@ void uartSentinel_Control(void)
 		SentinelConnected = 0;
 		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_SENTINEL_IDLE;
+		externalInterface_SetCO2Scale(100.0);
 	}
-	if(localComState == UART_SENTINEL_IDLE)
+
+	if((localComState == UART_SENTINEL_IDLE) || (localComState == UART_SENTINEL_DONE))
 	{
+		if(Uart1Ctrl.dmaRxActive == 0)
+		{
+			UART_StartDMA_Receiption(&Uart1Ctrl);
+		}
 		localComState = UART_SENTINEL_OPERATING;		/* state is only used for timeout detection */
 	}
 	externalInterface_SetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET,localComState);
@@ -205,7 +211,7 @@ void uartSentinel_ProcessData(uint8_t data)
 												break;
 											case UART_SENTINEL_TEMPSTICK: SentinelConnected |= SENTINEL_TEMPSTICK;
 										}
-										localComState = UART_SENTINEL_IDLE;
+										localComState = UART_SENTINEL_DONE;
 									}
 									rxState = SENTRX_Ready;
 				break;
