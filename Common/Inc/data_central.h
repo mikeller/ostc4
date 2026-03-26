@@ -296,7 +296,6 @@ typedef struct
 
 /* HUD control data */
 	uint8_t HUD_led_sequence[EXT_INTERFACE_HUD_LED_MAX];
-	uint8_t HUD_led_brightness;
 } 	SLifeData;
 
 

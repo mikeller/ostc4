@@ -302,7 +302,7 @@ void refresh_O2Sensors(void)
 		}
 		else if(localSensorMap[index] == SENSOR_HUD)
 		{
-			snprintf(strSensorValue, 30,"LED Brightness:  %d",pStateReal->lifeData.HUD_led_brightness);
+			snprintf(strSensorValue, 30,"LED Brightness:  %d",pSettings->hudBrigthness);
 			write_label_var(  30, 340, ME_Y_LINE6, &FontT48, strSensorValue);
 
 			for(index2 = 0; index2 < NUM_OF_HUD_FCT; index2++)
@@ -1131,15 +1131,15 @@ uint8_t OnAction_ButtonLock(uint32_t editId, uint8_t blockNumber, uint8_t digitN
 
 uint8_t OnAction_LedBrightness(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	 SDiveState * pStateReal = stateRealGetPointerWrite();
+	SSettings *pSettings = settingsGetPointer();
 
-    if(pStateReal->lifeData.HUD_led_brightness == 0)
+    if(pSettings->hudBrigthness == 0)
     {
-    	pStateReal->lifeData.HUD_led_brightness = 0xFF;
+    	pSettings->hudBrigthness = 0xFF;
     }
     else
     {
-    	pStateReal->lifeData.HUD_led_brightness = 0;
+    	pSettings->hudBrigthness = 0;
     }
 
     return UNSPECIFIC_RETURN;

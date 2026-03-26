@@ -361,7 +361,8 @@ const SSettings SettingsStandard = {
     .hudFunction[2] = HUD_FCT_NONE,
     .hudFunction[3] = HUD_FCT_NONE,
     .hudFunction[4] = HUD_FCT_NONE,
-    .hudFunction[5] = HUD_FCT_NONE
+    .hudFunction[5] = HUD_FCT_NONE,
+	.hudBrigthness = 0
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -681,6 +682,7 @@ void set_new_settings_missing_in_ext_flash(uint8_t whichSettings)
     					pSettings->hudFunction[3] = HUD_FCT_NONE;
     					pSettings->hudFunction[4] = HUD_FCT_NONE;
     					pSettings->hudFunction[5] = HUD_FCT_NONE;
+    					pSettings->hudBrigthness = 0;
     	// no break;
     default:
         pSettings->header = pStandard->header;
@@ -802,6 +804,7 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
     uint8_t firstGasFoundOC = 0;
     uint8_t firstGasFoundCCR = 0;
     uint8_t parameterId = 0;
+    uint8_t index = 0;
 
 
     settingsWarning = 0; /* reset warning indicator */
@@ -867,106 +870,106 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
 
 /*	SGasLine gas[1 + (2*NUM_GASES)];
  */
-    for(int i=1; i<=2*NUM_GASES;i++)
+    for(index = 1; index <= 2*NUM_GASES;index++)
     {
-        if(pSettings->gas[i].oxygen_percentage < 4)
+        if(pSettings->gas[index].oxygen_percentage < 4)
         {
-            pSettings->gas[i].oxygen_percentage = 4;
+            pSettings->gas[index].oxygen_percentage = 4;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if(pSettings->gas[i].oxygen_percentage > 100)
+        if(pSettings->gas[index].oxygen_percentage > 100)
         {
-            pSettings->gas[i].oxygen_percentage = 100;
+            pSettings->gas[index].oxygen_percentage = 100;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if((pSettings->gas[i].oxygen_percentage + pSettings->gas[i].helium_percentage) > 100)
+        if((pSettings->gas[index].oxygen_percentage + pSettings->gas[index].helium_percentage) > 100)
         {
-            pSettings->gas[i].helium_percentage = 100 - pSettings->gas[i].oxygen_percentage;
+            pSettings->gas[index].helium_percentage = 100 - pSettings->gas[index].oxygen_percentage;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if(pSettings->gas[i].note.ub.deco)
+        if(pSettings->gas[index].note.ub.deco)
         {
-            if(pSettings->gas[i].note.ub.active != 1)
+            if(pSettings->gas[index].note.ub.active != 1)
             {
-                pSettings->gas[i].note.ub.active = 1;
+                pSettings->gas[index].note.ub.active = 1;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
-            if(pSettings->gas[i].note.ub.travel == 1)
+            if(pSettings->gas[index].note.ub.travel == 1)
             {
-                pSettings->gas[i].note.ub.travel = 0;
+                pSettings->gas[index].note.ub.travel = 0;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
         }
-        if(pSettings->gas[i].note.ub.travel)
+        if(pSettings->gas[index].note.ub.travel)
         {
-            if(pSettings->gas[i].note.ub.active != 1)
+            if(pSettings->gas[index].note.ub.active != 1)
             {
-                pSettings->gas[i].note.ub.active = 1;
+                pSettings->gas[index].note.ub.active = 1;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
-            if(pSettings->gas[i].note.ub.deco == 1)
+            if(pSettings->gas[index].note.ub.deco == 1)
             {
-                pSettings->gas[i].note.ub.deco = 0;
+                pSettings->gas[index].note.ub.deco = 0;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
         }
-        if(pSettings->gas[i].note.ub.first)
+        if(pSettings->gas[index].note.ub.first)
         {
-            if(pSettings->gas[i].note.ub.active != 1)
+            if(pSettings->gas[index].note.ub.active != 1)
             {
-                pSettings->gas[i].note.ub.active = 1;
+                pSettings->gas[index].note.ub.active = 1;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
-            if(pSettings->gas[i].note.ub.travel == 1)
+            if(pSettings->gas[index].note.ub.travel == 1)
             {
-                pSettings->gas[i].note.ub.travel = 0;
+                pSettings->gas[index].note.ub.travel = 0;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
-            if(pSettings->gas[i].note.ub.deco == 1)
+            if(pSettings->gas[index].note.ub.deco == 1)
             {
-                pSettings->gas[i].note.ub.deco = 0;
+                pSettings->gas[index].note.ub.deco = 0;
                 corrections++;
                 setFirstCorrection(parameterId);
             }
-            if((i<=NUM_GASES) && (!firstGasFoundOC))
+            if((index <= NUM_GASES) && (!firstGasFoundOC))
                 firstGasFoundOC = 1;
             else
-            if((i>NUM_GASES) && (!firstGasFoundCCR))
+            if((index > NUM_GASES) && (!firstGasFoundCCR))
                 firstGasFoundCCR = 1;
             else
-                pSettings->gas[i].note.ub.first = 0;
+                pSettings->gas[index].note.ub.first = 0;
         }
-        if(pSettings->gas[i].bottle_size_liter > 40)
+        if(pSettings->gas[index].bottle_size_liter > 40)
         {
-            pSettings->gas[i].bottle_size_liter = 40;
+            pSettings->gas[index].bottle_size_liter = 40;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if(pSettings->gas[i].depth_meter > 250)
+        if(pSettings->gas[index].depth_meter > 250)
         {
-            pSettings->gas[i].depth_meter = 250;
+            pSettings->gas[index].depth_meter = 250;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if(pSettings->gas[i].depth_meter_travel > 250)
+        if(pSettings->gas[index].depth_meter_travel > 250)
         {
-            pSettings->gas[i].depth_meter_travel = 250;
+            pSettings->gas[index].depth_meter_travel = 250;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        /*if(pSettings->gas[i].note.ub.senderCode)
+        /*if(pSettings->gas[index].note.ub.senderCode)
         {
         }
-        if(pSettings->gas[i].bottle_wireless_id)
+        if(pSettings->gas[index].bottle_wireless_id)
         {
         }
         */
@@ -994,23 +997,23 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
     parameterId++; /* 6 */
 /*	SSetpointLine setpoint[1 + NUM_GASES];
  */
-    for(int i=1; i<=NUM_GASES;i++)
+    for(index = 1; index <= NUM_GASES; index++)
     {
-        if(pSettings->setpoint[i].setpoint_cbar < MIN_PPO2_SP_CBAR)
+        if(pSettings->setpoint[index].setpoint_cbar < MIN_PPO2_SP_CBAR)
         {
-            pSettings->setpoint[i].setpoint_cbar = MIN_PPO2_SP_CBAR;
+            pSettings->setpoint[index].setpoint_cbar = MIN_PPO2_SP_CBAR;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if(pSettings->setpoint[i].setpoint_cbar > 160)
+        if(pSettings->setpoint[index].setpoint_cbar > 160)
         {
-            pSettings->setpoint[i].setpoint_cbar = 160;
+            pSettings->setpoint[index].setpoint_cbar = 160;
             corrections++;
             setFirstCorrection(parameterId);
         }
-        if(pSettings->setpoint[i].depth_meter > 250)
+        if(pSettings->setpoint[index].depth_meter > 250)
         {
-            pSettings->setpoint[i].depth_meter = 250;
+            pSettings->setpoint[index].depth_meter = 250;
             corrections++;
             setFirstCorrection(parameterId);
         }
@@ -1471,18 +1474,18 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
     }
     parameterId++; /* 55 */
     // flex values 0, 1, 2
-    for(int i=0; i<3;i++)
+    for(index = 0; index <3; index++)
     {
-        if(pSettings->ButtonResponsiveness[i] < MIN_BUTTONRESPONSIVENESS) // 50-10  //Fix for broken buttons. :)
+        if(pSettings->ButtonResponsiveness[index] < MIN_BUTTONRESPONSIVENESS) // 50-10  //Fix for broken buttons. :)
         {
-            pSettings->ButtonResponsiveness[i] = MIN_BUTTONRESPONSIVENESS;
+            pSettings->ButtonResponsiveness[index] = MIN_BUTTONRESPONSIVENESS;
             corrections++;
             setFirstCorrection(parameterId);
         }
         else
-        if(pSettings->ButtonResponsiveness[i] > MAX_BUTTONRESPONSIVENESS) // 110+20
+        if(pSettings->ButtonResponsiveness[index] > MAX_BUTTONRESPONSIVENESS) // 110+20
         {
-            pSettings->ButtonResponsiveness[i] = MAX_BUTTONRESPONSIVENESS;
+            pSettings->ButtonResponsiveness[index] = MAX_BUTTONRESPONSIVENESS;
             corrections++;
             setFirstCorrection(parameterId);
         }
@@ -1490,18 +1493,18 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
     parameterId++; /* 56 */
 /*	uint8_t buttonBalance[3];
  */
-    for(int i=0; i<3;i++)
+    for(int index = 0; index < 3; index++)
     {
-        if(pSettings->buttonBalance[i] < 2) // 2 = -10
+        if(pSettings->buttonBalance[index] < 2) // 2 = -10
         {
-            pSettings->buttonBalance[i] = 2;
+            pSettings->buttonBalance[index] = 2;
             corrections++;
             setFirstCorrection(parameterId);
         }
         else
-        if(pSettings->buttonBalance[i] > 5) // 3 = 0, 4 = +10, 5 = +20
+        if(pSettings->buttonBalance[index] > 5) // 3 = 0, 4 = +10, 5 = +20
         {
-            pSettings->buttonBalance[i] = 5;
+            pSettings->buttonBalance[index] = 5;
             corrections++;
             setFirstCorrection(parameterId);
         }
@@ -1970,6 +1973,16 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
     	 corrections++;
     }
 	parameterId++; /* 105 */
+
+	for(index = 0; index < MAX_NUMBER_OF_HUD_FCTS; index++)
+	{
+		if(pSettings->hudFunction[index] >= HUD_FCT_END)
+		{
+			pSettings->hudFunction[index] = HUD_FCT_NONE;
+			corrections++;
+		}
+	}
+
     if(corrections)
     {
     	settingsWarning = 1;

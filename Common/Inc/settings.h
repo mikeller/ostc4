@@ -338,6 +338,7 @@ typedef struct
 	uint8_t activeProfile;
 	/* new in 0xFFFF002F */
 	uint8_t hudFunction[MAX_NUMBER_OF_HUD_FCTS];
+	uint8_t hudBrigthness;
 } SSettings;
 
 uint8_t writeData(uint8_t *);

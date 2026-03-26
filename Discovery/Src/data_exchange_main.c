@@ -472,7 +472,7 @@ void DateEx_copy_to_dataOut(void)
 	}
 #ifdef ENABLE_HUD_SUPPORT
 	memcpy (dataOut.data.externalInterface_HUD_Update, stateUsed->lifeData.HUD_led_sequence, EXT_INTERFACE_HUD_LED_MAX);
-	dataOut.data.externalInterface_HUD_Brightness =  pStateReal->lifeData.HUD_led_brightness;
+	dataOut.data.externalInterface_HUD_Brightness = settings->hudBrigthness;
 #endif
 	if(DataEX_check_header_and_footer_ok() && !told_reset_logik_alles_ok)
 	{

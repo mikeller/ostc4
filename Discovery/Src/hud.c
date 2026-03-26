@@ -129,46 +129,56 @@ uint8_t hud_NextFct(uint8_t curFct, uint8_t fctId)
 
 static void hud_UpdateWarning(uint8_t fctId)
 {
-//	SDiveState * pStateReal = stateRealGetPointerWrite();
 
-	if(stateUsed->warnings.numWarnings)
+	if(hudLEDPerFct[fctId] == 1)		/* single LED implementation (e.g. blue LED) */
 	{
-		stateUsedWrite->lifeData.HUD_led_sequence[fctId * 2] = 0x32;
+		if(stateUsed->warnings.numWarnings)
+		{
+			stateUsedWrite->lifeData.HUD_led_sequence[fctId * 2] = HUD_LED_STATUS_1s1;		/* blink  */
+		}
+		else
+		{
+			stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_PERMANENT;	/* Constant  */
+		}
 	}
 	else
 	{
-		stateUsedWrite->lifeData.HUD_led_sequence[fctId * 2] = 0;
+		if(stateUsed->warnings.numWarnings)
+		{
+			stateUsedWrite->lifeData.HUD_led_sequence[fctId * 2] = HUD_LED_STATUS_1s1;		/* blink red */
+		}
+		else
+		{
+			stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = HUD_LED_PERMANENT;	/* Constant green */
+		}
 	}
 }
 
 static void hud_UpdatePPO2Monitor(uint8_t fctId, float ppO2)
 {
-//	SDiveState * pStateReal = stateRealGetPointerWrite();
-
 	stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0;
 	stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = 0;
 
 	if(fabs(stateUsed->lifeData.actualGas.setPoint_cbar - ppO2) < 0.06)		/*	green constant */
 	{
-		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = 0x01;
+		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = HUD_LED_PERMANENT;
 	}
 	else if((stateUsed->lifeData.actualGas.setPoint_cbar - ppO2) < 0.2)	/* to low => blink green */
 	{
-		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = 0x13;
+		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = HUD_LED_STATUS_1s1;
 	}
 	else if((stateUsed->lifeData.actualGas.setPoint_cbar - ppO2) < 0.2)	/* to high => blink red */
 	{
-		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0x13;
+		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_STATUS_1s1;
 	}
 	else																	/* out of range => red */
 	{
-		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0x01;
+		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_PERMANENT;
 	}
 }
 
 static void hud_UpdateAscentSpeed(uint8_t fctId)
 {
-//	SDiveState * pStateReal = stateRealGetPointerWrite();
 	uint8_t indicatorColor = 0;
 
 	indicatorColor = drawingColor_from_ascentspeed(stateUsed->lifeData.ascent_rate_meter_per_min);
@@ -177,11 +187,11 @@ static void hud_UpdateAscentSpeed(uint8_t fctId)
 
 	switch(indicatorColor)			/* map color to LED operation */
 	{
-		case CLUT_NiceGreen:		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = 0x01; 	/*	green constant */
+		case CLUT_NiceGreen:		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = HUD_LED_PERMANENT; 	/*	green constant */
 			break;
-		case CLUT_WarningYellow:	stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0x55; 	/*	fast blink red */
+		case CLUT_WarningYellow:	stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_STATUS_025s025; 	/*	fast blink red */
 			break;
-		case CLUT_WarningRed:		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0x01; 	/*	red constant */
+		case CLUT_WarningRed:		stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_PERMANENT; 	/*	red constant */
 			break;
 	}
 }
@@ -204,20 +214,20 @@ static void hud_UpdateDecoIndicator(uint8_t fctId)
 			{
 				if((stateUsed->lifeData.depth_meter + 0.1) >= nextstopDepthMeter)
 				{
-					stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = 0x01; 	/*	close below deco stop => green constant */
+					stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = HUD_LED_PERMANENT; 	/*	close below deco stop => green constant */
 				}
 				else
 				{
-					stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0x55; 		/*	close above deco stop => red fast blink */
+					stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_STATUS_025s025; 		/*	close above deco stop => red fast blink */
 				}
 			}
 			else if(((stateUsed->lifeData.depth_meter +0.1) > nextstopDepthMeter))
 			{
-				stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = 0x13;		/*  Ascent to deco stop => green slow blink */
+				stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2) + 1] = HUD_LED_STATUS_1s1;		/*  Ascent to deco stop => green slow blink */
 			}
 			else
 			{
-				stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = 0x01;			/*  Missed deco stop => red constant */
+				stateUsedWrite->lifeData.HUD_led_sequence[(fctId * 2)] = HUD_LED_PERMANENT;			/*  Missed deco stop => red constant */
 			}
 		}
 	}

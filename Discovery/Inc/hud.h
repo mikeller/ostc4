@@ -41,6 +41,23 @@
 #define HUD_INFO_INFOSTR_OFFSET		(3u)	/* offset of info string */
 #define HUD_INFO_VERSION_OFFSET		(19u)	/* offset of version byte */
 
+/* LED_STATUS:						defines LED operation	The left nibble defines the number of pulses and is calculated for a 2s update rate*/
+
+#define HUD_LED_STATUS_OFF			(0x00)	/* OFF */
+#define HUD_LED_PERMANENT			(0x01)	/* Permanent switched on */
+#define HUD_LED_STATUS_2s2			(0x12)	/* PULSE (4 second period (2000ms ON, 2000ms OFF) */
+#define HUD_LED_STATUS_1s1			(0x13)	/* PULSE (2 second period (1000ms ON, 1000ms OFF) */
+#define HUD_LED_STATUS_05s05		(0x04)	/* PULSE (1 Second period  (500ms ON, 500ms OFF) */
+#define HUD_LED_STATUS_025s025		(0x35)	/* PULSE (0,5 Second period  (250ms ON, 250ms OFF) */
+#define HUD_LED_STATUS_0125s0125	(0x06)	/* PULSE (0,25 Second period  (125ms ON, 125ms OFF) */
+#define HUD_LED_STATUS_0062s0062	(0x07)	/* PULSE (0,125 Second period  (62,5ms ON, 62,5ms OFF) */
+#define HUD_LED_STATUS_1s2			(0x08)	/* PUSLE (3 second period (1000ms ON, 2000ms OFF) */
+#define HUD_LED_STATUS_05s15		(0x09)	/* PUSLE (2 second period (500ms ON, 1500ms OFF) */
+#define HUD_LED_STATUS_025s075		(0x0A)	/* PUSLE (1 second period (250ms ON, 750ms OFF) */
+#define HUD_LED_STATUS_025s0375		(0x0B)	/* PUSLE (0,5 second period (250ms ON, 375ms OFF) */
+#define HUD_LED_STATUS_0125s0187	(0x0C)	/* PUSLE (0.25 second period (125ms ON, 187,5ms OFF) */
+#define HUD_LED_STATUS_0062s0093	(0x0D)	/* PUSLE (0.125 second period (62,5ms ON, 93,75ms OFF) */
+
 enum hudFct
 {
 	HUD_FCT_NONE		= 0,	/* Slot will not be used */
