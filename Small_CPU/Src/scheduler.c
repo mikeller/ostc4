@@ -1618,6 +1618,7 @@ void copyPressureData(void)
 #ifdef ENABLE_SENTINEL_MODE
 	global.dataSendToMaster.data[boolPressureData].pressure_bottle[0] = externalInterface_GetBottlePressure(0);
 	global.dataSendToMaster.data[boolPressureData].pressure_bottle[1] = externalInterface_GetBottlePressure(1);
+	externalInterface_GetTempstickValue(8,global.dataSendToMaster.data[boolPressureData].tempstick);
 #endif
 	global.dataSendToMaster.boolPressureData = boolPressureData;
 	global.dataSendToMaster.data[boolPressureData].SPARE1 = is_surface_pressure_stable();

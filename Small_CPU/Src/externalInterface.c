@@ -88,7 +88,7 @@ static float 	externalCO2Scale = 0.0;
 static uint8_t externalBottleBar[PRESSURE_BOTTLE_CNT] = {0,0};
 static uint8_t externalHUDBrightness = 0;
 static uint8_t externalHUDSequence[EXT_INTERFACE_HUD_LED_MAX];
-
+static uint8_t externalTempstick[EXT_INTERFACE_TEMPSTICK_MAX] = {0,0,0,0,0,0,0,0};
 
 static uint8_t lastSensorDataId = 0;
 static uint8_t sensorData[EXT_INTERFACE_SENSOR_CNT][EXTIF_SENSOR_INFO_SIZE];
@@ -534,6 +534,30 @@ void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar)
 	}
 }
 
+uint8_t externalInterface_GetTempstickValue(uint8_t numValues, uint8_t *pValues)
+{
+	uint8_t ret = 0;
+
+	if(numValues <= EXT_INTERFACE_TEMPSTICK_MAX)
+	{
+		ret = 1;
+		memcpy(pValues,externalTempstick,numValues);
+	}
+	return ret;
+}
+
+void externalInterface_SetTempstickValue(uint8_t numValues, uint16_t *pValues)
+{
+	uint8_t index = 0;
+	if(numValues <= EXT_INTERFACE_TEMPSTICK_MAX)
+	{
+		for(index = 0; index < numValues; index++)
+		{
+			externalTempstick[index] = pValues[index];
+		}
+	}
+}
+
 void externalInterface_CopySensorData(uint8_t sensorId, uint8_t* target, uint8_t* source)
 {
 	if(sensorId < EXT_INTERFACE_SENSOR_CNT)
@@ -747,7 +771,7 @@ static externalInterfaceAutoDetect_t externalInterface_NextUartTypeDetection(ext
 			{
 				case SENSOR_DIGO2: uartO2_SetChannel(0);
 					break;
-				case SENSOR_SENTINEL: externalInterfaceMuxReqIntervall = 4000;
+				case SENSOR_SENTINEL: externalInterfaceMuxReqIntervall = SENTINEL_UART_MAX_INTERVALL;
 					break;
 				case SENSOR_GNSS:	/* TODO: implement faster call cycles for external GNSS */
 				/*	externalInterfaceMuxReqIntervall = 500;	*/
@@ -961,6 +985,15 @@ static	uint8_t detectionDelayCnt = 0;
 										{
 											cntSensor = 3;
 											cntUARTSensor = 1;
+
+					//						if(uartSentinel_isSensorConnected() & SENTINEL_PRESSURE)
+											{
+												foundSensorMap[EXT_INTERFACE_MUX_OFFSET + 2] =  SENSOR_VIRTUAL_PRESSURE;
+											}
+				//							if(uartSentinel_isSensorConnected() & SENTINEL_TEMPSTICK)
+											{
+												foundSensorMap[EXT_INTERFACE_MUX_OFFSET + 3] =  SENSOR_VIRTUAL_TEMPSTICK;
+											}
 											break;
 										}
 #endif
@@ -979,7 +1012,7 @@ static	uint8_t detectionDelayCnt = 0;
 										externalInterfaceMuxReqIntervall = REQUEST_INT_SENSOR_MS / cntUARTSensor;
 										if(foundSensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends combined data */
 										{
-											externalInterfaceMuxReqIntervall = 4000;
+											externalInterfaceMuxReqIntervall = SENTINEL_UART_MAX_INTERVALL;
 										}
 									}
 
@@ -1025,9 +1058,9 @@ void externalInterface_ExecuteCmd(uint16_t Cmd)
 													externalInterfaceMuxReqIntervall = REQUEST_INT_SENSOR_MS / cntUARTSensor;
 													activeUartChannel = 0xFF;
 
-													if(SensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends compined data */
+													if(SensorMap[0] == SENSOR_SENTINELM)	/* special case: Sentinel sends combined data */
 													{
-														externalInterfaceMuxReqIntervall = 4000;
+														externalInterfaceMuxReqIntervall = SENTINEL_UART_MAX_INTERVALL;
 													}
 												}
 												else

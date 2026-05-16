@@ -97,6 +97,8 @@ uint16_t externalInterface_GetCO2Value(void);
 uint16_t externalInterface_GetCO2SignalStrength(void);
 void externalInterface_SetBottlePressure(uint8_t bottle, uint8_t bar);
 uint8_t externalInterface_GetBottlePressure(uint8_t bottle);
+uint8_t externalInterface_GetTempstickValue(uint8_t numValues, uint8_t *pValues);
+void externalInterface_SetTempstickValue(uint8_t numValues, uint16_t *pValues);
 void externalInterface_GetHUDSequence(uint8_t* pSequence, uint8_t* brightness);
 void externalInterface_SetHUDSequence(uint8_t* pSequence, uint8_t brightness);
 uint8_t externalInterface_GetSensorData(uint8_t sensorId, uint8_t* pDataStruct);
