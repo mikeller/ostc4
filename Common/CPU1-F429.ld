@@ -563,8 +563,10 @@ _sidata = LOADADDR(.data);
     . = . + _Min_Heap_Size;
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
-    _estack = .;
+ /*   _estack = .; */
   } >RAM
+
+ _estack = 0x2001F000;
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :

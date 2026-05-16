@@ -69,6 +69,8 @@ uint8_t firmware_MainCodeIsProgammed(void)
 void firmware_JumpTo_Application(void)
 {
 	/* Test if user code is programmed starting from address "ApplicationAddress" */
+	/* The code checks if the address assigned for the estack is in a valid range. this check does not consider that a 192k STM32 version is in use */
+	/* => workaround in linker file to store the estack in a valid range. TODO: change implementation for next generation bootloader */
 	if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
 	{ 
 		/* Jump to user application */
