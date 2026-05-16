@@ -113,10 +113,16 @@
 
 /* Enable to have advanced gas information lite bottle size and pressure available */
 /* #define ENABLE_ADVANCED_GAS */
+
 /* Enable to have protocol support for external HUD */
 /* #define ENABLE_HUD_SUPPORT */
+
 /* Enable to have an item available in the HUD menu which allows the manual setting of the HUD sequence */
 /* #define ENABLE_HUD_TESTING */
+
+/* Enable to have tempstick data evaluation / visualization (currently focused on Sentinel) */
+/* #define ENABLE_TEMPSTICK_SUPPORT */
+
 
 
 #endif

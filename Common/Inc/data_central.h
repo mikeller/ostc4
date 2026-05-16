@@ -49,7 +49,7 @@
 #define EXT_INTERFACE_BUZZER_STABLE_TIME_MS (500u)	/* min time a state (ON / OFF) should be stable before it may be changed */
 
 #define EXT_INTERFACE_HUD_LED_MAX	(16u)			/* max number of supported LED for HUD operation */
-
+#define EXT_INTERFACE_TEMPSTICK_MAX	(8u)			/* max number of temperature sensors located on a tempstick */
 
 /* Helper structs ------------------------------------------------------------*/
 
@@ -296,6 +296,9 @@ typedef struct
 
 /* HUD control data */
 	uint8_t HUD_led_sequence[EXT_INTERFACE_HUD_LED_MAX];
+
+/* tempstick sensor data */
+	uint8_t tempstick[EXT_INTERFACE_TEMPSTICK_MAX];
 } 	SLifeData;
 
 
@@ -523,6 +526,8 @@ typedef enum
 	 SENSOR_GNSSM,
 	 SENSOR_HUD,
 	 SENSOR_MUX,
+	 SENSOR_VIRTUAL_PRESSURE,		/* virtual sensors are "sub sensors" of sensors which are directly connected to controller */
+	 SENSOR_VIRTUAL_TEMPSTICK,
 	 SENSOR_END
 } externalInterfaceSensorType;
 

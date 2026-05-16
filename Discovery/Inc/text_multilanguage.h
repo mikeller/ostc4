@@ -349,6 +349,7 @@ extern const tText text_array2[];
 		TXT2BYTE_DepthData,
 		TXT2BYTE_DecoTTS,
 		TXT2BYTE_SlowExit,
+		TXT2BYTE_Tempstick,
 
 		TXT2BYTE_Minimum,
 		TXT2BYTE_Normal,

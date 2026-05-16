@@ -33,6 +33,7 @@
 #include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
 #include "t3.h"
 #include "t7.h"
+#include "data_exchange_main.h"
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -155,16 +156,74 @@ uint8_t tMCvOptText_refreshHUD(char* pText)
 	return strlen(pText);
 }
 
+uint8_t tMCvOptText_refreshPressure(char* pText)
+{
+	static uint8_t o2Id = 0;
+	static uint8_t diluentId = 0;
+	uint8_t textPointer = 0;
+
+	if((o2Id == 0) && (diluentId == 0))
+	{
+		DataEX_helper_Get_ID_Of_O2_Diluent(&o2Id, &diluentId);
+	}
+	textPointer += snprintf(&pText[textPointer],20,"%c%c\t", TXT_2BYTE, TXT2BYTE_Pressure);
+	if(o2Id != 0)
+	{
+		textPointer += snprintf(&pText[textPointer],20,"%d\016\016O2\017\033", stateUsed->lifeData.bottle_bar[o2Id]);
+	}
+	if(diluentId != 0)
+	{
+		textPointer += snprintf(&pText[textPointer],20,"%d\016\016%c\017", stateUsed->lifeData.bottle_bar[diluentId],TXT_Diluent_Gas_Edit);
+	}
+
+	pText[textPointer] = 0;
+	return strlen(pText);
+}
+
+uint8_t tMCvOptText_refreshTempstick(char* pText)
+{
+	uint8_t index = 0;
+	uint32_t average = 0;
+	uint8_t textPointer = 0;
+
+	for(index = 0; index < EXT_INTERFACE_TEMPSTICK_MAX; index++)
+	{
+		average += stateUsed->lifeData.tempstick[index];
+	}
+	average /= EXT_INTERFACE_TEMPSTICK_MAX;
+	textPointer += snprintf(&pText[textPointer],20,"Tempstick\t");
+
+	for(index = 0; index < EXT_INTERFACE_TEMPSTICK_MAX; index++)
+	{
+		if((stateUsed->lifeData.tempstick[index] - average) > 50)
+		{
+			pText[textPointer++] = '-';
+		}
+		else
+		{
+			pText[textPointer++] = '_';
+		}
+	}
+	pText[textPointer] = 0;
+	return strlen(pText);
+}
+
 uint8_t tMCvOptText_BuildDynamicContentList()
 {
 	uint8_t cvOptIndex = 0;
 	uint8_t CvOptAvailable = 0;
 	uint8_t index = 0;
 	uint8_t SensorActive[SENSOR_END];
+
+	uint8_t diluentId = 0;
+	uint8_t o2Id = 0;
+
 	SSettings *settings = settingsGetPointer();
 
 	memset(SensorActive, 0, sizeof(SensorActive));
 	activeLines = 0;
+
+	DataEX_helper_Get_ID_Of_O2_Diluent(&o2Id, &diluentId);
 
 	for (index = 0; index < EXT_INTERFACE_SENSOR_CNT; index++)
 	{
@@ -184,6 +243,12 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 #endif
 #ifdef ENABLE_HUD_SUPPORT
 			case SENSOR_HUD:	SensorActive[SENSOR_HUD] = 1;
+				break;
+#endif
+#ifdef ENABLE_SENTINEL_MODE
+			case SENSOR_VIRTUAL_PRESSURE: SensorActive[SENSOR_VIRTUAL_PRESSURE] = 1;
+				break;
+			case SENSOR_VIRTUAL_TEMPSTICK: SensorActive[SENSOR_VIRTUAL_TEMPSTICK] = 1;
 				break;
 #endif
 			default:
@@ -226,6 +291,19 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 										CvOptAvailable = 1;
 									}
 				break;
+			case CVOPT_Pressure_Sensor: if((SensorActive[SENSOR_VIRTUAL_PRESSURE]) && ((o2Id != 0) || (diluentId != 0)))
+										{
+											refreshFctPointerTable[activeLines] = tMCvOptText_refreshPressure;
+											CvOptAvailable = 1;
+										}
+				break;
+			case CVOPT_Tempstick: 		if(SensorActive[SENSOR_VIRTUAL_TEMPSTICK])
+										{
+											refreshFctPointerTable[activeLines] = tMCvOptText_refreshTempstick;
+											CvOptAvailable = 1;
+										}
+break;
+
 			default:
 				break;
 		}

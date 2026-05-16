@@ -72,6 +72,9 @@ const uint8_t cv_changelist_BS[] = {CVIEW_T3_Decostop, CVIEW_sensors, CVIEW_Comp
 									CVIEW_T3_Profile,
 #endif
 									CVIEW_T3_Temperature,
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+									CVIEW_T3_Tempstick,
+#endif
 									CVIEW_T3_END};
 
 /* Private function prototypes -----------------------------------------------*/

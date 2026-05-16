@@ -44,9 +44,11 @@
 #include "logbook_miniLive.h"
 #include "tMenuEditCustom.h"
 #include "gfx_engine.h"
+#include "tempstick.h"
 
 
 #define CV_PROFILE_WIDTH		(600U)
+#define TEMP_PROFILE_WIDTH		(300U)
 
 //* Imported function prototypes ---------------------------------------------*/
 extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
@@ -68,7 +70,6 @@ uint8_t t3_selection_customview = CVIEW_noneOrDebug;
 static uint8_t AF_lastDecoDepth = 0;
 static uint16_t AF_lastTTS = 0;
 
-
 /* TEM HAS TO MOVE TO GLOBAL--------------------------------------------------*/
 
 /* Private types -------------------------------------------------------------*/
@@ -88,6 +89,9 @@ void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t Act
 uint8_t t3_EvaluateAFCondition(uint8_t T3CView);
 uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl1, GFX_DrawCfgWindow* tXr1);  /* this function is only called if diver is below last last stop depth */
 
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+void t3_tempstick_Profile(void);
+#endif
 /* Exported functions --------------------------------------------------------*/
 
 void t3_init(void)
@@ -1192,6 +1196,14 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
         t3_miniLiveLogProfile();
     	break;
 #endif
+
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+    case CVIEW_T3_Tempstick:
+    	snprintf(text,100,"\032\f\002%c%c",TXT_2BYTE,TXT2BYTE_Tempstick);
+    	GFX_write_string(&FontT42,tXc1,text,0);
+    	t3_tempstick_Profile();
+    	break;
+#endif
     case CVIEW_T3_DecoTTS:
     case CVIEW_T3_Decostop:
     default:
@@ -2266,3 +2278,58 @@ uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl
 	}
 	return color;
 }
+
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+void t3_tempstick_Profile(void)
+{
+    SWindowGimpStyle wintemp;
+    uint16_t dataLength = 0;
+    uint16_t drawDataLength = 0;
+    char text[TEXTSIZE];
+    point_t start, stop;
+    uint8_t index = 0;
+
+    uint8_t* pactiveCnt = tempstick_GetActiveCntPointer();
+
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+
+   	wintemp.top = 479 - BigFontSeperationTopBottom + 5;
+   	wintemp.bottom = 479 - 5;
+
+    if(!pSettings->FlipDisplay)
+    {
+        wintemp.left = t3c1.WindowX0;
+        wintemp.right = t3c1.WindowX0 + CV_PROFILE_WIDTH;
+    }
+    else
+    {
+        wintemp.left = t3c1.WindowX1 - CV_PROFILE_WIDTH;;
+        wintemp.right = t3c1.WindowX1;
+    }
+
+    start.x = CV_PROFILE_WIDTH + 2;
+    stop.x = start.x;
+    start.y = 479 - BigFontSeperationTopBottom - 5;
+	stop.y =5;
+
+   	GFX_draw_line(&t3screen, start, stop, CLUT_Font020);
+
+   	dataLength = tempstick_GetDataLength();
+
+	if(drawDataLength < TEMP_PROFILE_WIDTH)
+	{
+		drawDataLength = TEMP_PROFILE_WIDTH;
+	}
+
+	if(dataLength > 3)
+	{
+		snprintf(text,TEXTSIZE,"\002%d %d %d", pactiveCnt[0], pactiveCnt[1], pactiveCnt[2]);
+		GFX_write_string(&FontT42,&t3c1,text,1);
+		for(index = 0; index < EXT_INTERFACE_TEMPSTICK_MAX; index ++)
+		{
+			GFX_graph_print(&t3screen, &wintemp, 0,1,0, 160, tempstickLog_GetDataPointer(index), drawDataLength, CLUT_Font030 + index, NULL);
+		}
+	}
+}
+#endif

@@ -1067,6 +1067,9 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 				pStateReal->lifeData.bottle_bar[pressureIdDiluent] = dataIn.data[dataIn.boolPressureData].pressure_bottle[1];
 			}
 		}
+#ifdef ENABLE_SENTINEL_MODE
+		memcpy(&pStateReal->lifeData.tempstick , &dataIn.data[dataIn.boolPressureData].tempstick, sizeof(pStateReal->lifeData.tempstick));
+#endif
 	}
 
 	if(pStateReal->data_old__lost_connection_to_slave == 0)

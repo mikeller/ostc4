@@ -208,6 +208,7 @@ typedef struct
 		uint32_t pressure_uTick;
 		uint32_t compass_uTick;
 		SGnssInfo gnssInfo;
+		uint8_t tempstick[EXT_INTERFACE_TEMPSTICK_MAX];
 
 } 	SExchangeData;
 

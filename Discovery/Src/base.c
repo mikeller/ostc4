@@ -240,6 +240,7 @@
 #include "cv_heartbeat.h"
 #include "tInfoLogger.h"
 #include "hud.h"
+#include "tempstick.h"
 
 #ifdef DEMOMODE
 #include "demo.h"
@@ -596,6 +597,9 @@ int main(void)
         	{
         		hud_UpdateStatus();
         	}
+#endif
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+       		tempstick_LogData(0);
 #endif
 
 

@@ -591,6 +591,11 @@ char customviewBF_TXT2BYTE_helper(uint8_t customViewId)
     case CVIEW_T3_DecoTTS:
     	text = TXT2BYTE_DecoTTS;
     	break;
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+    case CVIEW_T3_Tempstick:
+		text = TXT2BYTE_Tempstick;
+		break;
+#endif
     default:
         break;
     }

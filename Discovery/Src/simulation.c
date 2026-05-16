@@ -32,6 +32,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include <string.h>
+#include <math.h>
 #include "simulation.h"
 
 #include "decom.h"
@@ -44,6 +45,7 @@
 #include "buehlmann.h"
 #include "logbook_miniLive.h"
 #include "logbook.h"
+#include "tempstick.h"
 
 #include "configuration.h"
 
@@ -69,6 +71,21 @@ static void simulation_set_aim_depth(int depth_meter);
 #define SIM_PPO2_STEP	(1.1f)
 static float simSensmVOffset[NUM_OF_SENSORS];
 
+
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+static float sim_temstick(uint16_t timeSec, float peak, uint16_t timeToPeak, float dropRate)
+{
+	float ret;
+
+    double T0   = 120.0;
+    double Tend = 110.0;
+
+    double e = exp(-dropRate * (double)timeSec);
+
+    ret =  Tend + (T0 - Tend) * e + peak * sin(M_PI * (float)timeSec / (float)timeToPeak) * e;
+    return ret;
+}
+#endif
 /**
   ******************************************************************************
   * @brief  sets heed_decostops_while_ascending
@@ -251,7 +268,16 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     	lastPressure_bar = 0;
     	pDiveState->lifeData.ascent_rate_meter_per_min = 0;
     }
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+    if((pDiveState->lifeData.dive_time_seconds % 30) == 0)
+    {
+    	pDiveState->lifeData.tempstick[0] = sim_temstick(pDiveState->lifeData.dive_time_seconds, 75.0, 600, 0.001);
+    	pDiveState->lifeData.tempstick[1] = sim_temstick(pDiveState->lifeData.dive_time_seconds, 80.0, 1200, 0.0005);
+    	pDiveState->lifeData.tempstick[2] = sim_temstick(pDiveState->lifeData.dive_time_seconds, 90.0, 3000, 0.0001);
 
+    	tempstick_LogData(1);
+    }    
+#endif
     if (isScrubberTimerRunning(pDiveState, pSettings)) {
         simScrubberTimeoutCount++;
 
