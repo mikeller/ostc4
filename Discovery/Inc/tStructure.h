@@ -135,7 +135,8 @@
 #define StMOG_SetToMOD			_MB(2,1,255,4,0)
 
 #ifdef ENABLE_ADVANCED_GAS
-#define StMOG_Bottle				_MB(2,1,255,5,0)
+#define StMOG_Bottle_Size			_MB(2,1,255,5,0)
+#define StMOG_Bottle_Pressure		_MB(2,1,255,6,0)
 #endif
 
 #define StMOG_MOD					_MB(2,1,255,9,0)

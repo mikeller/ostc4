@@ -146,7 +146,14 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
             mod = calc_MOD(gasId);
 #ifdef ENABLE_ADVANCED_GAS
             ltr = pGasLine[gasId].bottle_size_liter;
-            bar = stateUsed->lifeData.bottle_bar[gasId];
+            if(pGasLine[gasId].bottle_id_bar != 0)
+            {
+            	bar = pGasLine[gasId].bottle_id_bar;
+            }
+            else
+            {
+            	bar = stateUsed->lifeData.bottle_bar[gasId];  /* this would be sensor data... */
+            }
 #endif
 
 #ifdef ENABLE_UNUSED_GAS_HIDING

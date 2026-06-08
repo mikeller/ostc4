@@ -67,6 +67,7 @@ uint8_t OnAction_GasType		(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 uint8_t OnAction_ChangeDepth	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_SetToMOD		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_BottleSize		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+uint8_t OnAction_BottlePressure	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 uint8_t OnAction_First			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_Deco			(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -385,6 +386,7 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
     uint8_t gasID, oxygen, helium, depthDeco, active, first, depthMOD, deco, travel, inactive, off ;
 #ifdef ENABLE_ADVANCED_GAS
     uint8_t bottleSizeLiter;
+    uint16_t bottleBarFixed;		/* the bar value provided by settings, not by sensor if one is available */
 #endif
 
     char text[32];
@@ -427,6 +429,7 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
 
 #ifdef ENABLE_ADVANCED_GAS
     bottleSizeLiter = editGasPage.pGasLine[gasID].bottle_size_liter;
+    bottleBarFixed = editGasPage.pGasLine[gasID].bottle_id_bar;
 #endif
 
     if(active)
@@ -536,7 +539,14 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
         text[txtptr++] = TXT2BYTE_Bottle;
         text[txtptr++] = 0;
         write_label_var(  20 ,800, ME_Y_LINE5, &FontT48, text);
-        write_field_2digit(StMOG_Bottle,		600, 710, ME_Y_LINE5, &FontT48,"## ltr", (uint32_t)bottleSizeLiter, 0, 0, 0);
+        write_field_2digit(StMOG_Bottle_Size,		600, 710, ME_Y_LINE5, &FontT48,"## ltr", (uint32_t)bottleSizeLiter, 0, 0, 0);
+
+        txtptr = 0;
+        text[txtptr++] = TXT_2BYTE;
+        text[txtptr++] = TXT2BYTE_Pressure;
+        text[txtptr++] = 0;
+        write_label_var(  20 ,800, ME_Y_LINE6, &FontT48, text);
+        write_field_udigit(StMOG_Bottle_Pressure,		600, 710, ME_Y_LINE6, &FontT48,"### bar", (uint32_t)bottleBarFixed, 0, 0, 0);
 #endif
         stop_cursor_fields();
 
@@ -554,6 +564,8 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
         write_field_udigit(StMOG_MOD,						401, 780, ME_Y_LINE1,	&FontT48, textMOD, (uint32_t)unit_depth_integer(depthMOD), 0, 0, 0);
 //		write_field_udigit(StMOG_MOD,						401, 780, ME_Y_LINE1,	&FontT48, "###m MOD", (uint32_t)depthMOD, 0, 0, 0);
 
+
+
         setEvent(StMOG_Mix, 					(uint32_t)OnAction_Mix);
         setEvent(StMOG_GasType,				(uint32_t)OnAction_GasType);
 
@@ -563,7 +575,8 @@ void openEdit_Gas(uint8_t line, uint8_t ccr)
             setEvent(StMOG_SetToMOD,		(uint32_t)OnAction_SetToMOD);
         }
 #ifdef ENABLE_ADVANCED_GAS
-        setEvent(StMOG_Bottle, 				(uint32_t)OnAction_BottleSize);
+        setEvent(StMOG_Bottle_Size, 		(uint32_t)OnAction_BottleSize);
+        setEvent(StMOG_Bottle_Pressure, 	(uint32_t)OnAction_BottlePressure);
 #endif
         write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
     }
@@ -1243,6 +1256,44 @@ uint8_t OnAction_BottleSize		(uint32_t editId, uint8_t blockNumber, uint8_t digi
     return EXIT_TO_MENU;
 }
 
+uint8_t OnAction_BottlePressure		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    int8_t digitContentNew;
+    uint32_t newBottleBar;
+
+    if(action == ACTION_BUTTON_ENTER)
+    {
+        return digitContent;
+    }
+    if(action == ACTION_BUTTON_ENTER_FINAL)
+    {
+        evaluateNewString(editId, &newBottleBar, 0, 0, 0);
+
+        if(newBottleBar > 300)
+        {
+        	newBottleBar = 300;
+        }
+        editGasPage.pGasLine[editGasPage.gasID].bottle_id_bar = newBottleBar;
+
+        tMenuEdit_newInput(editId, newBottleBar, 0, 0, 0);
+        return UPDATE_DIVESETTINGS;
+    }
+    if(action == ACTION_BUTTON_NEXT)
+    {
+        digitContentNew = digitContent + 1;
+        if(digitContentNew > '9')
+            digitContentNew = '0';
+        return digitContentNew;
+    }
+    if(action == ACTION_BUTTON_BACK)
+    {
+        digitContentNew = digitContent - 1;
+        if(digitContentNew < '0')
+            digitContentNew = '9';
+        return digitContentNew;
+    }
+    return EXIT_TO_MENU;
+}
 
 /* Private functions ---------------------------------------------------------*/
 
