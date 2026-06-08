@@ -336,15 +336,15 @@ void refresh_O2Sensors(void)
 			line = tMenuEdit_getActualId();
 			switch(line)
 			{
-				case 3:			snprintf(strSensorValue, 20,"\ao\a o o \023o");
+				case 3:			snprintf(strSensorValue, 20,"\a%cc\a %cc %cc \023%cc", TXT_AWE48, TXT_AWE48, TXT_AWE48, TXT_AWE48);
 					break;
-				case 2:			snprintf(strSensorValue, 20,"o \ao\a o \023o");
+				case 2:			snprintf(strSensorValue, 20,"%cc \a%cc\a %cc \023%cc", TXT_AWE48, TXT_AWE48, TXT_AWE48, TXT_AWE48);
 									break;
-				case 1:			snprintf(strSensorValue, 20,"o o \ao\a \023o");
+				case 1:			snprintf(strSensorValue, 20,"\%cc %cc \a%cc\a \023%cc", TXT_AWE48, TXT_AWE48, TXT_AWE48, TXT_AWE48);
 									break;
-				case 4:			snprintf(strSensorValue, 20,"o o o \023\ao\a");
+				case 4:			snprintf(strSensorValue, 20,"%cc %cc %cc \023\a%cc\a", TXT_AWE48, TXT_AWE48, TXT_AWE48, TXT_AWE48);
 													break;
-				default: snprintf(strSensorValue, 20,"o o o \023o");
+				default: snprintf(strSensorValue, 20,"%cc %cc %cc \023%cc", TXT_AWE48, TXT_AWE48, TXT_AWE48, TXT_AWE48);
 					break;
 			}
 #endif

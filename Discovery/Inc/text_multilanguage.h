@@ -151,7 +151,7 @@ extern const tText text_array2[];
 		TXT_ButtonLock,
 		/* */
 		TXT_END,
-
+		TXT_AWE48	= '\xFD',	/* special characters of font AWE48 */
 		TXT_MINIMAL = '\xFE',
 		TXT_2BYTE 	= '\xFF',
 	};
@@ -385,6 +385,7 @@ extern const tText text_array2[];
         TXT2BYTE_Finished,
 
 		TXT2BYTE_Position,
+		TXT2BYTE_CaveMode,
 		TXT2BYTE_VpmTable,
         TXT2BYTE_Page,
 

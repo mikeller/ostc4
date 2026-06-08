@@ -2219,6 +2219,11 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 			pText++;
 			settings.Xdelta = GFX_write_substring(&settings, hgfx, (uint8_t)TXT_2BYTE, (int8_t)*pText);
 		}
+		else if(((*pText) == TXT_AWE48) && !minimal)
+		{
+			pText++;
+			settings.Xdelta = GFX_write_char(hgfx, &settings, *pText, (tFont *)&Awe48);
+		}
 		else
 		if(((*pText) & 0x80) && !minimal)
 			settings.Xdelta = GFX_write_substring(&settings, hgfx, (uint8_t)*pText, 0);
