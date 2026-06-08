@@ -29,12 +29,26 @@
 
 #include "data_central.h"
 
-#	define	WATER_VAPOUR_PRESSURE	(0.0493f) // Schreiner 1971
+#define	WATER_VAPOUR_PRESSURE	(0.0493f) // Schreiner 1971
+#define	FRACTION_N2_AIR			0.7902
+
+extern const float helium_time_constant[];
+extern const float nitrogen_time_constant[];
+
+extern const float buehlmann_N2_a[];
+extern const float buehlmann_N2_b[];
+
+extern const float buehlmann_He_a[];
+extern const float buehlmann_He_b[];
+
+extern const float buehlmann_N2_t_halflife[];
+extern const float buehlmann_He_t_halflife[];
+
 
 void decom_get_inert_gases(const float ambient_pressure_bar,const SGas* pGas, float* fraction_nitrogen, float* fraction_helium );
 void decom_tissues_exposure(int period_in_seconds, SLifeData* pLifeData);
 void decom_tissues_exposure2(int period_in_seconds, SGas* pActualGas, float pressure_ambient_bar, float *tissue_N2_selected_stage, float *tissue_He_selected_stage);
-float decom_schreiner_equation(float *initial_inspired_gas_pressure, float *rate_change_insp_gas_pressure, float *interval_time_minutes, const float *gas_time_constant, float *initial_gas_pressure);
+float decom_schreiner_equation(float initial_inspired_gas_pressure, float rate_change_insp_gas_pressure, float interval_time_minutes, const float gas_time_constant, float initial_gas_pressure);
 void decom_reset_with_1000mbar(SLifeData * pLifeData);
 void decom_reset_with_ambientmbar(float ambient, SLifeData * pLifeData);
 

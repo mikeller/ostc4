@@ -41,7 +41,6 @@
 #include "settings.h"
 #include "calc_crush.h"
 
-#define	FRACTION_N2_AIR			0.7902
 
 const float helium_time_constant[16] = {
 										3.68695308808482E-001,
@@ -187,6 +186,7 @@ const float buehlmann_He_t_halflife[] = {
 								147.42f,
 								188.24f,
 								240.03f};
+
 
 const float float_buehlmann_N2_factor_expositon_one_second[] =	{ 2.30782347297664E-003f, 1.44301447809736E-003f, 9.23769302935806E-004f, 6.24261986779007E-004f, 4.27777107246730E-004f, 3.01585140931371E-004f, 2.12729727268379E-004f, 1.50020603047807E-004f, 1.05980191127841E-004f, 7.91232600646508E-005f, 6.17759153688224E-005f, 4.83354552742732E-005f, 3.78761777920511E-005f, 2.96212356654113E-005f, 2.31974277413727E-005f, 1.81926738960225E-005f};
 const float float_buehlmann_N2_factor_expositon_003_second[] =	{ 6.90750456296407E-003f, 4.32279956671600E-003f, 2.76874864793053E-003f, 1.87161709452954E-003f, 1.28278242026003E-003f, 9.04482589432765E-004f, 6.38053429621421E-004f, 4.49994293975742E-004f, 3.17906879170993E-004f, 2.37350999218289E-004f, 1.85316297551252E-004f, 1.44999356986975E-004f, 1.13624229615916E-004f, 8.88610747694640E-005f, 6.95906688746861E-005f, 5.45770287740943E-005f};
@@ -450,26 +450,26 @@ void decom_reset_with_ambientmbar(float ambient, SLifeData * pLifeData)
 /*     FUNCTION SUBPROGRAM FOR GAS LOADING CALCULATIONS - ASCENT AND DESCENT */
 /* =============================================================================== */
 
-
-float decom_schreiner_equation(float *initial_inspired_gas_pressure,
-float *rate_change_insp_gas_pressure,
-float *interval_time_minutes,
-const float *gas_time_constant,
-float *initial_gas_pressure)
+#ifdef ORG_IMPLEMENTATION
+float decom_schreiner_equation(float initial_inspired_gas_pressure,
+float rate_change_insp_gas_pressure,
+float interval_time_minutes,
+const float gas_time_constant,
+float initial_gas_pressure)
 {
 	/* System generated locals */
 	float ret_val;
 	float time_null_pressure = 0.0f;
 	float time_rest = 0.0f;
-	float time = *interval_time_minutes;
+	float time = interval_time_minutes;
 	/* =============================================================================== */
 	/*     Note: The Schreiner equation is applied when calculating the uptake or */
 	/*     elimination of compartment gases during linear ascents or descents at a */
 	/*     constant rate.  For ascents, a negative number for rate must be used. */
 	/* =============================================================================== */
-	if( *rate_change_insp_gas_pressure < 0.0f)
+	if( rate_change_insp_gas_pressure < 0.0f)
 	{
-		time_null_pressure = -1.0f * *initial_inspired_gas_pressure / *rate_change_insp_gas_pressure;
+		time_null_pressure = -1.0f * initial_inspired_gas_pressure / rate_change_insp_gas_pressure;
 		if(time > time_null_pressure )
 		{
 			time_rest = time - time_null_pressure;
@@ -477,22 +477,62 @@ float *initial_gas_pressure)
 		}
 	}
 	ret_val =
-	*initial_inspired_gas_pressure +
-	*rate_change_insp_gas_pressure *
-	(time - 1.f / *gas_time_constant) -
-	(*initial_inspired_gas_pressure -
-	*initial_gas_pressure -
-	*rate_change_insp_gas_pressure / *gas_time_constant) *
-	expf(-(*gas_time_constant) * time);
+	initial_inspired_gas_pressure +
+	rate_change_insp_gas_pressure *
+	(time - 1.f / gas_time_constant) -
+	(initial_inspired_gas_pressure -
+	initial_gas_pressure -
+	rate_change_insp_gas_pressure / gas_time_constant) *
+	expf(-(gas_time_constant) * time);
 
 	if(time_rest > 0.0f)
 	{
-		ret_val = ret_val * expf(-(*gas_time_constant) * time_rest);
+		ret_val = ret_val * expf(-(gas_time_constant) * time_rest);
 	}
 
 
 	return ret_val;
 }; /* schreiner_equation__2 */
+#else
+
+float decom_schreiner_equation(
+    float initial_inspired_gas_pressure,
+    float rate_change_insp_gas_pressure,
+    float interval_time_minutes,
+    float gas_time_constant,
+    float initial_gas_pressure)
+{
+    float time = interval_time_minutes;
+    float time_rest = 0.0f;
+
+    if (rate_change_insp_gas_pressure < 0.0f)
+    {
+        float time_null_pressure = -initial_inspired_gas_pressure / rate_change_insp_gas_pressure;
+
+        if (time > time_null_pressure)
+        {
+            time_rest = time - time_null_pressure;
+            time = time_null_pressure;
+        }
+    }
+
+    float e = expf(-gas_time_constant * time);
+
+    float r_over_k = rate_change_insp_gas_pressure / gas_time_constant;
+
+    float result = initial_inspired_gas_pressure
+                 + rate_change_insp_gas_pressure * (time - 1.0f / gas_time_constant)
+                 - (initial_inspired_gas_pressure - initial_gas_pressure - r_over_k) * e;
+
+
+    if (time_rest > 0.0f)
+    {
+        result *= expf(-gas_time_constant * time_rest);
+    }
+
+    return result;
+}
+#endif
 
 void decom_tissues_exposure_stage_schreiner(int period_in_seconds, SGas* pGas, float  starting_ambient_pressure_bar, float ending_ambient_pressure_bar,
 																		 float* pTissue_nitrogen_bar,  float* pTissue_helium_bar)
@@ -509,8 +549,8 @@ void decom_tissues_exposure_stage_schreiner(int period_in_seconds, SGas* pGas, f
 	float fraction_He_begin;
 	float fraction_He_end;
 
-	float rate_N2;
-	float rate_He;
+	float rate_N2_seconds;
+	float rate_He_seconds;
 
 	float period_in_minutes;
 
@@ -528,8 +568,8 @@ void decom_tissues_exposure_stage_schreiner(int period_in_seconds, SGas* pGas, f
 	ending_pressure_N2 = (ending_ambient_pressure_bar - WATER_VAPOUR_PRESSURE) * fraction_N2_end;
 	ending_pressure_He = (ending_ambient_pressure_bar - WATER_VAPOUR_PRESSURE) * fraction_He_end;
 
-	rate_N2 = (ending_pressure_N2 - initial_pressure_N2) / period_in_seconds;
-	rate_He = (ending_pressure_He - initial_pressure_He) / period_in_seconds;
+	rate_N2_seconds = (ending_pressure_N2 - initial_pressure_N2) / period_in_seconds;
+	rate_He_seconds = (ending_pressure_He - initial_pressure_He) / period_in_seconds;
 
 	period_in_minutes = ((float)period_in_seconds) / 60.0f;
 
@@ -537,19 +577,19 @@ void decom_tissues_exposure_stage_schreiner(int period_in_seconds, SGas* pGas, f
 	{
 		pTissue_nitrogen_bar[ci] =
 		decom_schreiner_equation(
-			&initial_pressure_N2,
-			&rate_N2,
-			&period_in_minutes,
-			&nitrogen_time_constant[ci],
-			&pTissue_nitrogen_bar[ci]);
+			initial_pressure_N2,
+			(rate_N2_seconds *60.0),
+			period_in_minutes,
+			nitrogen_time_constant[ci],
+			pTissue_nitrogen_bar[ci]);
 
 		pTissue_helium_bar[ci] =
 		decom_schreiner_equation(
-			&initial_pressure_He,
-			&rate_He,
-			&period_in_minutes,
-			&helium_time_constant[ci],
-			&pTissue_helium_bar[ci]);
+			initial_pressure_He,
+			(rate_He_seconds *60.0),
+			period_in_minutes,
+			helium_time_constant[ci],
+			pTissue_helium_bar[ci]);
 	}
 }
 
