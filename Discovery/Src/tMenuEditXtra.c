@@ -39,7 +39,8 @@
 #include "motion.h"
 #include "configuration.h"
 #include "tInfoPreDive.h"
-
+#include "cavemode.h"
+#include "logbook_miniLive.h"
 
 #define SCRUBBER_COUNT 2
 
@@ -49,6 +50,7 @@ void openEdit_CompassHeading(void);
 void openEdit_ResetStopwatch(void);
 void openEdit_SimFollowDecostops(void);
 void openEdit_SetManualMarker(void);
+void openEdit_CaveReturn(void);
 void openEdit_SetEndDive(void);
 void openEdit_CalibViewport(void);
 
@@ -96,7 +98,12 @@ void openEdit_Xtra(uint8_t line)
 			case 3:
 				openEdit_SetManualMarker();
 				break;
-#ifdef ENABLE_MOTION_CONTROL
+#ifdef ENABLE_CAVEMODE
+			case 4:
+				openEdit_CaveReturn();
+				break;
+			case 5:
+#elif ENABLE_MOTION_CONTROL
 			case 4:
 				openEdit_CalibViewport();
 				break;
@@ -151,6 +158,16 @@ void openEdit_SetManualMarker(void)
     stateUsedWrite->events.manualMarker = 1;
     exitMenuEdit_to_Home();
 }
+
+void openEdit_CaveReturn(void)
+{
+	if(caveMode_GetReturnState() == 0)
+	{
+		caveMode_SetReturn(1);
+	}
+    exitMenuEdit_to_Home();
+}
+
 
 void openEdit_SetEndDive(void)
 {

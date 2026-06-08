@@ -46,6 +46,7 @@
 #include "logbook_miniLive.h"
 #include "logbook.h"
 #include "tempstick.h"
+#include "cavemode.h"
 
 #include "configuration.h"
 
@@ -137,6 +138,7 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
    		simReplayActive = 1;
 		getReplayInfo(&pReplayData, &pReplayMarker, &replayDataLength, &max_depth, &diveMinutes);
    	}
+   	caveMode_Init();
 }
 
 /**
@@ -940,5 +942,19 @@ void Sim_DecreasePPO(uint8_t sensorIdx)
 	if((sensorIdx < NUM_OF_SENSORS) && (simSensmVOffset[sensorIdx] - SIM_PPO2_STEP >= -100.0))
 	{
 		simSensmVOffset[sensorIdx] -= SIM_PPO2_STEP;
+	}
+}
+void Sim_SetReplayState(uint8_t active)
+{
+    uint16_t replayDataLength = 0;
+    uint8_t* pReplayMarker;
+    uint16_t max_depth = 10;
+    uint16_t diveMinutes = 0;
+
+	if(simReplayActive == 0)
+	{
+		simReplayActive = 1;
+		getReplayInfo(&pReplayData, &pReplayMarker, &replayDataLength, &max_depth, &diveMinutes);
+		pReplayData += getMiniLiveReplayLength();
 	}
 }

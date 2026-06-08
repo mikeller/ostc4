@@ -45,6 +45,7 @@
 #include "tMenuEditCustom.h"
 #include "gfx_engine.h"
 #include "tempstick.h"
+#include "cavemode.h"
 
 
 #define CV_PROFILE_WIDTH		(600U)
@@ -251,6 +252,7 @@ void t3_miniLiveLogProfile(void)
     SWindowGimpStyle wintemp;
     uint16_t replayDataLength = 0;
     uint16_t liveDataLength = 0;
+    uint16_t liveDataModLength = 0;
     uint16_t drawDataLength = 0;
     uint16_t* pReplayData;
     uint8_t* pReplayMarker;
@@ -294,16 +296,17 @@ void t3_miniLiveLogProfile(void)
 	}
 
    	liveDataLength = getMiniLiveReplayLength();
+   	liveDataModLength = getMiniLiveModLength();
 
-   	if(replayDataLength > liveDataLength)
+   	drawDataLength = liveDataLength;
+   	if(replayDataLength > drawDataLength)
    	{
    		drawDataLength = replayDataLength;
    	}
-   	else
+   	if(liveDataModLength > drawDataLength)
    	{
-   		drawDataLength = liveDataLength;
+   		drawDataLength = liveDataModLength;
    	}
-
 	if(drawDataLength < CV_PROFILE_WIDTH)
 	{
 		drawDataLength = CV_PROFILE_WIDTH;
@@ -330,9 +333,12 @@ void t3_miniLiveLogProfile(void)
     	GFX_graph_print(&t3screen,&wintemp,wintemp.top * -1,1,0,max_depth, getMiniLiveDecoPointerToData(),drawDataLength, CLUT_NiceGreen, NULL);
     }
 
-	if(replayDataLength != 0)
+	if(replayDataLength != 0)												/* draw recorded profile */
 	{
-		GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, pReplayData, drawDataLength, CLUT_Font031, NULL);
+		if(caveMode_GetReturnState())
+		{
+			GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(1), drawDataLength, CLUT_Font031, NULL);
+		}
 		if(pReplayMarker[0] != 0xFF)
 		{
 			t3_drawMarker(&t3screen, &wintemp, pReplayMarker, drawDataLength, CLUT_CompassUserHeadingTick);
@@ -341,7 +347,7 @@ void t3_miniLiveLogProfile(void)
 
     if(liveDataLength > 3)
     {
-    	GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(), drawDataLength, CLUT_Font030, NULL);
+    	GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(0), drawDataLength, CLUT_Font030, NULL);
     }
 }
 

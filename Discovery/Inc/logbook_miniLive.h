@@ -36,14 +36,20 @@
 void updateMiniLiveLogbook( _Bool checkOncePerSecond);
 uint16_t* getMiniLiveLogbookPointerToData(void);
 uint16_t getMiniLiveLogbookActualDataLength(void);
-uint16_t* getMiniLiveReplayPointerToData(void);
+uint16_t* getMiniLiveReplayPointerToData(uint8_t forceRetModData);
 uint16_t* getMiniLiveDecoPointerToData(void);
 uint16_t getMiniLiveReplayLength(void);
+uint16_t getMiniLiveModLength(void);
 uint8_t prepareReplayLog(uint8_t StepBackwards);
 uint8_t getReplayInfo(uint16_t** pReplayData, uint8_t** pReplayMarker, uint16_t* DataLength, uint16_t* MaxDepth, uint16_t* diveMinutes);
 uint16_t getReplayDataResolution(void);
 uint16_t getReplayOffset(void);
 uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex);
 void MiniLiveLogbook_checkMarker(void);
+void MiniLiveLogbook_mirrowMiniLiveToReplayLog(void);
+void MiniLiveLogbook_copyReplayToModLive(void);
+void MiniLiveLogbook_resetModData(void);
+void MiniLiveLogbook_releaseModData(void);
+void MiniLiveLogbook_insertData(uint16_t targetIndex,uint16_t depth, uint16_t timeSec);
 
 #endif /* LOGBOOK_MINI_LIVE_H */

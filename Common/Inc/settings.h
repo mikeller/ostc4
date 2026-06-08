@@ -161,7 +161,7 @@ typedef struct
 	uint8_t depth_meter_travel;
 	uint8_t bottle_size_liter;
 //	uint8_t bottle_wireless_status;
-	uint16_t bottle_wireless_id;
+	uint16_t bottle_id_bar;
 } SGasLine;
 
 typedef struct

@@ -81,6 +81,7 @@ enum CUSTOMVIEWS
 		CVIEW_CcrSummary,
         CVIEW_Timer,
 		CVIEW_Position,
+		CVIEW_Cave,
 #ifdef ENABLE_LOGGER_WINDOW
 		CVIEW_Logger = 25,			/* keep development views at the end of the list to avoid id problems in official releases */
 #endif

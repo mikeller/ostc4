@@ -62,6 +62,9 @@ static uint16_t tHome_tick_count_o2sens;
 const uint8_t cv_changelist[] = {CVIEW_Compass, CVIEW_SummaryOfLeftCorner, CVIEW_Tissues,
 								 CVIEW_Profile, CVIEW_EADTime, CVIEW_Gaslist, CVIEW_noneOrDebug,
 								 CVIEW_Decolist, CVIEW_sensors,CVIEW_sensors_mV, CVIEW_Timer,
+#ifdef ENABLE_CAVEMODE
+	CVIEW_Cave,
+#endif
 #ifdef ENABLE_LOGGER_WINDOW
 	CVIEW_Logger,
 #endif

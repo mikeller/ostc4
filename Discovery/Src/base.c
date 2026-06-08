@@ -241,6 +241,7 @@
 #include "tInfoLogger.h"
 #include "hud.h"
 #include "tempstick.h"
+#include "cavemode.h"
 
 #ifdef DEMOMODE
 #include "demo.h"
@@ -566,6 +567,7 @@ int main(void)
             }
             check_warning();
             updateMiniLiveLogbook(1);
+            caveMode_Update(stateUsedWrite);
 #ifdef T7_DEBUG_RUNTIME
             startTimeGfxLoop = HAL_GetTick();
 #endif

@@ -1965,6 +1965,12 @@ static uint8_t text_FR_Position[] = "";
 static uint8_t text_IT_Position[] = "";
 static uint8_t text_ES_Position[] = "";
 
+static uint8_t text_EN_CaveMode[] = "Cave mode";
+static uint8_t text_DE_CaveMode[] = "Höhlenmodus";
+static uint8_t text_FR_CaveMode[] = "";
+static uint8_t text_IT_CaveMode[] = "";
+static uint8_t text_ES_CaveMode[] = "";
+
 static uint8_t text_EN_VpmTable[] = "VPM table mode";
 static uint8_t text_DE_VpmTable[] = "VPM Tabellenmodus";
 static uint8_t text_FR_VpmTable[] = "";
@@ -2350,6 +2356,8 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_Finished, 		{text_EN_Finished, text_DE_Finished, text_FR_Finished, text_IT_Finished, text_ES_Finished}},
 
 	{(uint8_t)TXT2BYTE_Position, 		{text_EN_Position, text_DE_Position, text_FR_Position, text_IT_Position, text_ES_Position}},
+	{(uint8_t)TXT2BYTE_CaveMode, 		{text_EN_CaveMode, text_DE_CaveMode, text_FR_CaveMode, text_IT_CaveMode, text_ES_CaveMode}},
+
 	{(uint8_t)TXT2BYTE_VpmTable, 		{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
 
 	{(uint8_t)TXT2BYTE_Page, 			{text_EN_Page, text_DE_Page, text_FR_Page, text_IT_Page, text_ES_Page}},

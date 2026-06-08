@@ -123,6 +123,7 @@
 /* Enable to have tempstick data evaluation / visualization (currently focused on Sentinel) */
 /* #define ENABLE_TEMPSTICK_SUPPORT */
 
-
+/* Enable to have cavemode / view available as custom view */
+/* #define ENABLE_CAVEMODE */
 
 #endif

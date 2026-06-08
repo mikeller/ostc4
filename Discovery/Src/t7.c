@@ -48,6 +48,7 @@
 #include "base.h"
 #include "tMenuEditSetpoint.h"
 #include "vpm.h"
+#include "cavemode.h"
 
 #define TIMER_ACTION_DELAY_S 10
 
@@ -83,6 +84,8 @@ uint8_t t7_customtextPrepare(char * text);
 static void t7_drawAcentGraph(uint8_t color);
 static uint8_t t7_drawSlowExitGraph(void);
 static void t7_showPosition(void);
+
+static void t7_refresh_Cave(void);
 
 /* Imported function prototypes ---------------------------------------------*/
 extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
@@ -2685,13 +2688,15 @@ void t7_refresh_customview(void)
         updateTimer(pSettings, nowS, last_customview != CVIEW_Timer);
 
         showTimer(pSettings, nowS);
-
         break;
 
     case CVIEW_Position:
         snprintf(text, 100, "\032\f\001%c%c", TXT_2BYTE, TXT2BYTE_Position);
         GFX_write_string(&FontT42, &t7cH, text, 0);
         t7_showPosition();
+        break;
+    case CVIEW_Cave: t7_refresh_Cave();
+    	break;
     }
 
     last_customview = selection_customview;
@@ -4934,6 +4939,69 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 		color = 0xff;
 	}
 	return color;
+}
+
+void t7_refresh_Cave(void)
+{
+    char text[200];
+    uint16_t textpointer = 0;
+    const SGasLine * pGasLine;
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+    uint8_t oxygen, helium;
+    uint8_t line = 1;
+
+	snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE,TXT2BYTE_CaveMode);
+	GFX_write_string(&FontT42,&t7cH,text,0);
+	// content
+	textpointer = 0;
+
+	if(!pSettings->FlipDisplay)
+	{
+		t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
+	}
+	else
+	{
+		t7cY0free.WindowY1 = 400;
+	}
+	t7cY0free.WindowLineSpacing = 48+9;
+	t7cY0free.WindowNumberOfTextLines = 5; // NUM_GASES == 5
+	t7cY0free.WindowTab = 420;
+
+	pGasLine = settingsGetPointer()->gas;
+	for(int gasId=1;gasId<=NUM_GASES;gasId++)
+	{
+		textpointer = 0;
+
+		if((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco))
+		{
+			if(pGasLine[gasId].note.ub.active == 0)
+			{
+				text[textpointer++] = '\031';
+			}
+			else if(stateUsed->lifeData.actualGas.GasIdInSettings == gasId)	/* actual selected gas */
+			{
+				text[textpointer++] = '\030';
+			}
+			else
+			{
+				text[textpointer++] = '\023';
+			}
+
+			oxygen = pGasLine[gasId].oxygen_percentage;
+			helium = pGasLine[gasId].helium_percentage;
+			textpointer += write_gas(&text[textpointer], oxygen, helium);
+			 //text[textpointer++] = ' ';
+			snprintf(&text[textpointer],100,"\002%dltr",stateUsed->lifeData.caveGasReserve_Ltr[gasId]);
+			GFX_write_string(&FontT42, &t7cY0free, text, line);
+			line++;
+		}
+	}
+	if(line <= 6)
+	{
+		snprintf(text,100,"TTS:\002%ld min",(uint32_t)(caveMode_GetTTS() / 60));
+		GFX_write_string(&FontT42, &t7cY0free, text, 6);
+	}
 }
 
 void t7_tick(void)
