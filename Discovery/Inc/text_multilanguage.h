@@ -182,6 +182,7 @@ extern const tText text_array2[];
 		TXT2BYTE_SetMarker,
 		TXT2BYTE_SetMarkerShort,
 		TXT2BYTE_CheckMarker,
+		TXT2BYTE_SelectMarkerShort,
 		TXT2BYTE_CompassHeading,
 		TXT2BYTE_CalibView,
 		TXT2BYTE_EndDiveMode,
@@ -386,6 +387,8 @@ extern const tText text_array2[];
 
 		TXT2BYTE_Position,
 		TXT2BYTE_CaveMode,
+		TXT2BYTE_AutoStart,
+		TXT2BYTE_SwapMode,
 		TXT2BYTE_VpmTable,
         TXT2BYTE_Page,
 

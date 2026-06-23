@@ -36,21 +36,21 @@ typedef struct stopEntry
 	uint16_t length;
 } s_stopEntry;
 
+#ifdef ENABLE_CAVEMODE
 
 s_stopEntry stopList[10];
 
-//static SDiveState stateCave = { 0 };
-
+static cavemodeState_t caveModeState = CAVEMODE_OFF;
 static SLifeData caveData;
-static uint16_t caveGasStart_Ltr[NUM_GASES +1];
+
 static uint16_t caveDataIndex = 0;
 static uint16_t returnStartIndex = 0;
 static SGas startGas;
+static uint8_t liveDive = 1;	/* the recording of the dive data was not interrupted */
+static uint32_t returnTime_seconds = 0;
+static uint32_t returnTime_last = 0;
 
 static float maxCeiling = 0.0;
-
-
-static uint8_t returning = 0;
 
 #define CAVE_CALC_INTERVALL			20		/* in seconds. Because cave calculation is just an estimation it is not done on seconds base. */
 #define CAVE_DECO_STOP_RESOLUTION	20		/* in seconds. Granularity of time spend at deco stops */
@@ -127,7 +127,6 @@ static float calcDeepestDecoPressure(SDiveSettings *pDiveSettings, float surface
 				decoPressure_bar += pDiveSettings->input_next_stop_increment_depth_bar;
 			}
 		}
-	//	decoPressure_bar += pDiveSettings->input_next_stop_increment_depth_bar;	/* stop depth is above ceiling, not below */
 	}
 	return decoPressure_bar;
 }
@@ -182,7 +181,7 @@ static float calcCeiling(SDiveSettings *pDiveSettings, SLifeData *pLifeData, flo
 
 	global_ceiling = -1;
 
-	GF_value = (float)pDiveSettings->gf_low; //buehlmann_get_gf_at_pressure(pDiveSettings, pressure);
+	GF_value = (float)pDiveSettings->gf_low;
 
 	for (ci = 0; ci < 16; ci++)
 	{
@@ -200,8 +199,6 @@ static float calcCeiling(SDiveSettings *pDiveSettings, SLifeData *pLifeData, flo
 			inertgas_a = ( ( buehlmann_N2_a[ci] *  pLifeData->tissue_nitrogen_bar[ci]) + ( buehlmann_He_a[ci] * pLifeData->tissue_helium_bar[ci]) ) / tissue_inertgas_saturation;
 			inertgas_b = ( ( buehlmann_N2_b[ci] *  pLifeData->tissue_nitrogen_bar[ci]) + ( buehlmann_He_b[ci] * pLifeData->tissue_helium_bar[ci]) ) / tissue_inertgas_saturation;
 		}
-		//
-		//ceiling = (inertgas_b * ( tissue_inertgas_saturation - GF_value * inertgas_a ) ) / (GF_value - (inertgas_b * GF_value) + inertgas_b);
 
 	/* first calc common ceiling, then datapt to GF */
 		ceiling = inertgas_b *  ( tissue_inertgas_saturation - inertgas_a );
@@ -217,6 +214,7 @@ static float calcCeiling(SDiveSettings *pDiveSettings, SLifeData *pLifeData, flo
 void caveMode_Init()
 {
 	uint8_t index = 0;
+	SSettings *pSettings = settingsGetPointer();
     const SGasLine * pGasLine = stateUsed->diveSettings.gas;
 
 	pGasLine = stateUsed->diveSettings.gas;
@@ -226,16 +224,36 @@ void caveMode_Init()
 	   if(((pGasLine[index].note.ub.first) || (pGasLine[index].note.ub.deco))
 			   && (pGasLine[index].bottle_id_bar != 0) && (pGasLine[index].bottle_size_liter != 0))
 	   {
-		   stateUsedWrite->lifeData.caveGasReserve_Ltr[index] = pGasLine[index].bottle_id_bar * pGasLine[index].bottle_size_liter;
-		   caveGasStart_Ltr[index] = stateUsedWrite->lifeData.caveGasReserve_Ltr[index];
-		   caveData.caveGasReserve_Ltr[index] = caveGasStart_Ltr[index];
+		   stateUsedWrite->lifeData.caveGasNeed_Ltr[index] = 0;
+		   caveData.caveGasNeed_Ltr[index] = 0;
 	   }
    }
-   returning = 0;
    startGas.GasIdInSettings = 0xFF;
    maxCeiling = 0.0;
+   liveDive = 1;
+   returnTime_seconds = 0;
+   returnTime_last = 0;
+   if(pSettings->caveModeAutoStart)
+   {
+	   caveModeState = CAVEMODE_RECORDING;
+   }
+   else
+   {
+	   caveModeState = CAVEMODE_OFF;
+   }
 }
 
+uint8_t caveMode_isActive(void)
+{
+	uint8_t retActive = 0;
+
+	if((caveModeState == CAVEMODE_RECORDING) || (caveModeState == CAVEMODE_RETURNING))
+	{
+		retActive = 1;
+	}
+	return retActive;
+
+}
 void caveMode_Update(SDiveState *pDiveState)
 {
 	int8_t caveDataStep = 0;
@@ -245,13 +263,10 @@ void caveMode_Update(SDiveState *pDiveState)
 
 	static uint32_t ttsWork = 0;
 
-	uint16_t* pDepthDataLive;
 	uint16_t* pDepthDataReplay;
 	uint16_t* pDepthCalcSource;
 	uint16_t dataResolutionSec = getReplayDataResolution();
 	SSettings *pSettings = settingsGetPointer();
-
-	//float currentGasConsumption = 0.0;
 	float startPressure = 0.0;
 	static float endPressure = 0.0;
 	static float targetPressure = 0.0;
@@ -260,78 +275,79 @@ void caveMode_Update(SDiveState *pDiveState)
 	static float nextStop_Bar = 0.0;
 	float currentStop_Bar = 0.0;
 	static uint8_t stopId = 0;
-//	static uint16_t liveDataLength = 0;
 	static uint16_t replayDataLength = 0;
 
+	static uint16_t caveStartIndex = 0;
 	uint16_t currentDepthMeter = 0;
 	uint8_t gasIndex = 0;
     uint8_t iterationCnt = 10;		/* do 10 calculations a 20 seconds => 3.x minutes */
 
 
-	if((pDiveState->mode == MODE_DIVE) && (pDiveState->lifeData.dive_time_seconds > 60))	/* start calculation one minute after begin of dive */
+	if((pDiveState->mode == MODE_DIVE) && (getMiniLiveReplayLength() > 30) && (caveModeState != CAVEMODE_OFF))	/* start calculation one minute after begin of dive */
 	{
-		pDepthDataLive = getMiniLiveReplayPointerToData(0);
 		getReplayInfo(&pDepthDataReplay, NULL, &replayDataLength, NULL, NULL);
-
-		if(returning == 0)		/* not yet returning => use live data */
 		{
-			pDepthCalcSource = pDepthDataLive;
+
+		}
+		if(caveModeState == CAVEMODE_RECORDING)		/* not yet returning => use live data */
+		{
+			pDepthCalcSource = getMiniLiveReplayPointerToData(1);
+			replayDataLength = getMiniLiveReplayLength();
 		}
 		else
 		{
 			pDepthCalcSource = pDepthDataReplay;
 		}
 
-		if((caveDataIndex == 0) || ((returning) && (caveDataIndex >= replayDataLength )))			/* start next iteration */
+		if(returnTime_last != pDiveState->lifeData.dive_time_seconds)
+		{
+			if(caveModeState == CAVEMODE_RETURNING)
+			{
+				returnTime_seconds += (pDiveState->lifeData.dive_time_seconds - returnTime_last);	/* In Sim mode more than one second may have been past */
+			}
+			returnTime_last = pDiveState->lifeData.dive_time_seconds;
+		}
+		if((caveDataIndex == 0) || (((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE)) && (caveDataIndex >= replayDataLength )))			/* start next iteration */
 		{
 			caveData.pressure_surface_bar = pDiveState->lifeData.pressure_surface_bar;
-			if(returning == 0)
+			if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
+			{
+				caveDataIndex = returnStartIndex / dataResolutionSec;
+				caveStartIndex = caveDataIndex;
+				memcpy(&caveData.actualGas, &startGas, sizeof(caveData.actualGas));
+				memcpy (caveData.tissue_nitrogen_bar, tissue_nitrogen_return_bar, sizeof(caveData.tissue_nitrogen_bar));
+				memcpy (caveData.tissue_helium_bar, tissue_helium_return_bar, sizeof(caveData.tissue_helium_bar));
+				MiniLiveLogbook_releaseModData();
+				MiniLiveLogbook_resetModData();
+			}
+			else
 			{
 				caveDataIndex = getMiniLiveReplayLength() -1;
 				memcpy(&caveData.actualGas, &pDiveState->lifeData.actualGas, sizeof(caveData.actualGas));
 				memcpy (caveData.tissue_nitrogen_bar, pDiveState->lifeData.tissue_nitrogen_bar, sizeof(caveData.tissue_nitrogen_bar));
 				memcpy (caveData.tissue_helium_bar, pDiveState->lifeData.tissue_helium_bar, sizeof(caveData.tissue_helium_bar));
 			}
-			else
-			{
-				caveDataIndex = returnStartIndex / dataResolutionSec;
-				memcpy(&caveData.actualGas, &startGas, sizeof(caveData.actualGas));
-				memcpy (caveData.tissue_nitrogen_bar, tissue_nitrogen_return_bar, sizeof(caveData.tissue_nitrogen_bar));
-				memcpy (caveData.tissue_helium_bar, tissue_helium_return_bar, sizeof(caveData.tissue_helium_bar));
-			}
-			memcpy (pDiveState->lifeData.caveGasReserve_Ltr, caveData.caveGasReserve_Ltr, sizeof(caveGasStart_Ltr));
-			memcpy (caveData.caveGasReserve_Ltr, caveGasStart_Ltr, sizeof(caveGasStart_Ltr));
+
+			memcpy (pDiveState->lifeData.caveGasNeed_Ltr, caveData.caveGasNeed_Ltr, sizeof(caveData.caveGasNeed_Ltr));	/* publish results of last iteration */
+			memset (caveData.caveGasNeed_Ltr, 0, sizeof(caveData.caveGasNeed_Ltr));
 			tts_Cave_Sec = ttsWork;		/* copy result of last calculation cycle */
 			ttsWork = 0;
 			memset (stopList, 0, sizeof (stopList));
 			stopId = 0;
 			nextStop_Bar = 0.0;
-			MiniLiveLogbook_releaseModData();
-			MiniLiveLogbook_resetModData();
 			targetPressure = 0.0;
 			endPressure = 0.0;
 			caveData.depth_meter = pDiveState->lifeData.max_depth_meter;			/* use max depth to create a list of all possible gases */
 			decom_CreateGasChangeList(&stateUsedWrite->diveSettings, &caveData);
 		}
-		while((caveDataIndex > 0) && (iterationCnt > 0) && (caveDataIndex < replayDataLength))
+		while((caveDataIndex > 0) && (caveDataIndex < replayDataLength) && (iterationCnt > 0))
 		{
 			iterationCnt--;
 			startPressure = endPressure;
 			if(targetPressure == endPressure)			/* get next depth */
 			{
 				caveDataStep = CAVE_CALC_INTERVALL / dataResolutionSec;
-				if(returning == 0)
-				{
-					if((caveDataIndex - caveDataStep) < 0)
-					{
-						caveDataIndex = 0;
-					}
-					else
-					{
-						caveDataIndex -= caveDataStep;
-					}
-				}
-				else
+				if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
 				{
 					if(caveDataIndex == replayDataLength - 1)		/* last data entry already processed => exit loop */
 					{
@@ -348,6 +364,18 @@ void caveMode_Update(SDiveState *pDiveState)
 						pDepthCalcSource = pDepthDataReplay;
 					}
 				}
+				else
+				{
+					if((caveDataIndex - caveDataStep) < 0)
+					{
+						caveDataIndex = 0;
+					}
+					else
+					{
+						caveDataIndex -= caveDataStep;
+					}
+				}
+
 				currentDepthMeter = pDepthCalcSource[caveDataIndex] / 100.0;
 				endPressure = depthMeterToBar(currentDepthMeter, pDiveState->lifeData.pressure_surface_bar);
 				targetPressure = endPressure;
@@ -370,9 +398,13 @@ void caveMode_Update(SDiveState *pDiveState)
 			ceiling = calcCeiling(&pDiveState->diveSettings, &caveData, endPressure);
 			currentStop_Bar = nextStop_Bar;
 			nextStop_Bar = calcDeepestDecoPressure(&pDiveState->diveSettings, pDiveState->lifeData.pressure_surface_bar, ceiling);
-			ttsWork += CAVE_DECO_STOP_RESOLUTION;
-			caveData.caveGasReserve_Ltr[caveData.actualGas.GasIdInSettings] -= pSettings->gasConsumption_deco_l_min * barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar ) / (60 / CAVE_DECO_STOP_RESOLUTION);
 
+			if(!((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
+				|| ((((caveDataIndex - caveStartIndex + MiniLiveLogbook_getModDataOffset()) * dataResolutionSec) > returnTime_seconds )))
+			{
+				ttsWork += CAVE_DECO_STOP_RESOLUTION;
+				caveData.caveGasNeed_Ltr[caveData.actualGas.GasIdInSettings] += pSettings->gasConsumption_deco_l_min * barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar ) / (60 / CAVE_DECO_STOP_RESOLUTION);
+			}
 		/* switch gas */
 			betterGasId = caveData.actualGas.GasIdInSettings;
 			betterDecoGasId = 0;	/* current gas should be at index 0 */
@@ -393,7 +425,6 @@ void caveMode_Update(SDiveState *pDiveState)
 		    }
 			if(betterGasId != caveData.actualGas.GasIdInSettings)
 			{
-				//memcpy(&caveData.actualGas, &pSettings->gas[betterGasId], sizeof(caveData.actualGas));
 				caveData.actualGas.helium_percentage = pSettings->gas[betterGasId].helium_percentage;
 				caveData.actualGas.nitrogen_percentage = 100 - pSettings->gas[betterGasId].oxygen_percentage - pSettings->gas[betterGasId].helium_percentage;
 				caveData.actualGas.AppliedDiveMode = pDiveState->diveSettings.diveMode;
@@ -407,15 +438,19 @@ void caveMode_Update(SDiveState *pDiveState)
 				while(doStop)
 				{
 					currentStop_Bar = nextStop_Bar;
-					doStop = 0;	/* + pDiveState->lifeData.pressure_surface_bar */
+					doStop = 0;
 					while (nextStop_Bar >= currentStop_Bar)									/* stay at deco stop till next stop is safe */
 					{
 						decom_tissues_exposure2(CAVE_DECO_STOP_RESOLUTION, &caveData.actualGas, endPressure, caveData.tissue_nitrogen_bar, caveData.tissue_helium_bar);
 						ceiling = calcCeiling(&pDiveState->diveSettings, &caveData, endPressure);
 						nextStop_Bar = calcDeepestDecoPressure(&pDiveState->diveSettings, pDiveState->lifeData.pressure_surface_bar, ceiling);
-						ttsWork += CAVE_DECO_STOP_RESOLUTION;
-						caveData.caveGasReserve_Ltr[caveData.actualGas.GasIdInSettings] -= pSettings->gasConsumption_travel_l_min * barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar ) / (60 / CAVE_DECO_STOP_RESOLUTION);
-						if(returning)
+						if(!((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
+									|| ((((caveDataIndex - caveStartIndex + MiniLiveLogbook_getModDataOffset()) * dataResolutionSec) > returnTime_seconds )))
+						{
+							ttsWork += CAVE_DECO_STOP_RESOLUTION;
+							caveData.caveGasNeed_Ltr[caveData.actualGas.GasIdInSettings] += pSettings->gasConsumption_travel_l_min * barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar ) / (60 / CAVE_DECO_STOP_RESOLUTION);
+						}
+						if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
 						{
 							MiniLiveLogbook_insertData(caveDataIndex, (barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar) * 100), CAVE_DECO_STOP_RESOLUTION);
 						}
@@ -444,14 +479,46 @@ uint32_t caveMode_GetTTS()
 	return tts_Cave_Sec;
 }
 
+void caveMode_SetActive(uint8_t activeRequest)
+{
+	if(activeRequest)
+	{
+		switch(caveModeState)
+		{
+			case CAVEMODE_OFF:	MiniLiveLogbook_resetLiveData();
+								liveDive = 0;
+			// no break;
+			case CAVEMODE_RECORDING_PAUSE: caveModeState = CAVEMODE_RECORDING;
+				break;
+			case CAVEMODE_RETURNING_PAUSE: caveModeState = CAVEMODE_RETURNING;
+				break;
+			default:
+				break;
+		}
+	}
+	else
+	{
+		liveDive = 0;
+		switch(caveModeState)
+		{
+			case CAVEMODE_RECORDING: caveModeState = CAVEMODE_RECORDING_PAUSE;
+				break;
+			case CAVEMODE_RETURNING: caveModeState = CAVEMODE_RETURNING_PAUSE;
+				break;
+			default:
+				break;
+		}
+	}
+}
+
 void caveMode_SetReturn(uint8_t returnRequest)
 {
-	if((returnRequest) && (!returning))	/* start to return */
+	if((returnRequest) && (caveModeState != CAVEMODE_RETURNING))  /* start to return */
 	{
 		returnStartIndex = (getMiniLiveReplayLength() -1 ) * getReplayDataResolution();	/* normalize value to seconds => a change of the data resolution will automatically be covered */
 		caveDataIndex = 0;
-		returning = 1;
-		MiniLiveLogbook_mirrowMiniLiveToReplayLog();
+		caveModeState = CAVEMODE_RETURNING;
+		MiniLiveLogbook_mirrowMiniModToReplayLog();
 		MiniLiveLogbook_copyReplayToModLive();
 		Sim_SetReplayState(1);
 		memcpy(&startGas, &stateUsed->lifeData.actualGas, sizeof(caveData.actualGas));
@@ -460,7 +527,41 @@ void caveMode_SetReturn(uint8_t returnRequest)
 	}
 }
 
-uint8_t caveMode_GetReturnState(void)
+uint8_t caveMode_isReturning(void)
 {
-	return returning;
+	uint8_t retReturning = 0;
+	if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
+	{
+		retReturning = 1;
+	}
+	return retReturning;
+}
+#endif
+
+uint8_t caveMode_isOff(void)
+{
+	uint8_t retOff = 1;
+#ifdef ENABLE_CAVEMODE
+	if(caveModeState != CAVEMODE_OFF)
+	{
+		retOff = 0;
+	}
+#endif
+	return retOff;
+}
+uint8_t caveMode_isLiveDive(void)
+{
+	return liveDive;
+}
+
+void caveMode_SyncToMarker()
+{
+	uint16_t markerIndex = MiniLiveLogbook_getMarkerIndex();
+	if((markerIndex != 0) && (caveMode_isReturning()))
+	{
+		returnTime_seconds = (markerIndex - returnStartIndex) * getReplayDataResolution();
+		returnTime_last = returnTime_seconds;
+		/* fill or cut live data to have the profil view in sync */
+		MiniLiveLogbook_syncLiveDataTo(markerIndex);
+	}
 }

@@ -44,12 +44,17 @@ uint8_t prepareReplayLog(uint8_t StepBackwards);
 uint8_t getReplayInfo(uint16_t** pReplayData, uint8_t** pReplayMarker, uint16_t* DataLength, uint16_t* MaxDepth, uint16_t* diveMinutes);
 uint16_t getReplayDataResolution(void);
 uint16_t getReplayOffset(void);
-uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex);
+uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex, uint8_t setMarker);
+void MiniLiveLogbook_setMarker(void);
 void MiniLiveLogbook_checkMarker(void);
-void MiniLiveLogbook_mirrowMiniLiveToReplayLog(void);
+void MiniLiveLogbook_mirrowMiniModToReplayLog(void);
 void MiniLiveLogbook_copyReplayToModLive(void);
+void MiniLiveLogbook_resetLiveData();
 void MiniLiveLogbook_resetModData(void);
 void MiniLiveLogbook_releaseModData(void);
 void MiniLiveLogbook_insertData(uint16_t targetIndex,uint16_t depth, uint16_t timeSec);
-
+uint16_t MiniLiveLogbook_getModDataOffset(void);
+uint16_t MiniLiveLogbook_getMarkerIndex(void);
+uint8_t MiniLiveLogbook_isMarkerDataAvailable(void);
+void MiniLiveLogbook_syncLiveDataTo(uint16_t newIndex);
 #endif /* LOGBOOK_MINI_LIVE_H */

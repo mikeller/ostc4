@@ -59,7 +59,7 @@ static uint16_t ReplayDataLength = 0;			/* Number of data entries */
 static uint16_t ReplayDataMaxDepth = 0;
 static uint16_t ReplayDataMinutes = 0;
 static uint16_t ReplayDataOffset = 0xFFFF;		/* Stepbackwards format used by log functions */
-static uint16_t  ReplayMarkerIndex = 0;
+static uint16_t ReplayMarkerIndex = 0;			/* Index of the selected replay marker */
 
 uint16_t *getMiniLiveLogbookPointerToData(void)
 {
@@ -72,7 +72,7 @@ uint16_t getMiniLiveLogbookActualDataLength(void)
 	return MLLpointer;
 }
 
-uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex)
+uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex, uint8_t setMarker)
 {
 	uint16_t index = 0;
 	
@@ -91,6 +91,10 @@ uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex)
 				break;
 			}
 		}while (index != curIndex);
+	}
+	if(setMarker)
+	{
+		ReplayMarkerIndex = index;
 	}
 	return index;
 }
@@ -157,6 +161,12 @@ static void stretchMarkerData(uint16_t* pSource, uint16_t* pTarget, float step, 
 	}
 }
 
+void MiniLiveLogbook_setMarker(void)
+{
+	ReplayMarkerData[0] = 1;				/* indicator that markers are available */
+	ReplayMarkerData[liveDataIndexMod] = 1;
+	ReplayMarkerIndex = liveDataIndexMod;	/* make new marker current */
+}
 void MiniLiveLogbook_checkMarker(void)
 {
 	static uint16_t lastLifeIndex = 0;
@@ -165,7 +175,7 @@ void MiniLiveLogbook_checkMarker(void)
 	float step;
 	uint16_t lastMarkerIndex = ReplayMarkerIndex;
 
-	ReplayMarkerIndex = MiniLiveLogbook_getNextMarkerIndex(ReplayMarkerIndex);
+	ReplayMarkerIndex = MiniLiveLogbook_getNextMarkerIndex(ReplayMarkerIndex, 0);
 	if(ReplayMarkerIndex <= lastMarkerIndex)		/* no other marker found or last marker checked => reset marker to 0 to deactivate check function */
 	{
 		ReplayMarkerIndex = 0;
@@ -280,6 +290,7 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 			for(liveDataIndex = 0; liveDataIndex < DEPTH_DATA_LENGTH; liveDataIndex++)
 			{
 				liveDepthData[liveDataIndex] = 0xFFFF;
+				liveDepthDataMod[liveDataIndex] = 0xFFFF;
 				liveDecoData[liveDataIndex] = 0xFFFF;
 			}
 			lifesecondsCount = 0;
@@ -312,16 +323,6 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 		{
 			lifesecondsCount = 0;
 
-			if(liveDataIndex >= DEPTH_DATA_LENGTH)		/* compress data */
-			{
-				compressDepthDataBuffers();
-			}
-			liveDepthData[liveDataIndex] = (int)(stateUsed->lifeData.depth_meter * 100);
-			if(caveMode_GetReturnState() == 0)
-			{
-				liveDepthDataMod[liveDataIndexMod] = liveDepthData[liveDataIndex];
-			}
-
 			if(stateUsed->diveSettings.deco_type.ub.standard == VPM_MODE)
 			{
 				pDecoinfo = &stateUsed->decolistVPM;
@@ -330,20 +331,30 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 			{
 				pDecoinfo = &stateUsed->decolistBuehlmann;
 			}
-			tHome_findNextStop(pDecoinfo->output_stop_length_seconds, &stopDepth, &stopTime);
-			if(stopDepth)
+
+			if(liveDataIndex >= DEPTH_DATA_LENGTH)		/* compress data */
 			{
-				liveDecoData[liveDataIndex] = stopDepth * 100;
-				liveDecoDataMod[liveDataIndexMod] = stopDepth * 100;
+				compressDepthDataBuffers();
 			}
-			else
+
+			if((caveMode_isLiveDive()) || caveMode_isActive())
 			{
-				liveDecoData[liveDataIndex] = 0xFFFF;
-				liveDecoDataMod[liveDataIndexMod] = 0xFFFF;
+				liveDepthData[liveDataIndex] = (int)(stateUsed->lifeData.depth_meter * 100);
+				tHome_findNextStop(pDecoinfo->output_stop_length_seconds, &stopDepth, &stopTime);
+				if(stopDepth)
+				{
+					liveDecoData[liveDataIndex] = stopDepth * 100;
+				}
+				else
+				{
+					liveDecoData[liveDataIndex] = 0xFFFF;
+				}
+				liveDataIndex++;
 			}
-			liveDataIndex++;
-			if(caveMode_GetReturnState() == 0)
+
+			if((caveMode_isReturning() == 0) && (caveMode_isActive()))
 			{
+				liveDepthDataMod[liveDataIndexMod] = liveDepthData[liveDataIndex];
 				liveDataIndexMod++;
 			}
 		}
@@ -357,13 +368,13 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 	}
 }
 
-void MiniLiveLogbook_mirrowMiniLiveToReplayLog()
+void MiniLiveLogbook_mirrowMiniModToReplayLog()
 {
 	uint16_t index = 0;
 
 	ReplayDataLength = liveDataIndex * 2;
 	ReplayDataMaxDepth = stateUsed->lifeData.max_depth_meter;
-	ReplayDataMinutes =  stateUsed->lifeData.dive_time_seconds / 60;
+	ReplayDataMinutes = liveDataIndex * ReplayDataResolution / 60; 
 
 	if(ReplayDataLength >= DEPTH_DATA_LENGTH)		/* way back will not fit on screen => compress log data */
 	{
@@ -373,6 +384,19 @@ void MiniLiveLogbook_mirrowMiniLiveToReplayLog()
 	for(index = 0; index < liveDataIndex; index++)				/* mirror current log data */
 	{
 		ReplayDepthData[liveDataIndex + index] = liveDepthData[liveDataIndex - index -1];
+		if(index != (liveDataIndex -1))				/* index 0 is general marker indicator => to not copy */
+		{
+			if(ReplayMarkerData[liveDataIndex - index -1] != 0)
+			{
+				ReplayMarkerData[0] = 1;
+				ReplayMarkerData[liveDataIndex + index] = ReplayMarkerData[liveDataIndex - index -1];
+				ReplayMarkerData[liveDataIndex - index -1] = 0;
+				if((liveDataIndex - index -1) == ReplayMarkerIndex)
+				{
+					ReplayMarkerIndex = liveDataIndex + index;
+				}
+			}
+		}
 	}
 	ReplayDataLength = liveDataIndex + index - 1;
 	ReplayDataOffset = 1;							/* This is only used to indicate that replay data is set */
@@ -416,6 +440,10 @@ uint8_t prepareReplayLog(uint8_t StepBackwards)
 		{
 			ReplayMarkerData[0] = 0xFF;
 		}
+		else
+		{
+			ReplayMarkerData[0] = 1;
+		}
 
 		ReplayDataResolution = logbookHeader.total_diveTime_seconds / dataLength;
 		ReplayDataLength = dataLength;
@@ -446,7 +474,7 @@ uint8_t getReplayInfo(uint16_t** pReplayData, uint8_t** pReplayMarker, uint16_t*
 
 uint16_t *getMiniLiveReplayPointerToData(uint8_t forceRetModData)
 {
-	if((ReplayMarkerIndex == 0) && (forceRetModData == 0))
+	if(forceRetModData == 0)
 	{
 		return liveDepthData;
 	}
@@ -457,7 +485,7 @@ uint16_t *getMiniLiveReplayPointerToData(uint8_t forceRetModData)
 }
 uint16_t *getMiniLiveDecoPointerToData(void)
 {
-	if(ReplayMarkerIndex == 0)
+	if(ReplayDataLength == 0)
 	{
 		return liveDecoData;
 	}
@@ -493,6 +521,14 @@ void MiniLiveLogbook_copyReplayToModLive(void)
 
 static uint16_t modDataOffset = 0;		/* offset of modDataIndex behind replayDataIndex */
 
+void MiniLiveLogbook_resetLiveData()
+{
+	for(liveDataIndex = 0; liveDataIndex < DEPTH_DATA_LENGTH; liveDataIndex++)
+	{
+		liveDepthData[liveDataIndex] = 0xFFFF;
+	}
+	liveDataIndex = 0;
+}
 void MiniLiveLogbook_resetModData()
 {
 	modDataOffset = 0;
@@ -504,7 +540,11 @@ void MiniLiveLogbook_releaseModData()	/* make process data visible */
 {
 	memcpy(&liveDepthDataMod, &liveDepthDataModWork , sizeof(liveDepthDataModWork));
 	liveDataIndexMod = liveDataIndexModWork;
+}
 
+uint16_t MiniLiveLogbook_getModDataOffset(void)
+{
+	return modDataOffset;
 }
 
 /* insert data after replay index */
@@ -536,5 +576,42 @@ void MiniLiveLogbook_insertData(uint16_t targetIndex, uint16_t depth, uint16_t t
 	modDataOffset += timeBuffer;
 	liveDataIndexModWork = ReplayDataLength + modDataOffset;
 }
+
+uint16_t MiniLiveLogbook_getMarkerIndex()
+{
+	return ReplayMarkerIndex;
+}
+
+uint8_t MiniLiveLogbook_isMarkerDataAvailable()
+{
+	uint8_t ret = 0;
+	if(ReplayMarkerData[0] != 0xFF)
+	{
+		ret = 1;
+	}
+	return ret;
+}
+
+void MiniLiveLogbook_syncLiveDataTo(uint16_t newIndex)
+{
+	uint16_t index = 0;
+
+	if(newIndex > liveDataIndex)	/* fill liveData with replay data */
+	{
+		index = newIndex;
+		for(index = liveDataIndex; index < newIndex; index++)
+		{
+			liveDepthData[index] = liveDepthDataMod[index];
+		}
+	}
+	else							/* delete data which exists befind sync index */
+	{
+		for(index = liveDataIndex; index > newIndex; index--)
+		{
+			liveDepthData[index] = 0xFFFF;
+		}
+	}
+}
+
 
 /************************ (C) COPYRIGHT heinrichs weikamp *****END OF FILE****/

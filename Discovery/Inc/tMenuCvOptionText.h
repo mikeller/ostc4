@@ -42,6 +42,7 @@ enum CVOPTIONS						/* the order defines the priority as well */
 		CVOPT_CO2_Sensor,
 		CVOPT_Pressure_Sensor,
 		CVOPT_Tempstick,
+		CVOPT_Cave,
 		CVOPT_Timer,
 		CVOPT_END
 };
@@ -62,5 +63,6 @@ uint8_t tMCvOptText_refreshCompass(char* pText);
 uint8_t tMCvOptText_refreshTimer(char* pText);
 uint8_t tMCvOptText_refreshO2(char* pText);
 uint8_t tMCvOptText_refreshCO2(char* pText);
+uint8_t tMCvOptText_refreshCave(char* pText);
 
 #endif /* TMENU_CVOPTIONTEXT_H */

@@ -44,6 +44,7 @@
 #include "simulation.h"
 #include "motion.h"
 #include "logbook_miniLive.h"
+#include "cavemode.h"
 
 /* Private types -------------------------------------------------------------*/
 
@@ -422,7 +423,17 @@ void tHomeDiveMenuControl(uint8_t sendAction)
             break;
 
         case StDMARK:
-        	if((settingsGetPointer()->design == 3) && (MiniLiveLogbook_getNextMarkerIndex(0) != 0))
+        	if((settingsGetPointer()->design == 3) && (MiniLiveLogbook_isMarkerDataAvailable()))
+            {
+        		set_globalState(StDSELMARK);
+            }
+        	else
+        	{
+        		set_globalState(StD);
+        	}
+        	break;
+        case StDSELMARK:
+        	if((settingsGetPointer()->design == 3) && (MiniLiveLogbook_isMarkerDataAvailable()))
             {
         		set_globalState(StDCHECK);
             }
@@ -550,9 +561,20 @@ void tHomeDiveMenuControl(uint8_t sendAction)
             break;
         case StDMARK:	stateUsedWrite->events.manualMarker = 1;
 				        set_globalState(StD);
+#ifdef ENABLE_CAVEMODE
+				        MiniLiveLogbook_setMarker();
+#endif
         	break;
 
-        case StDCHECK:	MiniLiveLogbook_checkMarker();
+        case StDCHECK:
+#ifndef ENABLE_CAVEMODE
+        				MiniLiveLogbook_checkMarker();
+#else
+        				caveMode_SyncToMarker();
+#endif
+        	break;
+        case StDSELMARK:	MiniLiveLogbook_getNextMarkerIndex(MiniLiveLogbook_getMarkerIndex(),1);
+
         	break;
         default:
             break;

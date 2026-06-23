@@ -301,7 +301,7 @@ typedef struct
 	uint8_t tempstick[EXT_INTERFACE_TEMPSTICK_MAX];
 
 /* cavemode gas reserve data */
-	int16_t caveGasReserve_Ltr[NUM_GASES +1];
+	int16_t caveGasNeed_Ltr[NUM_GASES +1];
 
 } 	SLifeData;
 

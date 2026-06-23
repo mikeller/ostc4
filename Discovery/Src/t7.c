@@ -4975,24 +4975,25 @@ void t7_refresh_Cave(void)
 
 		if((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco))
 		{
-			if(pGasLine[gasId].note.ub.active == 0)
+			if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
 			{
-				text[textpointer++] = '\031';
+				if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+				{
+					text[textpointer++] = '\025';	/* more gas needed than available => red */
+				}
+				else if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > (pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter) * 0.7)
+				{
+					text[textpointer++] = '\024';	/* 70% warning => yellow */
+				}
+				else
+				{
+					text[textpointer++] = '\020';
+				}
 			}
-			else if(stateUsed->lifeData.actualGas.GasIdInSettings == gasId)	/* actual selected gas */
-			{
-				text[textpointer++] = '\030';
-			}
-			else
-			{
-				text[textpointer++] = '\023';
-			}
-
 			oxygen = pGasLine[gasId].oxygen_percentage;
 			helium = pGasLine[gasId].helium_percentage;
 			textpointer += write_gas(&text[textpointer], oxygen, helium);
-			 //text[textpointer++] = ' ';
-			snprintf(&text[textpointer],100,"\002%dltr",stateUsed->lifeData.caveGasReserve_Ltr[gasId]);
+			snprintf(&text[textpointer],100,"\002%dBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
 			GFX_write_string(&FontT42, &t7cY0free, text, line);
 			line++;
 		}

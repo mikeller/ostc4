@@ -50,6 +50,7 @@ void openEdit_CompassHeading(void);
 void openEdit_ResetStopwatch(void);
 void openEdit_SimFollowDecostops(void);
 void openEdit_SetManualMarker(void);
+void openEdit_CaveModeOnOff(void);
 void openEdit_CaveReturn(void);
 void openEdit_SetEndDive(void);
 void openEdit_CalibViewport(void);
@@ -86,41 +87,46 @@ void openEdit_Xtra(uint8_t line)
     {
     	resetMenuEdit(CLUT_MenuPageXtra);
 
-		switch(line)
-		{
-			case 1:
-			default:
-				openEdit_ResetStopwatch();
-				break;
-			case 2:
-				openEdit_CompassHeading();
-				break;
-			case 3:
-				openEdit_SetManualMarker();
-				break;
+
+    	if(line == get_lineOfID(StMXTRA_ResetStopwatch))
+    	{
+    		openEdit_ResetStopwatch();
+    	}
+    	else if(line == get_lineOfID(StMXTRA_CompassHeading))
+    	{
+    		openEdit_CompassHeading();
+    	}
+    	else if(line == get_lineOfID(StMXTRA_SetMarker))
+    	{
+    		openEdit_SetManualMarker();
+    	}
 #ifdef ENABLE_CAVEMODE
-			case 4:
-				openEdit_CaveReturn();
-				break;
-			case 5:
-#elif ENABLE_MOTION_CONTROL
-			case 4:
-				openEdit_CalibViewport();
-				break;
-			case 5:
-#else
-			case 4:
+    	else if(line == get_lineOfID(StMXTRA_CaveModeOnOff))
+    	{
+    		openEdit_CaveModeOnOff();
+    	}
+    	else if(line == get_lineOfID(StMXTRA_CaveModeReturn))
+    	{
+    		openEdit_CaveReturn();
+    	}
 #endif
-				if(is_stateUsedSetToSim())
-				{
-					 openEdit_SimFollowDecostops();
-				}
-				else
-				{
-					openEdit_SetEndDive();
-				}
-				break;
-		}
+#ifdef ENABLE_MOTION_CONTROL
+    	else if(line == get_lineOfID(StMXTRA_CalibViewport))
+    	{
+    		openEdit_CalibViewport();
+    	}
+#endif
+    	else if(line == get_lineOfID(StMXTRA_SimFollowStop))
+    	{
+    		if(is_stateUsedSetToSim())
+    		{
+    			openEdit_SimFollowDecostops();
+   			}
+   			else
+   			{
+   				openEdit_SetEndDive();
+   			}
+    	}
     }
     else /* surface mode */
     {
@@ -159,13 +165,26 @@ void openEdit_SetManualMarker(void)
     exitMenuEdit_to_Home();
 }
 
+void openEdit_CaveModeOnOff(void)
+{
+	if(caveMode_isActive() == 0)
+	{
+		caveMode_SetActive(1);
+	}
+	else
+	{
+		caveMode_SetActive(0);
+	}
+	exitMenuEdit_to_Menu_with_Menu_Update();
+}
+
 void openEdit_CaveReturn(void)
 {
-	if(caveMode_GetReturnState() == 0)
+	if(caveMode_isReturning() == 0)
 	{
 		caveMode_SetReturn(1);
 	}
-    exitMenuEdit_to_Home();
+	exitMenuEdit_to_Menu_with_Menu_Update();
 }
 
 

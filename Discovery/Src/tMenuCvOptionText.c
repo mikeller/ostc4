@@ -180,6 +180,32 @@ uint8_t tMCvOptText_refreshPressure(char* pText)
 	return strlen(pText);
 }
 
+uint8_t tMCvOptText_refreshCave(char* pText)
+{
+	SSettings *pSettings = settingsGetPointer();
+	uint8_t textPointer = 0;
+
+	textPointer += snprintf(&pText[textPointer],20,"%c%c\033", TXT_2BYTE, TXT2BYTE_CaveMode);
+	if((pSettings->caveModeAutoStart) && (pSettings->caveModeSwapMode))
+	{
+		textPointer += snprintf(&pText[textPointer],20," \016\16%c%c\033%c%c\17", TXT_2BYTE, TXT2BYTE_AutoStart, TXT_2BYTE, TXT2BYTE_SwapMode);
+	}
+	else
+	{
+		if(pSettings->caveModeAutoStart)
+		{
+			textPointer += snprintf(&pText[textPointer],20,"\002%c%c", TXT_2BYTE, TXT2BYTE_AutoStart);
+		}
+		if(pSettings->caveModeSwapMode)
+		{
+			textPointer += snprintf(&pText[textPointer],20,"\002%c%c", TXT_2BYTE, TXT2BYTE_SwapMode);
+		}
+	}
+	pText[textPointer] = 0;
+	return strlen(pText);
+}
+
+
 uint8_t tMCvOptText_refreshTempstick(char* pText)
 {
 	uint8_t index = 0;
@@ -297,12 +323,18 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 											CvOptAvailable = 1;
 										}
 				break;
-			case CVOPT_Tempstick: 		if(SensorActive[SENSOR_VIRTUAL_TEMPSTICK])
-										{
-											refreshFctPointerTable[activeLines] = tMCvOptText_refreshTempstick;
-											CvOptAvailable = 1;
-										}
-break;
+			case CVOPT_Tempstick: 	if(SensorActive[SENSOR_VIRTUAL_TEMPSTICK])
+									{
+										refreshFctPointerTable[activeLines] = tMCvOptText_refreshTempstick;
+										CvOptAvailable = 1;
+									}
+				break;
+			case CVOPT_Cave:		if(!t7_customview_disabled(CVIEW_Cave))
+									{
+										refreshFctPointerTable[activeLines] = tMCvOptText_refreshCave;
+										CvOptAvailable = 1;
+									}
+				break;
 
 			default:
 				break;

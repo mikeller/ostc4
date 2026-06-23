@@ -222,6 +222,10 @@ void t3_drawMarker(GFX_DrawCfgScreen *hgfx, const  SWindowGimpStyle *window, uin
 				if(data[lastDataIndex] != 0)
 				{
 					setMarker = 1;
+					if(lastDataIndex == MiniLiveLogbook_getMarkerIndex())
+					{
+						setMarker = 2;
+					}
 					break;
 				}
 			}
@@ -237,7 +241,14 @@ void t3_drawMarker(GFX_DrawCfgScreen *hgfx, const  SWindowGimpStyle *window, uin
 			{
 				start.x = line;
 				stop.x = line;
-				GFX_draw_line(hgfx, start, stop, color);
+				if(setMarker == 2)
+				{
+					GFX_draw_thick_line(3,hgfx, start, stop, color);
+				}
+				else
+				{
+					GFX_draw_line(hgfx, start, stop, color);
+				}
 			}
 			line++;
 			dataIndex++;
@@ -335,9 +346,13 @@ void t3_miniLiveLogProfile(void)
 
 	if(replayDataLength != 0)												/* draw recorded profile */
 	{
-		if(caveMode_GetReturnState())
+		if(caveMode_isReturning())
 		{
 			GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(1), drawDataLength, CLUT_Font031, NULL);
+		}
+		else
+		{
+			GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, pReplayData, drawDataLength, CLUT_Font031, NULL);
 		}
 		if(pReplayMarker[0] != 0xFF)
 		{
@@ -347,7 +362,7 @@ void t3_miniLiveLogProfile(void)
 
     if(liveDataLength > 3)
     {
-    	GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(0), drawDataLength, CLUT_Font030, NULL);
+   		GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(0), drawDataLength, CLUT_Font030, NULL);
     }
 }
 
@@ -716,7 +731,9 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     		case StDCHECK:	snprintf(text,TEXTSIZE,"\a\003\001%c%c", TXT_2BYTE, TXT2BYTE_CheckMarker);
 							GFX_write_string_color(&FontT42,tXr1,text,1,CLUT_WarningYellow);
     			break;
-
+    		case StDSELMARK:snprintf(text,TEXTSIZE,"\a\003\001%c%c", TXT_2BYTE, TXT2BYTE_SelectMarkerShort);
+    						GFX_write_string_color(&FontT42,tXr1,text,1,CLUT_WarningYellow);
+    			break;
 #ifdef ENABLE_T3_PPO_SIM
     		case StDSIM1:	snprintf(text,TEXTSIZE,"\a\003\001PPO S0 +");
 							GFX_write_string_color(&FontT42,tXr1,text,1,CLUT_WarningYellow);

@@ -45,6 +45,7 @@ static openFunc_t openFctPointerTable[MAXLINES];		/* function pointer for refres
 /* Private function prototypes -----------------------------------------------*/
 static void openEdit_Timer(void);
 void openEdit_Compass(void);
+static void openEdit_Cave(void);
 
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_Compass		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -53,6 +54,9 @@ uint8_t OnAction_Bearing		(uint32_t editId, uint8_t blockNumber, uint8_t digitNu
 uint8_t OnAction_BearingClear	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 uint8_t OnAction_InertiaLevel	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CaveAutoStart(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CaveSwapMode(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -75,6 +79,9 @@ void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index)
 				break;
 			case CVOPT_HUD: openFctPointerTable[index] = openEdit_SensorsHUD;
 				break;
+			case CVOPT_Cave: openFctPointerTable[index] = openEdit_Cave;
+				break;
+
 			default:
 				break;
 		}
@@ -318,6 +325,42 @@ static void openEdit_Timer(void)
     setEvent(StMOption_Timer_Value, (uint32_t)OnAction_Timer);
     startEdit();
 }
+
+static void openEdit_Cave(void)
+{
+    SSettings *settings = settingsGetPointer();
+
+    char text[10];
+    uint8_t textIndex = 0;
+
+    set_globalState(StMCustom3_CViewSelection1);
+    resetMenuEdit(CLUT_MenuPageHardware);
+
+    text[textIndex++] = '\001';
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_CaveMode;
+    text[textIndex++] = 0;
+    write_topline(text);
+
+    text[0] = TXT_2BYTE;
+    text[2] = 0;
+
+    text[1] = TXT2BYTE_AutoStart;
+    write_field_on_off(StMCustom3_CViewSelection1,	30, 800, ME_Y_LINE1,  &FontT48, text, settings->caveModeAutoStart);
+
+    text[1] = TXT2BYTE_SwapMode;
+    write_field_on_off(StMCustom3_CViewSelection2,	30, 800, ME_Y_LINE2,  &FontT48, text, settings->caveModeSwapMode);
+
+
+    setEvent(StMCustom3_CViewSelection1,		(uint32_t)OnAction_CaveAutoStart);
+    setEvent(StMCustom3_CViewSelection2,	(uint32_t)OnAction_CaveSwapMode);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
+
+
+
+
 static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
     SSettings *settings = settingsGetPointer();
@@ -378,5 +421,35 @@ static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digi
 
     return EXIT_TO_MENU;
 }
+
+static uint8_t OnAction_CaveAutoStart(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
+	if(pSettings->caveModeAutoStart)
+	{
+		pSettings->caveModeAutoStart = 0;
+	}
+	else
+	{
+		pSettings->caveModeAutoStart = 1;
+	}
+	tMenuEdit_set_on_off(editId, pSettings->caveModeAutoStart);
+	return UNSPECIFIC_RETURN;
+}
+static uint8_t OnAction_CaveSwapMode(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
+	if(pSettings->caveModeSwapMode)
+	{
+		pSettings->caveModeSwapMode = 0;
+	}
+	else
+	{
+		pSettings->caveModeSwapMode = 1;
+	}
+	tMenuEdit_set_on_off(editId, pSettings->caveModeSwapMode);
+	return UNSPECIFIC_RETURN;
+}
+
 
 

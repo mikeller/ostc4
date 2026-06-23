@@ -138,7 +138,9 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
    		simReplayActive = 1;
 		getReplayInfo(&pReplayData, &pReplayMarker, &replayDataLength, &max_depth, &diveMinutes);
    	}
+#ifdef ENABLE_CAVEMODE
    	caveMode_Init();
+#endif
 }
 
 /**

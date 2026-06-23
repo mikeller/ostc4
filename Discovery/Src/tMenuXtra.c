@@ -37,6 +37,7 @@
 #include "data_central.h"
 #include "simulation.h"
 #include "configuration.h"
+#include "cavemode.h"
 
 
 /* Exported functions --------------------------------------------------------*/
@@ -45,6 +46,7 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 {
     uint8_t textPointer = 0;
     uint8_t CcrModusTxtId = 0;
+    uint8_t runningLine = 1;	/* used to automatically define line numbers if compiler switches are in use */
 
     textPointer = 0;
     *tab = 500;
@@ -57,65 +59,85 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
     /* DIVE MODE */
     if(actual_menu_content != MENU_SURFACE)
     {
-		if((line == 0) || (line == 1))
+		if((line == 0) || (line == runningLine))
 		{
 			text[textPointer++] = TXT_2BYTE;
 			text[textPointer++] = TXT2BYTE_ResetStopwatch;
 		}
 		strcpy(&text[textPointer],"\n\r");
 		textPointer += 2;
-	/*
-		if((line == 0) || (line == 2))
-		{
-				text[textPointer++] = TXT_2BYTE;
-				text[textPointer++] = TXT2BYTE_ResetAvgDepth;
-		}
-		strcpy(&text[textPointer],"\n\r");
-		textPointer += 2;
-	*/
-		if((line == 0) || (line == 2))
+		runningLine++;
+
+		if((line == 0) || (line == runningLine))
 		{
 			text[textPointer++] = TXT_2BYTE;
 			text[textPointer++] = TXT2BYTE_CompassHeading;
 		}
 		strcpy(&text[textPointer],"\n\r");
 		textPointer += 2;
+		runningLine++;
 
-		if((line == 0) || (line == 3))
+		if((line == 0) || (line == runningLine))
 		{
 			text[textPointer++] = TXT_2BYTE;
 			text[textPointer++] = TXT2BYTE_SetMarker;
 		}
 		strcpy(&text[textPointer],"\n\r");
 		textPointer += 2;
+		runningLine++;
 
 
 #ifdef ENABLE_CAVEMODE
-		if((line == 0) || (line == 4))
+		if((line == 0) || (line == runningLine))
+		{
+			text[textPointer++] = TXT_Cave;
+			text[textPointer++] = ' ';
+			text[textPointer++] = TXT_Active;
+			text[textPointer++] = ' ';
+			text[textPointer++] = ' ';
+			if(caveMode_isActive())
+				text[textPointer++] = '\005';
+			else
+				text[textPointer++] = '\006';
+		}
+		strcpy(&text[textPointer],"\n\r");
+		textPointer += 2;
+		runningLine++;
+
+		if((line == 0) || (line == runningLine))
 		{
 			text[textPointer++] = TXT_Cave;
 			text[textPointer++] = ' ';
 			text[textPointer++] = TXT_2BYTE;
 			text[textPointer++] = TXT2BYTE_ButtonBack;
+			text[textPointer++] = ' ';
+			text[textPointer++] = ' ';
+			if(caveMode_isReturning())
+				text[textPointer++] = '\005';
+			else
+				text[textPointer++] = '\006';
+
 		}
 		strcpy(&text[textPointer],"\n\r");
 		textPointer += 2;
+		runningLine++;
 #endif
 
 
 #ifdef ENABLE_MOTION_CONTROL
-		if((line == 0) || (line == 4))
+		if((line == 0) || (line == runningLine))
 		{
 			text[textPointer++] = TXT_2BYTE;
 			text[textPointer++] = TXT2BYTE_CalibView;
 		}
 		strcpy(&text[textPointer],"\n\r");
 		textPointer += 2;
+		runningLine++;
 #endif
 
 		if(is_stateUsedSetToSim())
 		{
-			if((line == 0) || (line == 5))
+			if((line == 0) || (line == runningLine))
 			{
 				text[textPointer++] = TXT_2BYTE;
 				text[textPointer++] = TXT2BYTE_SimFollowDecoStops;
@@ -128,16 +150,18 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 			}
 			strcpy(&text[textPointer],"\n\r");
 			textPointer += 2;
+			runningLine++;
 		}
 		else
 		{
-			if((line == 0) || (line == 5))		/* end dive mode only used during real dives */
+			if((line == 0) || (line == runningLine))		/* end dive mode only used during real dives */
 				{
 					text[textPointer++] = TXT_2BYTE;
 					text[textPointer++] = TXT2BYTE_EndDiveMode;
 				}
 			strcpy(&text[textPointer],"\n\r");
 			textPointer += 2;
+			runningLine++;
 		}
     }
     else	/* Surface MODE */

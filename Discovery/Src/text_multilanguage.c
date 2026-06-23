@@ -792,6 +792,12 @@ static uint8_t text_FR_CheckMarker[] = "";
 static uint8_t text_IT_CheckMarker[] = "";
 static uint8_t text_ES_CheckMarker[] = "";
 
+static uint8_t text_EN_SelMarkerShort[] = "Sel Mark";
+static uint8_t text_DE_SelMarkerShort[] = "Marker->";
+static uint8_t text_FR_SelMarkerShort[] = "";
+static uint8_t text_IT_SelMarkerShort[] = "";
+static uint8_t text_ES_SelMarkerShort[] = "";
+
 // Dive Menu
 static uint8_t text_EN_CompassHeading[] = "Compass heading";
 static uint8_t text_DE_CompassHeading[] = "Kompasskurs";
@@ -1971,6 +1977,19 @@ static uint8_t text_FR_CaveMode[] = "";
 static uint8_t text_IT_CaveMode[] = "";
 static uint8_t text_ES_CaveMode[] = "";
 
+static uint8_t text_EN_AutoStart[] = "Start automatic";
+static uint8_t text_DE_AutoStart[] = "Startet automatisch";
+static uint8_t text_FR_AutoStart[] = "";
+static uint8_t text_IT_AutoStart[] = "";
+static uint8_t text_ES_AutoStart[] = "";
+
+static uint8_t text_EN_SwapMode[] = "Calculate gas fallback";
+static uint8_t text_DE_SwapMode[] = "Rechne Gas Alternative";
+static uint8_t text_FR_SwapMode[] = "";
+static uint8_t text_IT_SwapMode[] = "";
+static uint8_t text_ES_SwapMode[] = "";
+
+
 static uint8_t text_EN_VpmTable[] = "VPM table mode";
 static uint8_t text_DE_VpmTable[] = "VPM Tabellenmodus";
 static uint8_t text_FR_VpmTable[] = "";
@@ -2170,6 +2189,7 @@ const tText text_array2[] =
     {(uint8_t)TXT2BYTE_SetMarker,		{text_EN_SetMarker, text_DE_SetMarker, text_FR_SetMarker, text_IT_SetMarker, text_ES_SetMarker}},
 	{(uint8_t)TXT2BYTE_SetMarkerShort,	{text_EN_SetMarkerShort, text_DE_SetMarkerShort, text_FR_SetMarkerShort, text_IT_SetMarkerShort, text_ES_SetMarkerShort}},
 	{(uint8_t)TXT2BYTE_CheckMarker,		{text_EN_CheckMarker, text_DE_CheckMarker, text_FR_CheckMarker, text_IT_CheckMarker, text_ES_CheckMarker}},
+	{(uint8_t)TXT2BYTE_SelectMarkerShort,{text_EN_SelMarkerShort, text_DE_SelMarkerShort, text_FR_SelMarkerShort, text_IT_SelMarkerShort, text_ES_SelMarkerShort}},
     {(uint8_t)TXT2BYTE_CompassHeading,  {text_EN_CompassHeading, text_DE_CompassHeading, text_FR_CompassHeading, text_IT_CompassHeading, text_ES_CompassHeading}},
 	{(uint8_t)TXT2BYTE_GFSurf,  		{text_EN_GFSurf, text_DE_GFSurf, text_FR_GFSurf, text_IT_GFSurf, text_ES_GFSurf}},
 	{(uint8_t)TXT2BYTE_CalibView,		{text_EN_CalibView, text_DE_CalibView, text_FR_CalibView, text_IT_CalibView, text_ES_CalibView}},
@@ -2357,6 +2377,11 @@ const tText text_array2[] =
 
 	{(uint8_t)TXT2BYTE_Position, 		{text_EN_Position, text_DE_Position, text_FR_Position, text_IT_Position, text_ES_Position}},
 	{(uint8_t)TXT2BYTE_CaveMode, 		{text_EN_CaveMode, text_DE_CaveMode, text_FR_CaveMode, text_IT_CaveMode, text_ES_CaveMode}},
+	{(uint8_t)TXT2BYTE_AutoStart, 		{text_EN_AutoStart, text_DE_AutoStart, text_FR_AutoStart, text_IT_AutoStart, text_ES_AutoStart}},
+	{(uint8_t)TXT2BYTE_SwapMode, 		{text_EN_SwapMode, text_DE_SwapMode, text_FR_SwapMode, text_IT_SwapMode, text_ES_SwapMode}},
+
+
+
 
 	{(uint8_t)TXT2BYTE_VpmTable, 		{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
 

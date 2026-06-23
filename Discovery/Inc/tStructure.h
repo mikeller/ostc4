@@ -110,6 +110,8 @@
 #define StDBAILOUT	_MB(1,2,15,0,0)
 #define StDSETPOINT	_MB(1,2,16,0,0)
 
+#define StDSELMARK	_MB(1,2,17,0,0)
+
 #define StUART_STANDARD		_MB(3,1,0,0,0)
 #define StUART_RTECONNECT	_MB(3,2,0,0,0)
 
@@ -214,6 +216,19 @@
 #define StMXTRA_CompassHeadingReset	_MB(2,4,2,4,0)
 #define StMXTRA_CompassHeadingLog	_MB(2,4,2,5,0)
 
+#define StMXTRA_SetMarker		_MB(2,4,3,1,0)
+#ifdef ENABLE_CAVEMODE
+#define StMXTRA_CaveModeOnOff	_MB(2,4,4,1,0)
+#define StMXTRA_CaveModeReturn	_MB(2,4,5,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,4,6,1,0)
+#else
+#ifdef ENABLE_MOTION_CONTROL
+#define StMXTRA_CalibViewport	_MB(2,4,4,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,4,5,1,0)
+#else
+#define StMXTRA_SimFollowStop	_MB(2,4,4,1,0)
+#endif
+#endif
  /* SURFACE MODE */
 
 #define StMXTRA_CCRmode					_MB(2,4,1,1,0)

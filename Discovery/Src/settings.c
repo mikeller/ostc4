@@ -96,7 +96,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF002F,
+    .header = 0xFFFF0030,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -362,7 +362,9 @@ const SSettings SettingsStandard = {
     .hudFunction[3] = HUD_FCT_NONE,
     .hudFunction[4] = HUD_FCT_NONE,
     .hudFunction[5] = HUD_FCT_NONE,
-	.hudBrigthness = 0
+	.hudBrigthness = 0,
+	.caveModeAutoStart = 0,
+	.caveModeSwapMode = 0
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -684,6 +686,9 @@ void set_new_settings_missing_in_ext_flash(uint8_t whichSettings)
     					pSettings->hudFunction[5] = HUD_FCT_NONE;
     					pSettings->hudBrigthness = 0;
     	// no break;
+    case 0xFFFF002F:	pSettings->caveModeAutoStart = 1;
+    					pSettings->caveModeSwapMode = 0;
+		// no break;
     default:
         pSettings->header = pStandard->header;
         break; // no break before!!
@@ -1981,6 +1986,18 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
 			pSettings->hudFunction[index] = HUD_FCT_NONE;
 			corrections++;
 		}
+	}
+	parameterId++; /* 106 */
+
+	if(pSettings->caveModeAutoStart > 1)
+	{
+		pSettings->caveModeAutoStart = 0;
+		corrections++;
+	}
+	if(pSettings->caveModeSwapMode > 1)
+	{
+		pSettings->caveModeSwapMode = 0;
+		corrections++;
 	}
 
     if(corrections)

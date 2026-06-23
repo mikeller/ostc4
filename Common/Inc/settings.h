@@ -339,6 +339,9 @@ typedef struct
 	/* new in 0xFFFF002F */
 	uint8_t hudFunction[MAX_NUMBER_OF_HUD_FCTS];
 	uint8_t hudBrigthness;
+	/* new in 0xFFFF0030 */
+	uint8_t caveModeAutoStart;
+    uint8_t caveModeSwapMode;
 } SSettings;
 
 uint8_t writeData(uint8_t *);

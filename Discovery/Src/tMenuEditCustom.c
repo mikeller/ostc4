@@ -40,6 +40,7 @@
 #include "motion.h"
 #include "tMenu.h"
 #include "tMenuSystem.h"
+#include "tMenuCvOptionText.h"
 #include "ostc.h"
 #include <math.h>
 
@@ -794,6 +795,9 @@ uint8_t OnAction_Customview_Toggle(uint32_t editId, uint8_t blockNumber, uint8_t
 			pSettings->cv_config_BigScreen ^= (1 << CVIEW_noneOrDebug);
 		}
 	}
+	line = tMCvOptText_BuildDynamicContentList();
+	tM_setLinesForPage(StMOption, line);
+
     return UPDATE_DIVESETTINGS;
 }
 
