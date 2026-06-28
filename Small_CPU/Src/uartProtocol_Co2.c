@@ -239,14 +239,7 @@ void uartCo2_ProcessData(uint8_t data)
 												localComState = UART_CO2_IDLE;
 											}
 					break;
-				default: 					if(pMap[activeSensor + EXT_INTERFACE_MUX_OFFSET] == SENSOR_SENTINEL_CO2)
-											{
-												localComState = UART_CO2_DONE;
-											}
-											else
-											{
-												localComState = UART_CO2_IDLE;
-											}
+				default: 					localComState = UART_CO2_IDLE;
 					break;
 			}
 
@@ -257,6 +250,10 @@ void uartCo2_ProcessData(uint8_t data)
 				case 'l':			LED_ZeroOffset = dataValue[dataIndex];
 					break;
 				case 'Z':			externalInterface_SetCO2Value(dataValue[dataIndex]);
+									if(pMap[activeSensor + EXT_INTERFACE_MUX_OFFSET] == SENSOR_SENTINEL_CO2)
+									{
+										localComState = UART_CO2_DONE;
+									}
 					break;
 				case '.':			externalInterface_SetCO2Scale(dataValue[dataIndex]);
 					break;

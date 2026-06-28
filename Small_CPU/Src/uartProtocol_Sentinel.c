@@ -29,6 +29,8 @@
 static uint8_t SentinelConnected = 0;						/* Binary indicator if a sensor (and what type of subsensor) is connected or not */
 static receiveStateSentinel_t rxState = SENTRX_Ready;
 
+float o2ChannelOffset_mV[3] = {0.0, 0.0, 0.0};
+
 extern sUartComCtrl Uart1Ctrl;
 
 
@@ -44,6 +46,7 @@ void uartSentinel_Control(void)
 {
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 	uartSentinelStatus_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
+	uint8_t index = 0;
 
 	if(localComState == UART_SENTINEL_INIT)
 	{
@@ -51,6 +54,10 @@ void uartSentinel_Control(void)
 		UART_StartDMA_Receiption(&Uart1Ctrl);
 		localComState = UART_SENTINEL_IDLE;
 		externalInterface_SetCO2Scale(10.0);
+		for(index = 0; index < 3; index++)
+		{
+			o2ChannelOffset_mV[index] = 0.0;
+		}
 	}
 
 	if((localComState == UART_SENTINEL_IDLE) || (localComState == UART_SENTINEL_DONE))
@@ -77,6 +84,9 @@ void uartSentinel_ProcessData(uint8_t data)
 	static char checksum_str[3];
 
 	static uint32_t lastSlowDataTick = 0;
+	static float lastPrimaryO2Voltage_mV[3] = {0.0, 0.0, 0.0};
+
+	uint8_t index = 0;
 
 	uint8_t activeSensor = externalInterface_GetActiveUartSensor();
 	uartSentinelStatus_t localComState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
@@ -194,9 +204,33 @@ void uartSentinel_ProcessData(uint8_t data)
 									{
 										switch(dataType)
 										{
-											case UART_SENTINEL_O2_P: 	setExternalInterfaceChannel(0,(float)(dataValue[0] / 10.0));
-																		setExternalInterfaceChannel(1,(float)(dataValue[1] / 10.0));
-																		setExternalInterfaceChannel(2,(float)(dataValue[2] / 10.0));
+											case UART_SENTINEL_O2_P: 	for(index = 0; index < 3; index++)
+																		{
+																			setExternalInterfaceChannel(index,(float)(dataValue[index] / 10.0));
+																			lastPrimaryO2Voltage_mV[index] = dataValue[index] / 10.0;
+																		}
+																		SentinelConnected |= SENTINEL_O2;
+																		dataSetReceived |= SENTINEL_O2;
+												break;
+											case UART_SENTINEL_O2_S:	lastPrimaryO2Voltage_mV[0] = dataValue[0];
+																		lastPrimaryO2Voltage_mV[1] = dataValue[1];
+																		lastPrimaryO2Voltage_mV[2] = dataValue[2];
+																		for(index = 0; index < 3; index++)
+																		{
+																			if(lastPrimaryO2Voltage_mV[index] == 0.0)	/* primary sensor failed => apply secondary */
+																			{
+																				setExternalInterfaceChannel(index,(float)((dataValue[index] / 10.0)) + o2ChannelOffset_mV[index]);
+																			}
+																			else
+																			{
+																				if((lastPrimaryO2Voltage_mV[index] < 15.0) && (dataValue[index] / 10.0 < 15.0)
+																				&& (lastPrimaryO2Voltage_mV[index] > 8.0) && (dataValue[index] / 10.0 > 8.0))
+																				{
+																					o2ChannelOffset_mV[index] = lastPrimaryO2Voltage_mV[index] - (dataValue[index] / 10.0);
+																				}
+																			}
+																			lastPrimaryO2Voltage_mV[index] = 0;
+																		}
 																		SentinelConnected |= SENTINEL_O2;
 																		dataSetReceived |= SENTINEL_O2;
 												break;
