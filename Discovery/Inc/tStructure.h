@@ -109,8 +109,12 @@
 #define StDSIM6	_MB(1,2,14,0,0)
 #define StDBAILOUT	_MB(1,2,15,0,0)
 #define StDSETPOINT	_MB(1,2,16,0,0)
-
 #define StDSELMARK	_MB(1,2,17,0,0)
+#define StDCAVETOGACTIVE _MB(1,2,18,0,0)
+#define StDCAVETOGDIR _MB(1,2,19,0,0)
+
+
+
 
 #define StUART_STANDARD		_MB(3,1,0,0,0)
 #define StUART_RTECONNECT	_MB(3,2,0,0,0)

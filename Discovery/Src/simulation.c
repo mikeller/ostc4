@@ -489,6 +489,10 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     	{
     		sampleToggle = sampleTime - 1;
     		sim_aim_depth_meter = (float)(*pReplayData++/100.0);
+    		if(sim_aim_depth_meter > 500)		/* corrupted data or replay data empty => set target surface */
+    		{
+    			sim_aim_depth_meter = 0;
+    		}
     		if(sim_aim_depth_meter > depth_meter)
     		{
     			sim_descent_rate_meter_per_min = (sim_aim_depth_meter - depth_meter) * (60 / sampleTime);
@@ -959,4 +963,13 @@ void Sim_SetReplayState(uint8_t active)
 		getReplayInfo(&pReplayData, &pReplayMarker, &replayDataLength, &max_depth, &diveMinutes);
 		pReplayData += getMiniLiveReplayLength();
 	}
+}
+
+void Sim_NotifyCompression()
+{
+	uint16_t curIndex = 0;
+	getReplayInfo(&pReplayData, NULL, NULL, NULL, NULL);
+	curIndex = getMiniLiveReplayLength();
+	pReplayData = &pReplayData[curIndex];
+
 }

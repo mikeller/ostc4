@@ -567,7 +567,9 @@ int main(void)
             }
             check_warning();
             updateMiniLiveLogbook(1);
+#ifdef ENABLE_CAVEMODE
             caveMode_Update(stateUsedWrite);
+#endif
 #ifdef T7_DEBUG_RUNTIME
             startTimeGfxLoop = HAL_GetTick();
 #endif

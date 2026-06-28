@@ -600,6 +600,11 @@ char customviewBF_TXT2BYTE_helper(uint8_t customViewId)
 		text = TXT2BYTE_Tempstick;
 		break;
 #endif
+#ifdef ENABLE_CAVEMODE
+    case CVIEW_T3_Cavemode:
+		text = TXT2BYTE_CaveMode;
+		break;
+#endif
     default:
         break;
     }

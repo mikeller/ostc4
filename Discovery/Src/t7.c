@@ -85,8 +85,9 @@ static void t7_drawAcentGraph(uint8_t color);
 static uint8_t t7_drawSlowExitGraph(void);
 static void t7_showPosition(void);
 
+#ifdef ENABLE_CAVEMODE
 static void t7_refresh_Cave(void);
-
+#endif
 /* Imported function prototypes ---------------------------------------------*/
 extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
 
@@ -2695,8 +2696,10 @@ void t7_refresh_customview(void)
         GFX_write_string(&FontT42, &t7cH, text, 0);
         t7_showPosition();
         break;
+#ifdef ENABLE_CAVEMODE
     case CVIEW_Cave: t7_refresh_Cave();
     	break;
+#endif
     }
 
     last_customview = selection_customview;
@@ -4941,6 +4944,7 @@ uint8_t t7_drawSlowExitGraph()  /* this function is only called if diver is belo
 	return color;
 }
 
+#ifdef ENABLE_CAVEMODE
 void t7_refresh_Cave(void)
 {
     char text[200];
@@ -4973,7 +4977,7 @@ void t7_refresh_Cave(void)
 	{
 		textpointer = 0;
 
-		if((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco))
+		if(((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco)) && (pGasLine[gasId].bottle_size_liter != 0))
 		{
 			if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
 			{
@@ -4993,7 +4997,7 @@ void t7_refresh_Cave(void)
 			oxygen = pGasLine[gasId].oxygen_percentage;
 			helium = pGasLine[gasId].helium_percentage;
 			textpointer += write_gas(&text[textpointer], oxygen, helium);
-			snprintf(&text[textpointer],100,"\002%dBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
+			snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
 			GFX_write_string(&FontT42, &t7cY0free, text, line);
 			line++;
 		}
@@ -5004,7 +5008,7 @@ void t7_refresh_Cave(void)
 		GFX_write_string(&FontT42, &t7cY0free, text, 6);
 	}
 }
-
+#endif
 void t7_tick(void)
 {
     SSettings *settings = settingsGetPointer();

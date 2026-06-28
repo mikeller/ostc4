@@ -93,6 +93,9 @@ uint8_t t3_drawSlowExitGraph(GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXl
 #ifdef ENABLE_TEMPSTICK_SUPPORT
 void t3_tempstick_Profile(void);
 #endif
+#ifdef ENABLE_CAVEMODE
+void t3_caveModeView(GFX_DrawCfgWindow* tXc1);
+#endif
 /* Exported functions --------------------------------------------------------*/
 
 void t3_init(void)
@@ -346,11 +349,13 @@ void t3_miniLiveLogProfile(void)
 
 	if(replayDataLength != 0)												/* draw recorded profile */
 	{
+#ifdef ENABLE_CAVEMODE
 		if(caveMode_isReturning())
 		{
 			GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, getMiniLiveReplayPointerToData(1), drawDataLength, CLUT_Font031, NULL);
 		}
 		else
+#endif
 		{
 			GFX_graph_print(&t3screen, &wintemp, 0,1,0, max_depth, pReplayData, drawDataLength, CLUT_Font031, NULL);
 		}
@@ -734,6 +739,66 @@ float t3_basics_lines_depth_and_divetime(GFX_DrawCfgScreen *tXscreen, GFX_DrawCf
     		case StDSELMARK:snprintf(text,TEXTSIZE,"\a\003\001%c%c", TXT_2BYTE, TXT2BYTE_SelectMarkerShort);
     						GFX_write_string_color(&FontT42,tXr1,text,1,CLUT_WarningYellow);
     			break;
+#ifdef ENABLE_CAVEMODE
+    		case StDCAVETOGACTIVE:
+    						if(caveMode_isOff())
+    						{
+    							snprintf(text,TEXTSIZE,"\a\003\001 r ");
+    						}
+    						else
+    						{
+    							if(caveMode_isActive())
+    							{
+    								snprintf(text,TEXTSIZE,"\a\003\001 p ");
+    							}
+    							else
+    							{
+    								if(caveMode_isReturning())
+    								{
+    									snprintf(text,TEXTSIZE,"\a\003\001 Z ");
+    								}
+    								else
+    								{
+    									snprintf(text,TEXTSIZE,"\a\003\001 r ");
+    								}
+    							}
+    						}
+    						if(!pSettings->FlipDisplay)
+    						{
+    							tXr1->WindowY0 += 50;
+    						  	GFX_write_string_color(&Awe48,tXr1,text,1,CLUT_WarningYellow);
+    						  	tXr1->WindowY0 -= 50;
+    						}
+    						else
+    						{
+    							tXr1->WindowY1 -= 50;
+    							GFX_write_string_color(&Awe48,tXr1,text,1,CLUT_WarningYellow);
+    							tXr1->WindowY1 += 50;
+    						}
+    			break;
+    		case StDCAVETOGDIR:	if(caveMode_isReturning())
+								{
+									snprintf(text,TEXTSIZE,"\a\003\001 r ");
+								}
+								else
+								{
+									snprintf(text,TEXTSIZE,"\a\003\001 Z ");
+								}
+								if(!pSettings->FlipDisplay)
+								{
+									tXr1->WindowY0 += 50;
+									GFX_write_string_color(&Awe48,tXr1,text,1,CLUT_WarningYellow);
+									tXr1->WindowY0 -= 50;
+								}
+								else
+								{
+									tXr1->WindowY1 -= 50;
+									GFX_write_string_color(&Awe48,tXr1,text,1,CLUT_WarningYellow);
+									tXr1->WindowY1 += 50;
+								}
+    			break;
+#endif
+
 #ifdef ENABLE_T3_PPO_SIM
     		case StDSIM1:	snprintf(text,TEXTSIZE,"\a\003\001PPO S0 +");
 							GFX_write_string_color(&FontT42,tXr1,text,1,CLUT_WarningYellow);
@@ -1225,6 +1290,10 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
     	snprintf(text,100,"\032\f\002%c%c",TXT_2BYTE,TXT2BYTE_Tempstick);
     	GFX_write_string(&FontT42,tXc1,text,0);
     	t3_tempstick_Profile();
+    	break;
+#endif
+#ifdef ENABLE_CAVEMODE
+    case CVIEW_T3_Cavemode:	t3_caveModeView(tXc1);
     	break;
 #endif
     case CVIEW_T3_DecoTTS:
@@ -2308,7 +2377,6 @@ void t3_tempstick_Profile(void)
     SWindowGimpStyle wintemp;
     uint16_t dataLength = 0;
     uint16_t drawDataLength = 0;
-    char text[TEXTSIZE];
     point_t start, stop;
     uint8_t index = 0;
 
@@ -2340,19 +2408,95 @@ void t3_tempstick_Profile(void)
 
    	dataLength = tempstick_GetDataLength();
 
-	if(drawDataLength < TEMP_PROFILE_WIDTH)
+	if(drawDataLength < CV_PROFILE_WIDTH / 2)
+	{
+		drawDataLength =  CV_PROFILE_WIDTH / 2;
+	}
+	else if(drawDataLength < CV_PROFILE_WIDTH)
 	{
 		drawDataLength = TEMP_PROFILE_WIDTH;
 	}
 
 	if(dataLength > 3)
 	{
-		snprintf(text,TEXTSIZE,"\002%d %d %d", pactiveCnt[0], pactiveCnt[1], pactiveCnt[2]);
-		GFX_write_string(&FontT42,&t3c1,text,1);
 		for(index = 0; index < EXT_INTERFACE_TEMPSTICK_MAX; index ++)
 		{
+			/* draw sensor activity bar */
+		    start.x = CV_PROFILE_WIDTH + 20 + index * 23;
+		    stop.x = start.x;
+		    start.y = 6 + (pactiveCnt[index] * 15);
+			stop.y = 5;
+			GFX_draw_thick_line(20, &t3screen, start, stop, CLUT_Font030 + index);
+
 			GFX_graph_print(&t3screen, &wintemp, 0,1,0, 160, tempstickLog_GetDataPointer(index), drawDataLength, CLUT_Font030 + index, NULL);
 		}
 	}
+}
+#endif
+#ifdef ENABLE_CAVEMODE
+void t3_caveModeView(GFX_DrawCfgWindow* tXc1)
+{
+    char text[TEXTSIZE];
+    uint8_t txtIndex = 0;
+    uint16_t markerIndex = 0;
+    SSettings* pSettings;
+    pSettings = settingsGetPointer();
+
+    snprintf(text,TEXTSIZE,"\032\fMarker");
+    GFX_write_string(&FontT42,tXc1,text,0);
+
+    markerIndex = MiniLiveLogbook_getMarkerIndex();
+    if(markerIndex != 0)
+    {
+    	snprintf(text,TEXTSIZE,"\030\003%d'", (markerIndex * getReplayDataResolution() / 60));
+    	GFX_write_string(&FontT105,tXc1,text,0);
+    }
+    if(!pSettings->FlipDisplay)
+    {
+    	tXc1->WindowX0 = 480;
+    }
+    else
+    {
+    	tXc1->WindowX1 = 320;
+    	tXc1->WindowY0 = t3c1.WindowY0; /* select customer window */
+    }
+
+    snprintf(text,100,"\032\002\f%c%c",TXT_2BYTE,TXT2BYTE_CaveMode);
+    GFX_write_string(&FontT42,tXc1,text,0);
+
+    if(!pSettings->FlipDisplay)
+    {
+    	tXc1->WindowY0 = 50;
+    }
+    else
+    {
+    	tXc1->WindowY1 -= 50; /* jump to upper of two lines */
+    }
+
+
+    if(caveMode_isOff())
+    {
+    	snprintf(text,TEXTSIZE,"\030\001\003%c",TXT_Off);
+    	GFX_write_string(&FontT48,tXc1,text,0);
+    }
+    else
+    {
+    	txtIndex = snprintf(text,TEXTSIZE,"\030\001\003");
+    	if(caveMode_isReturning())
+    	{
+    		text[txtIndex++] = 'Z';	/* return arrow */
+    	}
+    	else
+    	{
+    		text[txtIndex++] = 'r';	/* forward arrow */
+    	}
+    	if(!caveMode_isActive())
+    	{
+    		text[txtIndex++] = ' ';
+    		text[txtIndex++] = 'p';	/* pause / standby */
+    	}
+    	text[txtIndex] = 0;
+    	GFX_write_string(&Awe48,tXc1,text,0);
+    }
 }
 #endif

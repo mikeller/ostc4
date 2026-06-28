@@ -50,8 +50,10 @@ void openEdit_CompassHeading(void);
 void openEdit_ResetStopwatch(void);
 void openEdit_SimFollowDecostops(void);
 void openEdit_SetManualMarker(void);
+#ifdef ENABLE_CAVEMODE
 void openEdit_CaveModeOnOff(void);
 void openEdit_CaveReturn(void);
+#endif
 void openEdit_SetEndDive(void);
 void openEdit_CalibViewport(void);
 
@@ -165,6 +167,7 @@ void openEdit_SetManualMarker(void)
     exitMenuEdit_to_Home();
 }
 
+#ifdef ENABLE_CAVEMODE
 void openEdit_CaveModeOnOff(void)
 {
 	if(caveMode_isActive() == 0)
@@ -186,7 +189,7 @@ void openEdit_CaveReturn(void)
 	}
 	exitMenuEdit_to_Menu_with_Menu_Update();
 }
-
+#endif
 
 void openEdit_SetEndDive(void)
 {

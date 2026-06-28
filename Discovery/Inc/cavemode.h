@@ -52,5 +52,6 @@ uint8_t caveMode_isActive(void);
 uint8_t caveMode_isOff(void);
 uint8_t caveMode_isLiveDive(void);
 void caveMode_SyncToMarker(void);
+void caveMode_NotifyCompression();
 #endif /* CAVEMODE_H */
 

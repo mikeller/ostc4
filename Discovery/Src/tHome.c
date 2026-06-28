@@ -79,6 +79,9 @@ const uint8_t cv_changelist_BS[] = {CVIEW_T3_Decostop, CVIEW_sensors, CVIEW_Comp
 #ifdef ENABLE_TEMPSTICK_SUPPORT
 									CVIEW_T3_Tempstick,
 #endif
+#ifdef ENABLE_CAVEMODE
+									CVIEW_T3_Cavemode,
+#endif
 									CVIEW_T3_END};
 
 /* Private function prototypes -----------------------------------------------*/
@@ -260,8 +263,13 @@ void tHomeDiveMenuControl(uint8_t sendAction)
 #endif
 #ifdef ENABLE_T3_PROFILE_VIEW
             		case CVIEW_T3_Profile: 	set_globalState(StDMARK);
-#endif
             			break;
+#endif
+#ifdef ENABLE_CAVEMODE
+            		case CVIEW_T3_Cavemode: set_globalState(StDCAVETOGACTIVE);
+            			break;
+#endif
+
             		default:
             			set_globalState(StDMENU);
             			break;
@@ -442,7 +450,31 @@ void tHomeDiveMenuControl(uint8_t sendAction)
         		set_globalState(StD);
         	}
         	break;
-
+        case StDCAVETOGACTIVE:	if(!caveMode_isOff())
+        						{
+        							set_globalState(StDCAVETOGDIR);
+								}
+								else
+								{
+									if(MiniLiveLogbook_isMarkerDataAvailable())
+									{
+										set_globalState(StDSELMARK);
+									}
+									else
+									{
+										set_globalState(StD);
+									}
+								}
+			break;
+        case StDCAVETOGDIR:	if(MiniLiveLogbook_isMarkerDataAvailable())
+        					{
+        						set_globalState(StDSELMARK);
+        					}
+        					else
+        					{
+        						set_globalState(StD);
+        					}
+			break;
         default:
             set_globalState(StD);
         }
@@ -576,6 +608,26 @@ void tHomeDiveMenuControl(uint8_t sendAction)
         case StDSELMARK:	MiniLiveLogbook_getNextMarkerIndex(MiniLiveLogbook_getMarkerIndex(),1);
 
         	break;
+#ifdef ENABLE_CAVEMODE
+        case StDCAVETOGACTIVE:	if((caveMode_isOff()) || (!caveMode_isActive()))
+							{
+        						caveMode_SetActive(1);
+							}
+							else
+							{
+								caveMode_SetActive(0);
+							}
+        	break;
+        case StDCAVETOGDIR: if(caveMode_isReturning())
+        					{
+        						caveMode_SetReturn(0);
+        					}
+        					else
+        					{
+        						caveMode_SetReturn(1);
+        					}
+        	break;
+#endif
         default:
             break;
         }

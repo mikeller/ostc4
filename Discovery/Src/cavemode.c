@@ -137,7 +137,7 @@ static float depthMeterToBar(float depth_meter, float surface_Bar)
 	float pressure_per_meter = 0.0981f; /* sweet water */
     float retBar = surface_Bar;
 
-    if(depth_meter > 0)
+    if(depth_meter >= 0)
     {
     	if(settingsGetPointer()->salinity)
     	{
@@ -337,6 +337,7 @@ void caveMode_Update(SDiveState *pDiveState)
 			nextStop_Bar = 0.0;
 			targetPressure = 0.0;
 			endPressure = 0.0;
+			doStop = 0;
 			caveData.depth_meter = pDiveState->lifeData.max_depth_meter;			/* use max depth to create a list of all possible gases */
 			decom_CreateGasChangeList(&stateUsedWrite->diveSettings, &caveData);
 		}
@@ -376,7 +377,14 @@ void caveMode_Update(SDiveState *pDiveState)
 					}
 				}
 
-				currentDepthMeter = pDepthCalcSource[caveDataIndex] / 100.0;
+				if(caveDataIndex == replayDataLength - 1) /* last iteration => make sure we do not skip last stop because of compressed profile data */
+				{
+					currentDepthMeter = 0;
+				}
+				else
+				{
+					currentDepthMeter = pDepthCalcSource[caveDataIndex] / 100.0;
+				}
 				endPressure = depthMeterToBar(currentDepthMeter, pDiveState->lifeData.pressure_surface_bar);
 				targetPressure = endPressure;
 			}
@@ -403,7 +411,7 @@ void caveMode_Update(SDiveState *pDiveState)
 				|| ((((caveDataIndex - caveStartIndex + MiniLiveLogbook_getModDataOffset()) * dataResolutionSec) > returnTime_seconds )))
 			{
 				ttsWork += CAVE_DECO_STOP_RESOLUTION;
-				caveData.caveGasNeed_Ltr[caveData.actualGas.GasIdInSettings] += pSettings->gasConsumption_deco_l_min * barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar ) / (60 / CAVE_DECO_STOP_RESOLUTION);
+				caveData.caveGasNeed_Ltr[caveData.actualGas.GasIdInSettings] += pSettings->gasConsumption_deco_l_min * (caveData.pressure_surface_bar + endPressure) / (60 / CAVE_DECO_STOP_RESOLUTION);
 			}
 		/* switch gas */
 			betterGasId = caveData.actualGas.GasIdInSettings;
@@ -439,7 +447,7 @@ void caveMode_Update(SDiveState *pDiveState)
 				{
 					currentStop_Bar = nextStop_Bar;
 					doStop = 0;
-					while (nextStop_Bar >= currentStop_Bar)									/* stay at deco stop till next stop is safe */
+					while ((nextStop_Bar >= currentStop_Bar) && (currentStop_Bar != 0))							/* stay at deco stop till next stop is safe */
 					{
 						decom_tissues_exposure2(CAVE_DECO_STOP_RESOLUTION, &caveData.actualGas, endPressure, caveData.tissue_nitrogen_bar, caveData.tissue_helium_bar);
 						ceiling = calcCeiling(&pDiveState->diveSettings, &caveData, endPressure);
@@ -448,7 +456,7 @@ void caveMode_Update(SDiveState *pDiveState)
 									|| ((((caveDataIndex - caveStartIndex + MiniLiveLogbook_getModDataOffset()) * dataResolutionSec) > returnTime_seconds )))
 						{
 							ttsWork += CAVE_DECO_STOP_RESOLUTION;
-							caveData.caveGasNeed_Ltr[caveData.actualGas.GasIdInSettings] += pSettings->gasConsumption_travel_l_min * barToDepthMeter(endPressure, pDiveState->lifeData.pressure_surface_bar ) / (60 / CAVE_DECO_STOP_RESOLUTION);
+							caveData.caveGasNeed_Ltr[caveData.actualGas.GasIdInSettings] += pSettings->gasConsumption_travel_l_min * (caveData.pressure_surface_bar + endPressure) / (60 / CAVE_DECO_STOP_RESOLUTION);
 						}
 						if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
 						{
@@ -513,17 +521,38 @@ void caveMode_SetActive(uint8_t activeRequest)
 
 void caveMode_SetReturn(uint8_t returnRequest)
 {
-	if((returnRequest) && (caveModeState != CAVEMODE_RETURNING))  /* start to return */
+	uint16_t currentIndex = 0;
+
+	if(!caveMode_isOff())
 	{
-		returnStartIndex = (getMiniLiveReplayLength() -1 ) * getReplayDataResolution();	/* normalize value to seconds => a change of the data resolution will automatically be covered */
-		caveDataIndex = 0;
-		caveModeState = CAVEMODE_RETURNING;
-		MiniLiveLogbook_mirrowMiniModToReplayLog();
-		MiniLiveLogbook_copyReplayToModLive();
-		Sim_SetReplayState(1);
-		memcpy(&startGas, &stateUsed->lifeData.actualGas, sizeof(caveData.actualGas));
-		memcpy (tissue_nitrogen_return_bar, &stateUsed->lifeData.tissue_nitrogen_bar, sizeof(caveData.tissue_nitrogen_bar));
-		memcpy (tissue_helium_return_bar,  &stateUsed->lifeData.tissue_helium_bar, sizeof(caveData.tissue_helium_bar));
+		if(returnRequest)
+		{
+			if((caveModeState != CAVEMODE_RETURNING)) /* start to return */
+			{
+				returnStartIndex = (getMiniLiveReplayLength() -1 ) * getReplayDataResolution();	/* normalize value to seconds => a change of the data resolution will automatically be covered */
+				caveDataIndex = 0;
+				returnTime_seconds = 0;
+				returnTime_last = stateUsed->lifeData.dive_time_seconds;
+				caveModeState = CAVEMODE_RETURNING;
+				MiniLiveLogbook_mirrowMiniLiveToReplayLog();
+				MiniLiveLogbook_copyReplayToModLive();
+				Sim_SetReplayState(1);
+				memcpy(&startGas, &stateUsed->lifeData.actualGas, sizeof(caveData.actualGas));
+				memcpy (tissue_nitrogen_return_bar, &stateUsed->lifeData.tissue_nitrogen_bar, sizeof(caveData.tissue_nitrogen_bar));
+				memcpy (tissue_helium_return_bar,  &stateUsed->lifeData.tissue_helium_bar, sizeof(caveData.tissue_helium_bar));
+			}
+		}
+		else
+		{
+			if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
+			{
+				caveDataIndex = 0;
+				currentIndex = returnTime_seconds / getReplayDataResolution();
+				MiniLiveLogbook_cutReplayAt(currentIndex);
+				MiniLiveLogbook_copyLiveToModLive();
+				caveModeState = CAVEMODE_RECORDING;
+			}
+		}
 	}
 }
 
@@ -536,19 +565,7 @@ uint8_t caveMode_isReturning(void)
 	}
 	return retReturning;
 }
-#endif
 
-uint8_t caveMode_isOff(void)
-{
-	uint8_t retOff = 1;
-#ifdef ENABLE_CAVEMODE
-	if(caveModeState != CAVEMODE_OFF)
-	{
-		retOff = 0;
-	}
-#endif
-	return retOff;
-}
 uint8_t caveMode_isLiveDive(void)
 {
 	return liveDive;
@@ -565,3 +582,22 @@ void caveMode_SyncToMarker()
 		MiniLiveLogbook_syncLiveDataTo(markerIndex);
 	}
 }
+
+void caveMode_NotifyCompression()
+{
+	caveDataIndex /= 2;
+}
+#endif
+
+uint8_t caveMode_isOff(void)
+{
+	uint8_t retOff = 1;
+#ifdef ENABLE_CAVEMODE
+	if(caveModeState != CAVEMODE_OFF)
+	{
+		retOff = 0;
+	}
+#endif
+	return retOff;
+}
+

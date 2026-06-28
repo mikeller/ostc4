@@ -39,6 +39,7 @@ static uint8_t activecnt[EXT_INTERFACE_TEMPSTICK_MAX];			/* is increased every t
 void tempstick_Init()
 {
 	memset(tempstickLog, TEMPSTICK_MAX_VALUE, EXT_INTERFACE_TEMPSTICK_MAX * TEMPSTICK_LOG_SIZE);
+	memset(activecnt,0,EXT_INTERFACE_TEMPSTICK_MAX);
 	memset(minValue,0xFF,sizeof(minValue));
 	memset(maxValue,0,sizeof(maxValue));
 }

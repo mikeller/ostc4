@@ -77,5 +77,6 @@ void Sim_Quit (void);
 void Sim_IncreasePPO(uint8_t sensorIdx);
 void Sim_DecreasePPO(uint8_t sensorIdx);
 void Sim_SetReplayState(uint8_t active);
+void Sim_NotifyCompression(void);
 
 #endif /* SIMULATION_H */

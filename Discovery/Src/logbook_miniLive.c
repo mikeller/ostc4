@@ -26,6 +26,7 @@
 #include "logbook.h"
 #include "tHome.h"
 #include "cavemode.h"
+#include "simulation.h"
  /*
   ******************************************************************************
   * @brief   t7_updateMiniLiveLogbook. /  Create depth samples for view during dive
@@ -53,6 +54,8 @@ uint16_t liveDecoDataMod[DEPTH_DATA_LENGTH];
 static uint16_t liveDataIndex = 0;
 static uint16_t liveDataIndexMod = 0;
 static uint16_t liveDataIndexModWork = 0;
+static uint16_t modDataOffset = 0;				/* offset of modDataIndex behind replayDataIndex */
+
 
 static uint8_t	ReplayDataResolution = 2;		/* Time represented by one sample (second) */
 static uint16_t ReplayDataLength = 0;			/* Number of data entries */
@@ -221,18 +224,29 @@ void MiniLiveLogbook_checkMarker(void)
 }
 
 
-void compressBuffer_uint16(uint16_t* pdata, uint16_t size)
+void compressBuffer_uint16(uint16_t* pdata, uint16_t size, uint16_t curIndex)
 {
 	uint16_t* pTarget = pdata;
 	uint16_t* pSource = pdata;
 	uint16_t  result = 0;
 	uint16_t index = 0;
 	
-	for(index = 0; index < size/2; index++)
+	for(index = 0; index < ((curIndex / 2)); index++)
 	{
 		*pTarget = *pSource++;
-		*pTarget += *pSource++;
-		result = *pTarget /= 2;
+		if((index < (curIndex / 2) - 1))// || ((curIndex % 2) == 0))	/* special handling for last data item: only calc average if a valid value is available */
+		{
+			*pTarget += *pSource++;
+			result = *pTarget /= 2;
+		}
+		else
+		{
+			if((curIndex % 2) == 0)
+			{
+				*pTarget += *pSource++;
+				result = *pTarget /= 2;
+			}
+		}
 		if((*pTarget != 0) && (result == 0))	/* avoid termination of information by round up to 1 */
 		{
 			*pTarget++ = 1;
@@ -242,18 +256,23 @@ void compressBuffer_uint16(uint16_t* pdata, uint16_t size)
 			*pTarget++ = result;
 		}
 	}
-	memset(pTarget,0,size/2);
+	memset(pTarget,0xff, (size - index) * sizeof(uint16_t));
 }
 
 void compressDepthDataBuffers()
 {
 	ReplayDataResolution *= 2;
-	compressBuffer_uint16(liveDepthData,DEPTH_DATA_LENGTH);
-	compressBuffer_uint16(liveDepthDataMod, DEPTH_DATA_LENGTH);
-	compressBuffer_uint16(ReplayDepthData,DEPTH_DATA_LENGTH);		/* also compress Replay data to simplify mapping between live and replay data */
-	liveDataIndex = DEPTH_DATA_LENGTH / 2;
+	compressBuffer_uint16(liveDepthData, DEPTH_DATA_LENGTH, liveDataIndex);
+	compressBuffer_uint16(liveDepthDataMod, DEPTH_DATA_LENGTH, liveDataIndexMod);
+	compressBuffer_uint16(ReplayDepthData,DEPTH_DATA_LENGTH, ReplayDataLength);	/* also compress Replay data to simplify mapping between live and replay data */
+	liveDataIndex /= 2;
 	liveDataIndexMod /= 2;
 	liveDataIndexModWork /= 2;
+	ReplayDataLength /= 2;
+#ifdef ENABLE_CAVEMODE
+	caveMode_NotifyCompression();
+#endif
+	Sim_NotifyCompression();
 }
 void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 {
@@ -303,7 +322,7 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 	else if(stateUsed->mode == MODE_DIVE)
 	{
 		bDiveMode = 3;
-		//
+
 		if(secondsCount >= MLLtickIntervallSeconds)
 		{
 			secondsCount = 0;
@@ -313,7 +332,7 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 				MLLpointer = 0;
 				MLLtickIntervallSeconds *= 2;
 
-				compressBuffer_uint16(MLLdataDepth,MLLsize);
+				compressBuffer_uint16(MLLdataDepth,MLLsize, MLLsize);
 				MLLpointer = MLLsize/2;
 			}
 			if(MLLpointer < MLLsize)
@@ -336,7 +355,7 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 			{
 				compressDepthDataBuffers();
 			}
-
+#ifdef ENABLE_CAVEMODE
 			if((caveMode_isLiveDive()) || caveMode_isActive())
 			{
 				liveDepthData[liveDataIndex] = (int)(stateUsed->lifeData.depth_meter * 100);
@@ -349,14 +368,26 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 				{
 					liveDecoData[liveDataIndex] = 0xFFFF;
 				}
+				if((caveMode_isReturning() == 0) && (caveMode_isActive()))
+				{
+					liveDepthDataMod[liveDataIndexMod] = liveDepthData[liveDataIndex];
+					liveDataIndexMod++;
+				}
 				liveDataIndex++;
 			}
-
-			if((caveMode_isReturning() == 0) && (caveMode_isActive()))
+#else
+			liveDepthData[liveDataIndex] = (int)(stateUsed->lifeData.depth_meter * 100);
+			tHome_findNextStop(pDecoinfo->output_stop_length_seconds, &stopDepth, &stopTime);
+			if(stopDepth)
 			{
-				liveDepthDataMod[liveDataIndexMod] = liveDepthData[liveDataIndex];
-				liveDataIndexMod++;
+				liveDecoData[liveDataIndex] = stopDepth * 100;
 			}
+			else
+			{
+				liveDecoData[liveDataIndex] = 0xFFFF;
+			}
+			liveDataIndex++;
+#endif
 		}
 	}
 	else if(bDiveMode == 3)
@@ -368,7 +399,7 @@ void updateMiniLiveLogbook( _Bool checkOncePerSecond)
 	}
 }
 
-void MiniLiveLogbook_mirrowMiniModToReplayLog()
+void MiniLiveLogbook_mirrowMiniLiveToReplayLog()
 {
 	uint16_t index = 0;
 
@@ -514,12 +545,29 @@ uint16_t getReplayDataResolution(void)
 	return ReplayDataResolution;
 }
 
+
+void MiniLiveLogbook_copyLiveToModLive(void)
+{
+	memcpy(liveDepthData, liveDepthData, liveDataIndex * sizeof(uint16_t));
+	liveDataIndexMod = liveDataIndex;
+	modDataOffset = 0;
+}
+
 void MiniLiveLogbook_copyReplayToModLive(void)
 {
 	memcpy(liveDepthDataModWork, ReplayDepthData, ReplayDataLength * sizeof(uint16_t));
+	modDataOffset = 0;
 }
 
-static uint16_t modDataOffset = 0;		/* offset of modDataIndex behind replayDataIndex */
+void MiniLiveLogbook_cutReplayAt(uint16_t cutIndex)
+{
+	if(cutIndex < ReplayDataLength)
+	{
+		ReplayDataLength = cutIndex;
+//		memset(ReplayDepthData, 0xFF, (DEPTH_DATA_LENGTH - ReplayDataLength) * sizeof(uint16_t));
+		ReplayDataLength = 0;
+	}
+}
 
 void MiniLiveLogbook_resetLiveData()
 {
@@ -604,13 +652,14 @@ void MiniLiveLogbook_syncLiveDataTo(uint16_t newIndex)
 			liveDepthData[index] = liveDepthDataMod[index];
 		}
 	}
-	else							/* delete data which exists befind sync index */
+	else							/* delete data which exists behind sync index */
 	{
 		for(index = liveDataIndex; index > newIndex; index--)
 		{
 			liveDepthData[index] = 0xFFFF;
 		}
 	}
+	liveDataIndex = newIndex;
 }
 
 

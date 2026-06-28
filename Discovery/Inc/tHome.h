@@ -104,12 +104,9 @@ enum CUSTOMVIEWS_BF
 		CVIEW_T3_Navigation,
 		CVIEW_T3_DepthData,
 		CVIEW_T3_DecoTTS,
-#ifdef ENABLE_T3_PROFILE_VIEW
 		CVIEW_T3_Profile,
-#endif
-#ifdef ENABLE_TEMPSTICK_SUPPORT
 		CVIEW_T3_Tempstick,
-#endif
+		CVIEW_T3_Cavemode,
 		CVIEW_T3_END		/* The ID is used in shift operation => 31 is the max number of supported views */
 };
 
