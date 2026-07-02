@@ -556,6 +556,7 @@ void MiniLiveLogbook_copyLiveToModLive(void)
 void MiniLiveLogbook_copyReplayToModLive(void)
 {
 	memcpy(liveDepthDataModWork, ReplayDepthData, ReplayDataLength * sizeof(uint16_t));
+	memset(&liveDepthDataModWork[ReplayDataLength],0,(DEPTH_DATA_LENGTH - ReplayDataLength));
 	modDataOffset = 0;
 }
 

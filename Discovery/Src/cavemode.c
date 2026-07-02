@@ -62,7 +62,7 @@ static uint32_t tts_Cave_Sec = 0;
 static float tissue_nitrogen_return_bar[16];
 static float tissue_helium_return_bar[16];
 
-
+static float endPressure = 0.0;
 
 static float getGfAtPressure(SDiveSettings *pDiveSettings, float pressure, float surface_Bar, float ceiling)
 {
@@ -268,7 +268,6 @@ void caveMode_Update(SDiveState *pDiveState)
 	uint16_t dataResolutionSec = getReplayDataResolution();
 	SSettings *pSettings = settingsGetPointer();
 	float startPressure = 0.0;
-	static float endPressure = 0.0;
 	static float targetPressure = 0.0;
 	float gasChangePressure = 0.0;
 	float ceiling = 0.0;
@@ -278,6 +277,7 @@ void caveMode_Update(SDiveState *pDiveState)
 	static uint16_t replayDataLength = 0;
 
 	static uint16_t caveStartIndex = 0;
+	static uint8_t compuCycleComplete = 0;	/* indicator if the last profile computation was completed or not */
 	uint16_t currentDepthMeter = 0;
 	uint8_t gasIndex = 0;
     uint8_t iterationCnt = 10;		/* do 10 calculations a 20 seconds => 3.x minutes */
@@ -307,7 +307,7 @@ void caveMode_Update(SDiveState *pDiveState)
 			}
 			returnTime_last = pDiveState->lifeData.dive_time_seconds;
 		}
-		if((caveDataIndex == 0) || (((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE)) && (caveDataIndex >= replayDataLength )))			/* start next iteration */
+		if(endPressure <= caveData.pressure_surface_bar + 0.1)			/* start next iteration */
 		{
 			caveData.pressure_surface_bar = pDiveState->lifeData.pressure_surface_bar;
 			if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
@@ -317,7 +317,10 @@ void caveMode_Update(SDiveState *pDiveState)
 				memcpy(&caveData.actualGas, &startGas, sizeof(caveData.actualGas));
 				memcpy (caveData.tissue_nitrogen_bar, tissue_nitrogen_return_bar, sizeof(caveData.tissue_nitrogen_bar));
 				memcpy (caveData.tissue_helium_bar, tissue_helium_return_bar, sizeof(caveData.tissue_helium_bar));
-				MiniLiveLogbook_releaseModData();
+				if(compuCycleComplete)
+				{
+					MiniLiveLogbook_releaseModData();
+				}
 				MiniLiveLogbook_resetModData();
 			}
 			else
@@ -335,13 +338,16 @@ void caveMode_Update(SDiveState *pDiveState)
 			memset (stopList, 0, sizeof (stopList));
 			stopId = 0;
 			nextStop_Bar = 0.0;
-			targetPressure = 0.0;
-			endPressure = 0.0;
+			currentDepthMeter = pDepthCalcSource[caveDataIndex - 1] / 100.0;
+			endPressure = depthMeterToBar(currentDepthMeter, caveData.pressure_surface_bar);
+			targetPressure = endPressure;
 			doStop = 0;
 			caveData.depth_meter = pDiveState->lifeData.max_depth_meter;			/* use max depth to create a list of all possible gases */
 			decom_CreateGasChangeList(&stateUsedWrite->diveSettings, &caveData);
+			compuCycleComplete = 0;
 		}
-		while((caveDataIndex > 0) && (caveDataIndex < replayDataLength) && (iterationCnt > 0))
+
+		while((endPressure - 0.1 > caveData.pressure_surface_bar) && (iterationCnt > 0))
 		{
 			iterationCnt--;
 			startPressure = endPressure;
@@ -350,12 +356,11 @@ void caveMode_Update(SDiveState *pDiveState)
 				caveDataStep = CAVE_CALC_INTERVALL / dataResolutionSec;
 				if((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE))
 				{
-					if(caveDataIndex == replayDataLength - 1)		/* last data entry already processed => exit loop */
+					if(caveDataIndex == replayDataLength - 1)		/* last data entry already processed => force set to depth zero below */
 					{
 						caveDataIndex++;
-						break;
 					}
-					if((caveDataIndex + caveDataStep) >= replayDataLength )
+					else if((caveDataIndex + caveDataStep) >= replayDataLength )
 					{
 						caveDataIndex = replayDataLength - 1;
 					}
@@ -377,9 +382,10 @@ void caveMode_Update(SDiveState *pDiveState)
 					}
 				}
 
-				if(caveDataIndex == replayDataLength - 1) /* last iteration => make sure we do not skip last stop because of compressed profile data */
+				if((caveDataIndex == 0) || (caveDataIndex >= replayDataLength)) /* last iteration => make sure we do not skip last stop because of compressed profile data */
 				{
 					currentDepthMeter = 0;
+					compuCycleComplete = 1;
 				}
 				else
 				{
@@ -387,6 +393,10 @@ void caveMode_Update(SDiveState *pDiveState)
 				}
 				endPressure = depthMeterToBar(currentDepthMeter, pDiveState->lifeData.pressure_surface_bar);
 				targetPressure = endPressure;
+				if(((caveModeState == CAVEMODE_RETURNING) || (caveModeState == CAVEMODE_RETURNING_PAUSE)) && (endPressure - 0.1 > caveData.pressure_surface_bar)) /* close to surface => mark computation as valid */
+				{
+					compuCycleComplete = 1;
+				}
 			}
 			else										/* continue ascending to target depth */
 			{
@@ -531,6 +541,7 @@ void caveMode_SetReturn(uint8_t returnRequest)
 			{
 				returnStartIndex = (getMiniLiveReplayLength() -1 ) * getReplayDataResolution();	/* normalize value to seconds => a change of the data resolution will automatically be covered */
 				caveDataIndex = 0;
+				endPressure = caveData.pressure_surface_bar;
 				returnTime_seconds = 0;
 				returnTime_last = stateUsed->lifeData.dive_time_seconds;
 				caveModeState = CAVEMODE_RETURNING;
