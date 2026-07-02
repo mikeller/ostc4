@@ -337,6 +337,9 @@ typedef struct
 #ifdef HAVE_DEBUG_WARNINGS
 	int8_t debug;
 #endif
+#ifdef	ENABLE_CAVEMODE
+	int8_t lowGasBudget;
+#endif
 } SWarnings;
 
 
