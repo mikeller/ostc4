@@ -58,6 +58,15 @@ extern GFX_DrawCfgWindow	t7cH, t7cC, t7cY0free;
 
 extern _Bool warning_count_high_time;
 
+
+enum gasListOptions
+{
+	GASLIST_CHANGEDEPTH		= 0,
+	GASLIST_DEMAND,
+	GASLIST_END
+};
+
+
 /* Imported function prototypes ---------------------------------------------*/
 extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
 
@@ -294,7 +303,9 @@ void t7_cv_hello()
 		 GFX_write_string(&FontT24,&t7cC,text,0);
 	 }
 }
-void t7_cv_gasList()
+
+
+static void gasList_changeDepth()
 {
     char text[30];
     uint16_t textpointer = 0;
@@ -375,6 +386,104 @@ void t7_cv_gasList()
      }
 #endif
     }
+}
+
+static void gasList_demand()
+{
+    char text[200];
+    uint16_t textpointer = 0;
+    const SGasLine * pGasLine;
+	SSettings* pSettings;
+	pSettings = settingsGetPointer();
+    uint8_t oxygen, helium;
+    uint8_t line = 1;
+
+    snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE,TXT2BYTE_GasDemand);
+	GFX_write_string(&FontT42,&t7cH,text,0);
+	// content
+	textpointer = 0;
+	if(!pSettings->FlipDisplay)
+	{
+		t7cY0free.WindowY0 = t7cC.WindowY0 - 10;
+	}
+	else
+	{
+		t7cY0free.WindowY1 = 400;
+	}
+	t7cY0free.WindowLineSpacing = 48+9;
+	t7cY0free.WindowNumberOfTextLines = 5; // NUM_GASES == 5
+	t7cY0free.WindowTab = 420;
+	pGasLine = settingsGetPointer()->gas;
+	for(int gasId=1;gasId<=NUM_GASES;gasId++)
+	{
+		textpointer = 0;
+			if(((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco)) && (pGasLine[gasId].bottle_size_liter != 0))
+		{
+			if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
+			{
+				if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+				{
+					text[textpointer++] = '\025';	/* more gas needed than available => red */
+				}
+				else if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > (pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter) * 0.7)
+				{
+					text[textpointer++] = '\024';	/* 70% warning => yellow */
+				}
+				else
+				{
+					text[textpointer++] = '\020';
+				}
+			}
+	        text[textpointer++] = ' ';
+			oxygen = pGasLine[gasId].oxygen_percentage;
+			helium = pGasLine[gasId].helium_percentage;
+			textpointer += write_gas(&text[textpointer], oxygen, helium);
+			snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
+			GFX_write_string(&FontT42, &t7cY0free, text, line);
+			line++;
+		}
+	}
+}
+
+void t7_cv_gasList()
+{
+	static uint32_t changeTick = 0;
+	static uint8_t curOption = GASLIST_CHANGEDEPTH;
+	uint8_t foundOption = 0;
+	uint8_t nextOption = 0;
+
+	if(time_elapsed_ms(changeTick, HAL_GetTick()) > 3000)
+	{
+		changeTick = HAL_GetTick();
+		nextOption = curOption;
+		do
+		{
+			nextOption++;
+			if(nextOption == GASLIST_END)
+			{
+				nextOption = GASLIST_CHANGEDEPTH;
+			}
+			switch(nextOption)
+			{
+				case GASLIST_DEMAND: 	if(!caveMode_isOff())
+										{
+											foundOption = 1;
+										}
+					break;
+				default:	foundOption = 1; /* no disable condition */
+			}
+		}
+		while((nextOption != curOption) && (foundOption == 0));
+		curOption = nextOption;
+	}
+	switch(curOption)
+	{
+		case GASLIST_CHANGEDEPTH:
+		default: gasList_changeDepth();
+			break;
+		case GASLIST_DEMAND: gasList_demand();
+			break;
+	}
 }
 
 void t7_cv_EADTime()
@@ -651,18 +760,18 @@ void t7_cv_sensors_mV()
 #ifdef ENABLE_CAVEMODE
 void t7_cv_Cave(void)
 {
-    char text[200];
-    uint16_t textpointer = 0;
-    const SGasLine * pGasLine;
+    char text[100];
 	SSettings* pSettings;
 	pSettings = settingsGetPointer();
-    uint8_t oxygen, helium;
-    uint8_t line = 1;
+    const SGasLine * pGasLine;
+	uint8_t txtIndex = 0;
+	uint8_t	gasId = 0;
+	uint8_t textpointer = 0;
+	uint8_t line = 0;
+	uint8_t oxygen, helium;
 
 	snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE,TXT2BYTE_CaveMode);
 	GFX_write_string(&FontT42,&t7cH,text,0);
-	// content
-	textpointer = 0;
 
 	if(!pSettings->FlipDisplay)
 	{
@@ -676,41 +785,58 @@ void t7_cv_Cave(void)
 	t7cY0free.WindowNumberOfTextLines = 5; // NUM_GASES == 5
 	t7cY0free.WindowTab = 420;
 
-	pGasLine = settingsGetPointer()->gas;
-	for(int gasId=1;gasId<=NUM_GASES;gasId++)
+    if(caveMode_isOff())
+    {
+    	snprintf(text,50,"\030\001%c",TXT_Off);
+    	GFX_write_string(&FontT48,&t7cY0free,text,0);
+    }
+    else
+    {
+    	txtIndex = snprintf(text,50,"\030\001");
+    	if(caveMode_isReturning())
+    	{
+    		text[txtIndex++] = 'Z';	/* return arrow */
+    	}
+    	else
+    	{
+    		text[txtIndex++] = 'r';	/* forward arrow */
+    	}
+    	if(!caveMode_isActive())
+    	{
+    		text[txtIndex++] = ' ';
+    		text[txtIndex++] = 'p';	/* pause / standby */
+    	}
+    	text[txtIndex] = 0;
+    }
+    line = 2;
+    GFX_write_string(&Awe48,&t7cY0free,text,1);
+    pGasLine = settingsGetPointer()->gas;
+	for(gasId=1;gasId<=NUM_GASES;gasId++)
 	{
 		textpointer = 0;
-
 		if(((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco)) && (pGasLine[gasId].bottle_size_liter != 0))
 		{
-			if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
+			if((stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
+					&& (stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter))
 			{
-				if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+				text[textpointer++] = '\025';
+				text[textpointer++] = ' ';
+				oxygen = pGasLine[gasId].oxygen_percentage;
+				helium = pGasLine[gasId].helium_percentage;
+				textpointer += write_gas(&text[textpointer], oxygen, helium);
+				snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
+				GFX_write_string(&FontT42, &t7cY0free, text, line);
+				line++;
+				if(line == 6)
 				{
-					text[textpointer++] = '\025';	/* more gas needed than available => red */
-				}
-				else if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > (pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter) * 0.7)
-				{
-					text[textpointer++] = '\024';	/* 70% warning => yellow */
-				}
-				else
-				{
-					text[textpointer++] = '\020';
+					break;
 				}
 			}
-			oxygen = pGasLine[gasId].oxygen_percentage;
-			helium = pGasLine[gasId].helium_percentage;
-			textpointer += write_gas(&text[textpointer], oxygen, helium);
-			snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
-			GFX_write_string(&FontT42, &t7cY0free, text, line);
-			line++;
 		}
 	}
-	if(line <= 6)
-	{
-		snprintf(text,100,"TTS:\002%ld min",(uint32_t)(caveMode_GetTTS() / 60));
-		GFX_write_string(&FontT42, &t7cY0free, text, 6);
-	}
+	snprintf(text,100," TTS:\002%ld min ",(uint32_t)(caveMode_GetTTS() / 60));
+	GFX_write_string(&FontT42, &t7cY0free, text, 6);
+
 }
 #endif
 

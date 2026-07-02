@@ -265,6 +265,7 @@ extern const tText text_array2[];
 		TXT2BYTE_Bottle,
 		/* */
 		TXT2BYTE_Gaslist,
+		TXT2BYTE_GasDemand,
 		TXT2BYTE_Clock,
 		TXT2BYTE_Sunday,
 		TXT2BYTE_Monday,

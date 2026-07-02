@@ -35,6 +35,8 @@
 #include "gfx_engine.h"
 #include "configuration.h"
 
+
+
 /* Exported functions --------------------------------------------------------*/
 
 void t7_cv_hello(void);

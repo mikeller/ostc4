@@ -1210,6 +1210,12 @@ static uint8_t text_FR_Gaslist[] = "Liste gaz OC";
 static uint8_t text_IT_Gaslist[] = "Lista gas OC";
 static uint8_t text_ES_Gaslist[] = "lista gases OC";
 
+static uint8_t text_EN_GasDemand[] = "Gas demand OC";
+static uint8_t text_DE_GasDemand[] = "OC Gas Bedarf";
+static uint8_t text_FR_GasDemand[] = "";
+static uint8_t text_IT_GasDemand[] = "";
+static uint8_t text_ES_GasDemand[] = "";
+
 // Customview Header
 static uint8_t text_EN_Info[] = "Info";
 static uint8_t text_DE_Info[] = "Info";
@@ -2265,6 +2271,7 @@ const tText text_array2[] =
     {(uint8_t)TXT2BYTE_AmbientTemperature,{text_EN_AmbientTemperature, text_DE_AmbientTemperature, text_FR_AmbientTemperature, text_IT_AmbientTemperature, text_ES_AmbientTemperature}},
     {(uint8_t)TXT2BYTE_Bottle,			{text_EN_Bottle, text_DE_Bottle, text_FR_Bottle, text_IT_Bottle, text_ES_Bottle}},
     {(uint8_t)TXT2BYTE_Gaslist,			{text_EN_Gaslist, text_DE_Gaslist, text_FR_Gaslist, text_IT_Gaslist, text_ES_Gaslist}},
+	{(uint8_t)TXT2BYTE_GasDemand,		{text_EN_GasDemand, text_DE_GasDemand, text_FR_GasDemand, text_IT_GasDemand, text_ES_GasDemand}},
     {(uint8_t)TXT2BYTE_Clock,			{text_EN_Clock, text_DE_Clock, text_FR_Clock, text_IT_Clock, text_ES_Clock}},
     {(uint8_t)TXT2BYTE_Sunday,			{text_EN_Sunday, text_DE_Sunday, text_FR_Sunday, text_IT_Sunday, text_ES_Sunday}},
     {(uint8_t)TXT2BYTE_Monday,			{text_EN_Monday, text_DE_Monday, text_FR_Monday, text_IT_Monday, text_ES_Monday}},
@@ -2379,9 +2386,6 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_CaveMode, 		{text_EN_CaveMode, text_DE_CaveMode, text_FR_CaveMode, text_IT_CaveMode, text_ES_CaveMode}},
 	{(uint8_t)TXT2BYTE_AutoStart, 		{text_EN_AutoStart, text_DE_AutoStart, text_FR_AutoStart, text_IT_AutoStart, text_ES_AutoStart}},
 	{(uint8_t)TXT2BYTE_SwapMode, 		{text_EN_SwapMode, text_DE_SwapMode, text_FR_SwapMode, text_IT_SwapMode, text_ES_SwapMode}},
-
-
-
 
 	{(uint8_t)TXT2BYTE_VpmTable, 		{text_EN_VpmTable, text_DE_VpmTable, text_FR_VpmTable, text_IT_VpmTable, text_ES_VpmTable}},
 
