@@ -155,4 +155,5 @@
 "Discovery/Src/unit.o"
 "Discovery/Src/vpm.o"
 "Discovery/Src/hud.o"
+"Discovery/Src/cavemode.o"
 "Discovery/Src/firmwareEraseProgram.o"
