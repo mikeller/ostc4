@@ -40,6 +40,7 @@
 #include "decom.h"
 #include "tCCR.h"
 #include "tHome.h"
+#include "cavemode.h"
 
 
 #define DEBOUNCE_FALLBACK_TIME_MS	(5000u)		/* set warning after 5 seconds of pending error condition */
@@ -72,6 +73,9 @@ static int8_t check_pressureSensor(SDiveState * pDiveState);
 #endif
 #ifdef ENABLE_CO2_SUPPORT
 static int8_t check_co2(SDiveState * pDiveState);
+#endif
+#ifdef ENABLE_CAVEMODE
+static int8_t check_gasBudget(SDiveState * pDiveState);
 #endif
 static int8_t check_helper_same_oxygen_and_helium_content(SGasLine * gas1, SGasLine * gas2);
 #ifdef HAVE_DEBUG_WARNINGS
@@ -215,6 +219,9 @@ void check_warning2(SDiveState * pDiveState)
 
 #ifdef HAVE_DEBUG_WARNINGS
 	pDiveState->warnings.numWarnings += check_debug(pDiveState);
+#endif
+#ifdef ENABLE_CAVEMODE
+	pDiveState->warnings.numWarnings += check_gasBudget(pDiveState);
 #endif
 }
 
@@ -731,6 +738,57 @@ static int8_t check_debug(SDiveState * pDiveState)
 	    }
 	}
 	return pDiveState->warnings.debug;
+}
+#endif
+
+#ifdef ENABLE_CAVEMODE
+static int8_t check_gasBudget(SDiveState * pDiveState)
+{
+	static uint32_t notifyTick = 0;
+	static uint32_t notificationDone = 0;
+	uint8_t gasId = 0;
+	uint8_t warningActive = 0;
+
+    const SGasLine* pGasLine;
+	pDiveState->warnings.lowGasBudget = 0;
+
+	if(!caveMode_isOff())
+	{
+		if(notifyTick != 0)
+		{
+			pDiveState->warnings.lowGasBudget = 1;
+			if(time_elapsed_ms(notifyTick, HAL_GetTick()) > 10000)
+			{
+				notificationDone = 1;
+				notifyTick = 0;
+			}
+		}
+		else
+		{
+			pGasLine = settingsGetPointer()->gas;
+			for(gasId=1; gasId<=NUM_GASES; gasId++)
+			{
+				if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+				{
+					warningActive = 1;
+					break;
+				}
+			}
+			if(warningActive)
+			{
+				if(notificationDone == 0)
+				{
+					pDiveState->warnings.lowGasBudget = 1;
+					notifyTick = HAL_GetTick();
+				}
+			}
+			else
+			{
+				notificationDone = 0;
+			}
+		}
+	}
+	return pDiveState->warnings.lowGasBudget;
 }
 #endif
 

@@ -1780,6 +1780,16 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
         lineFree--;
     }
 #endif
+#ifdef ENABLE_CAVEMODE
+    if(stateUsed->warnings.lowGasBudget)
+    {
+    	text[textpointer++] = '\002';
+        text[textpointer++] = TXT_AtemGasVorrat;
+        text[textpointer++] = '\r';
+        text[textpointer++] = '\n';
+        more++;
+    }
+#endif
     text[textpointer] = 0;
     textMain[textpointerMain] = 0;
 

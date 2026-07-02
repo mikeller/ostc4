@@ -1596,9 +1596,7 @@ void t7_show_customview_warnings(void)
 #ifdef ENABLE_CAVEMODE
     if(lineFree && stateUsed->warnings.lowGasBudget)
     {
-    	text[textpointer++] = '\001';
-    	sprintf(&text[textpointer],"%c\n", TXT_AtemGasVorrat);
-    	textpointer++;
+    	textpointer += sprintf(&text[textpointer],"\001\016\016%c\017\n", TXT_AtemGasVorrat);
         lineFree--;
     }
 #endif
