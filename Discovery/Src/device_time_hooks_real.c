@@ -1,14 +1,17 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// -*- coding: UTF-8 -*-
 ///
-/// \file   Discovery/Inc/tMenuEditHardware.h
-/// \brief  Header file for editing Hardware Settings
+/// \file   Discovery/Src/device_time_hooks_real.c
+/// \brief  Production no-op impls of the CPU1 sim-infrastructure hooks.
 /// \author heinrichs weikamp gmbh
-/// \date   23-Oct-2014
+///
+/// Linked into production firmware builds. The sim impl (with the
+/// Renode workarounds) lives in Discovery/Src/device_time_hooks.c. CMake
+/// selects which one at link time based on OSTC4_BUILD_RENODE.
 ///
 /// $Id$
 ///////////////////////////////////////////////////////////////////////////////
-/// \par Copyright (c) 2014-2018 Heinrichs Weikamp gmbh
+/// \par Copyright (c) 2026 Heinrichs Weikamp gmbh
 ///
 ///     This program is free software: you can redistribute it and/or modify
 ///     it under the terms of the GNU General Public License as published by
@@ -24,25 +27,15 @@
 ///     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef TMENU_EDIT_HARDWARE_H
-#define TMENU_EDIT_HARDWARE_H
+#include <stdint.h>
+#include "device_time_hooks.h"
 
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "gfx_engine.h"
-#include "global_constants.h"
-#include "settings.h"
-#include "data_central.h"
+volatile const uint8_t sim_disable_timeouts = 0;
+volatile const uint8_t sim_pin_update_necessary_off = 0;
 
-void openEdit_Hardware(uint8_t line);
-void openEdit_SensorsO2();
-void openEdit_SensorsCO2();
-void openEdit_SensorsHUD();
-
-void refresh_O2Sensors(void);
-void refresh_CompassEdit(void);
-void refresh_CompassStyle(void);
-void refresh_ButtonValuesFromPIC(void);
-
-#endif /* TMENU_EDIT_HARDWARE_H */
+void sim_main_loop_tick_hook(void)
+{
+	/* No-op in production: the real hardware TIM4 fires NVIC IRQ 30
+	 * normally, so HAL_TIM_PeriodElapsedCallback gets called via the
+	 * IRQ path without main-loop intervention. */
+}

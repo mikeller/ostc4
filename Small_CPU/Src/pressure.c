@@ -33,6 +33,7 @@
 #include "pressure.h"
 #include "i2c.h"
 #include "rtc.h"
+#include "device_time_hooks.h"   /* sim_skip_* runtime gates (Phase 0 overlay) */
 
 #define CMD_RESET 0x1E // ADC reset command
 #define CMD_ADC_READ 0x00 // ADC read command
@@ -348,7 +349,7 @@ uint8_t init_pressure(void)
 	{
 		PRESSURE_ADDRESS = DEVICE_PRESSURE_MS5837;			// Success, use new sensor
 	}
-	HAL_Delay(3);		//2.8ms according to datasheet
+	if(!sim_skip_init_delays) HAL_Delay(3);		//2.8ms according to datasheet
 
 	buffer[0] = 0x1E;			// Reset Command
 	retValue = 0xFF;
@@ -452,15 +453,18 @@ static uint32_t pressure_sensor_get_one_value(uint8_t cmd, HAL_StatusTypeDef *st
 		*statusReturn = statusReturnTemp;
 	}
 
-	switch (cmd & 0x0f) // wait necessary conversion time
+	if(!sim_skip_blocking_polls)
 	{
-		case CMD_ADC_256 : HAL_Delay(2); break;
-		case CMD_ADC_512 : HAL_Delay(4); break;
-		case CMD_ADC_1024: HAL_Delay(5); break;
-		case CMD_ADC_2048: HAL_Delay(7); break;
-		case CMD_ADC_4096: HAL_Delay(11); break;
-		default:
-			break;
+		switch (cmd & 0x0f) // wait necessary conversion time
+		{
+			case CMD_ADC_256 : HAL_Delay(2); break;
+			case CMD_ADC_512 : HAL_Delay(4); break;
+			case CMD_ADC_1024: HAL_Delay(5); break;
+			case CMD_ADC_2048: HAL_Delay(7); break;
+			case CMD_ADC_4096: HAL_Delay(11); break;
+			default:
+				break;
+		}
 	}
 	adcValue = get_adc();
 /*	if(adcValue == 0xFFFFFFFF)

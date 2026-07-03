@@ -41,6 +41,8 @@
 #include "tInfoPreDive.h"
 #include "cavemode.h"
 #include "logbook_miniLive.h"
+#include "compass_rose.h"
+#include "tMenuEditCvOption.h"		/* openEdit_CompassStyle for the dive-mode Compass Style entry */
 
 #define SCRUBBER_COUNT 2
 
@@ -118,6 +120,10 @@ void openEdit_Xtra(uint8_t line)
     		openEdit_CalibViewport();
     	}
 #endif
+    	else if(line == get_lineOfID(StMXTRA_CompassStyle))
+    	{
+    		openEdit_CompassStyle();
+    	}
     	else if(line == get_lineOfID(StMXTRA_SimFollowStop))
     	{
     		if(is_stateUsedSetToSim())
@@ -521,7 +527,13 @@ void openEdit_CompassHeading(void)
 
 uint8_t OnAction_CompassHeading	(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	setCompassHeading((uint16_t)stateUsed->lifeData.compass_heading);
+	/* The bearing-set menu shows no lubber line, so store the raw magnetic
+	   heading (matching OnAction_Bearing) rather than the tilt-corrected nav
+	   value. The dive-mode quick-set (StDBEAR) keeps the +phi correction because
+	   its live t7 view shows the tilted lubber.
+	   TODO(compass): when a future revision shows the tilted lubber in this menu,
+	   re-add compass_mount_phi() here so the captured course matches the lubber. */
+	setCompassHeading((uint16_t)((((int32_t)stateUsed->lifeData.compass_heading) % 360 + 360) % 360));
     exitMenuEdit_to_Home_with_Menu_Update();
     return EXIT_TO_HOME;
 }

@@ -37,6 +37,7 @@
 enum CVOPTIONS						/* the order defines the priority as well */
 {
 		CVOPT_Compass = 0,
+		CVOPT_CompassStyle,
 		CVOPT_HUD,
 		CVOPT_O2_Sensor,
 		CVOPT_CO2_Sensor,
@@ -60,6 +61,7 @@ refreshFunc_t* tMCvOptText_GetTable();
 uint8_t tMCvOptText_GetTableItemCnt();
 
 uint8_t tMCvOptText_refreshCompass(char* pText);
+uint8_t tMCvOptText_refreshCompassStyle(char* pText);
 uint8_t tMCvOptText_refreshTimer(char* pText);
 uint8_t tMCvOptText_refreshO2(char* pText);
 uint8_t tMCvOptText_refreshCO2(char* pText);

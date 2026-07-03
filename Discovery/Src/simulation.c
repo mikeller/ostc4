@@ -190,6 +190,14 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     float localCalibCoeff[3] = { 0.0, 0.0, 0.0 };
     uint8_t index, index2;
 
+    /* Mirror the live compass on every call - the function runs on each
+       100ms display-refresh tick (base.c). Gated behind the once-per-second
+       block below, the dial only received a fresh heading at 1 Hz and the
+       compass rose visibly stuttered in simulator dives. */
+    pDiveState->lifeData.compass_heading = pRealState->lifeData.compass_heading;
+    pDiveState->lifeData.compass_roll = pRealState->lifeData.compass_roll;
+    pDiveState->lifeData.compass_pitch = pRealState->lifeData.compass_pitch;
+
     if(checkOncePerSecond)
     {
         int now =  current_second();
@@ -233,9 +241,6 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
 
         pDiveState->lifeData.temperature_celsius = pRealState->lifeData.temperature_celsius;
         pDiveState->lifeData.battery_charge = pRealState->lifeData.battery_charge;
-        pDiveState->lifeData.compass_heading = pRealState->lifeData.compass_heading;
-        pDiveState->lifeData.compass_roll = pRealState->lifeData.compass_roll;
-        pDiveState->lifeData.compass_pitch = pRealState->lifeData.compass_pitch;
 
         for(index = 0; index < 3; index++)
         {

@@ -237,6 +237,9 @@ void tMenuEdit_refresh_live_content(void)
 		 case (StMOption_Compass & MaskFieldDigit):
              refreshFct = refresh_CompassEdit;
 			 break;
+		 case (StMOption_CompassStyle & MaskFieldDigit):
+             refreshFct = refresh_CompassStyle;
+			 break;
 		 case (StMXTRA_CompassHeading & MaskFieldDigit):
              refreshFct = refresh_CompassHeading;
 			 break;

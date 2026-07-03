@@ -23,6 +23,7 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_conf.h"
 #include "baseCPU2.h"
+#include "device_time_hooks.h"   /* sim_skip_rtc_stop_mode (Phase 0 overlay) */
 
 RTC_HandleTypeDef RTCHandle;
 
@@ -129,6 +130,15 @@ void MX_RTC_init(void)
 
 void RTC_StopMode_2seconds(void)
 {
+	if(sim_skip_rtc_stop_mode)
+	{
+		/* HAL_PWR_EnterSTOPMode stalls under emulation (Renode's RTC
+		 * model never fires the wakeup IRQ). Production sets the flag
+		 * to 0 in device_time_hooks_real.c; sim sets it to 1. */
+		HAL_Delay(2);
+		return;
+	}
+
     /* Enable Power Control clock */
     __HAL_RCC_PWR_CLK_ENABLE();
 
@@ -154,6 +164,12 @@ void RTC_StopMode_2seconds(void)
 
 void RTC_Stop_11ms(void)
 {
+	if(sim_skip_rtc_stop_mode)
+	{
+		HAL_Delay(2);
+		return;
+	}
+
   /* Disable Wake-up timer */
   HAL_RTCEx_DeactivateWakeUpTimer(&RTCHandle);
 

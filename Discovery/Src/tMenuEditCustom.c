@@ -33,7 +33,7 @@
 #include "simulation.h"
 #include "timer.h"
 #include "tMenuEdit.h"
-#include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
+#include "tHome.h"  // for enum CUSTOMVIEWS
 #include "t3.h"
 #include "t7.h"
 #include "data_exchange_main.h"

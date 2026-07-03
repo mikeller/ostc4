@@ -854,7 +854,7 @@ static inline void gfx_brush(uint8_t thickness, GFX_DrawCfgScreen *hgfx, uint16_
 	if(pSettings->FlipDisplay)
 	{
 		pDestination = (uint16_t*)hgfx->FBStartAdress;
-		pDestination += (hgfx->ImageHeight * (hgfx->ImageWidth - x0 + offset)) + (480 - y0+offset);
+		pDestination += (hgfx->ImageHeight * (hgfx->ImageWidth - 1 - x0 + offset)) + (hgfx->ImageHeight - 1 - y0+offset);
 		stepdir = -1;
 	}
 	else
@@ -878,8 +878,11 @@ static inline void gfx_brush(uint8_t thickness, GFX_DrawCfgScreen *hgfx, uint16_
 void GFX_draw_thick_line(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color)
 {
 	if(thickness < 2)
+	{
 		GFX_draw_line(hgfx,  start,  stop,  color);
-	
+		return;
+	}
+
 	int x0 = start.x;
 	int y0 = start.y;
 	int x1 = stop.x;
@@ -892,7 +895,11 @@ void GFX_draw_thick_line(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t sta
 	if(start.x == stop.x)
 	{
 		if(start.y > stop.y) gfx_flip(&start,&stop);
-		for (int j = stop.y - start.y; j > 0; j--)
+		/* j >= 0: brush the final endpoint too. A half-open loop dropped the
+		   last pixel, shortening every vertical thick line by 1px at the stop
+		   end and biasing symmetric features (e.g. the compass marker stem/cap)
+		   off-centre. The diagonal branch below is already inclusive. */
+		for (int j = stop.y - start.y; j >= 0; j--)
 		{
 			gfx_brush(thickness,hgfx,start.x,start.y++,color);
 		}
@@ -901,8 +908,9 @@ void GFX_draw_thick_line(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t sta
 	if(start.y == stop.y)
 	{
 		if(start.x > stop.x) gfx_flip(&start,&stop);
-		
-		for (int j = stop.x - start.x; j > 0; j--)
+
+		/* j >= 0: inclusive of the final endpoint (see vertical case above). */
+		for (int j = stop.x - start.x; j >= 0; j--)
 		{
 			gfx_brush(thickness,hgfx,start.x++,start.y,color);
 		}
@@ -917,10 +925,63 @@ void GFX_draw_thick_line(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t sta
 			if (e2 >-dx) { err -= dy; x0 += sx; }
 			if (e2 < dy) { err += dx; y0 += sy; }
 		}
-	}	
+	}
 }
 
 
+/*
+ * GFX_fill_triangle - solid scan-line triangle fill.
+ *
+ * Used by the compass-rose north marker and reusable for any small
+ * filled-triangle UI element. Standard top-to-bottom scan-line
+ * algorithm: sort vertices by y, walk left and right edges in lockstep,
+ * draw horizontal spans.
+ *
+ * Color is a CLUT index (same convention as GFX_draw_line).
+ *
+ * Vertices must lie within the framebuffer; no clipping is performed.
+ */
+void GFX_fill_triangle(GFX_DrawCfgScreen *hgfx, point_t a, point_t b, point_t c, uint8_t color)
+{
+	point_t v[3] = {a, b, c};
+	for(int i = 0; i < 2; i++) {
+		for(int j = 0; j < 2 - i; j++) {
+			if(v[j].y > v[j+1].y) {
+				point_t t = v[j]; v[j] = v[j+1]; v[j+1] = t;
+			}
+		}
+	}
+	int16_t y0 = v[0].y, y1 = v[1].y, y2 = v[2].y;
+	if(y0 == y2) return; /* degenerate */
+
+	point_t start, stop;
+	for(int16_t y = y0; y <= y2; y++) {
+		int32_t xa, xb;
+		xa = v[0].x + ((int32_t)(v[2].x - v[0].x) * (y - y0)) / (y2 - y0);
+		if(y < y1) {
+			if(y1 == y0) continue;
+			xb = v[0].x + ((int32_t)(v[1].x - v[0].x) * (y - y0)) / (y1 - y0);
+		} else {
+			if(y2 == y1) { xb = v[1].x; }
+			else         { xb = v[1].x + ((int32_t)(v[2].x - v[1].x) * (y - y1)) / (y2 - y1); }
+		}
+		start.x = (xa < xb) ? (int16_t)xa : (int16_t)xb;
+		stop.x  = (xa < xb) ? (int16_t)xb : (int16_t)xa;
+		start.y = y; stop.y = y;
+		/* GFX_draw_line is exclusive of its end pixel, so each scan span would
+		   lose its rightmost column - which renders a symmetric triangle (e.g.
+		   the compass lubber arrowhead) 1px left-biased. Extend by 1 so the
+		   span is inclusive and the fill stays centred. */
+		stop.x += 1;
+		GFX_draw_line(hgfx, start, stop, color);
+	}
+}
+
+
+/* NOTE: the horizontal/vertical loops below are end-EXCLUSIVE (they stop one
+   pixel short of `stop`). Callers that need an inclusive span compensate (e.g.
+   GFX_fill_triangle extends stop.x by 1). Do not "fix" this to inclusive without
+   auditing those callers. GFX_draw_thick_line was made inclusive separately. */
 void GFX_draw_line(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color)
 {
 	uint16_t* pDestination;
@@ -1113,8 +1174,8 @@ void GFX_draw_pixel(GFX_DrawCfgScreen *hgfx, int16_t x, int16_t y, uint8_t color
 	pDestination = (uint16_t*)hgfx->FBStartAdress;
 	if(pSettings->FlipDisplay)
 	{
-		pDestination += (800 - x) * hgfx->ImageHeight;
-		pDestination += (480 - y);
+		pDestination += (hgfx->ImageWidth - 1 - x) * hgfx->ImageHeight;
+		pDestination += (hgfx->ImageHeight - 1 - y);
 	}
 	else
 	{
@@ -1122,6 +1183,24 @@ void GFX_draw_pixel(GFX_DrawCfgScreen *hgfx, int16_t x, int16_t y, uint8_t color
 		pDestination += y;
 	}
 	*(__IO uint16_t*)pDestination = 0xFF << 8 | color;
+}
+
+/* Write one AL88 pixel with explicit alpha. Used by the compass AA
+ * primitives only. Bounds-checked; respects FlipDisplay. */
+static void GFX_draw_pixel_aa(GFX_DrawCfgScreen *hgfx,
+	int32_t x, int32_t y, uint8_t color, uint8_t alpha)
+{
+	if(hgfx->FBStartAdress < FBGlobalStart) return;
+	int32_t W = hgfx->ImageWidth;
+	int32_t H = hgfx->ImageHeight;
+	if(x < 0 || x >= W || y < 0 || y >= H) return;
+	uint16_t *fb = (uint16_t *)hgfx->FBStartAdress;
+	SSettings *pSettings = settingsGetPointer();
+	uint16_t pixel = ((uint16_t)alpha << 8) | color;
+	if(pSettings->FlipDisplay)
+		fb[(W - 1 - x) * H + (H - 1 - y)] = pixel;
+	else
+		fb[x * H + y] = pixel;
 }
 
 /* this is NOT fast nor optimized */
@@ -1165,6 +1244,136 @@ void GFX_draw_circle(GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, in
     GFX_draw_pixel (hgfx, -y + center.x,  x + center.y, color);
     GFX_draw_pixel (hgfx, -y + center.x, -x + center.y, color);
   }
+}
+
+/* Integer floor(sqrt(v)) - bit-by-bit, no floating point. Used by the
+ * compass ring AA to find the exact y at each x of the octant. */
+static uint32_t isqrt32(uint32_t v)
+{
+	uint32_t res = 0;
+	uint32_t bit = 1u << 30; /* highest power of 4 <= 2^32 */
+	while(bit > v) bit >>= 2;
+	while(bit)
+	{
+		if(v >= res + bit)
+		{
+			v   -= res + bit;
+			res  = (res >> 1) + bit;
+		}
+		else
+		{
+			res >>= 1;
+		}
+		bit >>= 2;
+	}
+	return res;
+}
+
+/* Anti-aliased single-pixel circle for the compass ring. Emits graduated
+ * AL88 alpha (Wu-style: alpha split between floor/ceil y) so the ring edge
+ * blends at scan-out without extra compositing cost. color is a CLUT index.
+ * A single AA stroke replaces the two stacked solid circles in compass_draw_ring.
+ * Integer-only: floor(y) from isqrt32, sub-pixel alpha from the linear
+ * position of r^2-x^2 within the interval [yi^2, (yi+1)^2]. */
+void GFX_draw_circle_aa(GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, uint8_t color)
+{
+	if(hgfx->FBStartAdress < FBGlobalStart) return;
+	/* cos(pi/4) ~ 185363/2^18; iterate x from 0 to the 45deg octant boundary. */
+	int xmax = ((int)radius * 185363) >> 18;
+	xmax += 1;
+	uint32_t r2 = (uint32_t)radius * radius;
+	for(int xi = 0; xi <= xmax; xi++)
+	{
+		/* v = r^2 - x^2; yi = floor(sqrt(v)). The fraction (sqrt(v) - yi) is
+		 * approximated linearly as (v - yi^2)/((yi+1)^2 - yi^2) = (v-yi^2)/(2yi+1);
+		 * sub-LSB alpha error, visually identical to the exact sqrt. */
+		uint32_t v  = r2 - (uint32_t)xi * (uint32_t)xi;
+		int      yi = (int)isqrt32(v);
+		uint8_t a_hi = (uint8_t)((255u * (v - (uint32_t)yi * (uint32_t)yi)) / (2u * (uint32_t)yi + 1u));
+		uint8_t a_lo = (uint8_t)(255 - a_hi);
+		/* 8-way symmetry; each step emits two alpha-split pixels per axis pair. */
+		GFX_draw_pixel_aa(hgfx,  xi + center.x,  yi     + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx,  xi + center.x,  yi + 1 + center.y, color, a_hi);
+		GFX_draw_pixel_aa(hgfx,  xi + center.x, -yi     + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx,  xi + center.x, -yi - 1 + center.y, color, a_hi);
+		GFX_draw_pixel_aa(hgfx, -xi + center.x,  yi     + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx, -xi + center.x,  yi + 1 + center.y, color, a_hi);
+		GFX_draw_pixel_aa(hgfx, -xi + center.x, -yi     + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx, -xi + center.x, -yi - 1 + center.y, color, a_hi);
+
+		GFX_draw_pixel_aa(hgfx,  yi     + center.x,  xi + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx,  yi + 1 + center.x,  xi + center.y, color, a_hi);
+		GFX_draw_pixel_aa(hgfx, -yi     + center.x,  xi + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx, -yi - 1 + center.x,  xi + center.y, color, a_hi);
+		GFX_draw_pixel_aa(hgfx,  yi     + center.x, -xi + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx,  yi + 1 + center.x, -xi + center.y, color, a_hi);
+		GFX_draw_pixel_aa(hgfx, -yi     + center.x, -xi + center.y, color, a_lo);
+		GFX_draw_pixel_aa(hgfx, -yi - 1 + center.x, -xi + center.y, color, a_hi);
+	}
+}
+
+/* Anti-aliased thick line for compass ticks.
+ *
+ * Invariant: AA fringe pixels are STRICTLY outside the solid core region.
+ * The opaque core is drawn LAST so it overwrites any fringe pixel that may
+ * have landed on a core position (harmless for strictly-outside fringe, but
+ * this ordering is the belt-and-suspenders guarantee against partial-alpha
+ * writes on interior pixels).
+ *
+ * For each step along the major axis at position xi, the line center is at
+ * fractional y = yi + frac.  The solid core (drawn by GFX_draw_thick_line)
+ * occupies rows [yi - half, yi - half + thickness - 1] where half = thickness/2.
+ * The fringe sits one pixel outside each edge:
+ *   upper fringe: yi + half + 1              alpha = a_hi (= frac * 255)
+ *   lower fringe: yi - half - 1              alpha = a_lo (= (1-frac) * 255)
+ * These two positions are always strictly outside [yi-half, yi-half+T-1]. */
+void GFX_draw_thick_line_aa(uint8_t thickness, GFX_DrawCfgScreen *hgfx,
+	point_t start, point_t stop, uint8_t color)
+{
+	int x0 = start.x, y0 = start.y, x1 = stop.x, y1 = stop.y;
+	int steep = (abs(y1 - y0) > abs(x1 - x0));
+	if(steep) { int t; t = x0; x0 = y0; y0 = t; t = x1; x1 = y1; y1 = t; }
+	if(x0 > x1)
+	{
+		int t;
+		t = x0; x0 = x1; x1 = t;
+		t = y0; y0 = y1; y1 = t;
+	}
+	int dx = x1 - x0, dy = y1 - y0;
+	/* Gradient as Q16 fixed point: one integer divide total, integer add per
+	 * step thereafter. No floating point. */
+	int32_t grad_q = dx ? ((int32_t)dy << 16) / dx : (1 << 16);
+	/* half = thickness / 2 (integer); fringe is one pixel outside each
+	 * edge of the solid core, so these positions never overlap the core. */
+	int half = (int)(thickness / 2);
+
+	/* Pass 1: fringe pixels (partial alpha).  Drawn before the core so that
+	 * any accidental overlap is corrected by the full-alpha core pass. */
+	int32_t yq = ((int32_t)y0 << 16) + grad_q;
+	for(int xi = x0 + 1; xi < x1; xi++)
+	{
+		int yi = yq >> 16;                          /* floor(y) */
+		uint8_t a_hi = (uint8_t)((yq >> 8) & 0xFF); /* fractional part * 256 */
+		uint8_t a_lo = (uint8_t)(255 - a_hi);
+		if(steep)
+		{
+			/* upper fringe */
+			GFX_draw_pixel_aa(hgfx, yi + half + 1, xi, color, a_hi);
+			/* lower fringe */
+			GFX_draw_pixel_aa(hgfx, yi - half - 1, xi, color, a_lo);
+		}
+		else
+		{
+			/* upper fringe */
+			GFX_draw_pixel_aa(hgfx, xi, yi + half + 1, color, a_hi);
+			/* lower fringe */
+			GFX_draw_pixel_aa(hgfx, xi, yi - half - 1, color, a_lo);
+		}
+		yq += grad_q;
+	}
+
+	/* Pass 2: opaque solid core - drawn last so it always wins over fringe. */
+	GFX_draw_thick_line(thickness, hgfx, start, stop, color);
 }
 
 
@@ -2049,6 +2258,362 @@ uint32_t GFX_write_string(const tFont *Font, GFX_DrawCfgWindow* hgfx, const char
 	return GFX_write_string_color(Font, hgfx, pText, line_number, 0);
 }
 
+#ifndef BOOTLOADER_STANDALONE
+/* The rotated-text path references compass_sin_q15() from compass_rose.c,
+ * which is not part of the bootloader project. The bootloader build links
+ * gfx_engine.c with -DBOOTLOADER_STANDALONE and without -ffunction-sections,
+ * so an ungated reference would fail at link time. The bootloader has no
+ * compass UI, hence the whole block is compiled out. */
+
+/*
+ * Per-glyph rotated text renderer used by the compass-rose labels.
+ *
+ * Each character is decoded out of its column-major (RLE-1 marker) font
+ * bitmap into a row-major scratch buffer, rotated (90/180/270 buffer
+ * shuffle, or nearest-neighbor inverse sampling for arbitrary angles)
+ * into a second scratch buffer, then blitted to the framebuffer with the
+ * glyph centered on the current pen position.
+ *
+ * Rotation convention (matches compass): deg=0 = upright (reading +x).
+ * Increasing deg rotates the text clockwise in screen coords. The
+ * reading-direction (baseline) unit vector is (cos(deg), sin(deg)),
+ * which puts the top of each letter facing the radial-out direction
+ * when called from the compass rose.
+ *
+ * The 48x48 byte scratch buffers fit the largest glyph in the rose
+ * label set (FontT24 and FontT42 numerics are well under that). Glyphs
+ * wider or taller than ROSE_GLYPH_DIM clip; that is acceptable for the
+ * label use case the caller targets.
+ *
+ * NOTE on placement:
+ *   The plan called for these buffers to live in CCM RAM. The current
+ *   CPU1-F429.ld declares CCRAM as a memory region but does not expose
+ *   a SECTION for it, so a section attribute would create an orphan
+ *   the linker would either reject or silently place in normal RAM.
+ *   To keep this change local to gfx_engine.c, the two 2304-byte
+ *   buffers live in regular .bss. Total cost: 4608 bytes out of 192K.
+ */
+
+#define ROSE_GLYPH_DIM 48
+static uint8_t glyph_src[ROSE_GLYPH_DIM * ROSE_GLYPH_DIM];
+static uint8_t glyph_rot[ROSE_GLYPH_DIM * ROSE_GLYPH_DIM];
+
+/* Compass sin LUT lives in compass_rose.c (added at rev 1088). Declared
+ * extern locally rather than via compass_rose.h to avoid pulling that
+ * header's point_t typedef into a file that already defines its own. */
+extern int16_t compass_sin_q15(uint16_t deg);
+
+static inline int16_t rose_cos_q15(uint16_t deg)
+{
+	return compass_sin_q15((uint16_t)((deg + 90u) % 360u));
+}
+
+/* Decode a font glyph (column-major, with 0x01 marker for an empty
+ * column) into the top-left wxh region of `dst[ROSE_GLYPH_DIM x
+ * ROSE_GLYPH_DIM]` (row-major). The rest of dst is zero-filled.
+ * Returns the glyph (w, h) via the out params, clamped to the buffer. */
+static void rose_decode_glyph(const tImage *img,
+	uint8_t *dst,
+	uint16_t *out_w,
+	uint16_t *out_h)
+{
+	uint16_t w = img->width;
+	uint16_t h = img->height;
+	const uint8_t *src = img->data;
+
+	if(w > ROSE_GLYPH_DIM) w = ROSE_GLYPH_DIM;
+	if(h > ROSE_GLYPH_DIM) h = ROSE_GLYPH_DIM;
+
+	/* Walk the source column-by-column. Each column either starts with
+	 * 0x01 (one-byte empty-column marker) or holds height bytes of
+	 * intensity, top-to-bottom. We honour the original (unclamped)
+	 * column count for advancing through src so we don't desync the
+	 * stream when the visible width is clipped.
+	 *
+	 * Only the w x h region is written (filled columns assign all h
+	 * rows; empty columns are zeroed); the rest of the scratch buffer is
+	 * never read by the rotate/blit so it is intentionally left dirty -
+	 * this drops a full ROSE_GLYPH_DIM^2 memset from the per-glyph path. */
+	uint16_t full_w = img->width;
+	uint16_t full_h = img->height;
+	for(uint16_t col = 0; col < full_w; col++)
+	{
+		if(*src == 0x01)
+		{
+			if(col < w)
+				for(uint16_t row = 0; row < h; row++)
+					dst[row * ROSE_GLYPH_DIM + col] = 0;
+			src++;
+			continue;
+		}
+		if(col < w)
+		{
+			for(uint16_t row = 0; row < h; row++)
+				dst[row * ROSE_GLYPH_DIM + col] = (row < full_h) ? src[row] : 0;
+		}
+		src += full_h;
+	}
+
+	*out_w = w;
+	*out_h = h;
+}
+
+/* Rotate the wxh glyph at the top-left of src into the top-left of dst
+ * for the four cardinal angles. deg must be one of 0, 90, 180, 270.
+ * On exit *out_rw, *out_rh hold the rotated glyph's bounding box. */
+static void rose_rotate_cardinal(const uint8_t *src, uint8_t *dst,
+	uint16_t w, uint16_t h, uint16_t deg,
+	uint16_t *out_rw, uint16_t *out_rh)
+{
+	/* No full-buffer clear: each branch writes exactly the out_rw x out_rh
+	 * region the blit reads (deg 0/180 -> w x h, deg 90/270 -> h x w). */
+	if(deg == 0)
+	{
+		for(uint16_t y = 0; y < h; y++)
+		{
+			for(uint16_t x = 0; x < w; x++)
+			{
+				dst[y * ROSE_GLYPH_DIM + x] = src[y * ROSE_GLYPH_DIM + x];
+			}
+		}
+		*out_rw = w;
+		*out_rh = h;
+	}
+	else if(deg == 90)
+	{
+		for(uint16_t y = 0; y < h; y++)
+		{
+			for(uint16_t x = 0; x < w; x++)
+			{
+				uint8_t v = src[y * ROSE_GLYPH_DIM + x];
+				dst[x * ROSE_GLYPH_DIM + (h - 1 - y)] = v;
+			}
+		}
+		*out_rw = h;
+		*out_rh = w;
+	}
+	else if(deg == 180)
+	{
+		for(uint16_t y = 0; y < h; y++)
+		{
+			for(uint16_t x = 0; x < w; x++)
+			{
+				uint8_t v = src[y * ROSE_GLYPH_DIM + x];
+				dst[(h - 1 - y) * ROSE_GLYPH_DIM + (w - 1 - x)] = v;
+			}
+		}
+		*out_rw = w;
+		*out_rh = h;
+	}
+	else
+	{
+		for(uint16_t y = 0; y < h; y++)
+		{
+			for(uint16_t x = 0; x < w; x++)
+			{
+				uint8_t v = src[y * ROSE_GLYPH_DIM + x];
+				dst[(w - 1 - x) * ROSE_GLYPH_DIM + y] = v;
+			}
+		}
+		*out_rw = h;
+		*out_rh = w;
+	}
+}
+
+/* Rotate a wxh glyph at the top-left of src into dst by an arbitrary
+ * angle (deg in [0, 360)) using nearest-neighbor inverse sampling. The
+ * output bounding box is the rotated rectangle, clamped to the scratch
+ * buffer. The rotation pivot is the glyph center, mapped to the dest
+ * box center. */
+static void rose_rotate_arbitrary(const uint8_t *src, uint8_t *dst,
+	uint16_t w, uint16_t h, uint16_t deg,
+	uint16_t *out_rw, uint16_t *out_rh)
+{
+	/* No full-buffer clear: every pixel in the rw x rh output box is
+	 * assigned below (sample, or 0 on an out-of-glyph miss), which is
+	 * exactly the region rose_blit_rotated reads. */
+	int32_t s = compass_sin_q15(deg);
+	int32_t c = rose_cos_q15(deg);
+
+	int32_t abs_s = s < 0 ? -s : s;
+	int32_t abs_c = c < 0 ? -c : c;
+
+	int32_t rw32 = ((int32_t)w * abs_c + (int32_t)h * abs_s + (1 << 14)) >> 15;
+	int32_t rh32 = ((int32_t)w * abs_s + (int32_t)h * abs_c + (1 << 14)) >> 15;
+	if(rw32 < 1) rw32 = 1;
+	if(rh32 < 1) rh32 = 1;
+	if(rw32 > ROSE_GLYPH_DIM) rw32 = ROSE_GLYPH_DIM;
+	if(rh32 > ROSE_GLYPH_DIM) rh32 = ROSE_GLYPH_DIM;
+	uint16_t rw = (uint16_t)rw32;
+	uint16_t rh = (uint16_t)rh32;
+
+	int32_t cx_src = (int32_t)w * 32768 / 2;
+	int32_t cy_src = (int32_t)h * 32768 / 2;
+	int32_t cx_dst = (int32_t)rw * 32768 / 2;
+	int32_t cy_dst = (int32_t)rh * 32768 / 2;
+
+	for(uint16_t y = 0; y < rh; y++)
+	{
+		int32_t dy = (int32_t)y * 32768 - cy_dst;
+		for(uint16_t x = 0; x < rw; x++)
+		{
+			int32_t dx = (int32_t)x * 32768 - cx_dst;
+			/* int64 multiply: dx*c can reach ~2.5e10, overflows int32. */
+			int32_t u_q15 = (int32_t)(((int64_t)dx * c) >> 15) + (int32_t)(((int64_t)dy * s) >> 15) + cx_src;
+			int32_t v_q15 = (int32_t)(((int64_t)-dx * s) >> 15) + (int32_t)(((int64_t)dy * c) >> 15) + cy_src;
+			/* Bilinear AA: keep the Q15 fractions, interpolate 4 neighbours.
+			 * OOB taps are treated as alpha 0 so the glyph edges feather
+			 * smoothly. This replaces the previous nearest-neighbor assign. */
+			int32_t ui = u_q15 >> 15;
+			int32_t vi = v_q15 >> 15;
+			int32_t fu = u_q15 & 0x7FFF;   /* Q15 fraction in [0, 32767] */
+			int32_t fv = v_q15 & 0x7FFF;
+#define ROSE_SMP(uu, vv) \
+			(((uu) >= 0 && (vv) >= 0 && (uu) < (int32_t)w && (vv) < (int32_t)h) \
+			 ? (int32_t)src[(vv) * ROSE_GLYPH_DIM + (uu)] : 0)
+			int32_t a00 = ROSE_SMP(ui,     vi);
+			int32_t a10 = ROSE_SMP(ui + 1, vi);
+			int32_t a01 = ROSE_SMP(ui,     vi + 1);
+			int32_t a11 = ROSE_SMP(ui + 1, vi + 1);
+#undef ROSE_SMP
+			int32_t top = a00 + (((a10 - a00) * fu) >> 15);
+			int32_t bot = a01 + (((a11 - a01) * fu) >> 15);
+			int32_t val = top + (((bot - top) * fv) >> 15);
+			dst[y * ROSE_GLYPH_DIM + x] = (uint8_t)val;
+		}
+	}
+
+	*out_rw = rw;
+	*out_rh = rh;
+}
+
+/* Blit the top-left rwxrh region of `buf` to `hgfx`'s framebuffer with
+ * the buffer's center landing at (cx, cy). Only non-zero intensity
+ * pixels are written, so the rotated bounding box does not erase
+ * surrounding background. FlipDisplay is honoured. */
+static void rose_blit_rotated(GFX_DrawCfgScreen *hgfx,
+	const uint8_t *buf,
+	uint16_t rw, uint16_t rh,
+	int16_t cx, int16_t cy,
+	uint8_t color)
+{
+	if(hgfx->FBStartAdress < FBGlobalStart)
+		return;
+
+	SSettings *pSettings = settingsGetPointer();
+	int flip = pSettings->FlipDisplay;
+
+	uint16_t *fb = (uint16_t *)hgfx->FBStartAdress;
+	int32_t H = hgfx->ImageHeight;
+	int32_t W = hgfx->ImageWidth;
+	int32_t x0 = (int32_t)cx - rw / 2;
+	int32_t y0 = (int32_t)cy - rh / 2;
+
+	for(uint16_t y = 0; y < rh; y++)
+	{
+		int32_t sy = y0 + y;
+		if(sy < 0 || sy >= H) continue;
+		for(uint16_t x = 0; x < rw; x++)
+		{
+			uint8_t v = buf[y * ROSE_GLYPH_DIM + x];
+			if(v == 0) continue;
+			int32_t sx = x0 + x;
+			if(sx < 0 || sx >= W) continue;
+			uint16_t pixel = ((uint16_t)v << 8) | color;
+			if(flip)
+			{
+				fb[(W - 1 - sx) * H + (H - 1 - sy)] = pixel;
+			}
+			else
+			{
+				fb[sx * H + sy] = pixel;
+			}
+		}
+	}
+}
+
+void GFX_write_string_rotated(const tFont *font, GFX_DrawCfgScreen *hgfx,
+	const char *text, int16_t cx, int16_t cy,
+	uint16_t deg, uint8_t color)
+{
+	if(font == NULL || hgfx == NULL || text == NULL)
+		return;
+	if(hgfx->FBStartAdress < FBGlobalStart)
+		return;
+
+	deg %= 360;
+
+	/* Measure total string width (sum of per-glyph widths) so we can
+	 * center the string on (cx, cy) along the baseline. */
+	uint32_t total_w = 0;
+	for(const char *p = text; *p; p++)
+	{
+		total_w += GFX_Character_Width((uint8_t)*p, (tFont *)font);
+	}
+	if(total_w == 0)
+		return;
+
+	/* Baseline (reading-direction) unit vector in Q1.15 screen coords.
+	 * deg=0 -> (1, 0), deg=90 -> (0, 1), deg=180 -> (-1, 0). */
+	int32_t bx_q15 = rose_cos_q15(deg);
+	int32_t by_q15 = compass_sin_q15(deg);
+
+	/* sum_w_before walks from 0 to total_w as we step through the
+	 * string; the current glyph center sits at offset
+	 * (sum_w_before + w/2 - total_w/2) along the baseline. */
+	int32_t sum_w = 0;
+	for(const char *p = text; *p; p++)
+	{
+		uint8_t ch = (uint8_t)*p;
+#ifndef BOOTLOADER_STANDALONE
+		tFont *gfont = GFX_Check_Extra_Font(ch, (tFont *)font);
+#else
+		tFont *gfont = font;
+#endif
+		const tImage *img = NULL;
+		for(uint32_t i = 0; i < gfont->length; i++)
+		{
+			if(gfont->chars[i].code == ch)
+			{
+				img = gfont->chars[i].image;
+				break;
+			}
+		}
+		uint32_t glyph_w = GFX_Character_Width(ch, (tFont *)font);
+		if(img == NULL || glyph_w == 0)
+		{
+			sum_w += glyph_w;
+			continue;
+		}
+
+		uint16_t w = 0, h = 0;
+		rose_decode_glyph(img, glyph_src, &w, &h);
+
+		uint16_t rw, rh;
+		if(deg == 0 || deg == 90 || deg == 180 || deg == 270)
+		{
+			rose_rotate_cardinal(glyph_src, glyph_rot, w, h, deg, &rw, &rh);
+		}
+		else
+		{
+			rose_rotate_arbitrary(glyph_src, glyph_rot, w, h, deg, &rw, &rh);
+		}
+
+		/* Pixel offset of this glyph's center from the string center,
+		 * along the baseline (text-frame coords). */
+		int32_t offset_px = (int32_t)sum_w + (int32_t)glyph_w / 2 - (int32_t)total_w / 2;
+
+		int32_t gx = (int32_t)cx + ((offset_px * bx_q15) >> 15);
+		int32_t gy = (int32_t)cy + ((offset_px * by_q15) >> 15);
+
+		rose_blit_rotated(hgfx, glyph_rot, rw, rh,
+			(int16_t)gx, (int16_t)gy, color);
+
+		sum_w += glyph_w;
+	}
+}
+#endif /* !BOOTLOADER_STANDALONE */
+
 uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, const char *pText, uint32_t line_number, uint8_t color)
 {
 	if(hgfx->Image->FBStartAdress < FBGlobalStart)
@@ -2329,7 +2894,7 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 			return cfg->Xdelta;
 		
 		found = 0;
-		for(j=0;j<(uint8_t)TXT2BYTE_END-(uint8_t)TXT2BYTE_START;j++)
+		for(j=0;j<(int)TXT2BYTE_END-(int)TXT2BYTE_START;j++)
 		{
 #ifndef BOOTLOADER_STANDALONE
 			if((uint8_t)text_array2[j].code == (uint8_t)nextCharFor2Byte)
@@ -3148,7 +3713,7 @@ static int8_t GFX_write__Modify_helper(char *cText, const char *pTextInput, uint
 			textId = (int8_t)*(char*)(pText + 1);
 			if(textId != 0)
 			{
-				for(j=0;j<(uint8_t)TXT2BYTE_END-(uint8_t)TXT2BYTE_START;j++)
+				for(j=0;j<(int)TXT2BYTE_END-(int)TXT2BYTE_START;j++)
 				{
 					if((uint8_t)text_array2[j].code == (uint8_t)textId)
 					{

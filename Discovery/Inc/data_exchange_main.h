@@ -59,4 +59,12 @@ uint16_t DataEX_debug_data(uint16_t *dataOut20x5);
 
 void DataEX_setExtInterface_Cmd(uint16_t Cmd,uint8_t sensorId);
 
+/* Link-time mock-or-real dispatch. Production builds link
+ * data_exchange_spi_real.c (real SPI-DMA call); RENODE_BUILD links
+ * cpu2_mock.c (synchronous fill from deterministic surface values).
+ * Selection is at CMake target level so data_exchange_main.c stays
+ * bit-identical between production and sim. See
+ * docs/superpowers/specs/2026-05-06-mock-mode-decision-design.md §5.1. */
+void data_exchange_perform_spi_dispatch(SDataReceiveFromMaster *out, SDataExchangeSlaveToMaster *in);
+
 #endif /* DATA_EXCHANGE_MAIN_H */

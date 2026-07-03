@@ -154,6 +154,7 @@
 #include "calc_crush.h"
 #include "decom.h"
 #include "FirmwareData.h"
+#include "device_time_hooks.h"   /* sim_skip_init_delays (Phase 0 overlay) */
 
 // From Common/Drivers/
 #include <stdio.h>
@@ -290,7 +291,7 @@ int main(void) {
 
 /*	printf("CPU2-RTE running...\n"); */
 
-	HAL_Delay(100);
+	if(!sim_skip_init_delays) HAL_Delay(100);
 
 	MX_I2C1_Init();
 	if (global.I2C_SystemStatus != HAL_OK)
@@ -333,7 +334,7 @@ int main(void) {
 		init_surface_ring(0);
 	}
 	init_battery_gas_gauge();
-	HAL_Delay(10);
+	if(!sim_skip_init_delays) HAL_Delay(10);
 	battery_gas_gauge_get_data();
 
 	global.lifeData.battery_voltage = get_voltage();
@@ -353,12 +354,12 @@ int main(void) {
 
 		if (!scheduleSetButtonResponsiveness())
 		{
-			HAL_Delay(10);
+			if(!sim_skip_init_delays) HAL_Delay(10);
 			if (!scheduleSetButtonResponsiveness()) // send again, if problem it's not my problem here.
 			{
-				HAL_Delay(10);
+				if(!sim_skip_init_delays) HAL_Delay(10);
 				scheduleSetButtonResponsiveness(); // init
-				HAL_Delay(10);
+				if(!sim_skip_init_delays) HAL_Delay(10);
 			}
 		}
 	}

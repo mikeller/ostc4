@@ -96,7 +96,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF0030,
+    .header = 0xFFFF0031,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -364,7 +364,12 @@ const SSettings SettingsStandard = {
     .hudFunction[5] = HUD_FCT_NONE,
 	.hudBrigthness = 0,
 	.caveModeAutoStart = 0,
-	.caveModeSwapMode = 0
+	.caveModeSwapMode = 0,
+    .compassScaleVariant = 0,
+    .compassSecondaryLabels = 1,
+    .compassCourseTolerance = 5,
+    .compassMinorTicks = 1,
+    .compassMountTilt = 0,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -689,6 +694,13 @@ void set_new_settings_missing_in_ext_flash(uint8_t whichSettings)
     case 0xFFFF002F:	pSettings->caveModeAutoStart = 1;
     					pSettings->caveModeSwapMode = 0;
 		// no break;
+    case 0xFFFF0030:
+        pSettings->compassScaleVariant = 0;
+        pSettings->compassSecondaryLabels = 1;
+        pSettings->compassCourseTolerance = 5;
+        pSettings->compassMinorTicks = 1;
+        pSettings->compassMountTilt = 0;
+        // no break;
     default:
         pSettings->header = pStandard->header;
         break; // no break before!!
@@ -1999,7 +2011,48 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
 		pSettings->caveModeSwapMode = 0;
 		corrections++;
 	}
+	parameterId++; /* 107 */
 
+    if (pSettings->compassScaleVariant > 1)
+    {
+        pSettings->compassScaleVariant = 0;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++; /* 108 */
+    if (pSettings->compassSecondaryLabels > 1)
+    {
+        pSettings->compassSecondaryLabels = 1;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++; /* 109 */
+    if (pSettings->compassCourseTolerance < 2)
+    {
+        pSettings->compassCourseTolerance = 2;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    else if (pSettings->compassCourseTolerance > 15)
+    {
+        pSettings->compassCourseTolerance = 15;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++; /* 110 */
+    if (pSettings->compassMinorTicks > 1)
+    {
+        pSettings->compassMinorTicks = 1;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    parameterId++; /* 111 */
+    if (pSettings->compassMountTilt > 2)
+    {
+        pSettings->compassMountTilt = 0;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
     if(corrections)
     {
     	settingsWarning = 1;

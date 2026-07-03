@@ -135,6 +135,17 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 		runningLine++;
 #endif
 
+		/* Compass Style sub-page - also reachable in dive mode so the rose can
+		   be tuned underwater. Slots after CalibView/Cave entries via runningLine. */
+		if((line == 0) || (line == runningLine))
+		{
+			text[textPointer++] = TXT_2BYTE;
+			text[textPointer++] = TXT2BYTE_CompassStyle;
+		}
+		strcpy(&text[textPointer],"\n\r");
+		textPointer += 2;
+		runningLine++;
+
 		if(is_stateUsedSetToSim())
 		{
 			if((line == 0) || (line == runningLine))

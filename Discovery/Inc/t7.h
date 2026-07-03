@@ -77,8 +77,6 @@ void t7_select_customview(uint8_t selectedCustomview);
 void t7_set_field_to_primary(void);
 void t7_set_customview_to_primary(void);
 
-void init_t7_compass(void);
-
 uint8_t t7_GetEnabled_customviews();
 uint8_t t7_customview_disabled(uint8_t view);
 

@@ -23,6 +23,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "adc.h"
+#include "device_time_hooks.h"   /* sim_skip_* runtime gates (Phase 0 overlay) */
 
 /* Exported variables --------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -134,7 +135,15 @@ void adc_ambient_light_sensor_get_data(void)
 	#ifdef OSTC_ON_DISCOVERY_HARDWARE
 		return;
 	#endif
-	
+
+	if(sim_skip_blocking_polls)
+	{
+		/* Renode's STM32F4 ADC peripheral is sufficiently incomplete
+		 * that HAL_ADC_PollForConversion blocks until its full timeout.
+		 * Skip; ambient light comes from SRAM-poke under sim. */
+		return;
+	}
+
 	HAL_ADC_Start(&AdcHandle);
   HAL_ADC_PollForConversion(&AdcHandle, 10);
 	adc_debug_status = HAL_ADC_GetState(&AdcHandle);

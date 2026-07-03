@@ -30,7 +30,7 @@
 #include "tMenu.h"
 #include "tMenuCvOption.h"
 #include "tMenuCvOptionText.h"
-#include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
+#include "tHome.h"  // for enum CUSTOMVIEWS
 #include "t7.h"
 
 /* Private function prototypes -----------------------------------------------*/

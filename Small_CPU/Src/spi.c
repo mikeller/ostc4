@@ -31,6 +31,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "scheduler.h"
+#include "device_time_hooks.h"   /* sim_skip_blocking_polls (Phase 0 overlay) */
 
 #ifdef DEBUG_GPIO
 extern void GPIO_new_DEBUG_LOW(void);
@@ -76,6 +77,16 @@ void MX_SPI3_DeInit(void) {
 }
 
 uint8_t SPI3_ButtonAdjust(uint8_t *arrayInput, uint8_t *arrayOutput) {
+	if(sim_skip_blocking_polls)
+	{
+		/* 7-iter loop with 3*10ms HAL_Delay/iter = 210 ms simulated time.
+		 * The PIC button controller is not modelled under Renode; the
+		 * harness injects buttons via cpu2_mock_button_request directly.
+		 * Skip and report success. Production sets the flag to 0. */
+		(void)arrayInput;
+		(void)arrayOutput;
+		return 1;
+	}
 	HAL_StatusTypeDef status;
 	uint8_t answer[10];
 	uint8_t rework[10];
@@ -291,11 +302,17 @@ void SPI_synchronize_with_Master(void) {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 //
-	HAL_Delay(10);
-	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0);
-	HAL_Delay(10);
-	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1);
-	HAL_Delay(50);
+	if(!sim_skip_blocking_polls)
+	{
+		/* These polling waits sit on real GPIO pins driven by the LCD
+		 * master. Under emulation the pins float and the while-loops
+		 * never exit. */
+		HAL_Delay(10);
+		while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0);
+		HAL_Delay(10);
+		while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1);
+		HAL_Delay(50);
+	}
 #endif
 }
 

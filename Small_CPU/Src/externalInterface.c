@@ -37,6 +37,7 @@
 #include "uartProtocol_Sentinel.h"
 #include "uartProtocol_GNSS.h"
 #include "uartProtocol_HUD.h"
+#include "device_time_hooks.h"   /* sim_skip_blocking_polls (Phase 0 overlay) */
 
 extern SGlobal global;
 extern UART_HandleTypeDef huart1;
@@ -1167,6 +1168,15 @@ void externalInterface_CheckBaudrate(uint8_t sensorType)
 
 void externalInterface_HandleUART()
 {
+	if(sim_skip_blocking_polls)
+	{
+		/* UART discovery + protocol handlers do many blocking
+		 * HAL_UART_Transmit/Receive calls plus 10 ms waits per sensor
+		 * probe. Renode does not model the external sensors and dive
+		 * scenarios inject sensor data via SRAM-poke; nothing here is
+		 * useful under emulation. Production sets the flag to 0. */
+		return;
+	}
 	static uint8_t retryRequest = 0;
 	static uint32_t lastRequestTick = 0;
 	static uint32_t TriggerTick = 0;

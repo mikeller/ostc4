@@ -45,6 +45,7 @@
 #include "motion.h"
 #include "logbook_miniLive.h"
 #include "cavemode.h"
+#include "compass_rose.h"
 
 /* Private types -------------------------------------------------------------*/
 
@@ -116,7 +117,10 @@ void tHome_init(void)
 
 void tHome_init_compass(void)
 {
-    init_t7_compass();
+    /* Bv6 rose redesign: t7 compass no longer renders a pre-baked cardinal
+       strip into slot 21 -- labels are drawn from text_array2 every frame.
+       Kept as a no-op so existing language-change/system menu callers don't
+       need to be updated. */
 }
 
 
@@ -575,7 +579,8 @@ void tHomeDiveMenuControl(uint8_t sendAction)
 
             break;
         case StDBEAR: // t5_gauge, t7
-            setCompassHeading((uint16_t)stateUsed->lifeData.compass_heading);
+            setCompassHeading((uint16_t)((((int32_t)stateUsed->lifeData.compass_heading
+                    + compass_mount_phi(settingsGetPointer()->compassMountTilt)) % 360 + 360) % 360));
             set_globalState(StD);
             break;
 

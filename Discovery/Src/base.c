@@ -252,6 +252,9 @@ static void TIM_DEMO_init(void);
 #include "demo.h"
 #endif
 
+/* Sim overlay (Phase 0): main-loop tick hook + timeout/pin sim flags. */
+#include "device_time_hooks.h"
+
 //#include "lodepng.h"
 //#include <stdlib.h> // for malloc and free
 
@@ -507,6 +510,7 @@ int main(void)
 #ifdef T7_DEBUG_RUNTIME
     	startTimeMainLoop = HAL_GetTick();
 #endif
+        sim_main_loop_tick_hook();
         if( bootToBootloader )
             resetToFirmwareUpdate();
 
@@ -1851,6 +1855,16 @@ static void TimeoutControlRequestModechange(void)
 
 static void TimeoutControl(void)
 {
+    if(sim_disable_timeouts)
+    {
+        /* Under emulation the main-loop-driven 100 ms tick (see while(1)
+         * head) makes the firmware's notion of elapsed time advance much
+         * faster than wall time - surface auto-sleep at 120 s would fire
+         * seconds into a golden run, putting state at StStop before tests
+         * can drive the UI. The flag is provided by device_time_hooks.c
+         * (sim) or device_time_hooks_real.c (production, defaults to 0). */
+        return;
+    }
     static uint8_t last_base;
 
     SStateList status;

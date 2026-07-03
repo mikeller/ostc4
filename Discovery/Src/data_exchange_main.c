@@ -277,8 +277,6 @@ uint8_t DataEX_call(void)
 	static uint32_t RTEOfflineCnt = 0;
 	static uint8_t SusppressCom = 0;
 
-	uint8_t SPI_DMA_answer = 0;
-
 	if(SusppressCom)
 	{
 		SusppressCom--;
@@ -335,13 +333,14 @@ uint8_t DataEX_call(void)
 
 		if(SusppressCom == 0)
 		{
-			HAL_GPIO_WritePin(SMALLCPU_CSB_GPIO_PORT,SMALLCPU_CSB_PIN,GPIO_PIN_RESET);
-
-			SPI_DMA_answer = HAL_SPI_TransmitReceive_DMA(&cpu2DmaSpi, (uint8_t *)&dataOut, (uint8_t *)&dataIn, EXCHANGE_BUFFERSIZE);
-			if(SPI_DMA_answer != HAL_OK)
-			{
-				DataEX_Error_Handler(SPI_DMA_answer);
-			}
+			/* Sim overlay (Phase 0, GasConsumption): route the CPU1<->CPU2
+			 * exchange through the link-time dispatch instead of the real
+			 * SPI-DMA. Under Renode there is no CPU2 SPI connection, so
+			 * HAL_SPI_TransmitReceive_DMA never completes and dataIn never
+			 * receives the bridge magic. data_exchange_perform_spi_dispatch
+			 * is provided by cpu2_mock.c (sim) or data_exchange_spi_real.c
+			 * (production, byte-identical to the call below). */
+			data_exchange_perform_spi_dispatch(&dataOut, &dataIn);
 		}
 	}
 //	HAL_GPIO_WritePin(SMALLCPU_CSB_GPIO_PORT,SMALLCPU_CSB_PIN,GPIO_PIN_SET);

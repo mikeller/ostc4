@@ -34,7 +34,7 @@
 #include "gfx_fonts.h"
 #include "ostc.h"
 #include "settings.h" // for getLicence()
-#include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
+#include "tHome.h"  // for enum CUSTOMVIEWS
 #include "tMenu.h"
 #include "tMenuEdit.h"
 #include "tMenuSystem.h"

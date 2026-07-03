@@ -342,6 +342,12 @@ typedef struct
 	/* new in 0xFFFF0030 */
 	uint8_t caveModeAutoStart;
     uint8_t caveModeSwapMode;
+	/* new in 0xFFFF0031 - compass redesign (display-only) */
+	uint8_t compassScaleVariant;     /* 0 = Medium (default), 1 = 8-point */
+	uint8_t compassSecondaryLabels;  /* t7: 1 = show numbers/intercardinals (default), 0 = hide */
+	uint8_t compassCourseTolerance;  /* on-course +/- degrees, default 5, clamp 2..15 */
+	uint8_t compassMinorTicks;       /* 1 = show finest tick tier (default), 0 = hide */
+	uint8_t compassMountTilt;        /* 0 = none (default), 1 = left-hand (-30), 2 = right-hand (+30) */
 } SSettings;
 
 uint8_t writeData(uint8_t *);

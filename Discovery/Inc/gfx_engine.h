@@ -148,8 +148,11 @@ void GFX_clear_window_immediately(GFX_DrawCfgWindow* hgfx);
 //void GFX_draw_circle_with_MEMORY(uint8_t use_memory, GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, int8_t color);
 void GFX_draw_pixel(GFX_DrawCfgScreen *hgfx, int16_t x, int16_t y, uint8_t color);
 void GFX_draw_circle(GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, int8_t color);
+void GFX_draw_circle_aa(GFX_DrawCfgScreen *hgfx, point_t center, uint8_t radius, uint8_t color);
 void GFX_draw_colorline(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color);
 void GFX_draw_thick_line(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color);
+void GFX_draw_thick_line_aa(uint8_t thickness, GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color);
+void GFX_fill_triangle(GFX_DrawCfgScreen *hgfx, point_t a, point_t b, point_t c, uint8_t color);
 void GFX_draw_line(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color);
 void GFX_draw_box2(GFX_DrawCfgScreen *hgfx, point_t start, point_t stop, uint8_t color, uint8_t roundCorners);
 void GFX_draw_box(GFX_DrawCfgScreen *hgfx, point_t LeftLow, point_t WidthHeight, uint8_t Style, uint8_t color);
@@ -158,6 +161,15 @@ void GFX_clean_line(GFX_DrawCfgWindow* hgfx, uint32_t line_number);
 void GFX_clean_area(GFX_DrawCfgScreen *tMscreen, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, uint16_t YBottomGimpStyle);
 
 uint32_t GFX_write_string(const tFont *Font, GFX_DrawCfgWindow* hgfx, const char *pText, uint32_t line_number);
+
+/* Render `text` centered at (cx, cy) on `hgfx`, rotated by `deg` degrees
+   (compass convention: 0 = upright, increases clockwise). Glyphs are
+   rendered upright into a scratch buffer per-character, rotated by
+   integer nearest-neighbor sampling, and blitted. Supports any deg in
+   0..359; fast paths for 0/90/180/270. */
+void GFX_write_string_rotated(const tFont *font, GFX_DrawCfgScreen *hgfx,
+                              const char *text, int16_t cx, int16_t cy,
+                              uint16_t deg, uint8_t color);
 uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, const char *pText, uint32_t line_number, uint8_t color);
 uint32_t GFX_write_label(const tFont *Font, GFX_DrawCfgWindow* hgfx, const char *pText, uint8_t color);
 void Gfx_write_label_var(GFX_DrawCfgScreen *screenInput, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const uint8_t color, const char *text);

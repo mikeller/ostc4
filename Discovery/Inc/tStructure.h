@@ -224,13 +224,16 @@
 #ifdef ENABLE_CAVEMODE
 #define StMXTRA_CaveModeOnOff	_MB(2,4,4,1,0)
 #define StMXTRA_CaveModeReturn	_MB(2,4,5,1,0)
-#define StMXTRA_SimFollowStop	_MB(2,4,6,1,0)
+#define StMXTRA_CompassStyle	_MB(2,4,6,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,4,7,1,0)
 #else
 #ifdef ENABLE_MOTION_CONTROL
 #define StMXTRA_CalibViewport	_MB(2,4,4,1,0)
-#define StMXTRA_SimFollowStop	_MB(2,4,5,1,0)
+#define StMXTRA_CompassStyle	_MB(2,4,5,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,4,6,1,0)
 #else
-#define StMXTRA_SimFollowStop	_MB(2,4,4,1,0)
+#define StMXTRA_CompassStyle	_MB(2,4,4,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,4,5,1,0)
 #endif
 #endif
  /* SURFACE MODE */
@@ -335,6 +338,13 @@
 #define StMOption_Timer_Value			_MB(2,8,2,1,0)
 
 #define StMOption_Heartbeat 			_MB(2,8,3,0,0)
+
+#define StMOption_CompassStyle				_MB(2,8,4,0,0)
+#define StMOption_CompassStyle_Scale		_MB(2,8,4,1,0)
+#define StMOption_CompassStyle_Secondary	_MB(2,8,4,2,0)
+#define StMOption_CompassStyle_CourseTol	_MB(2,8,4,3,0)
+#define StMOption_CompassStyle_MinorTicks	_MB(2,8,4,4,0)
+#define StMOption_CompassStyle_MountTilt	_MB(2,8,4,5,0)
 
 /* PAGE 9 */
 #define StMSYS		_MB(2,9,0,0,0)

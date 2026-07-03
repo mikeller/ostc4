@@ -29,7 +29,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "tMenu.h"
 #include "tMenuSystem.h"
-#include "tHome.h"  // for enum CUSTOMVIEWS and init_t7_compass()
+#include "tHome.h"  // for enum CUSTOMVIEWS
 #include "t7.h"
 
 static uint8_t customviewsSubpage = 0;

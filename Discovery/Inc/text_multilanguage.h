@@ -408,6 +408,17 @@ extern const tText text_array2[];
 
 		TXT2BYTE_FUNCTION,
 		TXT2BYTE_AscentSpeed,
+		/* Compass style sub-page (scale values + cardinals are inlined ASCII,
+		   not tokens - the 2-byte text space is one byte wide, see guard below) */
+		TXT2BYTE_CompassStyle,
+		TXT2BYTE_CompassScale,
+		TXT2BYTE_SecLabels,
+		TXT2BYTE_CourseTol,
+		TXT2BYTE_MinorTicks,
+		TXT2BYTE_MountTilt,
+		TXT2BYTE_TiltNone,
+		TXT2BYTE_TiltLeft,
+		TXT2BYTE_TiltRight,
 
 		TXT2BYTE_END,
 

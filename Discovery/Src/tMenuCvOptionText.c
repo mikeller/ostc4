@@ -67,6 +67,15 @@ uint8_t tMCvOptText_refreshCompass(char* pText)
     return strlen(pText);
 }
 
+uint8_t tMCvOptText_refreshCompassStyle(char* pText)
+{
+	uint8_t textPointer = 0;
+    pText[textPointer++] = TXT_2BYTE;
+    pText[textPointer++] = TXT2BYTE_CompassStyle;
+    pText[textPointer] = 0;
+    return strlen(pText);
+}
+
 uint8_t tMCvOptText_refreshTimer(char* pText)
 {
 	SSettings *settings = settingsGetPointer();
@@ -290,6 +299,12 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 			case CVOPT_Compass:	if((!t3_customview_disabled(CVIEW_T3_Compass)) || (!t3_customview_disabled(CVIEW_T3_Navigation)) || (!t7_customview_disabled(CVIEW_Compass)))
 								{
 									refreshFctPointerTable[activeLines] = tMCvOptText_refreshCompass;
+									CvOptAvailable = 1;
+								}
+				break;
+			case CVOPT_CompassStyle: if((!t3_customview_disabled(CVIEW_T3_Compass)) || (!t3_customview_disabled(CVIEW_T3_Navigation)) || (!t7_customview_disabled(CVIEW_Compass)))
+								{
+									refreshFctPointerTable[activeLines] = tMCvOptText_refreshCompassStyle;
 									CvOptAvailable = 1;
 								}
 				break;

@@ -46,6 +46,7 @@
 #include "gfx_engine.h"
 #include "tempstick.h"
 #include "cavemode.h"
+#include "compass_rose.h"
 
 
 #define CV_PROFILE_WIDTH		(600U)
@@ -58,6 +59,49 @@ extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
 
 const uint16_t BigFontSeperationLeftRight = 399;
 const uint16_t BigFontSeperationTopBottom = 240;
+
+/* iOS-style compass rose for the t3 dive view - same styling as the t7
+   surface rose (see t7_rose_cfg) but scaled to the smaller dive-view dial
+   and with 10deg ticks (no 5deg lines) to keep the diver's view uncluttered.
+   .center is filled in per call. */
+static const RoseConfig t3_rose_cfg_template = {
+    .center                  = {.x = 0, .y = 0},
+    .r_out                   = 98,   /* smaller so the outside north arrow fits the ~2px budget */
+    .r_ring_inner            = 96,
+    .r_tick_minor_tip        = 86,   /* ~10px from r_ring_inner; 30-deg ticks short for clarity */
+    .r_tick_mid_tip          = 86,
+    .r_tick_major_tip        = 86,   /* non-cardinal 30deg ticks: short, gated via show_minor_ticks */
+    .r_tick_cardinal_tip     = 70,   /* N/E/S/W: ~26px long, dominant landmark */
+    .r_label_num             = 92,   /* labels not drawn on t3 */
+    .r_label_card            = 92,
+    .r_tri_apex              = 114,  /* north arrow tip OUTSIDE the ring (base at the ring) */
+    .tick_step_deg           = 30,   /* only 30deg ticks - uncluttered dive view */
+    .tick_thickness_minor    = 3,    /* same thin weight for all non-cardinal ticks */
+    .tick_thickness_mid      = 3,
+    .tick_thickness_major    = 3,
+    .tick_thickness_cardinal = 7,    /* N/E/S/W: thicker, matches needle width */
+    .cardinal_pencil         = 1,   /* pencil-shaped cardinal indices */
+    .ring_thickness          = 2,
+    .color_tick_minor        = CLUT_Font030,   /* all non-cardinal ticks bright white */
+    .color_tick_mid          = CLUT_Font030,
+    .color_tick_major        = CLUT_Font030,
+    .color_ring              = CLUT_pluginboxSurface,
+    .color_label_num         = CLUT_Font031,
+    .color_label_card        = CLUT_Font030,
+    .color_label_card_north  = CLUT_CompassUserBackHeadingTick,   /* unused in t3 (no labels drawn) */
+    .color_north_tri         = CLUT_Font030,   /* monochrome north triangle, matches tick/needle white */
+    .r_lubber_out            = 48,   /* arrowhead apex (r_lubber_out+9 = 57) ~4px clear of the cardinal pencil-tip inner end (r_tick_cardinal_tip-9 = 61) */
+    .r_lubber_tail           = 24,   /* needle extends past centre giving a two-arm needle shape */
+    .r_lubber_in             = 0,
+    .color_lubber            = CLUT_Font030,
+    .lubber_thickness        = 7,    /* matches cardinal tick weight */
+    .lubber_pointer          = 1,
+    .lubber_head_deg         = 9,    /* wider arrowhead than t7's default 5deg for a bolder dive-view needle */
+    .marker_style            = 1,
+    .flip_display            = false,
+    .font_num                = &FontT24,
+    .font_card               = &FontT42,
+};
 
 /* Private variables ---------------------------------------------------------*/
 GFX_DrawCfgScreen	t3screen;
@@ -1957,41 +2001,9 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     }
 }
 
-point_t t3_compass_circle(uint8_t id, uint16_t degree, point_t center)
-{
-    float fCos, fSin;
-    const float piMult =  ((2 * 3.14159) / 360);
-//	const int radius[4] = {95,105,115,60};
-    const int radius[4] = {85,95,105,90};
-    static point_t forcenter = {.x = 900, .y = 500};	/* used to identify change of circle position */
-    static point_t r[4][360] = { 0 };
-
-    if((r[0][0].y == 0) || (forcenter.x != center.x) || (forcenter.y != center.y))	/* calculate values only once during first call or if center position changed */
-    {
-        for(int i=0;i<360;i++)
-        {
-            fCos = cos(i * piMult);
-            fSin = sin(i * piMult);
-            for(int j=0;j<4;j++)
-            {
-                r[j][i].x = center.x + (int)(fSin * radius[j]);
-                r[j][i].y = center.y + (int)(fCos * radius[j]);
-            }
-        }
-        forcenter.x = center.x;
-        forcenter.y = center.y;
-    }
-    if(id > 3) id = 0;
-    if(degree > 359) degree = 0;
-    return r[id][degree];
-}
-
 
 void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t ActualHeading, uint16_t UserSetHeading)
 {
-	uint8_t loop = 0;
-    uint16_t LineHeading;
-
     static int32_t LastHeading = 0;
     int32_t newHeading = 0;
     int32_t diff = 0;
@@ -2017,10 +2029,12 @@ void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t Act
     if(diffAbs2 < 0)
         diffAbs2 *= -1;
 
+    /* Round the half-step away from zero so the easing settles on the exact
+       heading instead of stalling one degree short (see t7_compass). */
     if(diffAbs <= diffAbs2)
-        newHeading = LastHeading + (diff / 2);
+        newHeading = LastHeading + (diff  + (diff  > 0 ? 1 : -1)) / 2;
     else
-        newHeading = LastHeading + (diff2 / 2);
+        newHeading = LastHeading + (diff2 + (diff2 > 0 ? 1 : -1)) / 2;
 
     if(newHeading < 0)
         newHeading += 360;
@@ -2031,57 +2045,48 @@ void t3_basics_compass(GFX_DrawCfgScreen *tXscreen, point_t center, uint16_t Act
     LastHeading = newHeading;
     ActualHeading = newHeading;
 
-    if (ActualHeading < 90)
-        ActualHeading += 360;
+    const SSettings *pSettings = settingsGetPointer();
 
-    while(ActualHeading > 359) ActualHeading -= 360;
+    RoseConfig cfg = t3_rose_cfg_template;
+    cfg.center             = center;
+    cfg.flip_display       = (bool)pSettings->FlipDisplay;
+    cfg.scale_variant      = pSettings->compassScaleVariant;
+    cfg.show_minor_ticks   = pSettings->compassMinorTicks;
+    cfg.lubber_tilt_deg    = compass_mount_phi(pSettings->compassMountTilt);
+    cfg.show_secondary_labels = 0;   /* t3 has no outside labels */
 
-    LineHeading = 360 - ActualHeading;
+    /* Nav heading: tilt-corrected heading used for the lubber-color decision.
+       The CARD draws (ticks/north triangle) use raw ActualHeading so the rose
+       rotates with the physical sensor, not the corrected reading. */
+    uint16_t nav = (uint16_t)((((int32_t)ActualHeading
+                                 + compass_mount_phi(pSettings->compassMountTilt))
+                                % 360 + 360) % 360);
 
-    GFX_draw_thick_line(9,tXscreen, t3_compass_circle(0,LineHeading, center),  t3_compass_circle(2,LineHeading, center), CLUT_Font030); // North
-    LineHeading += 90;
+    /* Lubber turns the course-marker color when the heading is within
+       compassCourseTolerance deg of the forward / back mark. */
+    cfg.color_lubber = compass_lubber_color(nav, UserSetHeading,
+                                            CLUT_Font030,
+                                            CLUT_CompassUserHeadingTick,
+                                            CLUT_CompassUserBackHeadingTick,
+                                            pSettings->compassCourseTolerance);
 
-    for (loop = 0; loop < 3; loop++)
+    compass_draw_ring          (tXscreen, &cfg);
+    compass_draw_ticks         (tXscreen, &cfg, (uint16_t)ActualHeading);
+    compass_draw_north_triangle(tXscreen, &cfg, (uint16_t)ActualHeading);
+    compass_draw_lubber_line   (tXscreen, &cfg);
+    /* No outside number/letter labels on t3 (uncluttered big-font dive view);
+       North is the monochrome triangle inside the ring pointing outward. */
+    if(UserSetHeading != 0u)
     {
-    	if(LineHeading > 359) LineHeading -= 360;
-		GFX_draw_thick_line(9,tXscreen, t3_compass_circle(0,LineHeading, center),  t3_compass_circle(2,LineHeading, center), CLUT_Font031); // Main Ticks
-		LineHeading += 90;
+        compass_draw_cone_marker(tXscreen, &cfg, (uint16_t)ActualHeading,
+                                 UserSetHeading,
+                                 pSettings->compassCourseTolerance,
+                                 CLUT_CompassUserHeadingTick, true);
+        compass_draw_cone_marker(tXscreen, &cfg, (uint16_t)ActualHeading,
+                                 (uint16_t)((UserSetHeading + 180u) % 360u),
+                                 pSettings->compassCourseTolerance,
+                                 CLUT_CompassUserBackHeadingTick, false);
     }
-
-    LineHeading = 360 - ActualHeading;
-    LineHeading += 45;
-
-    for (loop = 0; loop < 4; loop++)
-    {
-		if(LineHeading > 359) LineHeading -= 360;
-		GFX_draw_thick_line(5,tXscreen, t3_compass_circle(1,LineHeading, center),  t3_compass_circle(2,LineHeading, center), CLUT_Font031); // Subtick
-		LineHeading += 90;
-    }
-
-    LineHeading = 360 - ActualHeading;
-    LineHeading += 22;
-    for (loop = 0; loop < 8; loop++)
-    {
-       if(LineHeading > 359) LineHeading -= 360;
-       GFX_draw_thick_line(3,tXscreen, t3_compass_circle(1,LineHeading, center),  t3_compass_circle(2,LineHeading, center), CLUT_Font031); // Subtick
-       LineHeading += 45;
-    }
-    if(UserSetHeading)
-    {
-        LineHeading = UserSetHeading + 360 - ActualHeading;
-        if(LineHeading > 359) LineHeading -= 360;
-        GFX_draw_thick_line(9,tXscreen, t3_compass_circle(3,LineHeading, center),  t3_compass_circle(2,LineHeading, center), CLUT_CompassUserHeadingTick);
-
-        // Rï¿½ckpeilung, User Back Heading
-        LineHeading = UserSetHeading + 360 + 180 - ActualHeading;
-        if(LineHeading > 359) LineHeading -= 360;
-        if(LineHeading > 359) LineHeading -= 360;
-        GFX_draw_thick_line(9,tXscreen, t3_compass_circle(3,LineHeading, center),  t3_compass_circle(2,LineHeading, center), CLUT_CompassUserBackHeadingTick);
-    }
-
-    GFX_draw_circle(tXscreen, center, 106, CLUT_Font030);
-    GFX_draw_circle(tXscreen, center, 107, CLUT_Font030);
-    GFX_draw_circle(tXscreen, center, 108, CLUT_Font030);
 }
 
 uint8_t t3_GetEnabled_customviews()

@@ -34,6 +34,17 @@
 #include "text_multilanguage.h"
 #include "configuration.h"
 
+/* Compile-time guard for the 2-byte text space.
+   A TXT2BYTE token is emitted as a single byte after the TXT_2BYTE marker, so
+   every TXT2BYTE_* value must fit in [1,255] and TXT2BYTE_END (one past the last
+   token) must stay <= 256. gfx_engine.c's 2-byte lookup also scans
+   (TXT2BYTE_END - TXT2BYTE_START) entries. Crossing 256 silently blanks ALL
+   2-byte UI text. If this array declares a negative size, TXT2BYTE_END has
+   overflowed: inline new labels as ASCII (see compass_rose.c / tMenuEditCvOption.c)
+   or introduce a wider TXT3BYTE scheme instead of adding more tokens.
+   (C99: negative-sized array is the portable static-assert.) */
+typedef char txt2byte_token_space_guard[((int)TXT2BYTE_END <= 256) ? 1 : -1];
+
 /* Text ----------------------------------------------------------------------*/
 
 // Menu
@@ -2080,6 +2091,62 @@ static uint8_t text_FR_AscentSpeed[] = "";
 static uint8_t text_IT_AscentSpeed[] = "";
 static uint8_t text_ES_AscentSpeed[] = "";
 
+/* Compass style sub-page */
+static uint8_t text_EN_CompassStyle[] = "Compass Style";
+static uint8_t text_DE_CompassStyle[] = "Kompassstil";
+static uint8_t text_FR_CompassStyle[] = "";
+static uint8_t text_IT_CompassStyle[] = "";
+static uint8_t text_ES_CompassStyle[] = "";
+
+static uint8_t text_EN_CompassScale[] = "Scale Division";
+static uint8_t text_DE_CompassScale[] = "Skalenteilung";
+static uint8_t text_FR_CompassScale[] = "";
+static uint8_t text_IT_CompassScale[] = "";
+static uint8_t text_ES_CompassScale[] = "";
+
+
+
+static uint8_t text_EN_SecLabels[] = "Minor Labels";
+static uint8_t text_DE_SecLabels[] = "Nebenlabels";
+static uint8_t text_FR_SecLabels[] = "";
+static uint8_t text_IT_SecLabels[] = "";
+static uint8_t text_ES_SecLabels[] = "";
+
+static uint8_t text_EN_CourseTol[] = "Course Tolerance";
+static uint8_t text_DE_CourseTol[] = "Kurstoleranz";
+static uint8_t text_FR_CourseTol[] = "";
+static uint8_t text_IT_CourseTol[] = "";
+static uint8_t text_ES_CourseTol[] = "";
+
+static uint8_t text_EN_MinorTicks[] = "Minor Ticks";
+static uint8_t text_DE_MinorTicks[] = "Feinteilung";
+static uint8_t text_FR_MinorTicks[] = "";
+static uint8_t text_IT_MinorTicks[] = "";
+static uint8_t text_ES_MinorTicks[] = "";
+
+static uint8_t text_EN_MountTilt[] = "Wrist Offset";
+static uint8_t text_DE_MountTilt[] = "Tragewinkel";
+static uint8_t text_FR_MountTilt[] = "";
+static uint8_t text_IT_MountTilt[] = "";
+static uint8_t text_ES_MountTilt[] = "";
+
+static uint8_t text_EN_TiltNone[] = "None";
+static uint8_t text_DE_TiltNone[] = "Keine";
+static uint8_t text_FR_TiltNone[] = "";
+static uint8_t text_IT_TiltNone[] = "";
+static uint8_t text_ES_TiltNone[] = "";
+
+static uint8_t text_EN_TiltLeft[] = "Left";
+static uint8_t text_DE_TiltLeft[] = "Links";
+static uint8_t text_FR_TiltLeft[] = "";
+static uint8_t text_IT_TiltLeft[] = "";
+static uint8_t text_ES_TiltLeft[] = "";
+
+static uint8_t text_EN_TiltRight[] = "Right";
+static uint8_t text_DE_TiltRight[] = "Rechts";
+static uint8_t text_FR_TiltRight[] = "";
+static uint8_t text_IT_TiltRight[] = "";
+static uint8_t text_ES_TiltRight[] = "";
 
 /* Lookup Table -------------------------------------------------------------*/
 
@@ -2409,5 +2476,15 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_FUNCTION, 		{text_EN_Function, text_DE_Function, text_FR_Function, text_IT_Function, text_ES_Function}},
 	{(uint8_t)TXT2BYTE_AscentSpeed, 	{text_EN_AscentSpeed, text_DE_AscentSpeed, text_FR_AscentSpeed, text_IT_AscentSpeed, text_ES_AscentSpeed}},
 
+	/* Compass style sub-page */
+	{(uint8_t)TXT2BYTE_CompassStyle,	{text_EN_CompassStyle, text_DE_CompassStyle, text_FR_CompassStyle, text_IT_CompassStyle, text_ES_CompassStyle}},
+	{(uint8_t)TXT2BYTE_CompassScale,	{text_EN_CompassScale, text_DE_CompassScale, text_FR_CompassScale, text_IT_CompassScale, text_ES_CompassScale}},
+	{(uint8_t)TXT2BYTE_SecLabels,		{text_EN_SecLabels, text_DE_SecLabels, text_FR_SecLabels, text_IT_SecLabels, text_ES_SecLabels}},
+	{(uint8_t)TXT2BYTE_CourseTol,		{text_EN_CourseTol, text_DE_CourseTol, text_FR_CourseTol, text_IT_CourseTol, text_ES_CourseTol}},
+	{(uint8_t)TXT2BYTE_MinorTicks,		{text_EN_MinorTicks, text_DE_MinorTicks, text_FR_MinorTicks, text_IT_MinorTicks, text_ES_MinorTicks}},
+	{(uint8_t)TXT2BYTE_MountTilt,		{text_EN_MountTilt, text_DE_MountTilt, text_FR_MountTilt, text_IT_MountTilt, text_ES_MountTilt}},
+	{(uint8_t)TXT2BYTE_TiltNone,		{text_EN_TiltNone, text_DE_TiltNone, text_FR_TiltNone, text_IT_TiltNone, text_ES_TiltNone}},
+	{(uint8_t)TXT2BYTE_TiltLeft,		{text_EN_TiltLeft, text_DE_TiltLeft, text_FR_TiltLeft, text_IT_TiltLeft, text_ES_TiltLeft}},
+	{(uint8_t)TXT2BYTE_TiltRight,		{text_EN_TiltRight, text_DE_TiltRight, text_FR_TiltRight, text_IT_TiltRight, text_ES_TiltRight}},
 
 };

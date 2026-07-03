@@ -37,6 +37,7 @@
 #include "data_central.h"
 #include "decom.h"
 #include "gfx_fonts.h"
+#include "device_time_hooks.h"   /* sim_pin_update_necessary_off (Phase 0 overlay) */
 #include "logbook_miniLive.h"
 #include "math.h"
 #include "tComm.h"
@@ -50,8 +51,52 @@
 #include "tMenuEditSetpoint.h"
 #include "vpm.h"
 #include "cavemode.h"
+#include "compass_rose.h"
 
 #define TIMER_ACTION_DELAY_S 10
+
+
+/* Bv6 iOS-style compass rose configuration for t7 surface view.
+   Center derived from CUSTOMBOX_LINE_LEFT (250) + CUSTOMBOX_INSIDE_OFFSET (2)
+   + CUSTOMBOX_SPACE_INSIDE/2 (148) = 400 in x, and 250 in y (matches the dial
+   center the legacy t7_compass_circle() table used). */
+static const RoseConfig t7_rose_cfg = {
+    .center                  = {.x = 400, .y = 220},
+    .r_out                   = 112,
+    .r_ring_inner            = 110,  /* r_out - 2 */
+    .r_tick_minor_tip        = 105,   /* 5px per design spec; 109 gave a 1px nub the toggle couldn't reveal */
+    .r_tick_mid_tip          = 104,
+    .r_tick_major_tip        = 95,
+    .r_tick_cardinal_tip     = 95,   /* same as major: no change to t7 */
+    .r_label_num             = 125,  /* pushed out from 121: ~3px margin clear of the ring + bearing-marker caps */
+    .r_label_card            = 128,
+    .r_tri_apex              = 120,
+    .tick_step_deg           = 10,  /* Medium = 10/30/90; the 10deg minors gate on compassMinorTicks */
+    .tick_thickness_minor    = 1,
+    .tick_thickness_mid      = 2,
+    .tick_thickness_major    = 3,
+    .tick_thickness_cardinal = 3,
+    .cardinal_pencil         = 0,
+    .color_tick_minor        = CLUT_Font031,
+    .color_tick_mid          = CLUT_Font031,
+    .color_tick_major        = CLUT_Font030,
+    .color_ring              = CLUT_pluginboxSurface,  /* dark grey: lets the white ticks/letters stand out */
+    .color_label_num         = CLUT_Font030,  /* clean white (was grey Font031), matches cardinals */
+    .color_label_card        = CLUT_Font030,
+    .color_label_card_north  = CLUT_Font030,  /* monochrome: same as other cardinals */
+    .color_north_tri         = CLUT_CompassUserBackHeadingTick,
+    .r_lubber_out            = 75,   /* arrowhead apex (r_lubber_out+9 = 84) ~4px clear of the bearing-marker stem inner end (r_out-24 = 88) */
+    .r_lubber_in             = 40,   /* tail stops short of the central FontT54 heading readout (overlapped it when tilted) */
+    .color_lubber            = CLUT_Font030,
+    .lubber_thickness        = 5,
+    .lubber_pointer          = 1,
+    .flip_display            = false,
+    .font_num                = &FontT24,
+    .font_card               = &FontT42,
+    .marker_style            = 0,    /* T/arc-cap */
+    .r_lubber_tail           = 0,    /* no tail (t7) */
+    .ring_thickness          = 2,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -90,7 +135,6 @@ extern uint8_t write_gas(char *text, uint8_t oxygen, uint8_t helium);
 /* Private variables ---------------------------------------------------------*/
 
 GFX_DrawCfgScreen	t7screen;
-GFX_DrawCfgScreen	t7screenCompass;
 
 /* left 3 fields
  * right 3 fields
@@ -101,7 +145,6 @@ GFX_DrawCfgWindow	t7l1, t7l2, t7l3;
 GFX_DrawCfgWindow	t7r1, t7r2, t7r3;
 GFX_DrawCfgWindow	t7c1, t7batt, t7c2, t7charge, t7voltage;
 GFX_DrawCfgWindow	t7cH, t7cC, t7cW, t7cY0free;
-GFX_DrawCfgWindow	t7pCompass;
 GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 
 uint8_t selection_customview = LLC_Temperature;
@@ -188,11 +231,6 @@ void t7_init(void)
     t7screen.ImageHeight = 480;
     t7screen.ImageWidth = 800;
     t7screen.LayerIndex = 1;
-
-    t7screenCompass.FBStartAdress = 0;
-    t7screenCompass.ImageHeight = 240;
-    t7screenCompass.ImageWidth = 1600;
-    t7screenCompass.LayerIndex = 0;
 
     if(!pSettings->FlipDisplay)
     {
@@ -349,15 +387,6 @@ void t7_init(void)
 		t7c2.WindowX1 = CUSTOMBOX_LINE_RIGHT - CUSTOMBOX_INSIDE_OFFSET;
 		t7c2.WindowY0 = 0;
 		t7c2.WindowY1 = 69;
-
-		t7pCompass.Image = &t7screenCompass;
-		t7pCompass.WindowNumberOfTextLines = 1;
-		t7pCompass.WindowLineSpacing = 100; // Abstand von Y0
-		t7pCompass.WindowTab = 100;
-		t7pCompass.WindowX0 = 0;
-		t7pCompass.WindowX1 = 1600-1;
-		t7pCompass.WindowY0 = 0;
-		t7pCompass.WindowY1 = 100-1;
     }
     else
     {
@@ -527,19 +556,7 @@ void t7_init(void)
     t7c2.WindowY0 = 480 - 69;
     t7c2.WindowY1 = 479;
 
-/* Rotating compass */
-    t7pCompass.Image = &t7screenCompass;
-    t7pCompass.WindowNumberOfTextLines = 1;
-    t7pCompass.WindowLineSpacing = 100; // Abstand von Y0
-    t7pCompass.WindowTab = 100;
-    t7pCompass.WindowX0 = 0;
-    t7pCompass.WindowX1 = 1600-1;
-    t7pCompass.WindowY0 = 479 - 75;
-    t7pCompass.WindowY1 = 479;
-
     }
-
-    init_t7_compass();
 }
 
 
@@ -729,7 +746,17 @@ void t7_refresh_surface(void)
 
 
     // update in all customview modes
-    if(DataEX_check_RTE_version__needs_update() || font_update_required())
+    if(sim_pin_update_necessary_off)
+    {
+        /* Sim pins the warning off; production path runs the real checks.
+         * Reason: the CPU2 mock's lost_connection counters cycle faster
+         * than the firmware polls them, so "Please update RTE" intermittently
+         * appears mid-frame and desyncs from frame capture. Production sets
+         * the flag to 0 (device_time_hooks_real.c) so RTE-update detection is
+         * unaffected. */
+        updateNecessary = 0;
+    }
+    else if(DataEX_check_RTE_version__needs_update() || font_update_required())
         updateNecessary = 1;
     else
         updateNecessary = 0;
@@ -2246,7 +2273,7 @@ void t7_refresh_customview(void)
 
     case CVIEW_Compass:
     default:
-
+        {
 	    if(pSettings->compassInertia)
 	    {
 	    	heading = (uint16_t)compass_getCompensated();
@@ -2255,6 +2282,11 @@ void t7_refresh_customview(void)
 	    {
 	    	heading = (uint16_t)stateUsed->lifeData.compass_heading;
 	    }
+        /* Nav heading: tilt-corrected heading shown numerically.
+           Raw heading drives the rose card (ticks/labels). */
+        uint16_t nav = (uint16_t)(((int32_t)heading
+                                   + compass_mount_phi(pSettings->compassMountTilt)
+                                   + 360) % 360);
         snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE, TXT2BYTE_Compass);
         GFX_write_string(&FontT42,&t7cH,text,0);
         t7_compass(heading, stateUsed->diveSettings.compassHeading);
@@ -2262,23 +2294,26 @@ void t7_refresh_customview(void)
         if(!pSettings->FlipDisplay)
         {
         	t7cY0free.WindowX0 += 15;
-        	t7cY0free.WindowY0 = 230;
+        	t7cY0free.WindowY0 = 197;
         }
         else
         {
-        	t7cY0free.WindowX0 -= 15;
-        	t7cY0free.WindowY0 = 0;
-        	t7cY0free.WindowY1 = 250;
+        	/* Exact screen-mirror (799-x, 479-y) of the unflipped readout window
+        	   {X0=267,Y0=197}..{X1=547,Y1=365}. The flipped glyph path anchors at
+        	   WindowX1/WindowY1, so mirroring the window lands the heading readout
+        	   at the true 180-deg position; the old hand-tuned {Y0=0,Y1=250} sat
+        	   several px off rotate180(unflipped). */
+        	t7cY0free.WindowX0 = 799 - 547;   /* 252 = 799 - unflipped X1 */
+        	t7cY0free.WindowX1 = 799 - 267;   /* 532 = 799 - unflipped X0 (252+15) */
+        	t7cY0free.WindowY0 = 479 - 365;   /* 114 = 479 - unflipped Y1 */
+        	t7cY0free.WindowY1 = 479 - 197;   /* 282 = 479 - unflipped Y0 */
         }
-        snprintf(text,100,"\030\001%03i`",heading);
+        snprintf(text,100,"\030\001%03i`",nav);
         GFX_write_string(&FontT54,&t7cY0free,text,0);
         if(!pSettings->FlipDisplay)
         {
         	t7cY0free.WindowX0 -= 15;
         }
-        else
-        {
-        	t7cY0free.WindowX0 += 15;
         }
         break;
 
@@ -3278,44 +3313,6 @@ void draw_frame(_Bool PluginBoxHeader, _Bool LinesOnTheSides, uint8_t colorBox, 
 }
 
 
-/* Compass like TCOS shellfish
- * input is 0 to 359
- * 2 px / 1 degree
- * Range is 148 degree with CUSTOMBOX_SPACE_INSIDE = 296
- * one side is 74 degree (less than 90 degree)
- * internal 360 + 180 degree of freedom
- * use positive values only, shift by 360 below 90 mid position
- */
-
-
-point_t t7_compass_circle(uint8_t id, uint16_t degree)
-{
-    float fCos, fSin;
-    const float piMult =  ((2 * 3.14159) / 360);
-//	const int radius[4] = {95,105,115,60};
-    const int radius[4] = {95,105,115,100};
-    const point_t offset = {.x = 400, .y = 250};
-
-    static point_t r[4][360] = { 0 };
-
-    if(r[0][0].y == 0)		/* calc table at first call only */
-    {
-        for(int i=0;i<360;i++)
-        {
-            fCos = cos(i * piMult);
-            fSin = sin(i * piMult);
-            for(int j=0;j<4;j++)
-            {
-                r[j][i].x = offset.x + (int)(fSin * radius[j]);
-                r[j][i].y = offset.y + (int)(fCos * radius[j]);
-            }
-        }
-    }
-    if(id > 3) id = 0;
-    if(degree > 359) degree = 0;
-    return r[id][degree];
-}
-
 /* range should be 0 to 30 bar if 300 meter with 100% of nitrogen or helium
  * T24 is 28 high
 */
@@ -3780,10 +3777,6 @@ void t7_SummaryOfLeftCorner(void)
 
 void t7_compass(uint16_t ActualHeading, uint16_t UserSetHeading)
 {
-	uint16_t ActualHeadingRose;
-    uint16_t LeftBorderHeading, LineHeading;
-    uint32_t offsetPicture;
-    point_t start, stop, center;
     static int32_t LastHeading = 0;
     int32_t newHeading = 0;
     int32_t diff = 0;
@@ -3792,8 +3785,8 @@ void t7_compass(uint16_t ActualHeading, uint16_t UserSetHeading)
     int32_t diffAbs = 0;
     int32_t diffAbs2 = 0;
 
-	SSettings* pSettings;
-	pSettings = settingsGetPointer();
+    SSettings* pSettings;
+    pSettings = settingsGetPointer();
 
     newHeading = ActualHeading;
 
@@ -3813,10 +3806,14 @@ void t7_compass(uint16_t ActualHeading, uint16_t UserSetHeading)
         diffAbs2 *= -1;
 
 
+    /* Round the half-step away from zero so a remaining difference of 1
+       still advances; plain (diff/2) truncates to 0 and stalls one degree
+       short of the target, which knocks held cardinal headings off the
+       exact-angle fast path (skewed letters + non-perpendicular ticks). */
     if(diffAbs <= diffAbs2)
-        newHeading = LastHeading + (diff / 2);
+        newHeading = LastHeading + (diff  + (diff  > 0 ? 1 : -1)) / 2;
     else
-        newHeading = LastHeading + (diff2 / 2);
+        newHeading = LastHeading + (diff2 + (diff2 > 0 ? 1 : -1)) / 2;
 
     if(newHeading < 0)
         newHeading += 360;
@@ -3826,243 +3823,55 @@ void t7_compass(uint16_t ActualHeading, uint16_t UserSetHeading)
 
     LastHeading = newHeading;
     ActualHeading = newHeading;
-    ActualHeadingRose = ActualHeading;
 
-    if(pSettings->FlipDisplay)
-    {
-    	ActualHeadingRose = 360 - ActualHeadingRose;
-    	if (ActualHeadingRose < 170) ActualHeadingRose += 360;
-    }
-    else
-    {
-    	if (ActualHeadingRose < 90) ActualHeadingRose += 360;
-    	ActualHeading = ActualHeadingRose;
-    }
+    /* Bv6 iOS-style fixed rose: ring + ticks + radial labels + red N triangle.
+       Optional T-shape course markers when UserSetHeading is set. */
+    RoseConfig cfg = t7_rose_cfg;
+    cfg.flip_display = (bool)pSettings->FlipDisplay;
 
-    // new hw 160822
-//	if (ActualHeading >= 360 + 90)
-//		ActualHeading = 360;
+    /* Wire user-configurable compass variants from settings. */
+    cfg.scale_variant         = pSettings->compassScaleVariant;
+    cfg.show_minor_ticks      = pSettings->compassMinorTicks;
+    cfg.show_secondary_labels = pSettings->compassSecondaryLabels;
+    cfg.lubber_tilt_deg       = compass_mount_phi(pSettings->compassMountTilt);
 
-    LeftBorderHeading = 2 * (ActualHeadingRose - (CUSTOMBOX_SPACE_INSIDE/4));
+    /* Nav heading: tilt-corrected heading used for the lubber-color decision
+       and course-marker comparison.  The CARD itself (ticks/labels/north via
+       compass_draw_*) uses raw ActualHeading so the rose rotates with the
+       physical sensor, not the corrected reading. */
+    uint16_t nav = (uint16_t)((((int32_t)ActualHeading + compass_mount_phi(pSettings->compassMountTilt))
+                                 % 360 + 360) % 360);
 
-    if(pSettings->FlipDisplay) /* add offset caused by mirrowed drawing */
-    {
-    	LeftBorderHeading += 2 * 80;
-    }
+    /* Course tolerance from settings (clamped 2..15 in the settings layer). */
+    uint8_t tol = pSettings->compassCourseTolerance;
 
-    offsetPicture = LeftBorderHeading * t7screenCompass.ImageHeight * 2;
+    /* Lubber turns the course-marker color when the heading is within
+       tol deg of the forward / back mark (on-course confirmation). */
+    cfg.color_lubber = compass_lubber_color(nav, UserSetHeading,
+                                            CLUT_Font030,
+                                            CLUT_CompassUserHeadingTick,
+                                            CLUT_CompassUserBackHeadingTick, tol);
 
-/* the background is used to draw the rotating compass rose */
-    background.pointer = t7screenCompass.FBStartAdress+offsetPicture;
-    background.x0 = CUSTOMBOX_LINE_LEFT + CUSTOMBOX_INSIDE_OFFSET;
-    if(!pSettings->FlipDisplay)
-    {
-    	background.y0 = 65;
-    }
-    else
-    {
-    	background.y0 = 480 - t7screenCompass.ImageHeight - 65;
-    }
-
-    background.width = CUSTOMBOX_SPACE_INSIDE;
-    background.height = t7screenCompass.ImageHeight;
-
-
-    start.x = CUSTOMBOX_LINE_LEFT + CUSTOMBOX_INSIDE_OFFSET + (CUSTOMBOX_SPACE_INSIDE/2);
-    stop.x = start.x;
-    start.y = 65;
-    stop.y =  start.y + 55;
-    GFX_draw_line(&t7screen, start, stop, CLUT_Font030);
-
-
-    center.x = start.x;
-    center.y = 300;
-
-    stop.x = center.x + 44;
-    stop.y = center.y + 24;
-
-
-    while(ActualHeading > 359) ActualHeading -= 360;
-
-    LineHeading = 360 - ActualHeading;
-    GFX_draw_thick_line(9,&t7screen, t7_compass_circle(0,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font030); // North
-    LineHeading += 90;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(9,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031); // Maintick
-    LineHeading += 90;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(9,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 90;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(9,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-
-    LineHeading = 360 - ActualHeading;
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(5,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031); // Subtick
-    LineHeading += 90;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(5,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 90;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(5,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 90;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(5,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-
-    LineHeading = 360 - ActualHeading;
-    LineHeading += 22;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031); // Subtick
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031); // Subtick
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-    LineHeading += 45;
-    if(LineHeading > 359) LineHeading -= 360;
-    GFX_draw_thick_line(3,&t7screen, t7_compass_circle(1,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_Font031);
-
-    if(UserSetHeading)
-    {
-        LineHeading = UserSetHeading + 360 - ActualHeading;
-        if(LineHeading > 359) LineHeading -= 360;
-        GFX_draw_thick_line(9,&t7screen, t7_compass_circle(3,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_CompassUserHeadingTick);
-
-        // Rï¿½ckpeilung, User Back Heading
-        LineHeading = UserSetHeading + 360 + 180 - ActualHeading;
-        if(LineHeading > 359) LineHeading -= 360;
-        if(LineHeading > 359) LineHeading -= 360;
-        GFX_draw_thick_line(9,&t7screen, t7_compass_circle(3,LineHeading),  t7_compass_circle(2,LineHeading), CLUT_CompassUserBackHeadingTick);
+    /* Tick density (the 10deg minor tier) is now governed by the user's
+       compassMinorTicks setting via cfg.show_minor_ticks, on both surface and
+       dive, rather than an automatic dive-mode reduction. */
+    compass_draw_ring          (&t7screen, &cfg);
+    compass_draw_ticks         (&t7screen, &cfg, ActualHeading);
+    compass_draw_labels        (&t7screen, &cfg, ActualHeading);
+    compass_draw_lubber_line   (&t7screen, &cfg);
+    /* North is marked by the monochrome "N" cardinal label; the separate
+       north triangle is intentionally omitted. */
+    if (UserSetHeading != 0u) {
+        compass_draw_t_marker(&t7screen, &cfg, ActualHeading,
+                              UserSetHeading, tol, CLUT_CompassUserHeadingTick);
+        compass_draw_t_marker(&t7screen, &cfg, ActualHeading,
+                              (uint16_t)(((uint32_t)UserSetHeading + 180u) % 360u),
+                              tol, CLUT_CompassUserBackHeadingTick);
     }
 
-    center.x = start.x;
-    center.y = 250;
-    GFX_draw_circle(&t7screen, center, 116, CLUT_Font030);
-    GFX_draw_circle(&t7screen, center, 118, CLUT_Font030);
-    GFX_draw_circle(&t7screen, center, 117, CLUT_Font030);
-
-
-}
-
-
-/* Font_T42: N is 27 px, S is 20 px, W is 36 px, E is 23 px
- * max is NW with 63 px
- * Font_T24: N is 15 px, S is 12 px, W is 20 px, E is 13 px
- * max is NW with 35 px
- * NE is 28 px
- * SW is 32 px
- * SE is 25 px
- * space between each is 45 px * 2
- * FirstItem List
- * \177 \177 prepare for size
-*/
-void init_t7_compass(void)
-{
-    t7screenCompass.FBStartAdress = getFrame(21);
-
-    char text[256];
-    uint8_t textpointer = 0;
-
-    text[textpointer++] = '\030';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 76; // 90 - 14
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'N';
-    text[textpointer++] = 'E'; // 96 + 28 = 124 total
-    text[textpointer++] = '\017';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 64; // 90 - 14 - 12
-    text[textpointer++] = 'E'; // 124 + 74 + 23 = 221 total
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 66; // 90 - 11 - 13
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'S';
-    text[textpointer++] = 'E';
-    text[textpointer++] = '\017';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 68; // 90 - 12 - 10
-    text[textpointer++] = 'S';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 64; // 90 - 10 - 16
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'S';
-    text[textpointer++] = 'W';
-    text[textpointer++] = '\017';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 56; // 90 - 16 - 18
-    text[textpointer++] = 'W';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 54; // 90 - 18 - 18
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'N';
-    text[textpointer++] = 'W';
-    text[textpointer++] = '\017';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 59; // 90 - 17 - 14
-    text[textpointer++] = 'N';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 63; // 90 - 13 - 14
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'N';
-    text[textpointer++] = 'E';
-    text[textpointer++] = '\017';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 64; // 90 - 14 - 12
-    text[textpointer++] = 'E';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 66; // 90 - 11 - 13
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'S';
-    text[textpointer++] = 'E';
-    text[textpointer++] = '\017';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 68; // 90 - 12 - 10
-    text[textpointer++] = 'S';
-    text[textpointer++] = '\177';
-    text[textpointer++] = '\177';
-    text[textpointer++] = 64; // 90 - 10 - 16
-    text[textpointer++] = '\016';
-    text[textpointer++] = '\016';
-    text[textpointer++] = 'S';
-    text[textpointer++] = 'W';
-    text[textpointer++] = '\017';
-    text[textpointer++] = 0; // end
-
-    GFX_write_string(&FontT42,&t7pCompass,text,1);
-
-    releaseAllFramesExcept(21,t7screenCompass.FBStartAdress);
+    /* The numeric heading is drawn by the CVIEW_Compass case via the
+       established windowed GFX_write_string(&FontT54, &t7cY0free, ...)
+       path; t7_compass() only renders the rose graphics. */
 }
 
 

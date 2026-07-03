@@ -46,6 +46,8 @@ static openFunc_t openFctPointerTable[MAXLINES];		/* function pointer for refres
 static void openEdit_Timer(void);
 void openEdit_Compass(void);
 static void openEdit_Cave(void);
+/* openEdit_CompassStyle is non-static (declared in tMenuEditCvOption.h) so the
+   dive-mode Xtra menu can open the Compass Style page during a dive. */
 
 /* Announced function prototypes -----------------------------------------------*/
 uint8_t OnAction_Compass		(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
@@ -56,6 +58,11 @@ uint8_t OnAction_InertiaLevel	(uint32_t editId, uint8_t blockNumber, uint8_t dig
 static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_CaveAutoStart(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_CaveSwapMode(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CompassScaleVariant(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CompassSecondaryLabels(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CompassCourseTolerance(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CompassMinorTicks(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_CompassMountTilt(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 
 /* Exported functions --------------------------------------------------------*/
@@ -68,6 +75,8 @@ void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index)
 		switch(cvOptId)
 		{
 			case CVOPT_Compass:	openFctPointerTable[index] = openEdit_Compass;
+				break;
+			case CVOPT_CompassStyle: openFctPointerTable[index] = openEdit_CompassStyle;
 				break;
 			case CVOPT_Timer: openFctPointerTable[index] = openEdit_Timer;
 				break;
@@ -451,5 +460,233 @@ static uint8_t OnAction_CaveSwapMode(uint32_t editId, uint8_t blockNumber, uint8
 	return UNSPECIFIC_RETURN;
 }
 
+
+
+/* Append the scale-variant value label as plain ASCII into dst, returning the
+   number of chars written. Inlined instead of using two TXT2BYTE tokens: the
+   OSTC 2-byte text space is one byte wide and the compass menu would otherwise
+   push TXT2BYTE_END past 255. The value is a short glyph string, not prose. */
+static uint8_t compassScaleVariantStr(uint8_t variant, char *dst)
+{
+    const char *s = (variant == 0) ? "30`" : "8pt";   /* "30`" = 30 deg (`=deg glyph) / "8pt" */
+    uint8_t n = 0;
+    while(s[n]) { dst[n] = s[n]; n++; }
+    return n;
+}
+
+/* Helper: map compassMountTilt to its display TXT2BYTE code */
+static uint8_t compassMountTiltCode(uint8_t tilt)
+{
+    if(tilt == 1)
+        return TXT2BYTE_TiltLeft;
+    if(tilt == 2)
+        return TXT2BYTE_TiltRight;
+    return TXT2BYTE_TiltNone;
+}
+
+
+void refresh_CompassStyle(void)
+{
+    SSettings *settings = settingsGetPointer();
+    char text[32];
+    uint8_t textIndex;
+
+    /* page title */
+    text[0] = '\001';
+    text[1] = TXT_2BYTE;
+    text[2] = TXT2BYTE_CompassStyle;
+    text[3] = 0;
+    write_topline(text);
+
+    /* Scale row: label + current value name */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_CompassScale;
+    text[textIndex++] = ':';
+    text[textIndex++] = ' ';
+    textIndex += compassScaleVariantStr(settings->compassScaleVariant, &text[textIndex]);
+    text[textIndex++] = 0;
+    write_label_var(30, 800, ME_Y_LINE1, &FontT48, text);
+
+    /* SecondaryLabels and MinorTicks: refresh the on/off indicator */
+    tMenuEdit_refresh_field(StMOption_CompassStyle_Secondary);
+    tMenuEdit_refresh_field(StMOption_CompassStyle_MinorTicks);
+
+    /* Course tolerance row: label + current value */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_CourseTol;
+    text[textIndex++] = ':';
+    text[textIndex++] = ' ';
+    textIndex += snprintf(&text[textIndex], 4, "%u`", settings->compassCourseTolerance);
+    write_label_var(30, 800, ME_Y_LINE4, &FontT48, text);
+
+    /* Wrist offset row: label + current value name */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_MountTilt;
+    text[textIndex++] = ':';
+    text[textIndex++] = ' ';
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = compassMountTiltCode(settings->compassMountTilt);
+    text[textIndex++] = 0;
+    write_label_var(30, 800, ME_Y_LINE5, &FontT48, text);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonNext);
+}
+
+
+void openEdit_CompassStyle(void)
+{
+    SSettings *settings = settingsGetPointer();
+    char text[32];
+    uint8_t textIndex;
+
+    set_globalState(StMOption_CompassStyle);
+    resetMenuEdit(CLUT_MenuPageHardware);
+
+    text[0] = '\001';
+    text[1] = TXT_2BYTE;
+    text[2] = TXT2BYTE_CompassStyle;
+    text[3] = 0;
+    write_topline(text);
+
+    /* LINE1: Scale cycler */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_CompassScale;
+    text[textIndex++] = ':';
+    text[textIndex++] = ' ';
+    textIndex += compassScaleVariantStr(settings->compassScaleVariant, &text[textIndex]);
+    text[textIndex++] = 0;
+    write_field_button(StMOption_CompassStyle_Scale, 30, 800, ME_Y_LINE1, &FontT48, text);
+
+    /* LINE2: Minor labels on/off */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_SecLabels;
+    text[textIndex++] = 0;
+    write_field_on_off(StMOption_CompassStyle_Secondary, 30, 800, ME_Y_LINE2, &FontT48, text, settings->compassSecondaryLabels);
+
+    /* LINE3: Minor ticks on/off */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_MinorTicks;
+    text[textIndex++] = 0;
+    write_field_on_off(StMOption_CompassStyle_MinorTicks, 30, 800, ME_Y_LINE3, &FontT48, text, settings->compassMinorTicks);
+
+    /* LINE4: Course tolerance +/- */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_CourseTol;
+    text[textIndex++] = ':';
+    text[textIndex++] = ' ';
+    textIndex += snprintf(&text[textIndex], 4, "%u`", settings->compassCourseTolerance);
+    write_field_button(StMOption_CompassStyle_CourseTol, 30, 800, ME_Y_LINE4, &FontT48, text);
+
+    /* LINE5: Wrist offset cycler */
+    textIndex = 0;
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = TXT2BYTE_MountTilt;
+    text[textIndex++] = ':';
+    text[textIndex++] = ' ';
+    text[textIndex++] = TXT_2BYTE;
+    text[textIndex++] = compassMountTiltCode(settings->compassMountTilt);
+    text[textIndex++] = 0;
+    write_field_button(StMOption_CompassStyle_MountTilt, 30, 800, ME_Y_LINE5, &FontT48, text);
+
+    setEvent(StMOption_CompassStyle_Scale,     (uint32_t)OnAction_CompassScaleVariant);
+    setEvent(StMOption_CompassStyle_Secondary, (uint32_t)OnAction_CompassSecondaryLabels);
+    setEvent(StMOption_CompassStyle_CourseTol, (uint32_t)OnAction_CompassCourseTolerance);
+    setEvent(StMOption_CompassStyle_MinorTicks,(uint32_t)OnAction_CompassMinorTicks);
+    setEvent(StMOption_CompassStyle_MountTilt, (uint32_t)OnAction_CompassMountTilt);
+
+    tMenuEdit_select(StMOption_CompassStyle_Scale);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack, TXT2BYTE_ButtonEnter, TXT2BYTE_ButtonNext);
+}
+
+
+static uint8_t OnAction_CompassScaleVariant(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *settings = settingsGetPointer();
+    uint8_t newVariant;
+
+    newVariant = settings->compassScaleVariant + 1;
+    if(newVariant > 1)
+        newVariant = 0;
+    settings->compassScaleVariant = newVariant;
+    return UPDATE_DIVESETTINGS;
+}
+
+
+static uint8_t OnAction_CompassSecondaryLabels(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *settings = settingsGetPointer();
+    uint8_t newVal;
+
+    newVal = settings->compassSecondaryLabels ? 0u : 1u;
+    settings->compassSecondaryLabels = newVal;
+    tMenuEdit_set_on_off(editId, newVal);
+    return UPDATE_DIVESETTINGS;
+}
+
+
+#define MIN_COURSE_TOLERANCE (2u)
+#define MAX_COURSE_TOLERANCE (15u)
+
+static uint8_t OnAction_CompassCourseTolerance(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *settings = settingsGetPointer();
+    uint8_t newTol;
+
+    if(action == ACTION_BUTTON_NEXT)
+    {
+        newTol = settings->compassCourseTolerance + 1;
+        if(newTol > MAX_COURSE_TOLERANCE)
+            newTol = MIN_COURSE_TOLERANCE;
+    }
+    else if(action == ACTION_BUTTON_BACK)
+    {
+        if(settings->compassCourseTolerance <= MIN_COURSE_TOLERANCE)
+            newTol = MAX_COURSE_TOLERANCE;
+        else
+            newTol = settings->compassCourseTolerance - 1;
+    }
+    else
+    {
+        /* ACTION_BUTTON_ENTER: cycle forward */
+        newTol = settings->compassCourseTolerance + 1;
+        if(newTol > MAX_COURSE_TOLERANCE)
+            newTol = MIN_COURSE_TOLERANCE;
+    }
+    settings->compassCourseTolerance = newTol;
+    return UPDATE_DIVESETTINGS;
+}
+
+
+static uint8_t OnAction_CompassMinorTicks(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *settings = settingsGetPointer();
+    uint8_t newVal;
+
+    newVal = settings->compassMinorTicks ? 0u : 1u;
+    settings->compassMinorTicks = newVal;
+    tMenuEdit_set_on_off(editId, newVal);
+    return UPDATE_DIVESETTINGS;
+}
+
+
+static uint8_t OnAction_CompassMountTilt(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SSettings *settings = settingsGetPointer();
+    uint8_t newTilt;
+
+    newTilt = settings->compassMountTilt + 1;
+    if(newTilt > 2u)
+        newTilt = 0;
+    settings->compassMountTilt = newTilt;
+    return UPDATE_DIVESETTINGS;
+}
 
 
