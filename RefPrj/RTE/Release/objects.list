@@ -113,3 +113,4 @@
 "Small_CPU/Src/uartProtocol_O2.o"
 "Small_CPU/Src/uartProtocol_Sentinel.o"
 "Small_CPU/Src/uart_Internal.o"
+"Small_CPU/Src/device_time_hooks_real.o"
