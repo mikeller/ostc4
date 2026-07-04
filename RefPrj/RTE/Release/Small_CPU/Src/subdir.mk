@@ -28,10 +28,11 @@ $(BUILD_DIR)/Small_CPU/Src/uartProtocol_Co2.c \
 $(BUILD_DIR)/Small_CPU/Src/uartProtocol_GNSS.c \
 $(BUILD_DIR)/Small_CPU/Src/uartProtocol_O2.c \
 $(BUILD_DIR)/Small_CPU/Src/uartProtocol_Sentinel.c \
-$(BUILD_DIR)/Small_CPU/Src/uart_Internal.c 
+$(BUILD_DIR)/Small_CPU/Src/uart_Internal.c \
+$(BUILD_DIR)/Small_CPU/Src/device_time_hooks_real.c
 
 S_UPPER_SRCS += \
-$(BUILD_DIR)/Small_CPU/Src/startup_stm32f4xx.S 
+$(BUILD_DIR)/Small_CPU/Src/startup_stm32f4xx.S
 
 OBJS += \
 ./Small_CPU/Src/GNSS.o \
@@ -59,10 +60,11 @@ OBJS += \
 ./Small_CPU/Src/uartProtocol_GNSS.o \
 ./Small_CPU/Src/uartProtocol_O2.o \
 ./Small_CPU/Src/uartProtocol_Sentinel.o \
-./Small_CPU/Src/uart_Internal.o 
+./Small_CPU/Src/uart_Internal.o \
+./Small_CPU/Src/device_time_hooks_real.o
 
 S_UPPER_DEPS += \
-./Small_CPU/Src/startup_stm32f4xx.d 
+./Small_CPU/Src/startup_stm32f4xx.d
 
 C_DEPS += \
 ./Small_CPU/Src/GNSS.d \
@@ -89,7 +91,8 @@ C_DEPS += \
 ./Small_CPU/Src/uartProtocol_GNSS.d \
 ./Small_CPU/Src/uartProtocol_O2.d \
 ./Small_CPU/Src/uartProtocol_Sentinel.d \
-./Small_CPU/Src/uart_Internal.d 
+./Small_CPU/Src/uart_Internal.d \
+//Small_CPU/Src/device_time_hooks_real.d
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -294,6 +297,14 @@ Small_CPU/Src/uartProtocol_Sentinel.o: $(BUILD_DIR)/Small_CPU/Src/uartProtocol_S
 	@echo ' '
 
 Small_CPU/Src/uart_Internal.o: $(BUILD_DIR)/Small_CPU/Src/uart_Internal.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F411xE -I"$(BUILD_DIR)/Small_CPU/Inc" -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Small_CPU/Src/device_time_hooks_real.o: $(BUILD_DIR)/Small_CPU/Src/device_time_hooks_real.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)

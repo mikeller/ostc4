@@ -75,6 +75,10 @@ $(BUILD_DIR)/Discovery/Src/unit.c \
 $(BUILD_DIR)/Discovery/Src/vpm.c \
 $(BUILD_DIR)/Discovery/Src/hud.c \
 $(BUILD_DIR)/Discovery/Src/cavemode.c \
+$(BUILD_DIR)/Discovery/Src/compass_rose.c \
+$(BUILD_DIR)/Discovery/Src/data_exchange_spi_real.c \
+$(BUILD_DIR)/Discovery/Src/device_time_hooks_real.c \
+$(BUILD_DIR)/Discovery/Src/t7_customview.c \
 $(BUILD_DIR)/OtherSources/firmwareEraseProgram.c
 
 OBJS += \
@@ -147,6 +151,10 @@ OBJS += \
 ./Discovery/Src/vpm.o \
 ./Discovery/Src/hud.o \
 ./Discovery/Src/cavemode.o \
+./Discovery/Src/compass_rose.o \
+./Discovery/Src/data_exchange_spi_real.o \
+./Discovery/Src/device_time_hooks_real.o \
+./Discovery/Src/t7_customview.o \
 ./Discovery/Src/firmwareEraseProgram.o
 
 C_DEPS += \
@@ -218,6 +226,10 @@ C_DEPS += \
 ./Discovery/Src/vpm.d \
 ./Discovery/Src/hud.d \
 ./Discovery/Src/cavemode.d \
+./Discovery/Src/compass_rose.d \
+./Discovery/Src/data_exchange_spi_real.d \
+./Discovery/Src/device_time_hooks_real.d \
+./Discovery/Src/t7_customview.d \
 ./Discovery/Src/firmwareEraseProgram.d
 
 
@@ -766,6 +778,38 @@ Discovery/Src/hud.o: $(BUILD_DIR)/Discovery/Src/hud.c
 	@echo ' '
 
 Discovery/Src/cavemode.o: $(BUILD_DIR)/Discovery/Src/cavemode.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/compass_rose.o: $(BUILD_DIR)/Discovery/Src/compass_rose.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/data_exchange_spi_real.o: $(BUILD_DIR)/Discovery/Src/data_exchange_spi_real.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/device_time_hooks_real.o: $(BUILD_DIR)/Discovery/Src/device_time_hooks_real.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: MCU GCC Compiler'
+	@echo $(PWD)
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32F4 -DSTM32F429xx -DSTM32F429IITx -I"$(BUILD_DIR)/Discovery/Inc" -I"$(BUILD_DIR)/Common/Drivers/CMSIS/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx/Include" -I"$(BUILD_DIR)/Common/Drivers/STM32F4xx_HAL_Driver/Inc" -I"$(BUILD_DIR)/Common/Inc" -O2 -Wall -ffunction-sections -fmessage-length=0 -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Discovery/Src/t7_customview.o: $(BUILD_DIR)/Discovery/Src/t7_customview.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
