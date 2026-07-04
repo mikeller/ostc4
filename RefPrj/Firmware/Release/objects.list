@@ -156,4 +156,8 @@
 "Discovery/Src/vpm.o"
 "Discovery/Src/hud.o"
 "Discovery/Src/cavemode.o"
+"Discovery/Src/compass_rose.o"
+"Discovery/Src/data_exchange_spi_real.o"
+"Discovery/Src/device_time_hooks_real.o"
+"Discovery/Src/t7_customview.o"
 "Discovery/Src/firmwareEraseProgram.o"
