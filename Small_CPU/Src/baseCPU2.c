@@ -181,8 +181,8 @@ const SFirmwareData cpu2_FirmwareData __attribute__(( section(".firmware_data") 
 		.signature = "mh",
 
 		.release_year = 26,
-		.release_month = 2,
-		.release_day = 17,
+		.release_month = 10,
+		.release_day = 07,
 		.release_sub = 0,
 
 		/* max 48 with trailing 0 */
