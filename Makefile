@@ -10,6 +10,10 @@ FORCE :=
 
 SCRIPT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
+# Optional developer-specific settings. For example, local.mk can contain:
+# DEVICE := AA:BB:CC:DD:EE:FF
+-include $(SCRIPT_DIR)/local.mk
+
 BUILD_DIR ?= $(SCRIPT_DIR)
 export BUILD_DIR
 
