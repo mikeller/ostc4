@@ -49,6 +49,7 @@
 #include "tMenuGas.h"
 #include "vpm.h"
 #include "base.h"
+#include "tHome.h"
 
 extern GFX_DrawCfgScreen	t7screen;
 
@@ -398,7 +399,14 @@ static void gasList_demand()
     uint8_t oxygen, helium;
     uint8_t line = 1;
 
-    snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE,TXT2BYTE_GasDemand);
+    if(stateUsed->lifeData.counterSecondsShallowDepth != 0)
+    {
+    	snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE,TXT2BYTE_GasUsed);
+    }
+    else
+    {
+    	snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE,TXT2BYTE_GasDemand);
+    }
 	GFX_write_string(&FontT42,&t7cH,text,0);
 	// content
 	textpointer = 0;
@@ -417,33 +425,60 @@ static void gasList_demand()
 	for(int gasId=1;gasId<=NUM_GASES;gasId++)
 	{
 		textpointer = 0;
-			if(((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco)) && (pGasLine[gasId].bottle_size_liter != 0))
+		if(((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco)) && (pGasLine[gasId].bottle_size_liter != 0))
 		{
-			if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
+
+			if(stateUsed->lifeData.counterSecondsShallowDepth != 0)	/* show used gas instead demand which should be 0 now */
 			{
-				if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+				text[textpointer++] = '\020';
+			}
+			else
+			{
+				if(stateUsed->lifeData.gasDemand_Ltr[gasId] != 0)
 				{
-					text[textpointer++] = '\025';	/* more gas needed than available => red */
-				}
-				else if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > (pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter) * 0.7)
-				{
-					text[textpointer++] = '\024';	/* 70% warning => yellow */
-				}
-				else
-				{
-					text[textpointer++] = '\020';
+					if(stateUsed->lifeData.gasDemand_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+					{
+						text[textpointer++] = '\025';	/* more gas needed than available => red */
+					}
+					else if(stateUsed->lifeData.gasDemand_Ltr[gasId] > (pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter) * 0.7)
+					{
+						text[textpointer++] = '\024';	/* 70% warning => yellow */
+					}
+					else
+					{
+						text[textpointer++] = '\020';
+					}
 				}
 			}
-	        text[textpointer++] = ' ';
-			oxygen = pGasLine[gasId].oxygen_percentage;
-			helium = pGasLine[gasId].helium_percentage;
-			textpointer += write_gas(&text[textpointer], oxygen, helium);
-			snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
-			GFX_write_string(&FontT42, &t7cY0free, text, line);
-			line++;
 		}
+		else
+		{
+			text[textpointer++] = '\021';			/* no gas data => dark grey */
+		}
+	    text[textpointer++] = ' ';
+		oxygen = pGasLine[gasId].oxygen_percentage;
+		helium = pGasLine[gasId].helium_percentage;
+		textpointer += write_gas(&text[textpointer], oxygen, helium);
+
+		if(stateUsed->lifeData.counterSecondsShallowDepth != 0)	/* show used gas instead demand which should be 0 now */
+		{
+			if(stateUsed->lifeData.gasUsed_Ltr[gasId] != 0)
+			{
+				snprintf(&text[textpointer],100,"\t%ld Bar",(stateUsed->lifeData.gasUsed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter) + 1);
+			}
+		}
+		else
+		{
+			if(stateUsed->lifeData.gasDemand_Ltr[gasId] != 0)
+			{
+				snprintf(&text[textpointer],100,"\t%ld Bar",(stateUsed->lifeData.gasDemand_Ltr[gasId] / pGasLine[gasId].bottle_size_liter) + 1);
+			}
+		}
+		GFX_write_string(&FontT42, &t7cY0free, text, line);
+		line++;
 	}
 }
+
 
 void t7_cv_gasList()
 {
@@ -465,7 +500,7 @@ void t7_cv_gasList()
 			}
 			switch(nextOption)
 			{
-				case GASLIST_DEMAND: 	if(!caveMode_isOff())
+				case GASLIST_DEMAND: 	if((!t7_customview_disabled(CVIEW_GasDemand)) && (stateUsed->mode == MODE_DIVE))
 										{
 											foundOption = 1;
 										}
@@ -816,15 +851,15 @@ void t7_cv_Cave(void)
 		textpointer = 0;
 		if(((pGasLine[gasId].note.ub.active) || (pGasLine[gasId].note.ub.deco)) && (pGasLine[gasId].bottle_size_liter != 0))
 		{
-			if((stateUsed->lifeData.caveGasNeed_Ltr[gasId] != 0)
-					&& (stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter))
+			if((stateUsed->lifeData.gasDemand_Ltr[gasId] != 0)
+					&& (stateUsed->lifeData.gasDemand_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter))
 			{
 				text[textpointer++] = '\025';
 				text[textpointer++] = ' ';
 				oxygen = pGasLine[gasId].oxygen_percentage;
 				helium = pGasLine[gasId].helium_percentage;
 				textpointer += write_gas(&text[textpointer], oxygen, helium);
-				snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.caveGasNeed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
+				snprintf(&text[textpointer],100,"\002%ldBar",(stateUsed->lifeData.gasDemand_Ltr[gasId] / pGasLine[gasId].bottle_size_liter));
 				GFX_write_string(&FontT42, &t7cY0free, text, line);
 				line++;
 				if(line == 6)
@@ -834,9 +869,11 @@ void t7_cv_Cave(void)
 			}
 		}
 	}
-	snprintf(text,100," TTS:\002%ld min ",(uint32_t)(caveMode_GetTTS() / 60));
-	GFX_write_string(&FontT42, &t7cY0free, text, 6);
-
+	if(!caveMode_isOff())
+	{
+		snprintf(text,100," TTS:\002%ld min ",(uint32_t)(caveMode_GetTTS() / 60));
+		GFX_write_string(&FontT42, &t7cY0free, text, 6);
+	}
 }
 #endif
 

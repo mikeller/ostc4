@@ -74,6 +74,7 @@
 #include "externLogbookFlash.h"
 #include "vpm.h"
 #include "check_warning.h"
+#include "logbook_miniLive.h"
 
 /* #define TESTBENCH */
 
@@ -1111,6 +1112,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			createDiveSettings();
 
             disableTimer();
+            MiniLiveLogbook_resetReplayLog();
 
 			if(pStateReal->warnings.cnsHigh)
 			{

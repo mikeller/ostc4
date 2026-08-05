@@ -768,7 +768,7 @@ static int8_t check_gasBudget(SDiveState * pDiveState)
 			pGasLine = settingsGetPointer()->gas;
 			for(gasId=1; gasId<=NUM_GASES; gasId++)
 			{
-				if(stateUsed->lifeData.caveGasNeed_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+				if(stateUsed->lifeData.gasDemand_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
 				{
 					warningActive = 1;
 					break;

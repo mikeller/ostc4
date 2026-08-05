@@ -106,7 +106,6 @@ void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
 void t7_refresh_divemode_userselected_left_lower_corner(void);
 void t7_refresh_customview(void);
-uint8_t t7_customview_disabled(uint8_t view);
 
 void draw_frame(_Bool PluginBoxHeader, _Bool LinesOnTheSides, uint8_t colorBox, uint8_t colorLinesOnTheSide);
 

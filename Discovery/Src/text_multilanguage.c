@@ -1227,6 +1227,12 @@ static uint8_t text_FR_GasDemand[] = "";
 static uint8_t text_IT_GasDemand[] = "";
 static uint8_t text_ES_GasDemand[] = "";
 
+static uint8_t text_EN_GasUsed[] = "Gas used OC";
+static uint8_t text_DE_GasUsed[] = "OC Gas Verbrauch";
+static uint8_t text_FR_GasUsed[] = "";
+static uint8_t text_IT_GasUsed[] = "";
+static uint8_t text_ES_GasUsed[] = "";
+
 // Customview Header
 static uint8_t text_EN_Info[] = "Info";
 static uint8_t text_DE_Info[] = "Info";
@@ -2339,6 +2345,7 @@ const tText text_array2[] =
     {(uint8_t)TXT2BYTE_Bottle,			{text_EN_Bottle, text_DE_Bottle, text_FR_Bottle, text_IT_Bottle, text_ES_Bottle}},
     {(uint8_t)TXT2BYTE_Gaslist,			{text_EN_Gaslist, text_DE_Gaslist, text_FR_Gaslist, text_IT_Gaslist, text_ES_Gaslist}},
 	{(uint8_t)TXT2BYTE_GasDemand,		{text_EN_GasDemand, text_DE_GasDemand, text_FR_GasDemand, text_IT_GasDemand, text_ES_GasDemand}},
+	{(uint8_t)TXT2BYTE_GasUsed,			{text_EN_GasUsed, text_DE_GasUsed, text_FR_GasUsed, text_IT_GasUsed, text_ES_GasUsed}},
     {(uint8_t)TXT2BYTE_Clock,			{text_EN_Clock, text_DE_Clock, text_FR_Clock, text_IT_Clock, text_ES_Clock}},
     {(uint8_t)TXT2BYTE_Sunday,			{text_EN_Sunday, text_DE_Sunday, text_FR_Sunday, text_IT_Sunday, text_ES_Sunday}},
     {(uint8_t)TXT2BYTE_Monday,			{text_EN_Monday, text_DE_Monday, text_FR_Monday, text_IT_Monday, text_ES_Monday}},

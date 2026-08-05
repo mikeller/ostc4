@@ -66,6 +66,7 @@ const uint8_t cv_changelist[] = {CVIEW_Compass, CVIEW_SummaryOfLeftCorner, CVIEW
 								 CVIEW_Decolist, CVIEW_sensors,CVIEW_sensors_mV, CVIEW_Timer,
 #ifdef ENABLE_CAVEMODE
 	CVIEW_Cave,
+	CVIEW_GasDemand,
 #endif
 #ifdef ENABLE_LOGGER_WINDOW
 	CVIEW_Logger,

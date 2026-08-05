@@ -300,9 +300,9 @@ typedef struct
 /* tempstick sensor data */
 	uint8_t tempstick[EXT_INTERFACE_TEMPSTICK_MAX];
 
-/* cavemode gas reserve data */
-	uint32_t caveGasNeed_Ltr[NUM_GASES +1];
-
+/* gas demand (expected) and gas used (summed up) */
+	uint32_t gasDemand_Ltr[NUM_GASES +1];
+	uint32_t gasUsed_Ltr[NUM_GASES +1];
 } 	SLifeData;
 
 

@@ -1058,6 +1058,7 @@ void t3_basics_refresh_apnoeRight(float depth, uint8_t tX_selection_customview, 
 void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, GFX_DrawCfgScreen *tXscreen, GFX_DrawCfgWindow* tXc1, GFX_DrawCfgWindow* tXc2, uint8_t mode)
 {
 	static uint8_t last_customview = CVIEW_T3_END;
+	static uint32_t changeTick = 0;
 
     char text[30];
     uint16_t textpointer = 0;
@@ -1221,8 +1222,44 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
        break;
 
     case CVIEW_T3_GasList:
+    case CVIEW_T3_GasDemand:
+
+    	if(time_elapsed_ms(changeTick, HAL_GetTick()) > 3000)
+    	{
+    		changeTick = HAL_GetTick();
+    		switch (tX_selection_customview)
+    		{
+    			default:
+    			case CVIEW_T3_GasList: if(!t3_customview_disabled(CVIEW_T3_GasDemand))
+    									{
+    										tX_selection_customview = CVIEW_T3_GasDemand;
+    										t3_selection_customview = CVIEW_T3_GasDemand;
+    									}
+    				break;
+    			case CVIEW_T3_GasDemand: if(!t3_customview_disabled(CVIEW_T3_GasList))
+    									{
+    			    						tX_selection_customview = CVIEW_T3_GasList;
+    			    						t3_selection_customview = CVIEW_T3_GasList;
+    			    					}
+    			    break;
+    		}
+    	}
     	gasPosIdx = 0;
-        snprintf(text,TEXTSIZE,"\032\f%c%c",TXT_2BYTE, TXT2BYTE_Gaslist);
+    	if(tX_selection_customview == CVIEW_T3_GasList)
+    	{
+    		snprintf(text,TEXTSIZE,"\032\f%c%c",TXT_2BYTE, TXT2BYTE_Gaslist);
+    	}
+    	else
+    	{
+    		 if(stateUsed->lifeData.counterSecondsShallowDepth != 0)
+    		 {
+    			 snprintf(text,100,"\032\f%c%c",TXT_2BYTE, TXT2BYTE_GasDemand);
+    		 }
+    		 else
+    		 {
+    			 snprintf(text,TEXTSIZE,"\032\f%c%c",TXT_2BYTE, TXT2BYTE_GasDemand);
+    		 }
+    	}
         GFX_write_string(&FontT42,tXc1,text,0);
 
         textpointer = 0;
@@ -1266,29 +1303,84 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
             gasPosIdx++;
 
             fPpO2ofGasAtThisDepth = (stateUsed->lifeData.pressure_ambient_bar - WATER_VAPOUR_PRESSURE) * pGasLine[gasId].oxygen_percentage / 100;
-            if(pGasLine[gasId].note.ub.active == 0)
-                strcpy(&text[textpointer++],"\031");
-            else if(stateUsed->lifeData.actualGas.GasIdInSettings == gasId)	/* actual selected gas */
+
+            if(tX_selection_customview == CVIEW_T3_GasList)				/* set label color */
             {
-            	strcpy(&text[textpointer++],"\030");
-            }
-            else if((fPpO2ofGasAtThisDepth > fPpO2limitHigh) || (fPpO2ofGasAtThisDepth < fPpO2limitLow))
-                strcpy(&text[textpointer++],"\025");
-            else if(actualBetterGasId() == gasId)
-            {
-            	strcpy(&text[textpointer++],"\026");	/* Highlight better gas */
+				if(pGasLine[gasId].note.ub.active == 0)
+					strcpy(&text[textpointer++],"\031");
+				else if(stateUsed->lifeData.actualGas.GasIdInSettings == gasId)	/* actual selected gas */
+				{
+					strcpy(&text[textpointer++],"\030");
+				}
+				else if((fPpO2ofGasAtThisDepth > fPpO2limitHigh) || (fPpO2ofGasAtThisDepth < fPpO2limitLow))
+					strcpy(&text[textpointer++],"\025");
+				else if(actualBetterGasId() == gasId)
+				{
+					strcpy(&text[textpointer++],"\026");	/* Highlight better gas */
+				}
+				else
+					strcpy(&text[textpointer++],"\023");	/* Blue for travel or deco without special state */
             }
             else
-                strcpy(&text[textpointer++],"\023");	/* Blue for travel or deco without special state */
-
+            {
+    			if(stateUsed->lifeData.counterSecondsShallowDepth != 0)	/* show used gas instead demand which should be 0 now */
+    			{
+    				text[textpointer++] = '\020';
+    			}
+    			else
+    			{
+    				if(stateUsed->lifeData.gasDemand_Ltr[gasId] != 0)
+    				{
+    					if(stateUsed->lifeData.gasDemand_Ltr[gasId] > pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter)
+    					{
+    						text[textpointer++] = '\025';	/* more gas needed than available => red */
+    					}
+    					else if(stateUsed->lifeData.gasDemand_Ltr[gasId] > (pGasLine[gasId].bottle_id_bar * pGasLine[gasId].bottle_size_liter) * 0.7)
+    					{
+    						text[textpointer++] = '\024';	/* 70% warning => yellow */
+    					}
+    					else
+    					{
+    						text[textpointer++] = '\020';
+    					}
+    				}
+    				else
+    				{
+    					text[textpointer++] ='\031';
+    				}
+    			}
+            }
             text[textpointer++] = ' ';
             oxygen = pGasLine[gasId].oxygen_percentage;
             helium = pGasLine[gasId].helium_percentage;
             textpointer += write_gas(&text[textpointer], oxygen, helium);
 
-            if((pGasLine[gasId].depth_meter) && (gasPosIdx < 5))	/* do not show for potential last gas because of formating issues */
+            if((gasPosIdx < 5))	/* do not show for potential last gas because of formating issues */
             {
-                textpointer += snprintf(&text[textpointer],7,"\016\016%u%c%c",unit_depth_integer(pGasLine[gasId].depth_meter), unit_depth_char1(), unit_depth_char2());
+            	if(tX_selection_customview == CVIEW_T3_GasList)
+            	{
+            		if (pGasLine[gasId].depth_meter)
+            		{
+            			textpointer += snprintf(&text[textpointer],7,"\016\016%u%c%c",unit_depth_integer(pGasLine[gasId].depth_meter), unit_depth_char1(), unit_depth_char2());
+            		}
+            	}
+            	else
+            	{
+            		if(stateUsed->lifeData.counterSecondsShallowDepth != 0)
+            		{
+            			if(stateUsed->lifeData.gasUsed_Ltr[gasId] != 0)
+            			{
+            				textpointer += snprintf(&text[textpointer],20,"\016\016%ldBar",(stateUsed->lifeData.gasUsed_Ltr[gasId] / pGasLine[gasId].bottle_size_liter) + 1);
+            			}
+            		}
+            		else	/* show used gas */
+            		{
+            			if(stateUsed->lifeData.gasDemand_Ltr[gasId] != 0)
+            			{
+            				textpointer += snprintf(&text[textpointer],20,"\016\016%ldBar",(stateUsed->lifeData.gasDemand_Ltr[gasId] / pGasLine[gasId].bottle_size_liter) + 1);
+            			}
+            		}
+            	}
             }
             text[textpointer++] = 0;
             GFX_write_string(&FontT42, tXc1, text, lineNumber);

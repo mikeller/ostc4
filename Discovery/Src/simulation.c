@@ -153,9 +153,9 @@ void simulation_start(int aim_depth, uint16_t aim_time_minutes)
 void simulation_exit(void)
 {
     timer_Stopwatch_Stop();
-
     disableTimer();
-
+    MiniLiveLogbook_resetReplayLog();
+    simReplayActive = 0;
     set_stateUsedToReal();
 }
 
@@ -178,7 +178,9 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     static int last_second = -1;
     static _Bool two_second = 0;
     static float lastPressure_bar = 0;
-
+#ifdef ENABLE_CAVEMODE
+    static uint32_t lastDiveTimeSeconds = 0;
+#endif
     pSettings = settingsGetPointer();
 
     if ((sim_aim_time_minutes && sim_aim_time_minutes * 60 <= pDiveState->lifeData.dive_time_seconds)
@@ -190,6 +192,12 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     float localCalibCoeff[3] = { 0.0, 0.0, 0.0 };
     uint8_t index, index2;
 
+#ifdef ENABLE_CAVEMODE
+    if(pDiveState->lifeData.dive_time_seconds == 0)	/* reset in case a new simulation was started */
+    {
+    	lastDiveTimeSeconds = 0;
+    }
+#endif
     /* Mirror the live compass on every call - the function runs on each
        100ms display-refresh tick (base.c). Gated behind the once-per-second
        block below, the dial only received a fresh heading at 1 Hz and the
@@ -395,6 +403,14 @@ void simulation_UpdateLifeData( _Bool checkOncePerSecond)
     }
 
     setAvgDepth(pDiveState);
+
+#ifdef ENABLE_CAVEMODE
+    if(pDiveState->lifeData.dive_time_seconds - lastDiveTimeSeconds > 10)	/* update gas usage every 10 seconds */
+    {
+       	lastDiveTimeSeconds = pDiveState->lifeData.dive_time_seconds;
+       	caveMode_AddGasUsed(10);
+    }
+#endif
 
     /* Exposure Tissues
      */

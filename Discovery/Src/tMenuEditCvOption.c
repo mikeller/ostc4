@@ -518,7 +518,7 @@ void refresh_CompassStyle(void)
     text[textIndex++] = TXT2BYTE_CourseTol;
     text[textIndex++] = ':';
     text[textIndex++] = ' ';
-    textIndex += snprintf(&text[textIndex], 4, "%u`", settings->compassCourseTolerance);
+    textIndex += snprintf(&text[textIndex], 5, "%u`", settings->compassCourseTolerance);
     write_label_var(30, 800, ME_Y_LINE4, &FontT48, text);
 
     /* Wrist offset row: label + current value name */
@@ -581,7 +581,7 @@ void openEdit_CompassStyle(void)
     text[textIndex++] = TXT2BYTE_CourseTol;
     text[textIndex++] = ':';
     text[textIndex++] = ' ';
-    textIndex += snprintf(&text[textIndex], 4, "%u`", settings->compassCourseTolerance);
+    textIndex += snprintf(&text[textIndex], 5, "%u`", settings->compassCourseTolerance);
     write_field_button(StMOption_CompassStyle_CourseTol, 30, 800, ME_Y_LINE4, &FontT48, text);
 
     /* LINE5: Wrist offset cycler */

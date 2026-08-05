@@ -44,6 +44,7 @@ uint8_t prepareReplayLog(uint8_t StepBackwards);
 uint8_t getReplayInfo(uint16_t** pReplayData, uint8_t** pReplayMarker, uint16_t* DataLength, uint16_t* MaxDepth, uint16_t* diveMinutes);
 uint16_t getReplayDataResolution(void);
 uint16_t getReplayOffset(void);
+void MiniLiveLogbook_resetReplayLog(void);
 uint16_t MiniLiveLogbook_getNextMarkerIndex(uint16_t curIndex, uint8_t setMarker);
 void MiniLiveLogbook_setMarker(void);
 void MiniLiveLogbook_checkMarker(void);

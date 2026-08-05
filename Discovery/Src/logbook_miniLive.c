@@ -432,6 +432,17 @@ void MiniLiveLogbook_mirrowMiniLiveToReplayLog()
 	ReplayDataLength = liveDataIndex + index - 1;
 	ReplayDataOffset = 1;							/* This is only used to indicate that replay data is set */
 }
+
+void MiniLiveLogbook_resetReplayLog(void)
+{
+   	ReplayDataOffset = 0xFFFF;
+    ReplayDataResolution = 2;
+	ReplayDataLength = 0;
+	ReplayDataMaxDepth = 0;
+	ReplayDataMinutes =  0;
+}
+
+
 uint8_t prepareReplayLog(uint8_t StepBackwards)
 {
 	uint8_t retVal = 0;
@@ -443,12 +454,7 @@ uint8_t prepareReplayLog(uint8_t StepBackwards)
 
     if(ReplayDataOffset == StepBackwards)				/* Entry already selected => reset selection */
     {
-    	ReplayDataOffset = 0xFFFF;
-    	ReplayDataResolution = 2;
-		ReplayDataLength = 0;
-		ReplayDataMaxDepth = 0;
-		ReplayDataMinutes =  0;
-
+    	MiniLiveLogbook_resetReplayLog();
     	retVal = 1;
     }
     else

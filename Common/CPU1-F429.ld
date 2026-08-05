@@ -183,6 +183,7 @@ SECTIONS
   .text 0x08054000 :
   {
     . = ALIGN(4);
+    *(.lower_images)
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */

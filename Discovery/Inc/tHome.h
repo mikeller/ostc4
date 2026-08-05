@@ -82,6 +82,7 @@ enum CUSTOMVIEWS
         CVIEW_Timer,
 		CVIEW_Position,
 		CVIEW_Cave,
+		CVIEW_GasDemand,
 #ifdef ENABLE_LOGGER_WINDOW
 		CVIEW_Logger = 25,			/* keep development views at the end of the list to avoid id problems in official releases */
 #endif
@@ -107,6 +108,7 @@ enum CUSTOMVIEWS_BF
 		CVIEW_T3_Profile,
 		CVIEW_T3_Tempstick,
 		CVIEW_T3_Cavemode,
+		CVIEW_T3_GasDemand,
 		CVIEW_T3_END		/* The ID is used in shift operation => 31 is the max number of supported views */
 };
 
