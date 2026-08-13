@@ -530,12 +530,17 @@ char customview_TXT2BYTE_helper(uint8_t customViewId)
     case CVIEW_Position:
         text = TXT2BYTE_Position;
         break;
-    case CVIEW_Cave:
-    	text = TXT2BYTE_CaveMode;
-    	break;
     case CVIEW_noneOrDebug:
     	text = TXT2BYTE_DispNoneDbg;
     	break;
+#ifdef ENABLE_CAVEMODE
+    case CVIEW_Cave:
+    	text = TXT2BYTE_CaveMode;
+    	break;
+    case CVIEW_GasDemand:
+    	text = TXT2BYTE_GasDemand;
+    	break;
+#endif
 #ifdef ENABLE_LOGGER_WINDOW
     case CVIEW_Logger: text = TXT2BYTE_Logger;
     	break;
@@ -604,6 +609,9 @@ char customviewBF_TXT2BYTE_helper(uint8_t customViewId)
     case CVIEW_T3_Cavemode:
 		text = TXT2BYTE_CaveMode;
 		break;
+    case CVIEW_T3_GasDemand:
+    	text = TXT2BYTE_GasDemand;
+    	break;
 #endif
     default:
         break;

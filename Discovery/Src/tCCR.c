@@ -62,9 +62,6 @@ typedef enum
 #define HUD_RX_FRAME_BREAK_MS		(100u)		/* Time used to detect a gap between two byte receptions => frame start */
 #define HUD_RX_START_DELAY_MS		(500u)		/* Delay for start of RX function to avoid start of reception while a transmission is ongoing. */
 												/* Based on an assumed cycle time by the sensor of 1 second. Started at time of last RX */
-
-#define BOTTLE_SENSOR_TIMEOUT		(6000u)     /* signal pressure budget as not received after 10 minutes (6000 * 100ms) */
-
 #define MAX_SENSOR_COMPARE_DEVIATION (0.15f)	/* max deviation between two sensors allowed before their results are rated as suspect */
 #define MAX_SENSOR_VOLTAGE_MV		(250u)		/* max allowed voltage value for a sensor measurement */
 

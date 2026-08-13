@@ -49,9 +49,7 @@ typedef enum
 		LLC_GF,
 		LCC_GF_SURF,
 		LLC_ScrubberTime,
-#if defined (ENABLE_BOTTLE_SENSOR) || defined (ENABLE_ADVANCED_GAS)
 		LCC_BottleBar,
-#endif
 #ifdef ENABLE_PSCR_MODE
 		LCC_SimPpo2,
 #endif

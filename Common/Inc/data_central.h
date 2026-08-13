@@ -51,6 +51,8 @@
 #define EXT_INTERFACE_HUD_LED_MAX	(16u)			/* max number of supported LED for HUD operation */
 #define EXT_INTERFACE_TEMPSTICK_MAX	(8u)			/* max number of temperature sensors located on a tempstick */
 
+#define BOTTLE_SENSOR_TIMEOUT		(6000u)     /* signal pressure budget as not received after 10 minutes (6000 * 100ms) */
+
 /* Helper structs ------------------------------------------------------------*/
 
 //struct SGas

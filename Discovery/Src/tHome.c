@@ -83,6 +83,7 @@ const uint8_t cv_changelist_BS[] = {CVIEW_T3_Decostop, CVIEW_sensors, CVIEW_Comp
 #endif
 #ifdef ENABLE_CAVEMODE
 									CVIEW_T3_Cavemode,
+									CVIEW_T3_GasDemand,
 #endif
 									CVIEW_T3_END};
 

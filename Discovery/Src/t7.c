@@ -2886,6 +2886,17 @@ void t7_change_field(void)
 			checkAgain = 1;
 		}
 #endif
+		if((selection_custom_field == LLC_ScrubberTime) && (isScrubberTimerEnabled(settings) == 0))
+		{
+			selection_custom_field++;
+			checkAgain = 1;
+		}
+		if((selection_custom_field == LCC_BottleBar) && (stateUsed->lifeData.bottle_bar_age_MilliSeconds[stateUsed->lifeData.actualGas.GasIdInSettings] >= BOTTLE_SENSOR_TIMEOUT))
+		{
+			selection_custom_field++;
+			checkAgain = 1;
+		}
+
 		if(selection_custom_field >= LLC_END)
 		{
 			selection_custom_field = LLC_Empty;
