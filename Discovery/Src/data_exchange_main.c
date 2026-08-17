@@ -75,6 +75,7 @@
 #include "vpm.h"
 #include "check_warning.h"
 #include "logbook_miniLive.h"
+#include "cavemode.h"
 
 /* #define TESTBENCH */
 
@@ -1095,6 +1096,10 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 			pStateReal->lifeData.boolResetAverageDepth = 1;
 
 			memcpy(pStateReal->scrubberDataDive, pSettings->scrubberData, sizeof(pStateReal->scrubberDataDive));
+			createDiveSettings();
+#ifdef ENABLE_CAVEMODE
+			caveMode_Init();
+#endif
 		}
 
 		pStateReal->lifeData.cns = dataIn.data[dataIn.boolToxicData].cns;

@@ -30,6 +30,7 @@
 #include "check_warning.h"
 #include "simulation.h"
 #include "t7.h"
+#include "t3.h"
 #include "tHome.h"
 
 typedef struct stopEntry
@@ -238,7 +239,7 @@ void caveMode_Init()
    liveDive = 1;
    returnTime_seconds = 0;
    returnTime_last = 0;
-   if(pSettings->caveModeAutoStart)
+   if((pSettings->caveModeAutoStart) && ((!t3_customview_disabled(CVIEW_T3_Cavemode)) || (!t7_customview_disabled(CVIEW_Cave))))
    {
 	   caveModeState = CAVEMODE_RECORDING;
    }

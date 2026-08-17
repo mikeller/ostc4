@@ -2072,6 +2072,17 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
 					fallbackSelection = CVIEW_T3_Decostop;
 					iterate = 1;
 				}
+				/* only show tempstick in loop mode */
+				if((tX_customviews[index] == CVIEW_T3_Tempstick) && (!isSensortypeActive(SENSOR_ACTIVE_TEMPSTICK)) && (!isLoopMode(stateUsed->diveSettings.diveMode)))
+				{
+					if(*tX_selection_customview == tX_customviews[index])
+					{
+						useFallback = 1;		/* the provided view is disabled => use fallback */
+					}
+					fallbackSelection = CVIEW_T3_Tempstick;
+					iterate = 1;
+				}
+
 			}
 		}
 	    if((iterate) && (action == ACTION_END))			/* ACTION_END is used to check the enable state of the provided view. If it is enable the function will return without change */

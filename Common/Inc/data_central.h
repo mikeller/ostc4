@@ -429,6 +429,7 @@ typedef struct
 	uint8_t pscr_lung_ratio;
 
 	uint32_t activeAFViews;
+	uint16_t activeSensors;
  }  SDiveSettings;
 
 enum CHARGE_STATUS{
@@ -539,6 +540,17 @@ typedef enum
 	 SENSOR_VIRTUAL_TEMPSTICK,
 	 SENSOR_END
 } externalInterfaceSensorType;
+
+enum								/* a bitfied which is used to quickly get feedback which sensors are available at dive time */
+{
+	 SENSOR_ACTIVE_O2 = 0,
+	 SENSOR_ACTIVE_CO2,
+	 SENSOR_ACTIVE_GNSS,
+	 SENSOR_ACTIVE_HUD,
+	 SENSOR_ACTIVE_PRESSURE,
+	 SENSOR_ACTIVE_TEMPSTICK,
+	 SENSOR_ACTIVE_END
+};
 
 #define DVO2_FATAL_INTENSITY_LOW	(0x00000001)
 #define DVO2_FATAL_AMBIENT_HIGH		(0x00000002)

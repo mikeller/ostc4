@@ -319,7 +319,7 @@ _Bool vpm_crush(SDiveState* pDiveState)
 
 void createDiveSettings(void)
 {
-	int i;
+	uint8_t index = 0;
 	SSettings* pSettings = settingsGetPointer();
 
 	stateReal.diveSettings.compassHeading = pSettings->compassBearing;
@@ -358,9 +358,9 @@ void createDiveSettings(void)
 
 	if(stateReal.diveSettings.diveMode == DIVEMODE_PSCR)
 	{
-		for(i=0; i<5; i++)
+		for(index=0; index<5; index++)
 		{
-			stateReal.diveSettings.decogaslist[i].pscr_factor = 1.0 / stateReal.diveSettings.pscr_lung_ratio * stateReal.diveSettings.pscr_o2_drop;
+			stateReal.diveSettings.decogaslist[index].pscr_factor = 1.0 / stateReal.diveSettings.pscr_lung_ratio * stateReal.diveSettings.pscr_o2_drop;
 		}
 	}
 
@@ -370,11 +370,11 @@ void createDiveSettings(void)
 	/* for safety */
 	stateReal.diveSettings.input_second_to_last_stop_depth_bar = stateReal.diveSettings.last_stop_depth_bar + stateReal.diveSettings.input_next_stop_increment_depth_bar;
 	/* and the proper calc */
-	for(i = 1; i <10; i++)
+	for(index = 1; index <10; index++)
 	{
-		if(stateReal.diveSettings.input_next_stop_increment_depth_bar * i > stateReal.diveSettings.last_stop_depth_bar)
+		if(stateReal.diveSettings.input_next_stop_increment_depth_bar * index > stateReal.diveSettings.last_stop_depth_bar)
 		{
-			 stateReal.diveSettings.input_second_to_last_stop_depth_bar = stateReal.diveSettings.input_next_stop_increment_depth_bar * i;
+			 stateReal.diveSettings.input_second_to_last_stop_depth_bar = stateReal.diveSettings.input_next_stop_increment_depth_bar * index;
 			 break;
 		}
 	}
@@ -392,6 +392,45 @@ void createDiveSettings(void)
 	{
 		stateReal.diveSettings.activeAFViews |= (1 << CVIEW_T3_DecoTTS);
 	}
+
+	/* create bit field of connected sensors */
+	stateReal.diveSettings.activeSensors = 0;
+	for(index = 0; index < EXT_INTERFACE_SENSOR_CNT - 1; index++)
+	{
+			switch(pSettings->ext_sensor_map[index])
+			{
+#ifdef ENABLE_SENTINEL_MODE
+				case SENSOR_SENTINEL:
+				case SENSOR_SENTINELM:
+#endif
+				case SENSOR_OPTIC:
+				case SENSOR_ANALOG:
+				case SENSOR_DIGO2:
+				case SENSOR_DIGO2M:	stateReal.diveSettings.activeSensors |= (1 << SENSOR_ACTIVE_O2);
+					break;
+#ifdef ENABLE_SENTINEL_MODE
+				case SENSOR_SENTINEL_CO2:
+#endif
+				case SENSOR_CO2:
+				case SENSOR_CO2M:	stateReal.diveSettings.activeSensors |= (1 << SENSOR_ACTIVE_CO2);
+					break;
+#ifdef ENABLE_HUD_SUPPORT
+				case SENSOR_HUD:	stateReal.diveSettings.activeSensors |= (1 << SENSOR_ACTIVE_HUD);
+					break;
+#endif
+#ifdef ENABLE_TEMPSTICK_SUPPORT
+				case SENSOR_VIRTUAL_TEMPSTICK: stateReal.diveSettings.activeSensors |= (1 << SENSOR_ACTIVE_TEMPSTICK);
+					break;
+#endif
+#if (defined ENABLE_ADVANCED_GAS) | (defined ENABLE_BOTTLE_SENSOR)
+				case SENSOR_VIRTUAL_PRESSURE: stateReal.diveSettings.activeSensors |= (1 << SENSOR_ACTIVE_PRESSURE);
+					break;
+#endif
+				default:
+								break;
+			}
+	}
+
 }
 
 
@@ -1184,4 +1223,15 @@ void convertUTCToLocal(uint8_t utcHours, uint8_t utcMinutes, uint8_t* pLocalHour
 	}
 	*pLocalHours = localHours;
 	*pLocalMinutes = localMinutes;
+}
+
+uint8_t isSensortypeActive(uint8_t sensorType)
+{
+	uint8_t ret= 0;
+
+	if(sensorType < SENSOR_ACTIVE_END)
+	{
+		 ret = stateReal.diveSettings.activeSensors & (1 << sensorType);
+	}
+	return ret;
 }
