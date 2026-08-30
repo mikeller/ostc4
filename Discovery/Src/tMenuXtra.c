@@ -86,44 +86,6 @@ uint32_t tMXtra_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
 		textPointer += 2;
 		runningLine++;
 
-
-#ifdef ENABLE_CAVEMODE
-		if((line == 0) || (line == runningLine))
-		{
-			text[textPointer++] = TXT_Cave;
-			text[textPointer++] = ' ';
-			text[textPointer++] = TXT_Active;
-			text[textPointer++] = ' ';
-			text[textPointer++] = ' ';
-			if(caveMode_isActive())
-				text[textPointer++] = '\005';
-			else
-				text[textPointer++] = '\006';
-		}
-		strcpy(&text[textPointer],"\n\r");
-		textPointer += 2;
-		runningLine++;
-
-		if((line == 0) || (line == runningLine))
-		{
-			text[textPointer++] = TXT_Cave;
-			text[textPointer++] = ' ';
-			text[textPointer++] = TXT_2BYTE;
-			text[textPointer++] = TXT2BYTE_ButtonBack;
-			text[textPointer++] = ' ';
-			text[textPointer++] = ' ';
-			if(caveMode_isReturning())
-				text[textPointer++] = '\005';
-			else
-				text[textPointer++] = '\006';
-
-		}
-		strcpy(&text[textPointer],"\n\r");
-		textPointer += 2;
-		runningLine++;
-#endif
-
-
 #ifdef ENABLE_MOTION_CONTROL
 		if((line == 0) || (line == runningLine))
 		{

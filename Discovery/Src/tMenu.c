@@ -52,6 +52,7 @@
 #include "tMenuXtra.h"
 #include "tMenuCustom.h"
 #include "tStructure.h"
+#include "cavemode.h"
 
 /* Private types -------------------------------------------------------------*/
 #define MAXPAGES 		12
@@ -80,6 +81,39 @@ typedef struct
     uint8_t	    activeShadow;					/* Base page which is used for the shadow */
     uint8_t		disableLineMask[MAXPAGES+1];	/* Bitfield used to disable a line. The line is visible but will not be selected by cursor) */
 } SMenuMemory;
+
+char text8max[MAXPAGES+1][8] =
+{   "",
+    "OC",
+    "CC",
+    "",
+    "DATA",
+    "DECO",
+    "",
+    "SYS",
+    "",
+	"",
+	"",
+	"SIM",
+    ""
+};
+
+_Bool spacing[MAXPAGES+1] =
+{   0,
+    1, // behind OC
+    0, // behind CC
+    1, // behind SP
+    1, // behind DATA
+    0, // behind DECO1
+    1, // behind DECO2
+    0, // behind SYS1
+    0, // behind SYS2
+	0, // behind SYS3
+	1, // behind SYS4
+    1, // behind SIM
+    0
+};
+
 
 /* Exported variables --------------------------------------------------------*/
 
@@ -540,6 +574,62 @@ static void tM_add(uint32_t id)
         return;
 
     menu.pageCountNumber[page] = 1;
+	switch(page)
+	{
+		case  PAGE_COM_OC:	strcpy(text8max[page],"OC");
+						spacing[page] = 1;
+			break;
+		case  PAGE_COM_CC:	strcpy(text8max[page],"CC");
+			break;
+		case PAGE_COM_SP:   if(actual_menu_content != MENU_SURFACE)
+							{
+								spacing[page] = 1;
+							}
+			break;
+		case PAGE_DIVE_XTRA:	/* PAGE_SURF_XTRA: */
+								if(actual_menu_content != MENU_SURFACE)
+								{
+									strcpy(text8max[page],"DATA");
+								}
+								spacing[page] = 1;
+			break;
+		case PAGE_DIVE_CAVE:	/* PAGE_SURF_DECO_TYPE: */
+								if(actual_menu_content != MENU_SURFACE)
+								{
+#ifdef ENABLE_CAVEMODE
+									strcpy(text8max[page],"CAVE");
+									spacing[page] = 1;
+#endif
+								}
+								else
+								{
+									strcpy(text8max[page],"DECO");
+								}
+			break;
+		case PAGE_COM_DECO_ALGO:	if(actual_menu_content != MENU_SURFACE)		/* is sub page in surface mode => no label */
+									{
+										strcpy(text8max[page],"DECO");
+									}
+									spacing[page] = 1;
+			break;
+
+		case PAGE_SURF_HARDWARE:	strcpy(text8max[page]," SYS");
+			break;
+		case PAGE_SURF_SYS_STANDARD: 	if(actual_menu_content != MENU_SURFACE)	/* is sub page in surface mode => no label */
+										{
+											strcpy(text8max[page],"SYS");
+											spacing[page] = 1;
+										}
+			break;
+		case PAGE_SURF_SYS_CVIEW:	spacing[page++] = 1;
+			break;
+		case PAGE_SURF_PLAN: 	strcpy(text8max[page],"SIM");
+					spacing[page++] = 1;
+			break;
+
+		default:
+			break;
+	}
 }
 
 static void tM_addShadow(uint32_t id)
@@ -557,6 +647,17 @@ static void tM_addShadow(uint32_t id)
     menu.shadowPage[page] = 1;
 }
 
+static uint8_t headlineIndex = 0;
+static void resetHeadLine()
+{
+    uint8_t index = 0;
+    for(index = 0; index < MAXPAGES + 1; index++)
+    {
+    	strcpy(text8max[index],"");
+    	spacing[index] = 0;
+    }
+    headlineIndex = 1;
+}
 
 void tM_build_pages(void)
 {
@@ -574,32 +675,7 @@ void tM_build_pages(void)
     *text = 0;
     *subtext = 0;
 
-    /* 2015 Feb 02, hw
-     * max 8 Menu Pages
-     */
-
-
-    tM_add(StMSYS); //now in both modes
-    if(actual_menu_content == MENU_SURFACE)
-    {
-        tM_add(StMDECO);
-        tM_add(StMHARD);
-        tM_add(StMCustom);
-        tM_add(StMOption);
-//		tM_add(StMSYS); now in both modes
-    }
-    else
-    {
-        tM_add(StMXTRA);
-    }
-    if(actual_menu_content == MENU_SURFACE)
-    {
-        tM_add(StMPLAN);
-    }
-//	if((pSettings->dive_mode != DIVEMODE_Gauge) && (pSettings->dive_mode != DIVEMODE_Apnea))
-//	{
-        tM_add(StMDECOP);
-//	}
+    resetHeadLine();
 
     if((isLoopMode(pSettings->dive_mode)) || (stateUsed->diveSettings.ccrOption == 1))
     {
@@ -623,6 +699,42 @@ void tM_build_pages(void)
         tM_add(StMOG);
     }
 
+
+    if(actual_menu_content == MENU_SURFACE)
+    {
+        tM_add(StMDECO);
+
+        tM_add(StMHARD);
+        tM_add(StMCustom);
+        tM_add(StMOption);
+    }
+    else
+    {
+        tM_add(StMXTRA);
+    }
+
+    tM_add(StMSYS); //now in both modes
+
+    if(actual_menu_content == MENU_SURFACE)
+    {
+        tM_add(StMPLAN);
+    }
+
+
+//	if((pSettings->dive_mode != DIVEMODE_Gauge) && (pSettings->dive_mode != DIVEMODE_Apnea))
+//	{
+        tM_add(StMDECOP);
+//	}
+
+
+#ifdef ENABLE_CAVEMODE
+    if(actual_menu_content != MENU_SURFACE)
+    {
+    	tM_add(StMCAVE);
+   }
+#endif
+
+    /* a page will only be build if it was added above before but some pages have double assignments (surface / dive) */
     id = tMOG_refresh(0, text, &tabPosition, subtext);
     tM_build_page(id, text, tabPosition, subtext);
 
@@ -638,8 +750,18 @@ void tM_build_pages(void)
     id = tMPlanner_refresh(0, text, &tabPosition, subtext);
     tM_build_page(id, text, tabPosition, subtext);
 
-    id = tMDeco_refresh(0, text, &tabPosition, subtext);
-    tM_build_page(id, text, tabPosition, subtext);
+    if(actual_menu_content != MENU_SURFACE)
+    {
+#ifdef ENABLE_CAVEMODE
+		id = tMCave_refresh(0, text, &tabPosition, subtext);
+		tM_build_page(id, text, tabPosition, subtext);
+#endif
+    }
+    else
+    {
+    	id = tMDeco_refresh(0, text, &tabPosition, subtext);
+    	tM_build_page(id, text, tabPosition, subtext);
+    }
 
     id = tMDecoParameters_refresh(0, text, &tabPosition, subtext);
     tM_build_page(id, text, tabPosition, subtext);
@@ -1174,8 +1296,16 @@ static void gotoMenuEdit(void)
     case StMXTRA:
         openEdit_Xtra(line);
         break;
-    case StMDECO:
-        openEdit_Deco(line);
+    case StMDECO:	if(actual_menu_content != MENU_SURFACE)
+    				{
+#ifdef ENABLE_CAVEMODE
+    					tMCave_OpenEdit_Deco(line);
+#endif
+    				}
+    				else
+    				{
+    					openEdit_Deco(line);
+    				}
         break;
     case StMDECOP:
         openEdit_DecoParameter(line);
@@ -1388,44 +1518,13 @@ static void draw_tMheader(uint8_t page)
     uint16_t positionText;
     uint8_t pageText;
 
-    char text8max[MAXPAGES+1][8] =
-    {   "",
-        "OC",
-        "CC",
-        "",
-        "DATA",
-        "DECO",
-        "",
-        "SYS",
-        "",
-		"",
-		"",
-		"SIM",
-        ""
-    };
-
-    _Bool spacing[MAXPAGES+1] =
-    {   0,
-        1, // behind OC
-        0, // behind CC
-        1, // behind SP
-        1, // behind DATA
-        0, // behind DECO1
-        1, // behind DECO2
-        0, // behind SYS1
-        0, // behind SYS2
-		0, // behind SYS3
-		1, // behind SYS4
-        1, // behind SIM
-        0
-    };
-
+#if 0
     if(actual_menu_content == MENU_SURFACE)
     {
     	spacing[3] = 0;		/* Display extra menu directly after setpoint */
     	memset(text8max[4],0,8);
     }
-
+#endif
     pBackup = tMscreen.FBStartAdress;
     tMscreen.FBStartAdress = menu.StartAddressForPage[page];
     pDestination = (uint16_t*) menu.StartAddressForPage[page];
@@ -1492,16 +1591,17 @@ static void draw_tMheader(uint8_t page)
 					pDestination += TAB_BAR_SPACING * 480;
 					positionText += TAB_BAR_WIDTH + 2* TAB_BAR_SPACING;
 
+#if 0
 					if(((k == 4) && (actual_menu_content != MENU_SURFACE)) || ((k == 6) && (menu.pageCountNumber[5] == 0)))
 					{
 						pDestination += (TAB_BAR_WIDTH + 2* TAB_BAR_SPACING) * 480;
 						positionText += TAB_BAR_WIDTH + 2* TAB_BAR_SPACING;
 					}
-
+#endif
 					if(spacing[k])
 					{
-						pDestination += 35 * 480;
-						positionText += 35;
+						pDestination += 43 * 480;
+						positionText += 40;
 					}
 				}
 			else
@@ -1521,13 +1621,13 @@ static void draw_tMheader(uint8_t page)
 
 				pDestination -= (800) * 480;
 				positionText += 66;
-
+#if 0
 				if(((k == 4) && (actual_menu_content != MENU_SURFACE)) || ((k == 6) && (menu.pageCountNumber[5] == 0)))
 				{
 					pDestination -= 70 * 480;
 					positionText += 66;
 				}
-
+#endif
 				if(spacing[k])
 				{
 					pDestination -= 35 * 480;

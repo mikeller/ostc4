@@ -57,6 +57,23 @@
 #define PageSurface 1
 #define PageDive 2
 
+
+ /* Page number for Tab usage */
+#define PAGE_COM_OC				1
+#define PAGE_COM_CC				2
+#define PAGE_COM_SP				3
+#define PAGE_SURF_XTRA			4
+#define PAGE_DIVE_XTRA			4
+#define PAGE_SURF_DECO_TYPE		5
+#define PAGE_DIVE_CAVE			5
+#define PAGE_COM_DECO_ALGO		6
+#define PAGE_SURF_HARDWARE		7
+#define PAGE_SURF_CUST_OPT		8
+#define PAGE_SURF_SYS_STANDARD	9
+#define PAGE_SURF_SYS_CVIEW		10
+#define PAGE_SURF_PLAN			11
+
+
 #define MaskLineFieldDigit 	_MB(7,15,0,0,0)
 #define MaskFieldDigit 		_MB(7,15,255,0,0)
 #define MaskAllButLine 		_MB(0,0,255,0,0)
@@ -135,37 +152,35 @@
 
 /* PAGE 1 EDIT FIELD CONTENT */
 /* used for PAGE 2 AS WELL */
-#define StMOG_Mix						_MB(2,1,255,1,0)
-#define StMOG_GasType				_MB(2,1,255,2,0)
-#define StMOG_ChangeDepth		_MB(2,1,255,3,0)
-#define StMOG_SetToMOD			_MB(2,1,255,4,0)
+#define StMOG_Mix					_MB(2,PAGE_COM_OC,255,1,0)
+#define StMOG_GasType				_MB(2,PAGE_COM_OC,255,2,0)
+#define StMOG_ChangeDepth			_MB(2,PAGE_COM_OC,255,3,0)
+#define StMOG_SetToMOD				_MB(2,PAGE_COM_OC,255,4,0)
 
 #ifdef ENABLE_ADVANCED_GAS
-#define StMOG_Bottle_Size			_MB(2,1,255,5,0)
-#define StMOG_Bottle_Pressure		_MB(2,1,255,6,0)
+#define StMOG_Bottle_Size			_MB(2,PAGE_COM_OC,255,5,0)
+#define StMOG_Bottle_Pressure		_MB(2,PAGE_COM_OC,255,6,0)
 #endif
 
-#define StMOG_MOD					_MB(2,1,255,9,0)
+#define StMOG_MOD					_MB(2,PAGE_COM_OC,255,9,0)
 
-#define StMOG_First					_MB(2,1,255,21,0)
-#define StMOG_Deco					_MB(2,1,255,22,0)
-#define StMOG_Travel				_MB(2,1,255,23,0)
-#define StMOG_Inactive				_MB(2,1,255,24,0)
-#define StMOG_Off					_MB(2,1,255,25,0)
+#define StMOG_First					_MB(2,PAGE_COM_OC,255,21,0)
+#define StMOG_Deco					_MB(2,PAGE_COM_OC,255,22,0)
+#define StMOG_Travel				_MB(2,PAGE_COM_OC,255,23,0)
+#define StMOG_Inactive				_MB(2,PAGE_COM_OC,255,24,0)
+#define StMOG_Off					_MB(2,PAGE_COM_OC,255,25,0)
 
-#define StMOG_NoTransmitter	_MB(2,1,255,30,0)
-#define StMOG_Transmitter1	_MB(2,1,255,31,0)
-#define StMOG_Transmitter2	_MB(2,1,255,32,0)
-#define StMOG_Transmitter3	_MB(2,1,255,33,0)
-#define StMOG_Transmitter4	_MB(2,1,255,34,0)
-#define StMOG_Transmitter5	_MB(2,1,255,35,0)
-//#define StMOG_Transmitter6	_MB(2,1,255,36,0)
-//#define StMOG_Transmitter7	_MB(2,1,255,37,0)
-//#define StMOG_Transmitter8	_MB(2,1,255,38,0)
-//#define StMOG_Transmitter9	_MB(2,1,255,39,0)
+#if UNUSED_YET
+#define StMOG_NoTransmitter	_MB(2,PAGE_COM_OC,255,30,0)
+#define StMOG_Transmitter1	_MB(2,PAGE_COM_OC,255,31,0)
+#define StMOG_Transmitter2	_MB(2,PAGE_COM_OC,255,32,0)
+#define StMOG_Transmitter3	_MB(2,PAGE_COM_OC,255,33,0)
+#define StMOG_Transmitter4	_MB(2,PAGE_COM_OC,255,34,0)
+#define StMOG_Transmitter5	_MB(2,PAGE_COM_OC,255,35,0)
+#endif
 
-#define StMOG_DM_ActiveBase	_MB(2,1,6,255,0)
-#define StMOG_DM_ExtraMix		_MB(2,1,6,6,0)
+#define StMOG_DM_ActiveBase		_MB(2,PAGE_COM_OC,6,255,0)
+#define StMOG_DM_ExtraMix		_MB(2,PAGE_COM_OC,6,6,0)
 /*
 #define StMOG_DM_Active1		_MB(2,1,6,255,1)
 #define StMOG_DM_Active2		_MB(2,1,6,255,2)
@@ -189,68 +204,63 @@
 */
 
 /* PAGE 2 */
-#define StMCG			_MB(2,2,0,0,0)
+#define StMCG			_MB(2,PAGE_COM_CC,0,0,0)
 /* PAGE 3 */
-#define StMSP			_MB(2,3,0,0,0)
+#define StMSP			_MB(2,PAGE_COM_SP,0,0,0)
 
 /* PAGE 3 EDIT FIELD CONTENT */
-#define StMSP_SPLow		_MB(2,3,1,0,0)
-#define StMSP_SPHigh	_MB(2,3,2,0,0)
-#define StMSP_SPDeco	_MB(2,3,3,0,0)
-#define StMSP_Blank		_MB(2,3,4,0,0)
-#define StMSP_DelayDeco	_MB(2,3,5,0,0)
-#define StMSP_Auto		_MB(2,3,6,0,0)
+#define StMSP_SPLow		_MB(2,PAGE_COM_SP,1,0,0)
+#define StMSP_SPHigh	_MB(2,PAGE_COM_SP,2,0,0)
+#define StMSP_SPDeco	_MB(2,PAGE_COM_SP,3,0,0)
+#define StMSP_Blank		_MB(2,PAGE_COM_SP,4,0,0)
+#define StMSP_DelayDeco	_MB(2,PAGE_COM_SP,5,0,0)
+#define StMSP_Auto		_MB(2,PAGE_COM_SP,6,0,0)
 
-#define StMSP_ppo2_setting	_MB(2,3,255,1,0)
-#define StMSP_Active				_MB(2,3,255,3,0)
+#define StMSP_ppo2_setting	_MB(2,PAGE_COM_SP,255,1,0)
+#define StMSP_Active		_MB(2,PAGE_COM_SP,255,3,0)
 
-#define StMSP_Sensor1				_MB(2,3,255,6,0)
-#define StMSP_Sensor2				_MB(2,3,255,7,0)
-#define StMSP_Sensor3				_MB(2,3,255,8,0)
+#define StMSP_Sensor1		_MB(2,PAGE_COM_SP,255,6,0)
+#define StMSP_Sensor2		_MB(2,PAGE_COM_SP,255,7,0)
+#define StMSP_Sensor3		_MB(2,PAGE_COM_SP,255,8,0)
 
 /* PAGE 4 */
-#define StMXTRA   _MB(2,4,0,0,0)
+#define StMXTRA   _MB(2,PAGE_DIVE_XTRA,0,0,0)
 
 /* PAGE 4 MENU EDIT */
 /* DIVE MODE */
-#define StMXTRA_ResetStopwatch	_MB(2,4,1,1,0)
-#define StMXTRA_CompassHeading	_MB(2,4,2,1,0)
-#define StMXTRA_CompassHeadingReverse	_MB(2,4,2,2,0)
-#define StMXTRA_CompassHeadingClear	_MB(2,4,2,3,0)
-#define StMXTRA_CompassHeadingReset	_MB(2,4,2,4,0)
-#define StMXTRA_CompassHeadingLog	_MB(2,4,2,5,0)
+#define StMXTRA_ResetStopwatch			_MB(2,PAGE_DIVE_XTRA,1,1,0)
+#define StMXTRA_CompassHeading			_MB(2,PAGE_DIVE_XTRA,2,1,0)
+#define StMXTRA_CompassHeadingReverse	_MB(2,PAGE_DIVE_XTRA,2,2,0)
+#define StMXTRA_CompassHeadingClear		_MB(2,PAGE_DIVE_XTRA,2,3,0)
+#define StMXTRA_CompassHeadingReset		_MB(2,PAGE_DIVE_XTRA,2,4,0)
+#define StMXTRA_CompassHeadingLog		_MB(2,PAGE_DIVE_XTRA,2,5,0)
 
-#define StMXTRA_SetMarker		_MB(2,4,3,1,0)
-#ifdef ENABLE_CAVEMODE
-#define StMXTRA_CaveModeOnOff	_MB(2,4,4,1,0)
-#define StMXTRA_CaveModeReturn	_MB(2,4,5,1,0)
-#define StMXTRA_CompassStyle	_MB(2,4,6,1,0)
-#define StMXTRA_SimFollowStop	_MB(2,4,7,1,0)
-#else
+#define StMXTRA_SetMarker				_MB(2,PAGE_DIVE_XTRA,3,1,0)
+
 #ifdef ENABLE_MOTION_CONTROL
-#define StMXTRA_CalibViewport	_MB(2,4,4,1,0)
-#define StMXTRA_CompassStyle	_MB(2,4,5,1,0)
-#define StMXTRA_SimFollowStop	_MB(2,4,6,1,0)
+#define StMXTRA_CalibViewport	_MB(2,PAGE_DIVE_XTRA,4,1,0)
+#define StMXTRA_CompassStyle	_MB(2,PAGE_DIVE_XTRA,5,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,PAGE_DIVE_XTRA,6,1,0)
 #else
-#define StMXTRA_CompassStyle	_MB(2,4,4,1,0)
-#define StMXTRA_SimFollowStop	_MB(2,4,5,1,0)
+#define StMXTRA_CompassStyle	_MB(2,PAGE_DIVE_XTRA,4,1,0)
+#define StMXTRA_SimFollowStop	_MB(2,PAGE_DIVE_XTRA,5,1,0)
 #endif
-#endif
- /* SURFACE MODE */
 
-#define StMXTRA_CCRmode					_MB(2,4,1,1,0)
-#define StMXTRA_O2_Fallback				_MB(2,4,2,1,0)
-#define StMXTRA_ScrubTimer				_MB(2,4,3,1,0)
-#define StMXTRA_ScrubTimer_Active		_MB(2,4,3,2,0)
-#define StMXTRA_ScrubTimer_Max			_MB(2,4,3,3,0)
-#define StMXTRA_ScrubTimer_Reset		_MB(2,4,3,4,0)
-#define StMXTRA_ScrubTimer_OP_Mode		_MB(2,4,3,6,0)
-#define StMXTRA_PSCR_O2_Drop			_MB(2,4,4,1,0)
-#define StMXTRA_PSCR_LUNG_RATIO			_MB(2,4,4,2,0)
-#define StMXTRA_Predive_Check			_MB(2,4,5,1,0)
+ /* SURFACE MODE */
+#define StMXTRA_CCRmode					_MB(2,PAGE_SURF_XTRA,1,1,0)
+#define StMXTRA_O2_Fallback				_MB(2,PAGE_SURF_XTRA,2,1,0)
+#define StMXTRA_ScrubTimer				_MB(2,PAGE_SURF_XTRA,3,1,0)
+#define StMXTRA_ScrubTimer_Active		_MB(2,PAGE_SURF_XTRA,3,2,0)
+#define StMXTRA_ScrubTimer_Max			_MB(2,PAGE_SURF_XTRA,3,3,0)
+#define StMXTRA_ScrubTimer_Reset		_MB(2,PAGE_SURF_XTRA,3,4,0)
+#define StMXTRA_ScrubTimer_OP_Mode		_MB(2,PAGE_SURF_XTRA,3,6,0)
+#define StMXTRA_PSCR_O2_Drop			_MB(2,PAGE_SURF_XTRA,4,1,0)
+#define StMXTRA_PSCR_LUNG_RATIO			_MB(2,PAGE_SURF_XTRA,4,2,0)
+#define StMXTRA_Predive_Check			_MB(2,PAGE_SURF_XTRA,5,1,0)
 
 /* PAGE 5 */
-#define StMDECO		_MB(2,5,0,0,0)
+/* SURFACE MODE */
+#define StMDECO		_MB(2,PAGE_SURF_DECO_TYPE,0,0,0)
 
 /* PAGE 5 MENU EDIT */
 /*
@@ -263,230 +273,240 @@
 */
 
 /* PAGE 5 EDIT FIELD CONTENT */
-#define StMDECO1_OC						_MB(2,5,1,1,0)
-#define StMDECO1_CC						_MB(2,5,1,2,0)
-#define StMDECO1_Apnea					_MB(2,5,1,3,0)
-#define StMDECO1_Gauge					_MB(2,5,1,4,0)
-#define StMDECO1_PSCR					_MB(2,5,1,5,0)
+#define StMDECO1_OC						_MB(2,PAGE_SURF_DECO_TYPE,1,1,0)
+#define StMDECO1_CC						_MB(2,PAGE_SURF_DECO_TYPE,1,2,0)
+#define StMDECO1_Apnea					_MB(2,PAGE_SURF_DECO_TYPE,1,3,0)
+#define StMDECO1_Gauge					_MB(2,PAGE_SURF_DECO_TYPE,1,4,0)
+#define StMDECO1_PSCR					_MB(2,PAGE_SURF_DECO_TYPE,1,5,0)
 
-#define StMDECO3_PPO2Max			_MB(2,5,2,1,0)
-#define StMDECO4_SafetyStop			_MB(2,5,3,1,0)
-#define StMDECO_SlowExit			_MB(2,5,4,1,0)
-#define StMDECO5_FUTURE				_MB(2,5,5,1,0)
-#define StMDECO6_SALINITY			_MB(2,5,6,1,0)
+#define StMDECO3_PPO2Max			_MB(2,PAGE_SURF_DECO_TYPE,2,1,0)
+#define StMDECO4_SafetyStop			_MB(2,PAGE_SURF_DECO_TYPE,3,1,0)
+#define StMDECO_SlowExit			_MB(2,PAGE_SURF_DECO_TYPE,4,1,0)
+#define StMDECO5_FUTURE				_MB(2,PAGE_SURF_DECO_TYPE,5,1,0)
+#define StMDECO6_SALINITY			_MB(2,PAGE_SURF_DECO_TYPE,6,1,0)
+
+/* PAGE 5 DIVE MODE */
+
+#ifdef ENABLE_CAVEMODE
+#define StMCAVE					_MB(2,PAGE_DIVE_CAVE,0,0,0)
+#define StMCAVE_CaveModeOnOff	_MB(2,PAGE_DIVE_CAVE,1,0,0)
+#define StMCANE_CaveModeReturn	_MB(2,PAGE_DIVE_CAVE,2,0,0)
+#endif
+
+
 
 /* PAGE 6 */
 #define StMDECOP	_MB(2,6,0,0,0)
 
-#define StMDECOP1_Algorithm		_MB(2,6,1,1,0)
-#define StMDECOP2_VPM			_MB(2,6,2,1,0)
-#define StMDECOP3_GF			_MB(2,6,3,1,0)
-#define StMDECOP4_AltGF			_MB(2,6,4,1,0)
-#define StMDECOP5_LASTSTOP		_MB(2,6,5,1,0)
-#define StMDECOP6_VPMTable		_MB(2,6,6,1,0)
+#define StMDECOP1_Algorithm		_MB(2,PAGE_COM_DECO_ALGO,1,1,0)
+#define StMDECOP2_VPM			_MB(2,PAGE_COM_DECO_ALGO,2,1,0)
+#define StMDECOP3_GF			_MB(2,PAGE_COM_DECO_ALGO,3,1,0)
+#define StMDECOP4_AltGF			_MB(2,PAGE_COM_DECO_ALGO,4,1,0)
+#define StMDECOP5_LASTSTOP		_MB(2,PAGE_COM_DECO_ALGO,5,1,0)
+#define StMDECOP6_VPMTable		_MB(2,PAGE_COM_DECO_ALGO,6,1,0)
 
-#define StMDECOP7_ActiveGF		_MB(2,6,7,1,0)
-#define StMDECOP8_ActiveVPM		_MB(2,6,8,1,0)
-#define StMDECOP9_ActiveAltGF	_MB(2,6,9,1,0)
+#define StMDECOP7_ActiveGF		_MB(2,PAGE_COM_DECO_ALGO,7,1,0)
+#define StMDECOP8_ActiveVPM		_MB(2,PAGE_COM_DECO_ALGO,8,1,0)
+#define StMDECOP9_ActiveAltGF	_MB(2,PAGE_COM_DECO_ALGO,9,1,0)
 
 /* PAGE 7 */
-#define StMHARD		_MB(2,7,0,0,0)
+#define StMHARD		_MB(2,PAGE_SURF_HARDWARE,0,0,0)
 
 /* PAGE 7 EDIT FIELD CONTENT */
 
 
-#define StMHARD1_Bluetooth			_MB(2,7,1,1,0)
+#define StMHARD1_Bluetooth			_MB(2,PAGE_SURF_HARDWARE,1,1,0)
 
 //#define StMHARD2_Exit						_MB(2,7,2,2,0)
 
-#define StMHARD3_Sensors			_MB(2,7,2,0,0)
-#define StMHARD3_O2_Sensor1			_MB(2,7,2,1,0)
-#define StMHARD3_O2_Sensor2			_MB(2,7,2,2,0)
-#define StMHARD3_O2_Sensor3			_MB(2,7,2,3,0)
-#define StMHARD3_O2_Calibrate		_MB(2,7,2,4,0)
-#define StMHARD3_Sensor_Info		_MB(2,7,2,5,0)
-#define StMHARD3_Sensor_Detect		_MB(2,7,2,6,0)
+#define StMHARD3_Sensors			_MB(2,PAGE_SURF_HARDWARE,2,0,0)
+#define StMHARD3_O2_Sensor1			_MB(2,PAGE_SURF_HARDWARE,2,1,0)
+#define StMHARD3_O2_Sensor2			_MB(2,PAGE_SURF_HARDWARE,2,2,0)
+#define StMHARD3_O2_Sensor3			_MB(2,PAGE_SURF_HARDWARE,2,3,0)
+#define StMHARD3_O2_Calibrate		_MB(2,PAGE_SURF_HARDWARE,2,4,0)
+#define StMHARD3_Sensor_Info		_MB(2,PAGE_SURF_HARDWARE,2,5,0)
+#define StMHARD3_Sensor_Detect		_MB(2,PAGE_SURF_HARDWARE,2,6,0)
 
 
-#define StMHARD4_BrightnessEco	_MB(2,7,3,1,0)
-#define StMHARD4_BrightnessStd	_MB(2,7,3,2,0)
-#define StMHARD4_BrightnessHigh	_MB(2,7,3,3,0)
-#define StMHARD4_BrightnessMax	_MB(2,7,3,4,0)
+#define StMHARD4_BrightnessEco	_MB(2,PAGE_SURF_HARDWARE,3,1,0)
+#define StMHARD4_BrightnessStd	_MB(2,PAGE_SURF_HARDWARE,3,2,0)
+#define StMHARD4_BrightnessHigh	_MB(2,PAGE_SURF_HARDWARE,3,3,0)
+#define StMHARD4_BrightnessMax	_MB(2,PAGE_SURF_HARDWARE,3,4,0)
 
-#define StMHARD5_Button1		_MB(2,7,4,1,0)
-#define StMHARD5_ButtonBalance1	_MB(2,7,4,2,0)
-#define StMHARD5_ButtonBalance2	_MB(2,7,4,3,0)
-#define StMHARD5_ButtonBalance3	_MB(2,7,4,4,0)
-#define StMHARD5_ButtonLock		_MB(2,7,4,5,0)
+#define StMHARD5_Button1		_MB(2,PAGE_SURF_HARDWARE,4,1,0)
+#define StMHARD5_ButtonBalance1	_MB(2,PAGE_SURF_HARDWARE,4,2,0)
+#define StMHARD5_ButtonBalance2	_MB(2,PAGE_SURF_HARDWARE,4,3,0)
+#define StMHARD5_ButtonBalance3	_MB(2,PAGE_SURF_HARDWARE,4,4,0)
+#define StMHARD5_ButtonLock		_MB(2,PAGE_SURF_HARDWARE,4,5,0)
 
-#define StMHARD6_WarningBuz		_MB(2,7,5,1,0)
+#define StMHARD6_WarningBuz		_MB(2,PAGE_SURF_HARDWARE,5,1,0)
 
 //#define StMHARD6_UpdateCPU2_No	_MB(2,7,6,1,0)
 //#define StMHARD6_UpdateCPU2_Yes	_MB(2,7,6,2,0)
 //#define StMHARD6_UpdateCPU2_Now	_MB(2,7,6,3,0)
 
 /* PAGE 8 */
-#define StMOption						_MB(2,8,0,0,0)
-#define StMOption_Compass				_MB(2,8,1,0,0)
-#define StMOption_Compass_SetCourse		_MB(2,8,1,1,0)
-#define StMOption_Compass_ResetCourse	_MB(2,8,1,2,0)
-#define StMOption_Compass_Calibrate		_MB(2,8,1,3,0)
-#define StMOption_Compass_Inertia		_MB(2,8,1,4,0)
-#define StMOption_Compass_Declination	_MB(2,8,1,5,0)
+#define StMOption						_MB(2,PAGE_SURF_CUST_OPT,0,0,0)
+#define StMOption_Compass				_MB(2,PAGE_SURF_CUST_OPT,1,0,0)
+#define StMOption_Compass_SetCourse		_MB(2,PAGE_SURF_CUST_OPT,1,1,0)
+#define StMOption_Compass_ResetCourse	_MB(2,PAGE_SURF_CUST_OPT,1,2,0)
+#define StMOption_Compass_Calibrate		_MB(2,PAGE_SURF_CUST_OPT,1,3,0)
+#define StMOption_Compass_Inertia		_MB(2,PAGE_SURF_CUST_OPT,1,4,0)
+#define StMOption_Compass_Declination	_MB(2,PAGE_SURF_CUST_OPT,1,5,0)
 
-#define StMOption_Timer					_MB(2,8,2,0,0)
-#define StMOption_Timer_Value			_MB(2,8,2,1,0)
+#define StMOption_Timer					_MB(2,PAGE_SURF_CUST_OPT,2,0,0)
+#define StMOption_Timer_Value			_MB(2,PAGE_SURF_CUST_OPT,2,1,0)
 
-#define StMOption_Heartbeat 			_MB(2,8,3,0,0)
+#define StMOption_Heartbeat 			_MB(2,PAGE_SURF_CUST_OPT,3,0,0)
 
-#define StMOption_CompassStyle				_MB(2,8,4,0,0)
-#define StMOption_CompassStyle_Scale		_MB(2,8,4,1,0)
-#define StMOption_CompassStyle_Secondary	_MB(2,8,4,2,0)
-#define StMOption_CompassStyle_CourseTol	_MB(2,8,4,3,0)
-#define StMOption_CompassStyle_MinorTicks	_MB(2,8,4,4,0)
-#define StMOption_CompassStyle_MountTilt	_MB(2,8,4,5,0)
+#define StMOption_CompassStyle				_MB(2,PAGE_SURF_CUST_OPT,4,0,0)
+#define StMOption_CompassStyle_Scale		_MB(2,PAGE_SURF_CUST_OPT,4,1,0)
+#define StMOption_CompassStyle_Secondary	_MB(2,PAGE_SURF_CUST_OPT,4,2,0)
+#define StMOption_CompassStyle_CourseTol	_MB(2,PAGE_SURF_CUST_OPT,4,3,0)
+#define StMOption_CompassStyle_MinorTicks	_MB(2,PAGE_SURF_CUST_OPT,4,4,0)
+#define StMOption_CompassStyle_MountTilt	_MB(2,PAGE_SURF_CUST_OPT,4,5,0)
 
 /* PAGE 9 */
 #define StMSYS		_MB(2,9,0,0,0)
 
 /* PAGE 9 EDIT FIELD CONTENT */
-#define StMSYS1_DateTime _MB(2,9,1,0,0)
-#define StMSYS1_Date	_MB(2,9,1,1,0)
-#define StMSYS1_Time	_MB(2,9,1,2,0)
-#define StMSYS1_FORMAT	_MB(2,9,1,3,0)
-#define StMSYS1_DDMMYY	_MB(2,9,1,3,1)
-#define StMSYS1_MMDDYY	_MB(2,9,1,3,2)
-#define StMSYS1_YYMMDD	_MB(2,9,1,3,3)
-#define StMSYS1_12HR    _MB(2,9,1,4,0)
-#define StMSYS1_GNSSDT  _MB(2,9,1,5,0)
-#define StMSYS1_ZONE	_MB(2,9,1,6,0)
+#define StMSYS1_DateTime _MB(2,PAGE_SURF_SYS_STANDARD,1,0,0)
+#define StMSYS1_Date	_MB(2,PAGE_SURF_SYS_STANDARD,1,1,0)
+#define StMSYS1_Time	_MB(2,PAGE_SURF_SYS_STANDARD,1,2,0)
+#define StMSYS1_FORMAT	_MB(2,PAGE_SURF_SYS_STANDARD,1,3,0)
+#define StMSYS1_DDMMYY	_MB(2,PAGE_SURF_SYS_STANDARD,1,3,1)
+#define StMSYS1_MMDDYY	_MB(2,PAGE_SURF_SYS_STANDARD,1,3,2)
+#define StMSYS1_YYMMDD	_MB(2,PAGE_SURF_SYS_STANDARD,1,3,3)
+#define StMSYS1_12HR    _MB(2,PAGE_SURF_SYS_STANDARD,1,4,0)
+#define StMSYS1_GNSSDT  _MB(2,PAGE_SURF_SYS_STANDARD,1,5,0)
+#define StMSYS1_ZONE	_MB(2,PAGE_SURF_SYS_STANDARD,1,6,0)
 
 #ifdef ENABLE_SETTING_PROFILES
-#define StMSYS_Profile		_MB(2,9,2,0,0)
-#define StMSYS_ProfileA 	_MB(2,9,2,1,0)
-#define StMSYS_ProfileB 	_MB(2,9,2,2,0)
-#define StMSYS_ProfileC 	_MB(2,9,2,3,0)
-#define StMSYS_ProfileD 	_MB(2,9,2,4,0)
+#define StMSYS_Profile		_MB(2,PAGE_SURF_SYS_STANDARD,2,0,0)
+#define StMSYS_ProfileA 	_MB(2,PAGE_SURF_SYS_STANDARD,2,1,0)
+#define StMSYS_ProfileB 	_MB(2,PAGE_SURF_SYS_STANDARD,2,2,0)
+#define StMSYS_ProfileC 	_MB(2,PAGE_SURF_SYS_STANDARD,2,3,0)
+#define StMSYS_ProfileD 	_MB(2,PAGE_SURF_SYS_STANDARD,2,4,0)
 
-#define StMSYS2_English	_MB(2,9,3,1,0)
-#define StMSYS2_German	_MB(2,9,3,2,0)
-#define StMSYS2_French	_MB(2,9,3,3,0)
-#define StMSYS2_Italian	_MB(2,9,3,4,0)
-#define StMSYS2_Espanol	_MB(2,9,3,5,0)
+#define StMSYS2_English	_MB(2,PAGE_SURF_SYS_STANDARD,3,1,0)
+#define StMSYS2_German	_MB(2,PAGE_SURF_SYS_STANDARD,3,2,0)
+#define StMSYS2_French	_MB(2,PAGE_SURF_SYS_STANDARD,3,3,0)
+#define StMSYS2_Italian	_MB(2,PAGE_SURF_SYS_STANDARD,3,4,0)
+#define StMSYS2_Espanol	_MB(2,PAGE_SURF_SYS_STANDARD,3,5,0)
 
-#define StMSYS3_Units	_MB(2,9,4,1,0)
-#define StMSYS3_Colors	_MB(2,9,4,2,0)
+#define StMSYS3_Units	_MB(2,PAGE_SURF_SYS_STANDARD,4,1,0)
+#define StMSYS3_Colors	_MB(2,PAGE_SURF_SYS_STANDARD,4,2,0)
 #ifdef HAVE_DEBUG_VIEW
-#define StMSYS3_Debug	_MB(2,9,4,3,0)
+#define StMSYS3_Debug	_MB(2,PAGE_SURF_SYS_STANDARD,4,3,0)
 #endif
 
-#define StMSYS4_Info	_MB(2,9,5,1,0)
+#define StMSYS4_Info	_MB(2,PAGE_SURF_SYS_STANDARD,5,1,0)
 
-#define StMSYS5_Exit			_MB(2,9,6,1,0)
-#define StMSYS5_LogbookOffset	_MB(2,9,6,7,0)
-#define StMSYS5_ResetAll		_MB(2,9,6,2,0)
-#define StMSYS5_ResetDeco		_MB(2,9,6,3,0)
-#define StMSYS5_Reboot			_MB(2,9,6,4,0)
-#define StMSYS5_Maintenance		_MB(2,9,6,5,0)
-#define StMSYS5_ResetLogbook	_MB(2,9,6,6,0)
-#define StMSYS5_SetBattCharge	_MB(2,9,6,7,0)
-#define StMSYS5_RebootRTE		_MB(2,9,6,8,0)
-#define StMSYS5_RebootMainCPU	_MB(2,9,6,9,0)
-#define StMSYS5_ScreenTest		_MB(2,9,6,10,0)
-#define StMSYS5_SetFactoryBC	_MB(2,9,6,11,0)
-#define StMSYS5_ResetBluetooth	_MB(2,9,6,12,0)
-#define StMSYS5_SetSampleIndx   _MB(2,9,6,13,0)
-#define StMSYS5_AdjustSurfPres  _MB(2,9,6,14,0)
-#define StMSYS5_FlashBoot		_MB(2,9,6,15,0)
-#define StMSYS5_Reset			_MB(2,9,6,16,0)
-#define StMSYS5_ResetIcon		_MB(2,9,6,17,0)
+#define StMSYS5_Exit			_MB(2,PAGE_SURF_SYS_STANDARD,6,1,0)
+#define StMSYS5_LogbookOffset	_MB(2,PAGE_SURF_SYS_STANDARD,6,7,0)
+#define StMSYS5_ResetAll		_MB(2,PAGE_SURF_SYS_STANDARD,6,2,0)
+#define StMSYS5_ResetDeco		_MB(2,PAGE_SURF_SYS_STANDARD,6,3,0)
+#define StMSYS5_Reboot			_MB(2,PAGE_SURF_SYS_STANDARD,6,4,0)
+#define StMSYS5_Maintenance		_MB(2,PAGE_SURF_SYS_STANDARD,6,5,0)
+#define StMSYS5_ResetLogbook	_MB(2,PAGE_SURF_SYS_STANDARD,6,6,0)
+#define StMSYS5_SetBattCharge	_MB(2,PAGE_SURF_SYS_STANDARD,6,7,0)
+#define StMSYS5_RebootRTE		_MB(2,PAGE_SURF_SYS_STANDARD,6,8,0)
+#define StMSYS5_RebootMainCPU	_MB(2,PAGE_SURF_SYS_STANDARD,6,9,0)
+#define StMSYS5_ScreenTest		_MB(2,PAGE_SURF_SYS_STANDARD,6,10,0)
+#define StMSYS5_SetFactoryBC	_MB(2,PAGE_SURF_SYS_STANDARD,6,11,0)
+#define StMSYS5_ResetBluetooth	_MB(2,PAGE_SURF_SYS_STANDARD,6,12,0)
+#define StMSYS5_SetSampleIndx   _MB(2,PAGE_SURF_SYS_STANDARD,6,13,0)
+#define StMSYS5_AdjustSurfPres  _MB(2,PAGE_SURF_SYS_STANDARD,6,14,0)
+#define StMSYS5_FlashBoot		_MB(2,PAGE_SURF_SYS_STANDARD,6,15,0)
+#define StMSYS5_Reset			_MB(2,PAGE_SURF_SYS_STANDARD,6,16,0)
+#define StMSYS5_ResetIcon		_MB(2,PAGE_SURF_SYS_STANDARD,6,17,0)
 
 #else
 
-#define StMSYS2_English	_MB(2,9,2,1,0)
-#define StMSYS2_German	_MB(2,9,2,2,0)
-#define StMSYS2_French	_MB(2,9,2,3,0)
-#define StMSYS2_Italian	_MB(2,9,2,4,0)
-#define StMSYS2_Espanol	_MB(2,9,2,5,0)
+#define StMSYS2_English	_MB(2,PAGE_SURF_SYS_STANDARD,2,1,0)
+#define StMSYS2_German	_MB(2,PAGE_SURF_SYS_STANDARD,2,2,0)
+#define StMSYS2_French	_MB(2,PAGE_SURF_SYS_STANDARD,2,3,0)
+#define StMSYS2_Italian	_MB(2,PAGE_SURF_SYS_STANDARD,2,4,0)
+#define StMSYS2_Espanol	_MB(2,PAGE_SURF_SYS_STANDARD,2,5,0)
 
-#define StMSYS3_Units	_MB(2,9,3,1,0)
-#define StMSYS3_Colors	_MB(2,9,3,2,0)
+#define StMSYS3_Units	_MB(2,PAGE_SURF_SYS_STANDARD,3,1,0)
+#define StMSYS3_Colors	_MB(2,PAGE_SURF_SYS_STANDARD,3,2,0)
 #ifdef HAVE_DEBUG_VIEW
-#define StMSYS3_Debug	_MB(2,9,3,3,0)
+#define StMSYS3_Debug	_MB(2,PAGE_SURF_SYS_STANDARD,3,3,0)
 #endif
 
-#define StMSYS4_Info	_MB(2,9,4,1,0)
+#define StMSYS4_Info	_MB(2,PAGE_SURF_SYS_STANDARD,4,1,0)
 
-#define StMSYS5_Exit			_MB(2,9,5,1,0)
-#define StMSYS5_LogbookOffset	_MB(2,9,5,7,0)
-#define StMSYS5_ResetAll		_MB(2,9,5,2,0)
-#define StMSYS5_ResetDeco		_MB(2,9,5,3,0)
-#define StMSYS5_Reboot			_MB(2,9,5,4,0)
-#define StMSYS5_Maintenance		_MB(2,9,5,5,0)
-#define StMSYS5_ResetLogbook	_MB(2,9,5,6,0)
-#define StMSYS5_SetBattCharge	_MB(2,9,5,7,0)
-#define StMSYS5_RebootRTE		_MB(2,9,5,8,0)
-#define StMSYS5_RebootMainCPU	_MB(2,9,5,9,0)
-#define StMSYS5_ScreenTest		_MB(2,9,5,10,0)
-#define StMSYS5_SetFactoryBC	_MB(2,9,5,11,0)
-#define StMSYS5_ResetBluetooth	_MB(2,9,5,12,0)
-#define StMSYS5_SetSampleIndx   _MB(2,9,5,13,0)
-#define StMSYS5_AdjustSurfPres  _MB(2,9,5,14,0)
-#define StMSYS5_FlashBoot		_MB(2,9,5,15,0)
-#define StMSYS5_Reset			_MB(2,9,5,16,0)
-#define StMSYS5_ResetIcon		_MB(2,9,5,17,0)
+#define StMSYS5_Exit			_MB(2,PAGE_SURF_SYS_STANDARD,5,1,0)
+#define StMSYS5_LogbookOffset	_MB(2,PAGE_SURF_SYS_STANDARD,5,7,0)
+#define StMSYS5_ResetAll		_MB(2,PAGE_SURF_SYS_STANDARD,5,2,0)
+#define StMSYS5_ResetDeco		_MB(2,PAGE_SURF_SYS_STANDARD,5,3,0)
+#define StMSYS5_Reboot			_MB(2,PAGE_SURF_SYS_STANDARD,5,4,0)
+#define StMSYS5_Maintenance		_MB(2,PAGE_SURF_SYS_STANDARD,5,5,0)
+#define StMSYS5_ResetLogbook	_MB(2,PAGE_SURF_SYS_STANDARD,5,6,0)
+#define StMSYS5_SetBattCharge	_MB(2,PAGE_SURF_SYS_STANDARD,5,7,0)
+#define StMSYS5_RebootRTE		_MB(2,PAGE_SURF_SYS_STANDARD,5,8,0)
+#define StMSYS5_RebootMainCPU	_MB(2,PAGE_SURF_SYS_STANDARD,5,9,0)
+#define StMSYS5_ScreenTest		_MB(2,PAGE_SURF_SYS_STANDARD,5,10,0)
+#define StMSYS5_SetFactoryBC	_MB(2,PAGE_SURF_SYS_STANDARD,5,11,0)
+#define StMSYS5_ResetBluetooth	_MB(2,PAGE_SURF_SYS_STANDARD,5,12,0)
+#define StMSYS5_SetSampleIndx   _MB(2,PAGE_SURF_SYS_STANDARD,5,13,0)
+#define StMSYS5_AdjustSurfPres  _MB(2,PAGE_SURF_SYS_STANDARD,5,14,0)
+#define StMSYS5_FlashBoot		_MB(2,PAGE_SURF_SYS_STANDARD,5,15,0)
+#define StMSYS5_Reset			_MB(2,PAGE_SURF_SYS_STANDARD,5,16,0)
+#define StMSYS5_ResetIcon		_MB(2,PAGE_SURF_SYS_STANDARD,5,17,0)
 #endif
 
 /* Temporary line markers for dive mode custom view configuration */
 /* These use line numbers 21-26 which don't conflict with actual menu items */
-#define StMSYS_Custom0			_MB(2,9,21,0,0)
-#define StMSYS_Custom1			_MB(2,9,22,0,0)
-#define StMSYS_Custom2			_MB(2,9,23,0,0)
-#define StMSYS_Custom3			_MB(2,9,24,0,0)
-#define StMSYS_Custom4			_MB(2,9,25,0,0)
-#define StMSYS_Custom5			_MB(2,9,26,0,0)
+#define StMSYS_Custom0			_MB(2,PAGE_SURF_SYS_STANDARD,21,0,0)
+#define StMSYS_Custom1			_MB(2,PAGE_SURF_SYS_STANDARD,22,0,0)
+#define StMSYS_Custom2			_MB(2,PAGE_SURF_SYS_STANDARD,23,0,0)
+#define StMSYS_Custom3			_MB(2,PAGE_SURF_SYS_STANDARD,24,0,0)
+#define StMSYS_Custom4			_MB(2,PAGE_SURF_SYS_STANDARD,25,0,0)
+#define StMSYS_Custom5			_MB(2,PAGE_SURF_SYS_STANDARD,26,0,0)
 
 /* PAGE 10 */
-#define StMCustom 	_MB(2,10,0,0,0)
+#define StMCustom 	_MB(2,PAGE_SURF_SYS_CVIEW,0,0,0)
 
  /* PAGE 10 EDIT FIELD CONTENT */
 //
 
-#define StMCustom1_CViewTimeout		_MB(2,10,1,1,0)
-#define StMCustom1_CViewStandard	_MB(2,10,1,2,0)
-#define StMCustom1_CViewStandardBF	_MB(2,10,1,3,0)
-#define StMCustom1_CViewAutoFocusBF	_MB(2,10,1,4,0)
-#define StMCustom1_CornerTimeout	_MB(2,10,1,5,0)
-#define StMCustom1_CornerStandard	_MB(2,10,1,6,0)
+#define StMCustom1_CViewTimeout		_MB(2,PAGE_SURF_SYS_CVIEW,1,1,0)
+#define StMCustom1_CViewStandard	_MB(2,PAGE_SURF_SYS_CVIEW,1,2,0)
+#define StMCustom1_CViewStandardBF	_MB(2,PAGE_SURF_SYS_CVIEW,1,3,0)
+#define StMCustom1_CViewAutoFocusBF	_MB(2,PAGE_SURF_SYS_CVIEW,1,4,0)
+#define StMCustom1_CornerTimeout	_MB(2,PAGE_SURF_SYS_CVIEW,1,5,0)
+#define StMCustom1_CornerStandard	_MB(2,PAGE_SURF_SYS_CVIEW,1,6,0)
 
-#define StMCustom2_BFSelection		_MB(2,10,2,1,0)
+#define StMCustom2_BFSelection		_MB(2,PAGE_SURF_SYS_CVIEW,2,1,0)
 
-#define StMCustom3_CViewSelection1	_MB(2,10,3,1,0)
-#define StMCustom3_CViewSelection2	_MB(2,10,3,2,0)
-#define StMCustom3_CViewSelection3	_MB(2,10,3,3,0)
-#define StMCustom3_CViewSelection4	_MB(2,10,3,4,0)
-#define StMCustom3_CViewSelection5	_MB(2,10,3,5,0)
-#define StMCustom3_CViewSelection6	_MB(2,10,3,6,0)
+#define StMCustom3_CViewSelection1	_MB(2,PAGE_SURF_SYS_CVIEW,3,1,0)
+#define StMCustom3_CViewSelection2	_MB(2,PAGE_SURF_SYS_CVIEW,3,2,0)
+#define StMCustom3_CViewSelection3	_MB(2,PAGE_SURF_SYS_CVIEW,3,3,0)
+#define StMCustom3_CViewSelection4	_MB(2,PAGE_SURF_SYS_CVIEW,3,4,0)
+#define StMCustom3_CViewSelection5	_MB(2,PAGE_SURF_SYS_CVIEW,3,5,0)
+#define StMCustom3_CViewSelection6	_MB(2,PAGE_SURF_SYS_CVIEW,3,6,0)
 
-#define StMCustom4_CViewSelection1	_MB(2,10,4,1,0)
+#define StMCustom4_CViewSelection1	_MB(2,PAGE_SURF_SYS_CVIEW,4,1,0)
 
 #ifdef ENABLE_MOTION_CONTROL
-#define StMCustom5_CViewPortCalib	_MB(2,10,5,1,0)
-#define StMCustom5_CViewPortSpotSize _MB(2,10,5,2,0)
-#define StMCustom5_CViewPortLayout	_MB(2,10,5,3,0)
-#define StMCustom5_CViewPortAmbient	_MB(2,10,5,4,0)
-#define StMCustom5_CViewPortControl	_MB(2,10,5,5,0)
+#define StMCustom5_CViewPortCalib	_MB(2,PAGE_SURF_SYS_CVIEW,5,1,0)
+#define StMCustom5_CViewPortSpotSize _MB(2,PAGE_SURF_SYS_CVIEW,5,2,0)
+#define StMCustom5_CViewPortLayout	_MB(2,PAGE_SURF_SYS_CVIEW,5,3,0)
+#define StMCustom5_CViewPortAmbient	_MB(2,PAGE_SURF_SYS_CVIEW,5,4,0)
+#define StMCustom5_CViewPortControl	_MB(2,PAGE_SURF_SYS_CVIEW,5,5,0)
 #endif
 
 /* PAGE 11 */
-#define StMPLAN		_MB(2,11,0,0,0)
+#define StMPLAN		_MB(2,PAGE_SURF_PLAN,0,0,0)
 
 /* PAGE 11 EDIT FIELD CONTENT */
-#define StMPLAN2_Interval			_MB(2,11,2,1,0)
-#define StMPLAN3_DiveTime			_MB(2,11,3,1,0)
-#define StMPLAN4_MaxDepth			_MB(2,11,4,1,0)
-#define StMPLAN5_ExitResult			_MB(2,11,5,1,0)
-#define StMPLAN4_Settings			_MB(2,11,6,1,0)
+#define StMPLAN2_Interval			_MB(2,PAGE_SURF_PLAN,2,1,0)
+#define StMPLAN3_DiveTime			_MB(2,PAGE_SURF_PLAN,3,1,0)
+#define StMPLAN4_MaxDepth			_MB(2,PAGE_SURF_PLAN,4,1,0)
+#define StMPLAN5_ExitResult			_MB(2,PAGE_SURF_PLAN,5,1,0)
+#define StMPLAN4_Settings			_MB(2,PAGE_SURF_PLAN,6,1,0)
 
 
 

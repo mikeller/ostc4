@@ -54,5 +54,11 @@ uint8_t caveMode_isLiveDive(void);
 void caveMode_AddGasUsed(uint16_t seconds);
 void caveMode_SyncToMarker(void);
 void caveMode_NotifyCompression();
+
+uint32_t tMCave_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);
+void tMCave_OpenEdit_Deco(uint8_t line);
+void tMCave_CaveModeOnOff(void);
+void tMCave_CaveReturn(void);
+
 #endif /* CAVEMODE_H */
 

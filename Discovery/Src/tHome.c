@@ -247,7 +247,7 @@ void tHomeDiveMenuControl(uint8_t sendAction)
             	switch(t3_getCustomView())
             	{
             		case CVIEW_T3_Navigation:
-            		case CVIEW_Compass:		set_globalState(StDBEAR);
+            		case CVIEW_T3_Compass:	set_globalState(StDBEAR);
             			break;
             		case CVIEW_T3_StopWatch: set_globalState(StDRAVG);
             			break;
@@ -672,7 +672,7 @@ void tHome_change_field_button_pressed(void)
     tHome_tick_count_field = 0;
     tHome_tick_count_o2sens = 0;
     if(settingsGetPointer()->design == 7)
-        t7_change_field();
+        t7_change_field(0);
 }
 
 

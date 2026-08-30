@@ -188,12 +188,8 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
             {
                 textPointer += snprintf(&text[textPointer], 59,\
                     "\024 Bailout\031\034 %3u\016\016%c%c\017"
-#ifdef ENABLE_ADVANCED_GAS
-
-#endif
-                	"\035"
-                    "\n\r",
-                    unit_depth_integer(mod),
+                	"\035",
+					unit_depth_integer(mod),
                     unit_depth_char1(),
                     unit_depth_char2());
 #ifdef ENABLE_ADVANCED_GAS
@@ -213,6 +209,7 @@ void tMG_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext, uint8_t
                 	}
 
 #endif
+                	textPointer += snprintf(&text[textPointer], 5,"\n\r");
             }
             else
             {

@@ -85,8 +85,8 @@ typedef struct {
     uint8_t  lubber_thickness;
     uint8_t  lubber_pointer;     /* 1 = filled triangle cap at the lubber tip, pointing outward (12 o'clock) */
     bool     flip_display;
-    tFont   *font_num;
-    tFont   *font_card;
+    const tFont   *font_num;
+    const tFont   *font_card;
     /* compass redesign */
     uint8_t  scale_variant;    /* 0 = Medium (step/major/cardinal), 1 = 8-point (22.5/45/90) */
     uint8_t  show_minor_ticks; /* 1 = draw the finest tier */

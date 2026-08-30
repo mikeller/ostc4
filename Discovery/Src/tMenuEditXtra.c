@@ -52,10 +52,6 @@ void openEdit_CompassHeading(void);
 void openEdit_ResetStopwatch(void);
 void openEdit_SimFollowDecostops(void);
 void openEdit_SetManualMarker(void);
-#ifdef ENABLE_CAVEMODE
-void openEdit_CaveModeOnOff(void);
-void openEdit_CaveReturn(void);
-#endif
 void openEdit_SetEndDive(void);
 void openEdit_CalibViewport(void);
 
@@ -104,16 +100,7 @@ void openEdit_Xtra(uint8_t line)
     	{
     		openEdit_SetManualMarker();
     	}
-#ifdef ENABLE_CAVEMODE
-    	else if(line == get_lineOfID(StMXTRA_CaveModeOnOff))
-    	{
-    		openEdit_CaveModeOnOff();
-    	}
-    	else if(line == get_lineOfID(StMXTRA_CaveModeReturn))
-    	{
-    		openEdit_CaveReturn();
-    	}
-#endif
+
 #ifdef ENABLE_MOTION_CONTROL
     	else if(line == get_lineOfID(StMXTRA_CalibViewport))
     	{
@@ -172,30 +159,6 @@ void openEdit_SetManualMarker(void)
     stateUsedWrite->events.manualMarker = 1;
     exitMenuEdit_to_Home();
 }
-
-#ifdef ENABLE_CAVEMODE
-void openEdit_CaveModeOnOff(void)
-{
-	if(caveMode_isActive() == 0)
-	{
-		caveMode_SetActive(1);
-	}
-	else
-	{
-		caveMode_SetActive(0);
-	}
-	exitMenuEdit_to_Menu_with_Menu_Update();
-}
-
-void openEdit_CaveReturn(void)
-{
-	if(caveMode_isReturning() == 0)
-	{
-		caveMode_SetReturn(1);
-	}
-	exitMenuEdit_to_Menu_with_Menu_Update();
-}
-#endif
 
 void openEdit_SetEndDive(void)
 {

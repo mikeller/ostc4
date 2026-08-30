@@ -32,6 +32,7 @@
 #include "t7.h"
 #include "t3.h"
 #include "tHome.h"
+#include "tMenuEdit.h"
 
 typedef struct stopEntry
 {
@@ -239,7 +240,7 @@ void caveMode_Init()
    liveDive = 1;
    returnTime_seconds = 0;
    returnTime_last = 0;
-   if((pSettings->caveModeAutoStart) && ((!t3_customview_disabled(CVIEW_T3_Cavemode)) || (!t7_customview_disabled(CVIEW_Cave))))
+   if((pSettings->caveModeAutoStart) && ((!t3_customview_disabled(CVIEW_T3_Cavemode, 0)) || (!t7_customview_disabled(CVIEW_Cave))))
    {
 	   caveModeState = CAVEMODE_RECORDING;
    }
@@ -719,6 +720,83 @@ void caveMode_AddGasUsed(uint16_t seconds)
 	gasUsedUpdate_Tick = HAL_GetTick();		/* updating tick in Addgas function allows the combined use with simulator which may trigger a longer time period */
 }
 
+
+uint32_t tMCave_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext)
+{
+    uint8_t textPointer;
+    textPointer = 0;
+
+	if((line == 0) || (line == 1))
+	{
+		text[textPointer++] = TXT_Cave;
+		text[textPointer++] = ' ';
+		text[textPointer++] = TXT_Active;
+		text[textPointer++] = ' ';
+		text[textPointer++] = ' ';
+		if(caveMode_isActive())
+			text[textPointer++] = '\005';
+		else
+			text[textPointer++] = '\006';
+	}
+	strcpy(&text[textPointer],"\n\r");
+	textPointer += 2;
+	if((line == 0) || (line == 2))
+	{
+		text[textPointer++] = TXT_Cave;
+		text[textPointer++] = ' ';
+		text[textPointer++] = TXT_2BYTE;
+		text[textPointer++] = TXT2BYTE_ButtonBack;
+		text[textPointer++] = ' ';
+		text[textPointer++] = ' ';
+		if(caveMode_isReturning())
+			text[textPointer++] = '\005';
+		else
+			text[textPointer++] = '\006';
+	}
+	strcpy(&text[textPointer],"\n\r");
+	textPointer += 2;
+
+    return StMCAVE;
+}
+
+
+void tMCave_OpenEdit_Deco(uint8_t line)
+{
+    set_globalState_Menu_Line(line);
+    resetMenuEdit(CLUT_MenuPageDeco);
+
+    if(line == get_lineOfID(StMCAVE_CaveModeOnOff))
+    {
+    	tMCave_CaveModeOnOff();
+    }
+    else if(line == get_lineOfID(StMCANE_CaveModeReturn))
+    {
+    	tMCave_CaveReturn();
+    }
+}
+
+void tMCave_CaveModeOnOff(void)
+{
+	if(caveMode_isActive() == 0)
+	{
+		caveMode_SetActive(1);
+	}
+	else
+	{
+		caveMode_SetActive(0);
+	}
+	exitMenuEdit_to_Menu_with_Menu_Update();
+}
+
+void tMCave_CaveReturn(void)
+{
+	if(caveMode_isReturning() == 0)
+	{
+		caveMode_SetReturn(1);
+	}
+	exitMenuEdit_to_Menu_with_Menu_Update();
+}
+
 #endif
 
 uint8_t caveMode_isOff(void)
@@ -732,4 +810,6 @@ uint8_t caveMode_isOff(void)
 #endif
 	return retOff;
 }
+
+
 

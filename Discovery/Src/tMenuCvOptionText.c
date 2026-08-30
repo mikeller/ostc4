@@ -296,13 +296,13 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 		CvOptAvailable = 0;
 		switch(cvOptIndex)
 		{
-			case CVOPT_Compass:	if((!t3_customview_disabled(CVIEW_T3_Compass)) || (!t3_customview_disabled(CVIEW_T3_Navigation)) || (!t7_customview_disabled(CVIEW_Compass)))
+			case CVOPT_Compass:	if((!t3_customview_disabled(CVIEW_T3_Compass, 0)) || (!t3_customview_disabled(CVIEW_T3_Navigation, 0)) || (!t7_customview_disabled(CVIEW_Compass)))
 								{
 									refreshFctPointerTable[activeLines] = tMCvOptText_refreshCompass;
 									CvOptAvailable = 1;
 								}
 				break;
-			case CVOPT_CompassStyle: if((!t3_customview_disabled(CVIEW_T3_Compass)) || (!t3_customview_disabled(CVIEW_T3_Navigation)) || (!t7_customview_disabled(CVIEW_Compass)))
+			case CVOPT_CompassStyle: if((!t3_customview_disabled(CVIEW_T3_Compass, 0)) || (!t3_customview_disabled(CVIEW_T3_Navigation, 0)) || (!t7_customview_disabled(CVIEW_Compass)))
 								{
 									refreshFctPointerTable[activeLines] = tMCvOptText_refreshCompassStyle;
 									CvOptAvailable = 1;
@@ -344,12 +344,14 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 										CvOptAvailable = 1;
 									}
 				break;
+#ifdef ENABLE_CAVEMODE
 			case CVOPT_Cave:		if(!t7_customview_disabled(CVIEW_Cave))
 									{
 										refreshFctPointerTable[activeLines] = tMCvOptText_refreshCave;
 										CvOptAvailable = 1;
 									}
 				break;
+#endif
 
 			default:
 				break;
