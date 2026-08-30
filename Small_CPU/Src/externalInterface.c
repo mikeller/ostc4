@@ -1265,12 +1265,10 @@ void externalInterface_HandleUART()
 										 externalInterface_SetCO2Value(0.0);
 										 externalInterface_SetCO2SignalStrength(0);
 							break;
-						case SENSOR_SENTINEL: setExternalInterfaceChannel(0,0.0);
-											  setExternalInterfaceChannel(1,0.0);
-											  setExternalInterfaceChannel(2,0.0);
-											  externalInterface_SetBottlePressure(0,0);
-											  externalInterface_SetBottlePressure(1,0);
+#ifdef ENABLE_SENTINEL_MODE
+						case SENSOR_SENTINEL: uartSentinel_handleTimeout();
 							break;
+#endif
 						default:
 							break;
 					}

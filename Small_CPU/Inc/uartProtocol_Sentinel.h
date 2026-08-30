@@ -40,6 +40,9 @@
 
 #define SENTINEL_UART_MAX_INTERVALL		5000
 
+#define SENTINEL_UART_O2_DATA_TIMEOUT	10000
+#define SENTINEL_UART_SLOW_DATA_TIMEOUT	20000
+
 
 #define	UART_SENTINEL_O2_P 	'T'				/* Primary O2 sensor */
 #define	UART_SENTINEL_O2_S	'S'				/* Secondary O2 sensor */
@@ -70,5 +73,6 @@
 void uartSentinel_Control(void);
 void uartSentinel_ProcessData(uint8_t data);
 uint8_t uartSentinel_isSensorConnected();
+void uartSentinel_handleTimeout(void);
 
 #endif /* UART_PROTOCOL_SENTINEL_H */

@@ -29,6 +29,9 @@
 static uint8_t SentinelConnected = 0;						/* Binary indicator if a sensor (and what type of subsensor) is connected or not */
 static receiveStateSentinel_t rxState = SENTRX_Ready;
 
+static uint32_t lastSlowDataTick = 0;
+static uint32_t lastO2DataTick = 0;
+
 float o2ChannelOffset_mV[3] = {0.0, 0.0, 0.0};
 
 extern sUartComCtrl Uart1Ctrl;
@@ -83,7 +86,6 @@ void uartSentinel_ProcessData(uint8_t data)
 	static uint8_t checksum = 0;
 	static char checksum_str[3];
 
-	static uint32_t lastSlowDataTick = 0;
 	static float lastPrimaryO2Voltage_mV[3] = {0.0, 0.0, 0.0};
 
 	uint8_t index = 0;
@@ -211,11 +213,9 @@ void uartSentinel_ProcessData(uint8_t data)
 																		}
 																		SentinelConnected |= SENTINEL_O2;
 																		dataSetReceived |= SENTINEL_O2;
+																		lastO2DataTick = HAL_GetTick();
 												break;
-											case UART_SENTINEL_O2_S:	lastPrimaryO2Voltage_mV[0] = dataValue[0];
-																		lastPrimaryO2Voltage_mV[1] = dataValue[1];
-																		lastPrimaryO2Voltage_mV[2] = dataValue[2];
-																		for(index = 0; index < 3; index++)
+											case UART_SENTINEL_O2_S:	for(index = 0; index < 3; index++)
 																		{
 																			if(lastPrimaryO2Voltage_mV[index] == 0.0)	/* primary sensor failed => apply secondary */
 																			{
@@ -233,6 +233,7 @@ void uartSentinel_ProcessData(uint8_t data)
 																		}
 																		SentinelConnected |= SENTINEL_O2;
 																		dataSetReceived |= SENTINEL_O2;
+																		lastO2DataTick = HAL_GetTick();
 												break;
 											case UART_SENTINEL_PRESSURE_O2:	externalInterface_SetBottlePressure(0,dataValue[0]);
 																			SentinelConnected |= SENTINEL_PRESSURE;
@@ -249,7 +250,7 @@ void uartSentinel_ProcessData(uint8_t data)
 
 										}
 
-										if((time_elapsed_ms(lastSlowDataTick, HAL_GetTick()) < 20000 ))
+										if((time_elapsed_ms(lastSlowDataTick, HAL_GetTick()) < SENTINEL_UART_SLOW_DATA_TIMEOUT ))
 										{
 											if(dataSetReceived & SENTINEL_O2 )
 											{
@@ -282,5 +283,19 @@ uint8_t uartSentinel_isSensorConnected()
 	return SentinelConnected;
 }
 
+void uartSentinel_handleTimeout()
+{
+	if (time_elapsed_ms(lastO2DataTick, HAL_GetTick()) > SENTINEL_UART_O2_DATA_TIMEOUT)
+	{
+		setExternalInterfaceChannel(0,0.0);
+		setExternalInterfaceChannel(1,0.0);
+		setExternalInterfaceChannel(2,0.0);
+	}
+	if (time_elapsed_ms(lastSlowDataTick, HAL_GetTick()) > SENTINEL_UART_SLOW_DATA_TIMEOUT * 3)
+	{
+		externalInterface_SetBottlePressure(0,0);
+		externalInterface_SetBottlePressure(1,0);
+	}
+}
 #endif
 
