@@ -503,13 +503,15 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
     static uint8_t sampleToggle = 0;
 	static float sim_ascent_rate_meter_per_min_local = 0;
 	uint8_t sampleTime = getReplayDataResolution();
+	uint8_t incReplayDataIndex = 0;
 
     if(simReplayActive) /* precondition: function is called once per second, sample rate is a multiple of second */
     {
     	if(sampleToggle == 0)
     	{
     		sampleToggle = sampleTime - 1;
-    		sim_aim_depth_meter = (float)(*pReplayData++/100.0);
+    		incReplayDataIndex = 1;
+    		sim_aim_depth_meter = (float)(*pReplayData/100.0);
     		if(sim_aim_depth_meter > 500)		/* corrupted data or replay data empty => set target surface */
     		{
     			sim_aim_depth_meter = 0;
@@ -548,14 +550,24 @@ static float sim_get_ambient_pressure(SDiveState * pDiveState)
 
         if(sim_heed_decostops && depth_meter < actual_deco_stop)
         {
-            if(actual_deco_stop < (depth_meter +  sim_ascent_rate_meter_per_min_local / 60))
+            if(actual_deco_stop > (depth_meter +  sim_ascent_rate_meter_per_min_local / 60))	/* stay at deco depth */
+            {
                  depth_meter = actual_deco_stop;
+            }
             else
+            {
                 depth_meter += sim_ascent_rate_meter_per_min_local / 60;
+            }
+            if(simReplayActive)
+            {
+            	incReplayDataIndex = 0;
+            }
         }
-
    }
-
+   if((incReplayDataIndex) && (simReplayActive))
+   {
+	   pReplayData++;
+   }
    return surface_pressure_bar + depth_meter / 10;
 }
 
