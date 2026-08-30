@@ -41,7 +41,7 @@ uint8_t t3_change_customview(uint8_t action);
 uint8_t t3_GetEnabled_customviews(void);
 uint8_t t3_getCustomView(void);
 void t3_set_customview_to_primary(void);
-uint8_t t3_customview_disabled(uint8_t view);
+uint8_t t3_customview_disabled(uint8_t view, uint8_t checkCondition);
 void t3_handleAutofocus(void);
 
 unsigned printScrubberText(char *text, size_t size, const SScrubberData scrubberData[], const SSettings *settings, bool useTwoLines);

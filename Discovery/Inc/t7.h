@@ -68,7 +68,7 @@ void t7_refresh(void);
 void t7_refresh_sleepmode_fun(void);
 void t7_refresh_customview_old(void);
 
-void t7_change_field(void);
+void t7_change_field(uint8_t checkCurrentField);
 uint8_t t7_change_customview(uint8_t action);
 void t7_select_customview(uint8_t selectedCustomview);
 

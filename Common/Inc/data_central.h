@@ -638,4 +638,5 @@ uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8
 
 bool isScrubberTimerEnabled(const SSettings *settings);
 bool isScrubberTimerRunning(const SDiveState *diveState, const SSettings *settings);
+uint8_t isSensortypeActive(uint8_t sensorType);
 #endif // DATA_CENTRAL_H

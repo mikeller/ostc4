@@ -610,6 +610,7 @@ void t7_refresh(void)
 				last_mode = MODE_DIVE;
 				/* lower left corner primary */
 				selection_custom_field = settingsGetPointer()->tX_userselectedLeftLowerCornerPrimary;
+				t7_change_field(1);	/* check if llc shows valid data */
 				/* custom view primary OR debug if automatic return is off | T7 is default dive view => also initialize big font view */
 				if((settingsGetPointer()->tX_customViewTimeout == 0) && (settingsGetPointer()->showDebugInfo))
 				{
@@ -1707,6 +1708,13 @@ uint8_t t7_customview_disabled(uint8_t view)
          }
          i++;
     }
+
+#ifndef ENABLE_CAVEMODE
+  	if (view == CVIEW_GasDemand)	/* demand calculation is made by cavemode functionality */
+  	{
+  		cv_disabled = 1;
+  	}
+#endif
 
     if (((view == CVIEW_sensors) || (view == CVIEW_sensors_mV)) &&
        	((stateUsed->diveSettings.ppo2sensors_deactivated == 0x07) || (stateUsed->diveSettings.ccrOption == 0) || (stateUsed->warnings.fallback)))
@@ -2851,12 +2859,14 @@ void t7_set_field_to_primary(void)
             selection_custom_field = settingsGetPointer()->tX_userselectedLeftLowerCornerPrimary;
 }
 
-void t7_change_field(void)
+void t7_change_field(uint8_t checkCurrentField)
 {
 	SSettings *settings = settingsGetPointer();
-    selection_custom_field++;
-
     uint8_t checkAgain = 0;
+	if(checkCurrentField == 0)
+	{
+		selection_custom_field++;
+	}
 
     do
     {
@@ -2886,7 +2896,7 @@ void t7_change_field(void)
 			checkAgain = 1;
 		}
 #endif
-		if((selection_custom_field == LLC_ScrubberTime) && (isScrubberTimerEnabled(settings) == 0))
+		if((selection_custom_field == LLC_ScrubberTime) && ((isScrubberTimerEnabled(settings) == 0) || (!isLoopMode(stateUsed->diveSettings.diveMode))))
 		{
 			selection_custom_field++;
 			checkAgain = 1;
@@ -2896,7 +2906,6 @@ void t7_change_field(void)
 			selection_custom_field++;
 			checkAgain = 1;
 		}
-
 		if(selection_custom_field >= LLC_END)
 		{
 			selection_custom_field = LLC_Empty;

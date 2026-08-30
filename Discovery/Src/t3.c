@@ -32,6 +32,7 @@
 
 #include "t3.h"
 
+#include "data_central.h"
 #include "data_exchange_main.h"
 #include "settings.h"
 #include "decom.h"
@@ -1129,7 +1130,7 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
     }
 	if((last_customview != tX_selection_customview)	&& (settingsGetPointer()->design == 3))	/* check if current selection is disabled and should be skipped */
 	{
-		if(t3_customview_disabled(tX_selection_customview))
+		if(t3_customview_disabled(tX_selection_customview , 1))
 		{
 			tX_selection_customview = t3_change_customview(ACTION_BUTTON_ENTER);
 		}
@@ -1230,13 +1231,13 @@ void t3_basics_refresh_customview(float depth, uint8_t tX_selection_customview, 
     		switch (tX_selection_customview)
     		{
     			default:
-    			case CVIEW_T3_GasList: if(!t3_customview_disabled(CVIEW_T3_GasDemand))
+    			case CVIEW_T3_GasList: if(!t3_customview_disabled(CVIEW_T3_GasDemand, 0))
     									{
     										tX_selection_customview = CVIEW_T3_GasDemand;
     										t3_selection_customview = CVIEW_T3_GasDemand;
     									}
     				break;
-    			case CVIEW_T3_GasDemand: if(!t3_customview_disabled(CVIEW_T3_GasList))
+    			case CVIEW_T3_GasDemand: if(!t3_customview_disabled(CVIEW_T3_GasList, 0))
     									{
     			    						tX_selection_customview = CVIEW_T3_GasList;
     			    						t3_selection_customview = CVIEW_T3_GasList;
@@ -1940,7 +1941,7 @@ void t3_basics_show_customview_warnings(GFX_DrawCfgWindow* tXc1)
     requestBuzzerActivation(REQUEST_BUZZER_CONTINUOUS);
 }
 
-uint8_t t3_customview_disabled(uint8_t view)
+uint8_t t3_customview_disabled(uint8_t view, uint8_t checkCondition)
 {
 	uint8_t i = 0;
 	uint8_t cv_disabled = 0;
@@ -1959,12 +1960,38 @@ uint8_t t3_customview_disabled(uint8_t view)
          i++;
     }
 
-    if ((view == CVIEW_T3_sensors) &&
-       	((stateUsed->diveSettings.ppo2sensors_deactivated == 0x07) || (stateUsed->diveSettings.ccrOption == 0) || stateUsed->warnings.fallback))
-    {
-      	cv_disabled = 1;
-    }
+#ifndef ENABLE_CAVEMODE
+  	if (view == CVIEW_T3_GasDemand)	/* demand calculation is made by cavemode functionality */
+  	{
+  		cv_disabled = 1;
+  	}
+#endif
 
+  	if(checkCondition)		/* check if a special side condition is blocking the view */
+  	{
+  		/* only show sensors if in ccr mode and not deactivated */
+		if ((view == CVIEW_T3_sensors) &&
+			((stateUsed->diveSettings.ppo2sensors_deactivated == 0x07) || (stateUsed->diveSettings.ccrOption == 0) || stateUsed->warnings.fallback))
+		{
+			cv_disabled = 1;
+		}
+        const SDecoinfo * pDecoinfo = getDecoInfo();
+		/* Skip TTS if value is 0 */
+		if((view == CVIEW_T3_TTS) && (!pDecoinfo->output_time_to_surface_seconds))
+		{
+			cv_disabled = 1;
+		}
+		/* Skip Deco if NDL is not set */
+		if((view == CVIEW_T3_Decostop) && ((!pDecoinfo->output_ndl_seconds) && (!pDecoinfo->output_time_to_surface_seconds) && (timer_Safetystop_GetCountDown() == 0)))
+		{
+			cv_disabled = 1;
+		}
+		/* only show tempstick in loop mode */
+		if((view == CVIEW_T3_Tempstick) && (!isSensortypeActive(SENSOR_ACTIVE_TEMPSTICK)) && (!isLoopMode(stateUsed->diveSettings.diveMode)))
+		{
+			cv_disabled = 1;
+		}
+  	}
     return cv_disabled;
 }
 
@@ -2036,7 +2063,7 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
     			break;
 		}
 
-		if((tX_customviews == cv_changelist_BS) && (t3_customview_disabled(tX_customviews[index])))
+		if((tX_customviews == cv_changelist_BS) && (t3_customview_disabled(tX_customviews[index], 1)))
 		{
 			iterate = 1;
 			if(*tX_selection_customview == tX_customviews[index])
@@ -2044,47 +2071,15 @@ void t3_basics_change_customview(uint8_t *tX_selection_customview,const uint8_t 
 				useFallback = 1;		/* the provided view is disabled => use fallback */
 			}
 		}
+#if 0
 		else	/* special case which are enabled but not to be displayed at the moment */
 		{
 			if(settingsGetPointer()->MotionDetection != MOTION_DETECT_SECTOR)		/* no hiding in case of active sector view option (fixed mapping would change during dive) */
 			{
-                const SDecoinfo * pDecoinfo = getDecoInfo();
-				/* Skip TTS if value is 0 */
-				if((tX_customviews[index] == CVIEW_T3_TTS) && (!pDecoinfo->output_time_to_surface_seconds))
-				{
-					if(*tX_selection_customview == tX_customviews[index])
-					{
-						useFallback = 1;		/* the provided view is disabled => use fallback */
-					}
-					iterate = 1;
-					if(fallbackSelection == CVIEW_noneOrDebug)
-					{
-						fallbackSelection = CVIEW_T3_TTS;
-					}
-				}
-				/* Skip Deco if NDL is not set */
-				if((tX_customviews[index] == CVIEW_T3_Decostop) && ((!pDecoinfo->output_ndl_seconds) && (!pDecoinfo->output_time_to_surface_seconds) && (timer_Safetystop_GetCountDown() == 0)))
-				{
-					if(*tX_selection_customview == tX_customviews[index])
-					{
-						useFallback = 1;		/* the provided view is disabled => use fallback */
-					}
-					fallbackSelection = CVIEW_T3_Decostop;
-					iterate = 1;
-				}
-				/* only show tempstick in loop mode */
-				if((tX_customviews[index] == CVIEW_T3_Tempstick) && (!isSensortypeActive(SENSOR_ACTIVE_TEMPSTICK)) && (!isLoopMode(stateUsed->diveSettings.diveMode)))
-				{
-					if(*tX_selection_customview == tX_customviews[index])
-					{
-						useFallback = 1;		/* the provided view is disabled => use fallback */
-					}
-					fallbackSelection = CVIEW_T3_Tempstick;
-					iterate = 1;
-				}
 
 			}
 		}
+#endif
 	    if((iterate) && (action == ACTION_END))			/* ACTION_END is used to check the enable state of the provided view. If it is enable the function will return without change */
 	    {
 	    	action = ACTION_BUTTON_ENTER;
@@ -2203,7 +2198,7 @@ uint8_t t3_GetEnabled_customviews()
     {
     	increment = 1;
     /* check if view is enabled */
-    	if(t3_customview_disabled(*pViews))
+    	if(t3_customview_disabled(*pViews, 1))
     	{
     		increment = 0;
     	}
