@@ -97,9 +97,9 @@ st-flash read "$SECTOR_DUMP" "$SECTOR_ADDR" "$SECTOR_SIZE"
 	exit 1
 }
 
-dd if="$BACKUP" of="$SECTOR_DUMP" bs=1 seek="$MFG_OFFSET" count="$MFG_SIZE" conv=notrunc status=none
-printf '\xff' | dd of="$SECTOR_DUMP" bs=1 seek="$((MFG_OFFSET + 7))" count=1 conv=notrunc status=none
-printf '\xff' | dd of="$SECTOR_DUMP" bs=1 seek="$((MFG_OFFSET + 59))" count=1 conv=notrunc status=none
+dd if="$BACKUP" of="$SECTOR_DUMP" bs=1 seek="$MFG_OFFSET" count="$MFG_SIZE" conv=notrunc
+printf '\xff' | dd of="$SECTOR_DUMP" bs=1 seek="$((MFG_OFFSET + 7))" count=1 conv=notrunc
+printf '\xff' | dd of="$SECTOR_DUMP" bs=1 seek="$((MFG_OFFSET + 59))" count=1 conv=notrunc
 
 echo "Writing complete Sector 2 with Bluetooth-name flags reset"
 st-flash --connect-under-reset write "$SECTOR_DUMP" "$SECTOR_ADDR"
