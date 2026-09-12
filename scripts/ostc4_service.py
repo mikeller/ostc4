@@ -51,8 +51,16 @@ class RFCOMMConnection:
     def __init__(self, address, channel, timeout):
         self.socket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM,
                                     socket.BTPROTO_RFCOMM)
-        self.socket.settimeout(timeout)
+        self.timeout = timeout
         self.socket.connect((address, channel))
+
+    @property
+    def timeout(self):
+        return self.socket.gettimeout()
+
+    @timeout.setter
+    def timeout(self, value):
+        self.socket.settimeout(value)
 
     def write(self, data):
         self.socket.sendall(data)
@@ -107,6 +115,7 @@ def open_service_connection(args, attempts=1):
             connection.reset_input_buffer()
             connection.reset_output_buffer()
             send_service_mode_init(connection)
+            connection.timeout = args.timeout
             return connection
         except Exception as error:
             last_error = error
@@ -566,7 +575,7 @@ def main():
                     ser = open_service_connection(args, attempts=20)
                     set_bluetooth_name(ser)
             except Exception as e:
-                if needs_reinit_for_bt_name and "not echoed" in str(e):
+                if needs_reinit_for_bt_name and "was not acknowledged" in str(e):
                     print(f"Warning: {e}. Bluetooth disconnected after 0x80.")
                     print("Please reconnect the device, then press Enter.")
                     try:
