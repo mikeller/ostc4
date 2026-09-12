@@ -4,10 +4,15 @@ set -euo pipefail
 
 MFG_ADDR=0x0800A040
 MFG_SIZE=64
-BOOTLOADER=RefPrj/BootLoader/Release/OSTC4_BootLoader.bin
+SECTOR_ADDR=0x08008000
+SECTOR_SIZE=$((16 * 1024))
+MFG_OFFSET=$((MFG_ADDR - SECTOR_ADDR))
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+BOOTLOADER=$REPO_ROOT/RefPrj/BootLoader/Release/OSTC4_BootLoader.bin
 BACKUP=
 CONFIRMED=0
-PATCHED_DUMP=
+SECTOR_DUMP=
 VERIFY_DUMP=
 
 usage() {
@@ -65,12 +70,12 @@ for command in st-flash xxd dd cmp mktemp; do
 done
 
 cleanup() {
-	rm -f "$PATCHED_DUMP" "$VERIFY_DUMP"
+	rm -f "$SECTOR_DUMP" "$VERIFY_DUMP"
 }
 trap cleanup EXIT
 
-PATCHED_DUMP=$(mktemp /tmp/ostc4-mfg-patched.XXXXXX)
-VERIFY_DUMP=$(mktemp /tmp/ostc4-mfg-verify.XXXXXX)
+SECTOR_DUMP=$(mktemp /tmp/ostc4-sector2.XXXXXX)
+VERIFY_DUMP=$(mktemp /tmp/ostc4-sector2-verify.XXXXXX)
 
 echo "Reading manufacturing data into $BACKUP"
 st-flash read "$BACKUP" "$MFG_ADDR" "$MFG_SIZE"
@@ -79,25 +84,30 @@ st-flash read "$BACKUP" "$MFG_ADDR" "$MFG_SIZE"
 	exit 1
 }
 
-cp "$BACKUP" "$PATCHED_DUMP"
-printf '\xff' | dd of="$PATCHED_DUMP" bs=1 seek=7 count=1 conv=notrunc status=none
-printf '\xff' | dd of="$PATCHED_DUMP" bs=1 seek=59 count=1 conv=notrunc status=none
-
 echo "Original manufacturing data:"
 xxd -l "$MFG_SIZE" "$BACKUP"
-echo "Patched manufacturing data:"
-xxd -l "$MFG_SIZE" "$PATCHED_DUMP"
 
 echo "Flashing bootloader: $BOOTLOADER"
 st-flash --connect-under-reset write "$BOOTLOADER" 0x08000000
 
-echo "Writing manufacturing data with Bluetooth-name flags reset"
-st-flash --connect-under-reset write "$PATCHED_DUMP" "$MFG_ADDR"
+echo "Reading the bootloader's Sector 2"
+st-flash read "$SECTOR_DUMP" "$SECTOR_ADDR" "$SECTOR_SIZE"
+[ "$(wc -c < "$SECTOR_DUMP")" -eq "$SECTOR_SIZE" ] || {
+	echo "Error: Sector 2 dump is not $SECTOR_SIZE bytes." >&2
+	exit 1
+}
 
-echo "Verifying manufacturing data"
-st-flash read "$VERIFY_DUMP" "$MFG_ADDR" "$MFG_SIZE"
-cmp -s "$PATCHED_DUMP" "$VERIFY_DUMP" || {
-	echo "Error: manufacturing-data verification failed. Original backup remains at $BACKUP" >&2
+dd if="$BACKUP" of="$SECTOR_DUMP" bs=1 seek="$MFG_OFFSET" count="$MFG_SIZE" conv=notrunc status=none
+printf '\xff' | dd of="$SECTOR_DUMP" bs=1 seek="$((MFG_OFFSET + 7))" count=1 conv=notrunc status=none
+printf '\xff' | dd of="$SECTOR_DUMP" bs=1 seek="$((MFG_OFFSET + 59))" count=1 conv=notrunc status=none
+
+echo "Writing complete Sector 2 with Bluetooth-name flags reset"
+st-flash --connect-under-reset write "$SECTOR_DUMP" "$SECTOR_ADDR"
+
+echo "Verifying complete Sector 2"
+st-flash read "$VERIFY_DUMP" "$SECTOR_ADDR" "$SECTOR_SIZE"
+cmp -s "$SECTOR_DUMP" "$VERIFY_DUMP" || {
+	echo "Error: Sector 2 verification failed. Original backup remains at $BACKUP" >&2
 	exit 1
 }
 
