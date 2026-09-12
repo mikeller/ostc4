@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-Set manufacturing data on OSTC4 via Bluetooth serial connection.
+Service OSTC4 manufacturing data and Bluetooth names over RFCOMM or a serial port.
 
 This script implements the OSTC4 service mode protocol to set:
 - 0x80: Write manufacturing data (52 bytes)
 - 0x81: Write secondary serial (12 bytes)  
 - 0x82: Set Bluetooth name
 
-The device must be in bootloader mode and connected via Bluetooth.
+The device must be in bootloader communication mode and connected via Bluetooth.
 """
 
 import argparse
-import serial
+import select
+import socket
 import struct
 import sys
 import time
@@ -42,6 +43,79 @@ MAX_SEC_INFO_LEN = 4
 class ValidationError(Exception):
     """Raised when input validation fails"""
     pass
+
+
+class RFCOMMConnection:
+    """Provide the serial-like interface used by the OSTC service protocol."""
+
+    def __init__(self, address, channel, timeout):
+        self.socket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM,
+                                    socket.BTPROTO_RFCOMM)
+        self.socket.settimeout(timeout)
+        self.socket.connect((address, channel))
+
+    def write(self, data):
+        self.socket.sendall(data)
+        return len(data)
+
+    def read(self, size):
+        data = bytearray()
+        while len(data) < size:
+            try:
+                chunk = self.socket.recv(size - len(data))
+            except socket.timeout:
+                break
+            if not chunk:
+                break
+            data.extend(chunk)
+        return bytes(data)
+
+    def reset_input_buffer(self):
+        while select.select([self.socket], [], [], 0)[0]:
+            if not self.socket.recv(256):
+                break
+
+    def reset_output_buffer(self):
+        pass
+
+    def close(self):
+        self.socket.close()
+
+
+def open_connection(args, timeout=None):
+    timeout = args.timeout if timeout is None else timeout
+    if args.address:
+        print(f"Connecting to {args.address} RFCOMM channel {args.channel}...")
+        return RFCOMMConnection(args.address, args.channel, timeout)
+
+    try:
+        import serial
+    except ImportError as error:
+        raise RuntimeError("pyserial is required for serial-port connections") from error
+
+    print(f"Opening {args.port}...")
+    return serial.Serial(args.port, 115200, timeout=timeout)
+
+
+def open_service_connection(args, attempts=1):
+    last_error = None
+    for attempt in range(attempts):
+        connection = None
+        try:
+            connection = open_connection(args, min(args.timeout, 2) if attempts > 1 else None)
+            time.sleep(0.5)
+            connection.reset_input_buffer()
+            connection.reset_output_buffer()
+            send_service_mode_init(connection)
+            return connection
+        except Exception as error:
+            last_error = error
+            if connection:
+                connection.close()
+            if attempt + 1 < attempts:
+                print("Waiting for bootloader Bluetooth service...")
+                time.sleep(2)
+    raise last_error
 
 
 def validate_serial(value, name="Serial"):
@@ -311,9 +385,23 @@ def set_bluetooth_name(ser):
     This triggers the bootloader to set the BT name based on the serial number.
     """
     print("Setting Bluetooth name...")
-    send_command(ser, 0x82)
-    # The bootloader will return from communication mode to set the BT name
-    print("Bluetooth name set command sent (device will configure BT module)")
+    ser.write(b'\x82')
+    try:
+        response = ser.read(1)
+    except OSError:
+        response = b''
+
+    if response in (b'\x4c', b'\x4d'):
+        print("Application accepted the command and is restarting into the bootloader")
+        return True
+
+    if response != b'\x82':
+        raise Exception(f"Command 0x82 was not acknowledged: got {response.hex() if response else 'nothing'}")
+
+    print("Command 0x82 acknowledged by bootloader")
+    # The bootloader exits communication mode immediately to configure Bluetooth.
+    print("Bootloader is configuring the Bluetooth module")
+    return False
 
 def exit_service_mode(ser):
     """Send exit command (0xFF)"""
@@ -336,22 +424,29 @@ def parse_date(date_str):
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description="Set manufacturing data on OSTC4 via Bluetooth serial connection.",
+        description="Service OSTC4 manufacturing data and Bluetooth names over RFCOMM or a serial port.",
         epilog="""
 Examples:
   # Set primary manufacturing data
-  %(prog)s /dev/rfcomm0 --serial 428 --date 2018-02-12 --info "OSTC 4 end-2019 hardware"
+   %(prog)s --address 00:80:25:4A:E5:FD --serial 428 --date 2018-02-12 --info "OSTC 4 end-2019 hardware"
   
   # Set primary and secondary serial
-  %(prog)s /dev/rfcomm0 --serial 428 --date 2018-02-12 --secondary-serial 428 --secondary-date 2024-12-25
+   %(prog)s --address 00:80:25:4A:E5:FD --serial 428 --date 2018-02-12 --secondary-serial 428 --secondary-date 2024-12-25
   
-  # Only set Bluetooth name (device must have serial already set)
+   # Only set Bluetooth name (device must be in bootloader mode and have a serial)
+   %(prog)s --address 00:80:25:4A:E5:FD --set-bluetooth-name
+
+  # Use an existing RFCOMM serial port mapping
   %(prog)s /dev/rfcomm0 --set-bluetooth-name
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    parser.add_argument('port', help='Serial port (e.g., /dev/rfcomm0)')
+    parser.add_argument('port', nargs='?', help='Serial port (e.g., /dev/rfcomm0)')
+    connection = parser.add_argument_group('Connection')
+    connection.add_argument('--address', help='Classic Bluetooth address for direct RFCOMM connection')
+    connection.add_argument('--channel', type=int, default=1,
+                            help='RFCOMM channel for --address (default: 1)')
     
     # Primary manufacturing data
     primary = parser.add_argument_group('Primary manufacturing data (command 0x80)')
@@ -402,6 +497,12 @@ Examples:
     
     if not has_primary and not has_secondary and not has_bt and not has_read:
         parser.error("At least one of --serial, --secondary-serial, --set-bluetooth-name, or --read must be specified")
+
+    if bool(args.port) == bool(args.address):
+        parser.error("Specify exactly one of a serial port or --address")
+
+    if not 1 <= args.channel <= 30:
+        parser.error("--channel must be between 1 and 30")
     
     # If primary serial is set, date is required
     if has_primary and args.date is None:
@@ -419,16 +520,7 @@ def main():
     needs_reinit_for_bt_name = False
     
     try:
-        print(f"Opening {args.port}...")
-        ser = serial.Serial(args.port, 115200, timeout=args.timeout)
-        time.sleep(0.5)  # Give the connection time to stabilize
-        
-        # Flush any pending data
-        ser.reset_input_buffer()
-        ser.reset_output_buffer()
-        
-        # Initialize service mode
-        send_service_mode_init(ser)
+        ser = open_service_connection(args)
         
         # Read hardware data if requested
         if args.read:
@@ -468,12 +560,15 @@ def main():
         # Set Bluetooth name if requested
         if args.set_bluetooth_name:
             try:
-                # First try in the current session (often still in service mode)
-                set_bluetooth_name(ser)
+                application_restarted = set_bluetooth_name(ser)
+                if application_restarted:
+                    ser.close()
+                    ser = open_service_connection(args, attempts=20)
+                    set_bluetooth_name(ser)
             except Exception as e:
                 if needs_reinit_for_bt_name and "not echoed" in str(e):
                     print(f"Warning: {e}. Bluetooth disconnected after 0x80.")
-                    print(f"Please reconnect {args.port} now (e.g. via rfcomm), then press Enter.")
+                    print("Please reconnect the device, then press Enter.")
                     try:
                         ser.close()
                     except Exception as close_err:
@@ -482,16 +577,11 @@ def main():
                         input()
                     except EOFError:
                         raise Exception("Reconnection required but no input available.")
-                    ser = serial.Serial(args.port, 115200, timeout=args.timeout)
-                    time.sleep(0.5)
-                    ser.reset_input_buffer()
-                    ser.reset_output_buffer()
-                    send_service_mode_init(ser)
+                    ser = open_service_connection(args, attempts=20)
                     set_bluetooth_name(ser)
                 else:
                     raise
-            print("\nThe device will now configure the Bluetooth module.")
-            print("Wait for the bootloader to finish and reconnect.")
+            print("\nWait for the bootloader to finish configuring the Bluetooth module.")
         
         if not args.set_bluetooth_name:
             # Exit service mode cleanly if we didn't trigger BT name setting
@@ -501,9 +591,6 @@ def main():
         print("\nDone!")
         ser.close()
         
-    except serial.SerialException as e:
-        print(f"Serial error: {e}", file=sys.stderr)
-        sys.exit(1)
     except ValidationError as e:
         print(f"Validation error: {e}", file=sys.stderr)
         sys.exit(1)
