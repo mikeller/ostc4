@@ -7,8 +7,10 @@ ostc4pack/src/checksum_final_add_fletcher
 ostc4pack/src/*.o
 RefPrj/*/OSTC_Discovery.xml
 RefPrj/RTE/OSTC4_RTE2.xml
-tools/
+tools/*
+!tools/README.md
 
 *.swp
+__pycache__/
 .vscode
 local.mk
