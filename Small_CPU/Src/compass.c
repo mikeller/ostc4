@@ -145,6 +145,16 @@ float _mag_scale_z_offset = 0.0f;
 float _mag_scale_z_scale = 1.0f;
 
 
+#ifdef ENABLE_MOTION_CONTROL
+typedef struct
+{
+    float r00, r01, r02;
+    float r10, r11, r12;
+    float r20, r21, r22;
+} RotationMatrix;
+#endif
+
+
 /* External function prototypes ----------------------------------------------*/
 
 extern void copyCompassDataDuringCalibration(int16_t dx, int16_t dy, int16_t dz);
@@ -1142,6 +1152,172 @@ void compass_calc_roll_pitch_only(void)
 }
 
 
+
+#ifdef ENABLE_MOTION_CONTROL
+static RotationMatrix calculateOrientation(
+    float ax, float ay, float az,
+    float mx, float my, float mz)
+{
+	float an = 0.0;
+	float downX= 0.0;
+	float downY= 0.0;
+	float downZ= 0.0;
+	float mn = 0.0;
+	float dot = 0.0;
+	float northX = 0.0;
+	float northY = 0.0;
+	float northZ = 0.0;
+	float nn = 0.0;
+
+	float eastX = 0.0;
+	float eastY = 0.0;
+	float eastZ = 0.0;
+	float en = 0.0;
+
+    RotationMatrix RotMat = {0};
+
+/* normalize input */
+    an = sqrtf(ax*ax + ay*ay + az*az);
+
+    if (an > 0.0001f)
+    {
+		ax /= an;
+		ay /= an;
+		az /= an;
+
+		/* flip value because sensor is orientated against gravity */
+		downX = -ax;
+		downY = -ay;
+		downZ = -az;
+    }
+
+    mn = sqrtf(mx*mx + my*my + mz*mz);
+    if (mn > 0.0001f)
+    {
+    	mx /= mn;
+    	my /= mn;
+    	mz /= mn;
+    }
+
+    /* calculate projection */
+    if((an > 0.0001f) && (mn > 0.0001f))
+    {
+    	dot = mx*downX + my*downY + mz*downZ;
+    	northX = mx - dot*downX;
+    	northY = my - dot*downY;
+    	northZ = mz - dot*downZ;
+
+    	nn = sqrtf(northX * northX + northY * northY + northZ * northZ);
+
+		if (nn > 0.0001f)
+		{
+			northX /= nn;
+			northY /= nn;
+			northZ /= nn;
+
+			 /* East = Down x Nord  */
+
+			 eastX = downY *northZ - downZ * northY;
+			 eastY = downZ * northX - downX *northZ;
+			 eastZ = downX * northY - downY *northX;
+
+			 en = sqrtf(eastX*eastX + eastY*eastY + eastZ*eastZ);
+
+			 if (en > 0.0001f)
+			 {
+				eastX /= en;
+				eastY /= en;
+				eastZ /= en;
+
+				northX = eastY*downZ - eastZ*downY;
+				northY = eastZ*downX - eastX*downZ;
+				northZ = eastX*downY - eastY*downX;
+
+				RotMat.r00 = northX;
+				RotMat.r01 = eastX;
+				RotMat.r02 = downX;
+
+				RotMat.r10 = northY;
+				RotMat.r11 = eastY;
+				RotMat.r12 = downY;
+
+				RotMat.r20 = northZ;
+				RotMat.r21 = eastZ;
+				RotMat.r22 = downZ;
+			 }
+		}
+    }
+    return RotMat;
+}
+
+static float calculatePitch360(float ax, float ay, float az, float mx, float my, float mz)
+{
+    RotationMatrix RotMat;
+    static uint8_t sector = 0;
+    static float lastAngle = 0.0;
+    static uint8_t jumping = 0;
+
+    float angle = 0.0;
+
+    RotMat = calculateOrientation(ax, ay, az, mx, my, mz);
+
+   	float horizontal = sqrtf(RotMat.r00 * RotMat.r00 +	RotMat.r01 * RotMat.r01);
+  	angle = atan2f(RotMat.r02, horizontal);
+   	angle *= 180.0f / PI;
+
+    if (lastAngle != 0.0)
+    {
+    	if(sector == 0)		/* normal condition */
+    	{
+    		if((jumping) && (lastAngle > angle))		/* most likely a sector change */
+    		{
+    			sector = 1;
+    			jumping = 0;
+    		}
+    		if((angle - lastAngle ) > 4.0)	/* it is unlikely that next time angle will be smaller... unless a sector change happens */
+    		{
+    			jumping = 1;
+    		}
+    		else
+    		{
+    			jumping = 0;
+    		}
+    	}
+    	else			/* inverted logic */
+    	{
+    		if((jumping) && (lastAngle > angle))		/* most likely a sector change */
+    		{
+    			sector = 0;
+    			jumping = 0;
+    		}
+    		if((angle - lastAngle ) > 4.0)	/* it is unlikely that next time angle will be smaller... unless a sector change happens */
+    		{
+    			jumping = 1;
+    		}
+    		else
+    		{
+    			jumping = 0;
+    		}
+    	}
+    }
+    lastAngle = angle;
+    if(sector)
+    {
+    	if((180 - angle) < 140)
+    	{
+    		angle = 180.0 - angle;
+    	}
+    	else
+    	{
+    		sector = 0;	/* most likely invalid sector detection */
+    	}
+    }
+    return angle;
+}
+
+#endif
+
+
 //  ===============================================================================
 //	compass_calc
 /// @brief	all the fancy stuff first implemented in OSTC3
@@ -1175,7 +1351,7 @@ void compass_calc(void)
     iBfy = iBpy * cosPhi - iBpz * sinPhi;
     iBpz = iBpy * sinPhi + iBpz * cosPhi;
     //Gz = imul(accel_DY_f, sin) + imul(accel_DZ_f, cos);
-		
+#ifndef ENABLE_MOTION_CONTROL
     //---- calculate sin and cosine of pitch angle Theta ---------------------
     //sincos(Gz, -accel_DX_f, &sin, &cos);     // NOTE: changed sin sign.
 		// Teta takes into account roll of computer and sends combination of Y and Z :-) understand now hw 160421
@@ -1185,7 +1361,12 @@ void compass_calc(void)
 		cosTeta = cosf(Teta);
     /* correct cosine if pitch not in range -90 to 90 degrees */
     if( cosTeta < 0 ) cosTeta = -cosTeta;
-
+#else
+    Teta = atan2f(-(float)accel_DX_f, (accel_DY_f * sinPhi + accel_DZ_f * cosPhi));
+    compass_pitch = calculatePitch360(accel_DX_f, accel_DY_f, accel_DZ_f,iBpx,iBpy,iBpz);
+    sinTeta = sinf(Teta);
+    cosTeta = cosf(Teta);
+#endif
     ///---- de-rotate by pitch angle Theta -----------------------------------
     iBfx = iBpx *  cosTeta + iBpz * sinTeta;
 

@@ -490,12 +490,14 @@
 
 #define StMCustom4_CViewSelection1	_MB(2,PAGE_SURF_SYS_CVIEW,4,1,0)
 
+ /* line 5 is flip display */
+
 #ifdef ENABLE_MOTION_CONTROL
-#define StMCustom5_CViewPortCalib	_MB(2,PAGE_SURF_SYS_CVIEW,5,1,0)
-#define StMCustom5_CViewPortSpotSize _MB(2,PAGE_SURF_SYS_CVIEW,5,2,0)
-#define StMCustom5_CViewPortLayout	_MB(2,PAGE_SURF_SYS_CVIEW,5,3,0)
-#define StMCustom5_CViewPortAmbient	_MB(2,PAGE_SURF_SYS_CVIEW,5,4,0)
-#define StMCustom5_CViewPortControl	_MB(2,PAGE_SURF_SYS_CVIEW,5,5,0)
+#define StMCustom5_CViewPortCalib	_MB(2,PAGE_SURF_SYS_CVIEW,6,1,0)
+#define StMCustom5_CViewPortSpotSize _MB(2,PAGE_SURF_SYS_CVIEW,6,2,0)
+#define StMCustom5_CViewPortLayout	_MB(2,PAGE_SURF_SYS_CVIEW,6,3,0)
+#define StMCustom5_CViewPortAmbient	_MB(2,PAGE_SURF_SYS_CVIEW,6,4,0)
+#define StMCustom5_CViewPortControl	_MB(2,PAGE_SURF_SYS_CVIEW,6,5,0)
 #endif
 
 /* PAGE 11 */

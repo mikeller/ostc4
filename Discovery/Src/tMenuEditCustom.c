@@ -382,7 +382,7 @@ void openEdit_Custom(uint8_t line)
     	case 4:		openEdit_CustomviewDivemode(cv_changelist_BS);
     		break;
 #ifdef ENABLE_MOTION_CONTROL
-    	case 5:		openEdit_ViewPort();
+    	case 6:		openEdit_ViewPort();
     		break;
 #endif
         case 5:

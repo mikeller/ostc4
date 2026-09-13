@@ -108,18 +108,6 @@ uint32_t tMCustom_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
     strcpy(&text[textPointer],"\n\r");
     textPointer += 2;
 
-#ifdef ENABLE_MOTION_CONTROL
-    if((line == 0) || (line == 5))
-    {
-    /* MotionCtrl */
-		text[textPointer++] = TXT_2BYTE;
-		text[textPointer++] = TXT2BYTE_MotionCtrl;
-    }
-
-	strcpy(&text[textPointer],"\n\r");
-	textPointer += 2;
-#endif
-
     if((line == 0) || (line == 5))
     {
             text[textPointer++] = TXT_2BYTE;
@@ -132,9 +120,20 @@ uint32_t tMCustom_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext
             text[textPointer] = 0;
 
     }
+	strcpy(&text[textPointer],"\n\r");
+	textPointer += 2;
+
+#ifdef ENABLE_MOTION_CONTROL
+    if((line == 0) || (line == 6))
+    {
+    /* MotionCtrl */
+		text[textPointer++] = TXT_2BYTE;
+		text[textPointer++] = TXT2BYTE_MotionCtrl;
+    }
 
 	strcpy(&text[textPointer],"\n\r");
 	textPointer += 2;
+#endif
 
     return StMCustom;
 }

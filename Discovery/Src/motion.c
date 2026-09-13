@@ -34,16 +34,16 @@ typedef enum
 	MOTION_DELTA_FALL_FAST
 } MotionDeltaState_t;
 
-#define MOTION_DELTA_JITTER_LEVEL	2.0		/* lower values are considered as stable */
+#define MOTION_DELTA_JITTER_LEVEL	3.0		/* lower values are considered as stable */
 #define MOTION_DELTA_RAISE_LEVEL	4.0		/* Movement causing a significant change detected */
 #define MOTION_DELTA_FALL_LEVEL		-4.0	/* Movement causing a significant change detected */
-#define MOTION_DELTA_FAST_LEVEL		6.0		/* Movement causing a fast change detected */
+#define MOTION_DELTA_FAST_LEVEL		10.0	/* Movement causing a fast change detected */
 
 #define MOTION_DELTA_HISTORY_SIZE	20		/* Number of history data sets */
 
 #define MOTION_FOCUS_LIMIT			0.5		/* +/- value which defines the border of the focus area */
 #define MOTION_FOCUS_USE_SECTOR		0.4		/* +/- value for the focus area used to map secors to views */
-#define MOTION_FOCUS_SCROLL_IDLE	0.3		/* +/- value for starting generation of scroll events */
+#define MOTION_FOCUS_SCROLL_IDLE	0.2		/* +/- value for starting generation of scroll events */
 
 detectionState_t detectionState = DETECT_NOTHING;
 SSector sectorDetection;
@@ -94,24 +94,25 @@ void evaluateMotionDelta(float roll, float pitch, float yaw)
 										curValue = yaw;
 				break;
 		}
-		if(curValue - lastValue[axis] > MOTION_DELTA_RAISE_LEVEL)
-		{
-			motionDeltaHistory[axis][nextIndex] = MOTION_DELTA_RAISE;
-		}
-		if(fabsf(curValue - lastValue[axis]) < MOTION_DELTA_RAISE_LEVEL)
-		{
-			motionDeltaHistory[axis][nextIndex] = MOTION_DELTA_JITTER;
-		}
+
 		if(fabsf(curValue - lastValue[axis]) < MOTION_DELTA_JITTER_LEVEL)
 		{
 			motionDeltaHistory[axis][nextIndex] = MOTION_DELTA_STABLE;
 		}
-		if(curValue - lastValue[axis] < MOTION_DELTA_FALL_LEVEL)
+		else if(fabsf(curValue - lastValue[axis]) < MOTION_DELTA_RAISE_LEVEL)
+		{
+			motionDeltaHistory[axis][nextIndex] = MOTION_DELTA_JITTER;
+		}
+		else if(curValue - lastValue[axis] > MOTION_DELTA_RAISE_LEVEL)
+		{
+			motionDeltaHistory[axis][nextIndex] = MOTION_DELTA_RAISE;
+		}
+		else if(curValue - lastValue[axis] < MOTION_DELTA_FALL_LEVEL)
 		{
 			motionDeltaHistory[axis][nextIndex] = MOTION_DELTA_FALL;
 		}
 
-		if(fabsf(curValue - lastValue[axis]) > MOTION_DELTA_FAST_LEVEL)
+		if(fabsf(curValue - lastValue[axis]) > MOTION_DELTA_FAST_LEVEL)	/* raise or fall was detected before */
 		{
 			motionDeltaHistory[axis][nextIndex]++;
 		}
@@ -366,13 +367,13 @@ detectionState_t detectPitch(float currentPitch)
 											lastStart = -1;
 										}
 					break;
-				case DETECT_START:		if(test.pitch == MOTION_DELTA_RAISE)
+				case DETECT_START:		if((test.pitch == MOTION_DELTA_RAISE) || (test.pitch == MOTION_DELTA_RAISE_FAST))
 										{
 											detectionState = DETECT_POS_MOVE;
 											lastStart = step;
 										}
 										else
-										if(test.pitch == MOTION_DELTA_FALL)
+										if((test.pitch == MOTION_DELTA_FALL) || (test.pitch == MOTION_DELTA_FALL_FAST))
 										{
 											detectionState = DETECT_NEG_MOVE;
 											lastStart = step;
@@ -393,12 +394,12 @@ detectionState_t detectPitch(float currentPitch)
 											detectionState++;
 										}
 					break;
-				case DETECT_MAXIMA:		if(test.pitch == MOTION_DELTA_FALL)
+				case DETECT_MAXIMA:		if((test.pitch == MOTION_DELTA_FALL) || (test.pitch == MOTION_DELTA_FALL_FAST))
 										{
 											detectionState = DETECT_FALLBACK;
 										}
 					break;
-				case DETECT_MINIMA:		if(test.pitch == MOTION_DELTA_RAISE)
+				case DETECT_MINIMA:		if((test.pitch == MOTION_DELTA_RAISE) || (test.pitch == MOTION_DELTA_RAISE_FAST))
 										{
 											detectionState = DETECT_RISEBACK;
 										}
@@ -528,7 +529,7 @@ float checkViewport(float roll, float pitch, float yaw, uint8_t enableAxis)
 	float _a, _b;
 	SCoord u,v,n;
 	float r = 0.0;
-	float focusLimit = 0;
+	float focusLimit = 0.0;
 
 	SCoord refVec;
 	SCoord axis_1;
@@ -540,8 +541,6 @@ float checkViewport(float roll, float pitch, float yaw, uint8_t enableAxis)
 
 	SSettings* pSettings = settingsGetPointer();
 
-	roll += 180;
-	pitch += 180;
 
 	/* calculate base vector taking calibration delta into account yaw (heading) */
 	float compYaw;
@@ -575,19 +574,19 @@ float checkViewport(float roll, float pitch, float yaw, uint8_t enableAxis)
 
 	if(enableAxis & MOTION_ENABLE_PITCH)
 	{
-		anglePitch = pSettings->viewPitch * M_PI / 180.0;
+		anglePitch = (float)(pSettings->viewPitch-180.0) * M_PI / 180.0;
 	}
 	else
 	{
-		anglePitch = 0;
+		anglePitch = pitch * M_PI / 180.0;
 	}
 	if(enableAxis & MOTION_ENABLE_ROLL)
 	{
-		angleRoll = pSettings->viewRoll * M_PI / 180.0;
+		angleRoll = (float)(pSettings->viewRoll-180.0) * M_PI / 180.0;
 	}
 	else
 	{
-		angleRoll = 0;
+		angleRoll = roll * M_PI / 180.0;
 	}
 
 	refVec.x = 0;
@@ -771,10 +770,14 @@ void HandleMotionDetection(void)
 	}
 	else
 	{
-		focusOffset = checkViewport(stateUsed->lifeData.compass_roll, stateUsed->lifeData.compass_pitch, stateUsed->lifeData.compass_heading, MOTION_ENABLE_ALL);
+		focusOffset = checkViewport(stateUsed->lifeData.compass_roll, stateUsed->lifeData.compass_pitch, stateUsed->lifeData.compass_heading, (MOTION_ENABLE_PITCH | MOTION_ENABLE_ROLL));
 	}
 	if(viewInFocus())
 	{
+		if(!wasInFocus)		/* use yaw delta to detect viewport exit */
+		{
+			settingsGetPointer()->viewYaw = stateUsed->lifeData.compass_heading;
+		}
 		wasInFocus = 1;
 		set_Backlight_Boost(settingsGetPointer()->viewPortMode & 0x03);
 
