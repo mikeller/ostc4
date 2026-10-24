@@ -477,6 +477,8 @@ void openEdit_ViewPort(void)
     setEvent(StMCustom5_CViewPortLayout,	(uint32_t)OnAction_CViewPortLayout);
     setEvent(StMCustom5_CViewPortAmbient,	(uint32_t)OnAction_CViewPortAmbient);
     setEvent(StMCustom5_CViewPortControl,	(uint32_t)OnAction_CViewPortControl);
+
+    tMenuEdit_select(StMCustom5_CViewPortCalib);
 #endif
 }
 void openEdit_FlipDisplay(void)

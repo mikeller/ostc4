@@ -938,15 +938,18 @@ void changeActiveProfil(uint8_t newProfile)
     uint16_t personalDiveCountBackup;
     uint8_t lastDiveLogIdBackup;
     uint32_t sampleStartBackup;
+    uint8_t flipDisplayBackup;
+
     char customTextBackup[60];
 
     if( newProfile < NUMBER_OF_PROFILES)
     {
-	/* some data needs to be the same in all profiles => make backup before gettings the new profile */
+	/* some data needs to be the same in all profiles => make backup before getting the new profile */
 		personalDiveCountBackup = pSettings->personalDiveCount;
 		lastDiveLogIdBackup = pSettings->lastDiveLogId;
 		sampleStartBackup = pSettings->logFlashNextSampleStartAddress;
 		memcpy(customTextBackup, pSettings->customtext, 60);
+		flipDisplayBackup = pSettings->FlipDisplay;
 
 
 		memcpy(pOldProfile,pSettings,sizeof(SSettings));
@@ -965,6 +968,7 @@ void changeActiveProfil(uint8_t newProfile)
 		pSettings->firmwareVersion[3] = firmware_FirmwareData.versionBeta;
 
 		memcpy(pSettings->customtext, customTextBackup,  60);
+		pSettings->FlipDisplay = flipDisplayBackup;
 
 		if(pOldProfile->tX_colorscheme != pSettings->tX_colorscheme)
 		{

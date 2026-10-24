@@ -1961,7 +1961,13 @@ uint8_t t3_customview_disabled(uint8_t view, uint8_t checkCondition)
     }
 
 #ifndef ENABLE_CAVEMODE
-  	if (view == CVIEW_T3_GasDemand)	/* demand calculation is made by cavemode functionality */
+  	if ((view == CVIEW_T3_Cavemode) || (view == CVIEW_T3_GasDemand))	/* demand calculation is made by cavemode functionality */
+  	{
+  		cv_disabled = 1;
+  	}
+#endif
+#ifndef ENABLE_TEMPSTICK_SUPPORT
+  	if (view == CVIEW_T3_Tempstick)
   	{
   		cv_disabled = 1;
   	}

@@ -1710,9 +1710,16 @@ uint8_t t7_customview_disabled(uint8_t view)
     }
 
 #ifndef ENABLE_CAVEMODE
-  	if (view == CVIEW_GasDemand)	/* demand calculation is made by cavemode functionality */
+  	if ((view == CVIEW_Cave) || (view == CVIEW_GasDemand))	/* demand calculation is made by cavemode functionality */
   	{
   		cv_disabled = 1;
+  	}
+#endif
+
+#if !defined(ENABLE_GNSS_INTERN) && !defined (ENABLE_GNSS_EXTERN)
+  	if (view == CVIEW_Position)
+  	{
+  	  		cv_disabled = 1;
   	}
 #endif
 
