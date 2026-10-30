@@ -36,7 +36,7 @@ jobs:
     - name: load the arm toolchain from cache
       if: github.event_name != 'push'
       id: cache_toolchain
-      uses: actions/cache@v4.2.4
+      uses: actions/cache/restore@v4.2.4
       with:
         path: ${{ env.BUILD_TOOLS_DIR }}/
         key: arm_toolchain-${{ steps.set_variables.outputs.arm_toolchain_version }}
