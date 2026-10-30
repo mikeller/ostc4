@@ -6,6 +6,7 @@ rules:
       policies:
         actions/cache: ref-pin
         actions/cache/restore: ref-pin
+        actions/cache/save: ref-pin
         actions/checkout: ref-pin
         actions/upload-artifact: ref-pin
         softprops/action-gh-release: ref-pin
