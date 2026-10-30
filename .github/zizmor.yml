@@ -1,0 +1,12 @@
+rules:
+  unpinned-uses:
+    config:
+      # zizmor < 1.32 does not recognise actions.lock; the lockfile verifier
+      # checks these actions. New action repositories still require SHA pins.
+      policies:
+        actions/cache: ref-pin
+        actions/checkout: ref-pin
+        actions/upload-artifact: ref-pin
+        softprops/action-gh-release: ref-pin
+        tonyhallett/artifacts-url-comments: ref-pin
+        zizmorcore/zizmor-action: ref-pin
