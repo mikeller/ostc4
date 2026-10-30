@@ -5,6 +5,7 @@ rules:
       # checks these actions. New action repositories still require SHA pins.
       policies:
         actions/cache: ref-pin
+        actions/cache/restore: ref-pin
         actions/checkout: ref-pin
         actions/upload-artifact: ref-pin
         softprops/action-gh-release: ref-pin
