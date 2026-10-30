@@ -100,12 +100,12 @@ jobs:
 
     - name: Push release
       if: github.event_name == 'push'
-      uses: softprops/action-gh-release@v2.3.3
-      with:
-        files: |
-          Release/OSTC4update_*.bin
-        generate_release_notes: true
-        tag_name: ${{ steps.generate_version.outputs.name }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ steps.generate_version.outputs.name }}
+      run: |
+        gh release create "$RELEASE_TAG" Release/OSTC4update_*.bin \
+          --generate-notes --target "$GITHUB_SHA"
 
     - name: build the bootloader
       env:
