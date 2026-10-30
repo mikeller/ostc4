@@ -215,7 +215,7 @@ def read_hardware_data(ser):
     primary_year = data[4]
     primary_month = data[5]
     primary_day = data[6]
-    # data[7] = production_bluetooth_name_set (skip)
+    primary_bluetooth_name_flag = data[7]
     primary_info = data[8:52].rstrip(b'\x00\xff').decode('ascii', errors='replace')
     
     # Parse secondary manufacturing data (last 12 bytes)
@@ -226,7 +226,7 @@ def read_hardware_data(ser):
     secondary_year = data[56]
     secondary_month = data[57]
     secondary_day = data[58]
-    # data[59] = secondary_bluetooth_name_set (skip)
+    secondary_bluetooth_name_flag = data[59]
     secondary_info = data[60:64].rstrip(b'\x00\xff').decode('ascii', errors='replace')
     
     # Display primary data
@@ -238,6 +238,7 @@ def read_hardware_data(ser):
         print(f"Production Date: 20{primary_year:02d}-{primary_month:02d}-{primary_day:02d}")
     else:
         print("Production Date: Not set")
+    print(f"Bluetooth Name Flag: 0x{primary_bluetooth_name_flag:02X}")
     if primary_info:
         print(f"Info: {primary_info}")
     
@@ -255,6 +256,7 @@ def read_hardware_data(ser):
             print(f"Info: {secondary_info}")
     else:
         print("Secondary Serial: Not set")
+    print(f"Bluetooth Name Flag: 0x{secondary_bluetooth_name_flag:02X}")
     
     wait_for_prompt(ser)
 
