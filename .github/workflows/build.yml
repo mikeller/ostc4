@@ -111,11 +111,14 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         RELEASE_TAG: ${{ steps.generate_version.outputs.name }}
       run: |
-        if gh release view "$RELEASE_TAG" --json id >/dev/null 2>&1; then
+        if lookup_result=$(gh release view "$RELEASE_TAG" --json id 2>&1); then
           gh release upload "$RELEASE_TAG" Release/OSTC4update_*.bin --clobber
-        else
+        elif [ "$lookup_result" = 'release not found' ]; then
           gh release create "$RELEASE_TAG" Release/OSTC4update_*.bin \
             --generate-notes --target "$GITHUB_SHA"
+        else
+          printf '%s\n' "$lookup_result" >&2
+          exit 1
         fi
 
     - name: build the bootloader
