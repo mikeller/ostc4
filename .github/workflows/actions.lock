@@ -9,7 +9,6 @@ workflows:
         - 'actions/cache@v4.2.4'
         - 'actions/checkout@v4.3.0'
         - 'actions/upload-artifact@v4.6.2'
-        - 'softprops/action-gh-release@v2.3.3'
     '.github/workflows/verify-lockfile.yml':
         - 'actions/checkout@v4.3.0'
     '.github/workflows/zizmor.yml':
@@ -41,11 +40,6 @@ dependencies:
         commit: 'sha1-76621b61decf072c1cee8dd1ce2d2a82d33c17ed'
         owner_id: 9919
         repo_id: 259445878
-    'softprops/action-gh-release@v2.3.3':
-        ref: 'v2.3.3'
-        commit: 'sha1-6cbd405e2c4e67a21c47fa9e383d020e4e28b836'
-        owner_id: 2242
-        repo_id: 204253808
     'tonyhallett/artifacts-url-comments@v1.1.0':
         ref: 'v1.1.0'
         commit: 'sha1-0965ff1a7ae03c5c1644d3c30f956effea4e05ef'
