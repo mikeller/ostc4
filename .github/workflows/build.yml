@@ -48,6 +48,13 @@ jobs:
       run: |
         make arm_tools_install
 
+    - name: save the arm toolchain to cache
+      if: github.event_name == 'push'
+      uses: actions/cache/save@v4.2.4
+      with:
+        path: ${{ env.BUILD_TOOLS_DIR }}/
+        key: arm_toolchain-${{ steps.set_variables.outputs.arm_toolchain_version }}
+
     - name: generate the version
       id: generate_version
       env:
