@@ -1,9 +1,9 @@
-"""Mocked command-0x71 response tests for the service utility."""
+"""Mocked command-0x71 response tests; run with python -m unittest scripts.test_ostc4_service."""
 
 import contextlib
 import io
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 from scripts import ostc4_service
 
@@ -16,8 +16,7 @@ class ReadHardwareDataTest(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             ostc4_service.read_hardware_data(ser)
         ser.write.assert_called_once_with(b'\x71')
-        ser.read.assert_any_call(64)
-        ser.read.assert_any_call(1)
+        self.assertEqual(ser.read.call_args_list, [call(1), call(64), call(1)])
         return output.getvalue()
 
     def test_displays_both_raw_flags_and_manufacturing_fields(self):
@@ -64,7 +63,3 @@ class ReadHardwareDataTest(unittest.TestCase):
                 ostc4_service.read_hardware_data(ser)
         self.assertNotIn('Manufacturing Data', output.getvalue())
         self.assertEqual(ser.read.call_count, 2)
-
-
-if __name__ == '__main__':
-    unittest.main()
