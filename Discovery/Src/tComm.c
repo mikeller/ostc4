@@ -66,6 +66,7 @@
 #include "tCommDebugRead.h"
 #include "tCommConfigSnapshot.h"
 #include "tCommConfigWire.h"
+#include "tCommConfigLayoutId.h"
 
 #include "externCPU2bootloader.h"
 #include "externLogbookFlash.h"
@@ -90,7 +91,6 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 
 
 /* Private variables ---------------------------------------------------------*/
@@ -130,18 +130,10 @@ static uint8_t RequestDisconnection = 0; 				/* Disconnection from remote device
 static void tComm_Disconnect(void);
 /* Separate 512-byte, 256-aligned CPU-RAM regions: 0x20 discards address bits
  * 7:0. Published only after capture completes; never overwritten in session. */
-static uint8_t configRegions[CONFIG_REGION_COUNT][CONFIG_REGION_SIZE]
-    __attribute__((aligned(256)));
-static uint8_t configPresent[CONFIG_REGION_COUNT];
-static uint8_t configCaptured = 0;
-
-static uint32_t configAbi(void)
-{
-    /* Opaque native ABI identity, not a portable parser/schema promise. */
-    return ((uint32_t)sizeof(SSettings) << 16) ^
-           ((uint32_t)offsetof(SSettings, compassMountTilt) << 4) ^
-           ((uint32_t)__GNUC__ << 8) ^ (uint32_t)__GNUC_MINOR__;
-}
+static configSnapshot configState;
+static volatile uint8_t configCommandBusy = 0;
+static volatile uint8_t configExitPending = 0;
+static const uint8_t configAbi[16] = CONFIG_LAYOUT_DIGEST;
 
 static uint8_t configModel(void)
 {
@@ -157,33 +149,45 @@ static void configFirmware(uint8_t *dst)
     dst[3] = fw->versionBeta;
 }
 
+static int configLive(void *context, uint8_t *dst, uint16_t length)
+{
+    uint32_t primask = __get_PRIMASK();
+    int valid;
+    (void)context;
+    /* One bounded native-struct copy only. base.c's 100-ms IRQ skips
+     * DateEx_copy_to_dataOut() in BaseComm/StUART_STANDARD; its button IRQ
+     * can call tComm_exit(), which is deferred while configCommandBusy.
+     * Mask other IRQ writers for this copy, never for slow flash reads. */
+    __disable_irq();
+    valid = settingsGetPointer()->header == settingsGetPointerStandard()->header;
+    if (valid)
+        memcpy(dst, settingsGetPointer(), length);
+    __set_PRIMASK(primask);
+    return valid;
+}
+
+static int configSlot(void *context, uint8_t profile, uint8_t *dst, uint16_t length)
+{
+    (void)context;
+    return ext_flash_read_profile_slot(profile, dst, length);
+}
+
 static int configCapture(void)
 {
-    /* SPI5/display flash access and settings edits occur in the main loop;
-     * UART service is processed there, not in an IRQ. Interrupts remain on
-     * during the flash read. Do the short live settings copy just once. */
-    if (sizeof(SSettings) > CONFIG_REGION_SIZE)
-        return 0;
-    if (settingsGetPointer()->header != settingsGetPointerStandard()->header)
-        return 0; /* unknown native schema */
-    memset(configPresent, 0, sizeof(configPresent));
-    memcpy(configRegions[0], settingsGetPointer(), sizeof(SSettings));
-    configPresent[0] = 1;
+    int ok;
 #ifdef ENABLE_SETTING_PROFILES
-    {
-        uint8_t slot[CONFIG_SLOT_SIZE];
-        uint32_t header;
-        memcpy(&header, configRegions[0], sizeof(header));
-        for (uint8_t i = 0; i < 4; i++) {
-            if (!ext_flash_read_profile_slot(i, slot, sizeof(slot)))
-                return 0;
-            configPresent[i + 1] = config_profile_record(slot, sizeof(SSettings),
-                                                          header, configRegions[i + 1]);
-        }
-    }
+    const int profilesEnabled = 1;
+#else
+    const int profilesEnabled = 0;
 #endif
-    configCaptured = 1;
-    return 1;
+    ok = config_snapshot_capture(&configState, sizeof(SSettings),
+                                  settingsGetPointerStandard()->header,
+                                  profilesEnabled, configLive, configSlot, NULL);
+    if (configExitPending) {
+        config_snapshot_reset(&configState);
+        return 0;
+    }
+    return ok;
 }
 
 static int configTransmit(void *context, const uint8_t *data, uint16_t length)
@@ -194,31 +198,28 @@ static int configTransmit(void *context, const uint8_t *data, uint16_t length)
 
 static int configCommand(uint8_t command)
 {
-    uint8_t response[128];
+    uint8_t response[192];
     uint8_t firmware[4];
     uint8_t count;
-    const uint32_t abi = configAbi();
 
     configFirmware(firmware);
     if (command == 0x90) {
         count = config_wire_discovery(response, configModel(), firmware);
         return config_wire_send(&UartHandle, configTransmit, response, count);
     } else {
-        if (!configCaptured && !configCapture()) {
+        if (!configState.captured && !configCapture()) {
             response[0] = 0x91; response[1] = 1; response[2] = 0x4c;
-            configCaptured = 0;
-            memset(configPresent, 0, sizeof(configPresent));
             return config_wire_send(&UartHandle, configTransmit, response, 3);
         }
-        count = config_wire_snapshot(response, configModel(), firmware, abi);
+        count = config_wire_snapshot(response, configModel(), firmware, configAbi);
         for (uint8_t i = 0; i < CONFIG_REGION_COUNT; i++) {
             uint32_t schema;
-            if (!configPresent[i]) continue;
-            memcpy(&schema, configRegions[i], sizeof(schema));
+            if (!configState.present[i]) continue;
+            memcpy(&schema, configState.regions[i], sizeof(schema));
             count += config_wire_entry(response + count, i,
-                                       (uint32_t)(uintptr_t)configRegions[i],
-                                       sizeof(SSettings), schema, abi);
-            response[16]++;
+                                       (uint32_t)(uintptr_t)configState.regions[i],
+                                       sizeof(SSettings), schema, configAbi);
+            response[28]++;
         }
     }
     response[count++] = 0x4C;
@@ -413,6 +414,12 @@ void tComm_verlauf(uint8_t percentage_complete)
 
 void tComm_exit(void)
 {
+#ifndef BOOTLOADER_STANDALONE
+    if (configCommandBusy) {
+        configExitPending = 1;
+        return;
+    }
+#endif
     SStateList status;
     get_globalStateList(&status);
 
@@ -631,8 +638,8 @@ uint8_t openComm(uint8_t aRxByte)
         return 0;
 
 #ifndef BOOTLOADER_STANDALONE
-    configCaptured = 0;
-    memset(configPresent, 0, sizeof(configPresent));
+    config_snapshot_reset(&configState);
+    configExitPending = 0;
 #endif
 
     set_globalState(StUART_STANDARD);
@@ -691,9 +698,7 @@ uint8_t openComm(uint8_t aRxByte)
     }
     set_returnFromComm();
 #ifndef BOOTLOADER_STANDALONE
-    configCaptured = 0;
-    memset(configPresent, 0, sizeof(configPresent));
-    memset(configRegions, 0, sizeof(configRegions));
+    config_snapshot_reset(&configState);
 #endif
     return 1;
 }
@@ -799,7 +804,13 @@ uint8_t select_mode(uint8_t type)
 
 #ifndef BOOTLOADER_STANDALONE
         if(type == 0x90 || type == 0x91)
-            return configCommand(type) ? prompt4D4C(receiveStartByteUart) : 0;
+        {
+            int ok;
+            configCommandBusy = 1;
+            ok = configCommand(type);
+            configCommandBusy = 0;
+            return ok && !configExitPending ? prompt4D4C(receiveStartByteUart) : 0;
+        }
 #endif
 
         // return of command for (almost) all commands

@@ -692,9 +692,10 @@ uint8_t ext_flash_read_profile_slot(uint8_t profile, uint8_t *buffer, uint16_t s
     request[1] = (uint8_t)(address >> 16);
     request[2] = (uint8_t)(address >> 8);
     request[3] = (uint8_t)address;
-    /* Service commands run in the main loop. SPI5 is shared with display.c;
-     * its calls are also main-loop operations. CPU2 DMA uses cpu2DmaSpi,
-     * not SPI5. No long interrupt exclusion or global address modification. */
+    /* openComm/select_mode runs in the main loop. SPI5's direct users are
+     * display.c and this file; CPU2 DMA IRQs use cpu2DmaSpi instead.
+     * Button-IRQ tComm_exit is deferred for the descriptor command. No
+     * long interrupt exclusion or global flash address modification. */
     if (HAL_SPI_GetState(&hspiDisplay) != HAL_SPI_STATE_READY)
         return 0;
     startTick = HAL_GetTick();

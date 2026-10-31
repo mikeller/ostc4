@@ -8,6 +8,16 @@
 #define CONFIG_REGION_SIZE 512u
 #define CONFIG_REGION_COUNT 5u
 
+typedef int (*configLiveRead)(void *, uint8_t *, uint16_t);
+typedef int (*configSlotRead)(void *, uint8_t, uint8_t *, uint16_t);
+
+typedef struct {
+    uint8_t regions[CONFIG_REGION_COUNT][CONFIG_REGION_SIZE]
+        __attribute__((aligned(256)));
+    uint8_t present[CONFIG_REGION_COUNT];
+    uint8_t captured;
+} configSnapshot;
+
 /* Return the final complete native record in a profile slot. A malformed
  * record invalidates the slot; older, well-framed layouts are not exported. */
 static inline int config_profile_record(const uint8_t *slot, uint16_t native_size,
@@ -42,23 +52,46 @@ static inline int config_profile_record(const uint8_t *slot, uint16_t native_siz
     return found;
 }
 
-/* Fixture-side wire descriptor guard. Not a production host parser. */
-static inline int config_descriptor_valid(uint8_t type, uint8_t domain,
-                                          uint32_t address, uint16_t length,
-                                          uint16_t native_size, uint32_t schema,
-                                          uint32_t known_schema)
+static inline void config_snapshot_reset(configSnapshot *state)
 {
-    return type < CONFIG_REGION_COUNT && domain == 1 &&
-           (address & 255u) == 0 && address >= 0x20000000u &&
-           length == native_size && length <= CONFIG_REGION_SIZE &&
-           address <= 0x20030000u - length && schema != 0 &&
-           schema == known_schema;
+    memset(state, 0, sizeof(*state));
 }
 
-static inline int config_ranges_overlap(uint32_t a, uint16_t a_size,
-                                        uint32_t b, uint16_t b_size)
+/* One capture per session. live() must take a coherent short copy; slot()
+ * reads one complete authoritative slot and must not change live settings. */
+static inline int config_snapshot_capture(configSnapshot *state, uint16_t native_size,
+                                           uint32_t schema, int profiles_enabled,
+                                           configLiveRead live, configSlotRead slot,
+                                           void *context)
 {
-    return a < b + b_size && b < a + a_size;
+    uint32_t captured_schema;
+    if (state->captured)
+        return 1;
+    config_snapshot_reset(state);
+    if (native_size < 4 || native_size > CONFIG_REGION_SIZE ||
+        !live(context, state->regions[0], native_size))
+    {
+        config_snapshot_reset(state);
+        return 0;
+    }
+    memcpy(&captured_schema, state->regions[0], sizeof(captured_schema));
+    if (captured_schema != schema)
+        goto fail;
+    state->present[0] = 1;
+    if (profiles_enabled) {
+        uint8_t buffer[CONFIG_SLOT_SIZE];
+        for (uint8_t i = 0; i < 4; i++) {
+            if (!slot(context, i, buffer, sizeof(buffer)))
+                goto fail;
+            state->present[i + 1] = config_profile_record(buffer, native_size,
+                                                            schema, state->regions[i + 1]);
+        }
+    }
+    state->captured = 1;
+    return 1;
+fail:
+    config_snapshot_reset(state);
+    return 0;
 }
 
 #endif
