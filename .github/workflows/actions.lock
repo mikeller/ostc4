@@ -7,12 +7,12 @@ workflows:
         - 'tonyhallett/artifacts-url-comments@v1.1.0'
     '.github/workflows/build.yml':
         - 'actions/cache@v4.2.4'
-        - 'actions/checkout@v4.3.0'
+        - 'actions/checkout@v7.0.1'
         - 'actions/upload-artifact@v4.6.2'
     '.github/workflows/verify-lockfile.yml':
-        - 'actions/checkout@v4.3.0'
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/zizmor.yml':
-        - 'actions/checkout@v5.0.0'
+        - 'actions/checkout@v7.0.1'
         - 'zizmorcore/zizmor-action@v0.1.2'
 dependencies:
     'actions/cache@v4.2.4':
@@ -20,14 +20,9 @@ dependencies:
         commit: 'sha1-0400d5f644dc74513175e3cd8d07132dd4860809'
         owner_id: 44036562
         repo_id: 215566462
-    'actions/checkout@v4.3.0':
-        ref: 'v4.3.0'
-        commit: 'sha1-08eba0b27e820071cde6df949e0beb9ba4906955'
-        owner_id: 44036562
-        repo_id: 197814629
-    'actions/checkout@v5.0.0':
-        ref: 'v5.0.0'
-        commit: 'sha1-08c6903cd8c0fde910a37f88322edcfb5dd907a8'
+    'actions/checkout@v7.0.1':
+        ref: 'v7.0.1'
+        commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
         owner_id: 44036562
         repo_id: 197814629
     'actions/upload-artifact@v4.6.2':
