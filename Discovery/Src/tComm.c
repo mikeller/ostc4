@@ -63,6 +63,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "tComm.h"
+#include "tCommDebugRead.h"
 
 #include "externCPU2bootloader.h"
 #include "externLogbookFlash.h"
@@ -597,6 +598,22 @@ uint8_t prompt4D4C(uint8_t mode)
         return 0x4D;
 }
 
+static int debug_read_receive(void *context, uint8_t *data, uint16_t size, uint32_t timeout)
+{
+    return HAL_UART_Receive((UART_HandleTypeDef *)context, data, size, timeout) == HAL_OK;
+}
+
+static int debug_read_transmit(void *context, uint32_t address, uint16_t size, uint32_t timeout)
+{
+    return HAL_UART_Transmit((UART_HandleTypeDef *)context, (uint8_t *)(uintptr_t)address,
+                             size, timeout) == HAL_OK;
+}
+
+static int debug_read_reply(void *context, const uint8_t *data, uint16_t size, uint32_t timeout)
+{
+    return HAL_UART_Transmit((UART_HandleTypeDef *)context, (uint8_t *)data, size, timeout) == HAL_OK;
+}
+
 
 uint8_t select_mode(uint8_t type)
 {
@@ -663,8 +680,13 @@ uint8_t select_mode(uint8_t type)
 #endif
 
         // Exit communication on Text like RING, CONNECT, ... or 0xFF command
-        if((type < 0x60) || (type == 0xFF))
+        if(((type < 0x60) && (type != 0x20)) || (type == 0xFF))
             return 0;
+
+        if(type == 0x20)
+            return tCommDebugRead(&UartHandle, debug_read_receive,
+                                  debug_read_transmit, debug_read_reply) ?
+                   prompt4D4C(receiveStartByteUart) : 0;
 
         // return of command for (almost) all commands
         switch(type)
