@@ -7,7 +7,7 @@
 
 struct sources {
     uint8_t live[428];
-    uint8_t profile[CONFIG_SLOT_SIZE];
+    uint8_t profile[4][CONFIG_SLOT_SIZE];
     unsigned live_reads, flash_reads;
     int fail_flash;
 };
@@ -28,7 +28,7 @@ static int read_flash(void *ctx, uint8_t id, uint8_t *dst, uint16_t size)
     s->flash_reads++;
     if (s->fail_flash && s->flash_reads == (unsigned)s->fail_flash)
         return 0;
-    memcpy(dst, s->profile, size);
+    memcpy(dst, s->profile[id], size);
     return 1;
 }
 
@@ -96,6 +96,7 @@ int main(void)
     assert(size == 13 && !memcmp(wire, "\x90OCFG\x01\x01\x43\x01\x07\x07\x01\x4c", 13));
     config_wire_discovery(wire, 0x44, firmware);
     assert(wire[7] == 0x44 && wire[7] != 0x43);
+    memset(wire, 0, sizeof(wire));
     size = config_wire_snapshot(wire, 0x43, firmware, abi);
     assert(size == 29 && !memcmp(wire + 2, "OSNP", 4));
     size += config_wire_entry(wire + size, 0, 0x20005000u, 428, header, abi);
@@ -103,6 +104,8 @@ int main(void)
     wire[size++] = 0x4c;
     assert(size == 58 && wire[28] == 1 && wire[29] == 0 && wire[30] == 1);
     assert(!memcmp(wire + 31, "\x20\x00\x50\x00\x01\xac", 6));
+    assert(!memcmp(wire + 12, abi, sizeof(abi)));
+    assert(!memcmp(wire + 41, abi, sizeof(abi)));
     assert(!config_wire_send(&calls, fail_send, wire, size));
     assert(calls == 1);
 
@@ -111,9 +114,12 @@ int main(void)
     memcpy(sources.live, &header, 4);
     sources.live[4] = 0x11;
     memset(sources.profile, 0xff, sizeof(sources.profile));
-    sources.profile[0] = 428 & 255; sources.profile[1] = 428 >> 8;
-    memcpy(sources.profile + 2, &header, 4);
-    sources.profile[6] = 0x42;
+    for (unsigned i = 0; i < 4; i++) {
+        sources.profile[i][0] = 428 & 255;
+        sources.profile[i][1] = 428 >> 8;
+        memcpy(sources.profile[i] + 2, &header, 4);
+        sources.profile[i][6] = 0x42 + i;
+    }
     config_snapshot_reset(&state);
     assert(config_snapshot_capture(&state, 428, header, 0, read_live, read_flash, &sources));
     assert(state.captured && state.present[0] && !state.present[1]);
@@ -127,7 +133,11 @@ int main(void)
     assert(sources.live_reads == 2 && state.regions[0][4] == 0x22);
     assert(state.present[1] && state.regions[1][4] == 0x42);
     assert(sources.flash_reads == 4);
-    sources.profile[6] = 0x63;
+    for (unsigned i = 0; i < 4; i++) {
+        assert(state.present[i + 1]);
+        assert(state.regions[i + 1][4] == 0x42 + i);
+    }
+    sources.profile[0][6] = 0x63;
     assert(config_snapshot_capture(&state, 428, header, 1, read_live, read_flash, &sources));
     assert(sources.flash_reads == 4 && state.regions[1][4] == 0x42);
     config_snapshot_reset(&state);
