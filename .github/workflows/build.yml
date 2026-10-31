@@ -100,7 +100,7 @@ jobs:
 
     - name: PR artifacts
       if: github.event_name == 'pull_request'
-      uses: actions/upload-artifact@v4.6.2
+      uses: actions/upload-artifact@v7.0.2
       with:
         name: OSTC4_update-${{ steps.generate_version.outputs.name }}
         path: Release/OSTC4update_*.bin
