@@ -64,6 +64,8 @@
 
 #include "tComm.h"
 #include "tCommDebugRead.h"
+#include "tCommConfigSnapshot.h"
+#include "tCommConfigWire.h"
 
 #include "externCPU2bootloader.h"
 #include "externLogbookFlash.h"
@@ -88,6 +90,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 
 
 /* Private variables ---------------------------------------------------------*/
@@ -125,6 +128,102 @@ static uint8_t EvaluateBluetoothSignalStrength = 0;
 #ifndef BOOTLOADER_STANDALONE
 static uint8_t RequestDisconnection = 0; 				/* Disconnection from remote device requested */
 static void tComm_Disconnect(void);
+/* Separate 512-byte, 256-aligned CPU-RAM regions: 0x20 discards address bits
+ * 7:0. Published only after capture completes; never overwritten in session. */
+static uint8_t configRegions[CONFIG_REGION_COUNT][CONFIG_REGION_SIZE]
+    __attribute__((aligned(256)));
+static uint8_t configPresent[CONFIG_REGION_COUNT];
+static uint8_t configCaptured = 0;
+
+static uint32_t configAbi(void)
+{
+    /* Opaque native ABI identity, not a portable parser/schema promise. */
+    return ((uint32_t)sizeof(SSettings) << 16) ^
+           ((uint32_t)offsetof(SSettings, compassMountTilt) << 4) ^
+           ((uint32_t)__GNUC__ << 8) ^ (uint32_t)__GNUC_MINOR__;
+}
+
+static uint8_t configModel(void)
+{
+    return isNewDisplay() ? 0x44 : 0x43;
+}
+
+static void configFirmware(uint8_t *dst)
+{
+    const SFirmwareData *fw = firmwareDataGetPointer();
+    dst[0] = fw->versionFirst;
+    dst[1] = fw->versionSecond;
+    dst[2] = fw->versionThird;
+    dst[3] = fw->versionBeta;
+}
+
+static int configCapture(void)
+{
+    /* SPI5/display flash access and settings edits occur in the main loop;
+     * UART service is processed there, not in an IRQ. Interrupts remain on
+     * during the flash read. Do the short live settings copy just once. */
+    if (sizeof(SSettings) > CONFIG_REGION_SIZE)
+        return 0;
+    if (settingsGetPointer()->header != settingsGetPointerStandard()->header)
+        return 0; /* unknown native schema */
+    memset(configPresent, 0, sizeof(configPresent));
+    memcpy(configRegions[0], settingsGetPointer(), sizeof(SSettings));
+    configPresent[0] = 1;
+#ifdef ENABLE_SETTING_PROFILES
+    {
+        uint8_t slot[CONFIG_SLOT_SIZE];
+        uint32_t header;
+        memcpy(&header, configRegions[0], sizeof(header));
+        for (uint8_t i = 0; i < 4; i++) {
+            if (!ext_flash_read_profile_slot(i, slot, sizeof(slot)))
+                return 0;
+            configPresent[i + 1] = config_profile_record(slot, sizeof(SSettings),
+                                                          header, configRegions[i + 1]);
+        }
+    }
+#endif
+    configCaptured = 1;
+    return 1;
+}
+
+static int configTransmit(void *context, const uint8_t *data, uint16_t length)
+{
+    return HAL_UART_Transmit((UART_HandleTypeDef *)context, (uint8_t *)data,
+                             length, 10000u) == HAL_OK;
+}
+
+static int configCommand(uint8_t command)
+{
+    uint8_t response[128];
+    uint8_t firmware[4];
+    uint8_t count;
+    const uint32_t abi = configAbi();
+
+    configFirmware(firmware);
+    if (command == 0x90) {
+        count = config_wire_discovery(response, configModel(), firmware);
+        return config_wire_send(&UartHandle, configTransmit, response, count);
+    } else {
+        if (!configCaptured && !configCapture()) {
+            response[0] = 0x91; response[1] = 1; response[2] = 0x4c;
+            configCaptured = 0;
+            memset(configPresent, 0, sizeof(configPresent));
+            return config_wire_send(&UartHandle, configTransmit, response, 3);
+        }
+        count = config_wire_snapshot(response, configModel(), firmware, abi);
+        for (uint8_t i = 0; i < CONFIG_REGION_COUNT; i++) {
+            uint32_t schema;
+            if (!configPresent[i]) continue;
+            memcpy(&schema, configRegions[i], sizeof(schema));
+            count += config_wire_entry(response + count, i,
+                                       (uint32_t)(uintptr_t)configRegions[i],
+                                       sizeof(SSettings), schema, abi);
+            response[16]++;
+        }
+    }
+    response[count++] = 0x4C;
+    return config_wire_send(&UartHandle, configTransmit, response, count);
+}
 #endif
 /* Private function prototypes -----------------------------------------------*/
 static void tComm_Error_Handler(void);
@@ -531,6 +630,11 @@ uint8_t openComm(uint8_t aRxByte)
     if((aRxByte != BYTE_DOWNLOAD_MODE) && (aRxByte != BYTE_SERVICE_MODE))
         return 0;
 
+#ifndef BOOTLOADER_STANDALONE
+    configCaptured = 0;
+    memset(configPresent, 0, sizeof(configPresent));
+#endif
+
     set_globalState(StUART_STANDARD);
 
     /* service mode is four bytes
@@ -586,6 +690,11 @@ uint8_t openComm(uint8_t aRxByte)
     	}
     }
     set_returnFromComm();
+#ifndef BOOTLOADER_STANDALONE
+    configCaptured = 0;
+    memset(configPresent, 0, sizeof(configPresent));
+    memset(configRegions, 0, sizeof(configRegions));
+#endif
     return 1;
 }
 
@@ -687,6 +796,11 @@ uint8_t select_mode(uint8_t type)
             return tCommDebugRead(&UartHandle, debug_read_receive,
                                   debug_read_transmit, debug_read_reply) ?
                    prompt4D4C(receiveStartByteUart) : 0;
+
+#ifndef BOOTLOADER_STANDALONE
+        if(type == 0x90 || type == 0x91)
+            return configCommand(type) ? prompt4D4C(receiveStartByteUart) : 0;
+#endif
 
         // return of command for (almost) all commands
         switch(type)
