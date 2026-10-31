@@ -136,6 +136,9 @@ uint16_t u16bit;
 /* Exported functions --------------------------------------------------------*/
 void ext_flash_write_settings(uint8_t whichSettings, uint8_t resetRing);
 uint8_t ext_flash_read_settings(uint8_t whichSettings);
+/* Read one complete configuration-profile slot without changing flash cursors
+ * or live settings. Caller must own the main-loop SPI5/display flash bus. */
+uint8_t ext_flash_read_profile_slot(uint8_t profile, uint8_t *buffer, uint16_t size);
 
 void ext_flash_write_devicedata(uint8_t resetRing);
 uint16_t ext_flash_read_devicedata(uint8_t *buffer, uint16_t max_length);

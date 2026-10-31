@@ -69,6 +69,7 @@
 #include "ostc.h"
 #include "settings.h"
 #include "gfx_engine.h"
+#include "tCommConfigSnapshot.h"
 
 #ifndef BOOTLOADER_STANDALONE
 #include "logbook.h"
@@ -674,6 +675,49 @@ uint8_t ext_flash_read_settings(uint8_t whichSettings)
 		ext_flash_read_block_stop();
 	}
 	return returnValue;
+}
+
+uint8_t ext_flash_read_profile_slot(uint8_t profile, uint8_t *buffer, uint16_t size)
+{
+    uint8_t request[4];
+    uint8_t statusCommand = 0x05, status;
+    uint32_t address;
+    uint32_t startTick;
+    HAL_StatusTypeDef result;
+
+    if (profile >= 4 || buffer == NULL || size != CONFIG_SLOT_SIZE)
+        return 0;
+    address = PROFILE0_START + (uint32_t)profile * CONFIG_SLOT_SIZE;
+    request[0] = 0x03; /* SPI read, 24-bit external-flash address */
+    request[1] = (uint8_t)(address >> 16);
+    request[2] = (uint8_t)(address >> 8);
+    request[3] = (uint8_t)address;
+    /* openComm/select_mode runs in the main loop. SPI5's direct users are
+     * display.c and this file; CPU2 DMA IRQs use cpu2DmaSpi instead.
+     * Button-IRQ tComm_exit is deferred for the descriptor command. No
+     * long interrupt exclusion or global flash address modification. */
+    if (HAL_SPI_GetState(&hspiDisplay) != HAL_SPI_STATE_READY)
+        return 0;
+    startTick = HAL_GetTick();
+    do {
+        chip_select();
+        result = HAL_SPI_Transmit(&hspiDisplay, &statusCommand, 1, 100u);
+        if (result == HAL_OK)
+            result = HAL_SPI_Receive(&hspiDisplay, &status, 1, 100u);
+        chip_unselect();
+        if (result != HAL_OK)
+            return 0;
+        if ((status & 1u) == 0)
+            break;
+    } while ((uint32_t)(HAL_GetTick() - startTick) < 2000u);
+    if (status & 1u)
+        return 0;
+    chip_select();
+    result = HAL_SPI_Transmit(&hspiDisplay, request, sizeof(request), 1000u);
+    if (result == HAL_OK)
+        result = HAL_SPI_Receive(&hspiDisplay, buffer, size, 1000u);
+    chip_unselect();
+    return result == HAL_OK;
 }
 
 
