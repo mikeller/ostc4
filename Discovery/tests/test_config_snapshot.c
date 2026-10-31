@@ -104,6 +104,7 @@ int main(void)
     wire[size++] = 0x4c;
     assert(size == 58 && wire[28] == 1 && wire[29] == 0 && wire[30] == 1);
     assert(!memcmp(wire + 31, "\x20\x00\x50\x00\x01\xac", 6));
+    assert(wire[7] == 0x43 && !memcmp(wire + 8, firmware, sizeof(firmware)));
     assert(!memcmp(wire + 12, abi, sizeof(abi)));
     assert(!memcmp(wire + 41, abi, sizeof(abi)));
     assert(!config_wire_send(&calls, fail_send, wire, size));
