@@ -9,6 +9,7 @@ import hashlib
 import pathlib
 import re
 import shlex
+import shutil
 import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -27,8 +28,10 @@ def content():
             flags.append(arg.replace("$(BUILD_DIR)", str(ROOT)))
         elif arg.startswith(("-D", "-m", "-O", "-f")) and "$" not in arg:
             flags.append(arg)
-    # The installed toolchain selected by arm_build_tools.mk.
-    compiler = ROOT / "tools/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-gcc"
+    # Use the compiler selected by arm_build_tools.mk through PATH.
+    compiler = shutil.which("arm-none-eabi-gcc")
+    if compiler is None:
+        raise SystemExit("arm-none-eabi-gcc not found in PATH")
     version = subprocess.check_output([compiler, "-dumpfullversion", "-dumpversion"])
     source = subprocess.check_output([compiler, *flags, "-E", "-P", "-x", "c", "-"],
                                      input=b'#include "settings.h"\n')
