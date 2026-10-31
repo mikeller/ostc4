@@ -49,6 +49,18 @@ static struct mock sample(void)
 int main(void)
 {
     struct mock m = sample();
+    assert(tCommDebugRoute(0x19, &m, receive, transmit, reply) == 0);
+    assert(tCommDebugRoute(0xff, &m, receive, transmit, reply) == 0);
+    assert(tCommDebugRoute(0x60, &m, receive, transmit, reply) == TCOMM_DEBUG_CONTINUE);
+    assert(m.reads == 0 && m.writes == 0 && m.replies == 0);
+    assert(tCommDebugRoute(0x20, &m, receive, transmit, reply) == 0x4c);
+    assert(m.reads == 1 && m.writes == 2 && m.replies == 2);
+    assert(m.reply[0] == 0x20 && m.reply[1] == 0x4c);
+    m = sample(); m.fail_read = 1;
+    assert(tCommDebugRoute(0x20, &m, receive, transmit, reply) == 0);
+    assert(m.replies == 1 && m.writes == 0);
+
+    m = sample();
     assert(tCommDebugRead(&m, receive, transmit, reply) == 1);
     assert(m.reads == 1 && m.writes == 2 && m.replies == 2);
     assert(m.reply[0] == 0x20 && m.reply[1] == 0x4c);

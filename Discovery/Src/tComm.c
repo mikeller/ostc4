@@ -793,14 +793,12 @@ uint8_t select_mode(uint8_t type)
         totalDiveCount.u16bit = 0;
 #endif
 
-        // Exit communication on Text like RING, CONNECT, ... or 0xFF command
-        if(((type < 0x60) && (type != 0x20)) || (type == 0xFF))
-            return 0;
-
-        if(type == 0x20)
-            return tCommDebugRead(&UartHandle, debug_read_receive,
-                                  debug_read_transmit, debug_read_reply) ?
-                   prompt4D4C(receiveStartByteUart) : 0;
+        // Filter text/exit commands and dispatch debug reads before the
+        // other service commands; the route is shared with the host test.
+        answer = tCommDebugRoute(type, &UartHandle, debug_read_receive,
+                                 debug_read_transmit, debug_read_reply);
+        if(answer != TCOMM_DEBUG_CONTINUE)
+            return answer;
 
 #ifndef BOOTLOADER_STANDALONE
         if(type == 0x90 || type == 0x91)

@@ -42,4 +42,18 @@ static inline int tCommDebugRead(void *context, tCommDebugReceive receive,
     return reply(context, &marker, 1, 10000u);
 }
 
+/* Service-mode filter and debug dispatch. Other service commands continue
+ * through select_mode(); zero ends the session, 0x4c keeps it open. */
+#define TCOMM_DEBUG_CONTINUE 0xffu
+static inline uint8_t tCommDebugRoute(uint8_t type, void *context,
+                                      tCommDebugReceive receive,
+                                      tCommDebugTransmit transmit, tCommDebugReply reply)
+{
+    if ((type < 0x60u && type != 0x20u) || type == 0xffu)
+        return 0;
+    if (type == 0x20u)
+        return tCommDebugRead(context, receive, transmit, reply) ? 0x4cu : 0;
+    return TCOMM_DEBUG_CONTINUE;
+}
+
 #endif
