@@ -63,6 +63,10 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "tComm.h"
+#include "tCommDebugRead.h"
+#include "tCommConfigSnapshot.h"
+#include "tCommConfigWire.h"
+#include "tCommConfigLayoutId.h"
 
 #include "externCPU2bootloader.h"
 #include "externLogbookFlash.h"
@@ -124,6 +128,103 @@ static uint8_t EvaluateBluetoothSignalStrength = 0;
 #ifndef BOOTLOADER_STANDALONE
 static uint8_t RequestDisconnection = 0; 				/* Disconnection from remote device requested */
 static void tComm_Disconnect(void);
+/* Separate 512-byte, 256-aligned CPU-RAM regions: 0x20 discards address bits
+ * 7:0. Published only after capture completes; never overwritten in session. */
+static configSnapshot configState;
+static volatile uint8_t configCommandBusy = 0;
+static volatile uint8_t configExitPending = 0;
+static const uint8_t configAbi[16] = CONFIG_LAYOUT_DIGEST;
+
+static uint8_t configModel(void)
+{
+    return isNewDisplay() ? 0x44 : 0x43;
+}
+
+static void configFirmware(uint8_t *dst)
+{
+    const SFirmwareData *fw = firmwareDataGetPointer();
+    dst[0] = fw->versionFirst;
+    dst[1] = fw->versionSecond;
+    dst[2] = fw->versionThird;
+    dst[3] = fw->versionBeta;
+}
+
+static int configLive(void *context, uint8_t *dst, uint16_t length)
+{
+    uint32_t primask = __get_PRIMASK();
+    int valid;
+    (void)context;
+    /* One bounded native-struct copy only. base.c's 100-ms IRQ skips
+     * DateEx_copy_to_dataOut() in BaseComm/StUART_STANDARD; its button IRQ
+     * can call tComm_exit(), which is deferred while configCommandBusy.
+     * Mask other IRQ writers for this copy, never for slow flash reads. */
+    __disable_irq();
+    valid = settingsGetPointer()->header == settingsGetPointerStandard()->header;
+    if (valid)
+        memcpy(dst, settingsGetPointer(), length);
+    __set_PRIMASK(primask);
+    return valid;
+}
+
+static int configSlot(void *context, uint8_t profile, uint8_t *dst, uint16_t length)
+{
+    (void)context;
+    return ext_flash_read_profile_slot(profile, dst, length);
+}
+
+static int configCapture(void)
+{
+    int ok;
+#ifdef ENABLE_SETTING_PROFILES
+    const int profilesEnabled = 1;
+#else
+    const int profilesEnabled = 0;
+#endif
+    ok = config_snapshot_capture(&configState, sizeof(SSettings),
+                                  settingsGetPointerStandard()->header,
+                                  profilesEnabled, configLive, configSlot, NULL);
+    if (configExitPending) {
+        config_snapshot_reset(&configState);
+        return 0;
+    }
+    return ok;
+}
+
+static int configTransmit(void *context, const uint8_t *data, uint16_t length)
+{
+    return HAL_UART_Transmit((UART_HandleTypeDef *)context, (uint8_t *)data,
+                             length, 10000u) == HAL_OK;
+}
+
+static int configCommand(uint8_t command)
+{
+    uint8_t response[192];
+    uint8_t firmware[4];
+    uint8_t count;
+
+    configFirmware(firmware);
+    if (command == 0x90) {
+        count = config_wire_discovery(response, configModel(), firmware);
+        return config_wire_send(&UartHandle, configTransmit, response, count);
+    } else {
+        if (!configState.captured && !configCapture()) {
+            response[0] = 0x91; response[1] = 1; response[2] = 0x4c;
+            return config_wire_send(&UartHandle, configTransmit, response, 3);
+        }
+        count = config_wire_snapshot(response, configModel(), firmware, configAbi);
+        for (uint8_t i = 0; i < CONFIG_REGION_COUNT; i++) {
+            uint32_t schema;
+            if (!configState.present[i]) continue;
+            memcpy(&schema, configState.regions[i], sizeof(schema));
+            count += config_wire_entry(response + count, i,
+                                       (uint32_t)(uintptr_t)configState.regions[i],
+                                       sizeof(SSettings), schema, configAbi);
+            response[28]++;
+        }
+    }
+    response[count++] = 0x4C;
+    return config_wire_send(&UartHandle, configTransmit, response, count);
+}
 #endif
 /* Private function prototypes -----------------------------------------------*/
 static void tComm_Error_Handler(void);
@@ -313,6 +414,12 @@ void tComm_verlauf(uint8_t percentage_complete)
 
 void tComm_exit(void)
 {
+#ifndef BOOTLOADER_STANDALONE
+    if (configCommandBusy) {
+        configExitPending = 1;
+        return;
+    }
+#endif
     SStateList status;
     get_globalStateList(&status);
 
@@ -530,6 +637,11 @@ uint8_t openComm(uint8_t aRxByte)
     if((aRxByte != BYTE_DOWNLOAD_MODE) && (aRxByte != BYTE_SERVICE_MODE))
         return 0;
 
+#ifndef BOOTLOADER_STANDALONE
+    config_snapshot_reset(&configState);
+    configExitPending = 0;
+#endif
+
     set_globalState(StUART_STANDARD);
 
     /* service mode is four bytes
@@ -585,6 +697,9 @@ uint8_t openComm(uint8_t aRxByte)
     	}
     }
     set_returnFromComm();
+#ifndef BOOTLOADER_STANDALONE
+    config_snapshot_reset(&configState);
+#endif
     return 1;
 }
 
@@ -595,6 +710,22 @@ uint8_t prompt4D4C(uint8_t mode)
         return 0x4C;
     else
         return 0x4D;
+}
+
+static int debug_read_receive(void *context, uint8_t *data, uint16_t size, uint32_t timeout)
+{
+    return HAL_UART_Receive((UART_HandleTypeDef *)context, data, size, timeout) == HAL_OK;
+}
+
+static int debug_read_transmit(void *context, uint32_t address, uint16_t size, uint32_t timeout)
+{
+    return HAL_UART_Transmit((UART_HandleTypeDef *)context, (uint8_t *)(uintptr_t)address,
+                             size, timeout) == HAL_OK;
+}
+
+static int debug_read_reply(void *context, const uint8_t *data, uint16_t size, uint32_t timeout)
+{
+    return HAL_UART_Transmit((UART_HandleTypeDef *)context, (uint8_t *)data, size, timeout) == HAL_OK;
 }
 
 
@@ -662,9 +793,23 @@ uint8_t select_mode(uint8_t type)
         totalDiveCount.u16bit = 0;
 #endif
 
-        // Exit communication on Text like RING, CONNECT, ... or 0xFF command
-        if((type < 0x60) || (type == 0xFF))
-            return 0;
+        // Filter text/exit commands and dispatch debug reads before the
+        // other service commands; the route is shared with the host test.
+        answer = tCommDebugRoute(type, &UartHandle, debug_read_receive,
+                                 debug_read_transmit, debug_read_reply);
+        if(answer != TCOMM_DEBUG_CONTINUE)
+            return answer;
+
+#ifndef BOOTLOADER_STANDALONE
+        if(type == 0x90 || type == 0x91)
+        {
+            int ok;
+            configCommandBusy = 1;
+            ok = configCommand(type);
+            configCommandBusy = 0;
+            return ok && !configExitPending ? prompt4D4C(receiveStartByteUart) : 0;
+        }
+#endif
 
         // return of command for (almost) all commands
         switch(type)
