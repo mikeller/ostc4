@@ -243,6 +243,15 @@ uint8_t tMCvOptText_refreshTempstick(char* pText)
 	return strlen(pText);
 }
 
+uint8_t tMCvOptText_refreshGNSS(char* pText)
+{
+	uint8_t textPointer = 0;
+	textPointer += snprintf(&pText[textPointer],20,"GNSS");
+	pText[textPointer] = 0;
+	return strlen(pText);
+}
+
+
 uint8_t tMCvOptText_BuildDynamicContentList()
 {
 	uint8_t cvOptIndex = 0;
@@ -352,7 +361,14 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 									}
 				break;
 #endif
-
+#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+			case CVOPT_GNSS:		if(SensorActive[SENSOR_GNSS])
+									{
+										refreshFctPointerTable[activeLines] = tMCvOptText_refreshGNSS;
+										CvOptAvailable = 1;
+									}
+				break;
+#endif
 			default:
 				break;
 		}

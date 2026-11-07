@@ -38,6 +38,7 @@
 #include "tHome.h"
 
 #include "cv_heartbeat.h"
+#include "logbook_miniLive.h"
 
 
 static openFunc_t openFctPointerTable[MAXLINES];		/* function pointer for refresh */
@@ -46,6 +47,7 @@ static openFunc_t openFctPointerTable[MAXLINES];		/* function pointer for refres
 static void openEdit_Timer(void);
 void openEdit_Compass(void);
 static void openEdit_Cave(void);
+static void openEdit_GNSS(void);
 /* openEdit_CompassStyle is non-static (declared in tMenuEditCvOption.h) so the
    dive-mode Xtra menu can open the Compass Style page during a dive. */
 
@@ -63,6 +65,12 @@ static uint8_t OnAction_CompassSecondaryLabels(uint32_t editId, uint8_t blockNum
 static uint8_t OnAction_CompassCourseTolerance(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_CompassMinorTicks(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 static uint8_t OnAction_CompassMountTilt(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_ManualCoor(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_SetTargetCurrent(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_SetTargetMemory(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_SetTargetLog(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_ResetTarget(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
+static uint8_t OnAction_SaveTarget(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action);
 
 
 /* Exported functions --------------------------------------------------------*/
@@ -90,7 +98,8 @@ void tMCvOption_SetOpenFnct(uint8_t cvOptId, uint8_t index)
 				break;
 			case CVOPT_Cave: openFctPointerTable[index] = openEdit_Cave;
 				break;
-
+			case CVOPT_GNSS: openFctPointerTable[index] = openEdit_GNSS;
+				break;
 			default:
 				break;
 		}
@@ -367,7 +376,88 @@ static void openEdit_Cave(void)
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
 
+static void getTexLineFromCoord(const SGnssCoord* pCoord, char* pText)
+{
+	   if((pCoord->fLat == 0.0) && (pCoord->fLon == 0.0))
+	    {
+			snprintf(pText, 20," --.----- ---.-----");
+	    }
+	    else
+	    {
+	    	snprintf(pText, 20," %2.5f %3.5f",pCoord->fLat ,pCoord->fLon);
+	    }
+}
 
+static void update_CoordLineContent(const SGnssCoord* pCoord, uint32_t lineID)
+{
+	 int32_t preComma[2];
+	 int32_t postComma[2];
+
+	 preComma[0] = (int32_t)pCoord->fLat;		/* pre comma */
+	 postComma[0] = (pCoord->fLat - preComma[0]) * 100000;  /* five post comma digits */
+	 preComma[1] = (int32_t)pCoord->fLon;		/* pre comma */
+	 postComma[1] = (pCoord->fLon - preComma[1]) * 100000;  /* five post comma digits */
+
+	 tMenuEdit_newInput(lineID, preComma[0], postComma[0], preComma[1], postComma[1]);
+}
+
+static void openEdit_GNSS(void)
+{
+    SSettings *pSettings = settingsGetPointer();
+    uint8_t textIndex = 0;
+    char text[60];
+
+    SGnssCoord logCoord;
+
+    set_globalState(StMCustom3_CViewSelection);
+    resetMenuEdit(CLUT_MenuPageHardware);
+
+    snprintf(text, 60, "\001GNSS %c%c", TXT_3BYTE, TXT3BYTE_Coordinate);
+    write_topline(text);
+
+    textIndex = snprintf(text, 60, "%c%c:\033",TXT_3BYTE, TXT3BYTE_Target);
+    write_label_var(  30, 800, ME_Y_LINE1, &FontT48, text);
+   // getTexLineFromCoord(&stateUsed->targetCoord, &text[textIndex]);
+    write_field_fpoint(StMCustom3_CViewSelection1, 250, 800, ME_Y_LINE1,  &FontT48, "###.###### ####.#####",stateUsed->targetCoord.fLat, stateUsed->targetCoord.fLon);
+    //write_field_button(StMCustom3_CViewSelection1,	30, 800, ME_Y_LINE1,  &FontT48, text);
+
+    textIndex = snprintf(text, 60, "%c%c:\033",TXT_2BYTE, TXT2BYTE_Current);
+    if(stateUsed->lifeData.gnssData.fixType < 2)
+    {
+    	logCoord.fLat = 0.0;
+    	logCoord.fLon = 0.0;
+    	getTexLineFromCoord(&logCoord, &text[textIndex]);
+    }
+    else
+    {
+    	getTexLineFromCoord(&stateUsed->lifeData.gnssData.coord, &text[textIndex]);
+    }
+    write_field_button(StMCustom3_CViewSelection2,	30, 800, ME_Y_LINE2,  &FontT48, text);
+
+    textIndex = snprintf(text, 60, "%c%c:\033",TXT_3BYTE, TXT3BYTE_Memory);
+    getTexLineFromCoord(&pSettings->gnssCoord, &text[textIndex]);
+    write_field_button(StMCustom3_CViewSelection3,	30, 800, ME_Y_LINE3,  &FontT48, text);
+
+    textIndex = snprintf(text, 60, "%c:\033", TXT_Logbook);
+    logCoord = getReplayDataCoordinate();
+    getTexLineFromCoord(&logCoord, &text[textIndex]);
+    write_field_button(StMCustom3_CViewSelection4,	30, 800, ME_Y_LINE4,  &FontT48, text);
+
+    snprintf(text, 60, "%c%c",TXT_2BYTE, TXT2BYTE_Reset);
+    write_field_button(StMCustom3_CViewSelection5,	30, 800, ME_Y_LINE5,  &FontT48, text);
+
+    snprintf(text, 60, "%c%c",TXT_3BYTE, TXT3BYTE_Save);
+    write_field_button(StMCustom3_CViewSelection6,	30, 800, ME_Y_LINE6,  &FontT48, text);
+
+    setEvent(StMCustom3_CViewSelection1,	(uint32_t)OnAction_ManualCoor);
+    setEvent(StMCustom3_CViewSelection2,	(uint32_t)OnAction_SetTargetCurrent);
+    setEvent(StMCustom3_CViewSelection3,	(uint32_t)OnAction_SetTargetMemory);
+    setEvent(StMCustom3_CViewSelection4,	(uint32_t)OnAction_SetTargetLog);
+    setEvent(StMCustom3_CViewSelection5,	(uint32_t)OnAction_ResetTarget);
+    setEvent(StMCustom3_CViewSelection6,	(uint32_t)OnAction_SaveTarget);
+
+    write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
+}
 
 
 static uint8_t OnAction_Timer(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
@@ -690,3 +780,130 @@ static uint8_t OnAction_CompassMountTilt(uint32_t editId, uint8_t blockNumber, u
 }
 
 
+
+static uint8_t OnAction_SetTargetCurrent(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	if(stateUsed->lifeData.gnssData.fixType >= 2)
+	{
+		stateUsedWrite->targetCoord.fLat = stateUsed->lifeData.gnssData.coord.fLat;
+		stateUsedWrite->targetCoord.fLon = stateUsed->lifeData.gnssData.coord.fLon;
+		update_CoordLineContent(&stateUsed->targetCoord, StMCustom3_CViewSelection1);
+	}
+	return UNSPECIFIC_RETURN;
+}
+static uint8_t OnAction_SetTargetMemory(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SSettings *pSettings = settingsGetPointer();
+	stateUsedWrite->targetCoord.fLat = pSettings->gnssCoord.fLat;
+	stateUsedWrite->targetCoord.fLon = pSettings->gnssCoord.fLon;
+	update_CoordLineContent(&stateUsed->targetCoord, StMCustom3_CViewSelection1);
+	return UNSPECIFIC_RETURN;
+}
+static uint8_t OnAction_SetTargetLog(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	SGnssCoord logCoord;
+	logCoord = getReplayDataCoordinate();
+	stateUsedWrite->targetCoord.fLat = logCoord.fLat;
+	stateUsedWrite->targetCoord.fLon = logCoord.fLon;
+	update_CoordLineContent(&stateUsed->targetCoord, StMCustom3_CViewSelection1);
+	return UNSPECIFIC_RETURN;
+}
+static uint8_t OnAction_ResetTarget(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	stateUsedWrite->targetCoord.fLat = 0.0;
+	stateUsedWrite->targetCoord.fLon = 0.0;
+	update_CoordLineContent(&stateUsed->targetCoord, StMCustom3_CViewSelection1);
+	return UNSPECIFIC_RETURN;
+}
+
+static uint8_t OnAction_SaveTarget(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+	char text[30];
+	uint8_t textIndex = 0;
+	SSettings *pSettings = settingsGetPointer();
+
+	pSettings->gnssCoord.fLat = stateUsed->targetCoord.fLat;
+	pSettings->gnssCoord.fLon = stateUsed->targetCoord.fLon;
+
+	textIndex = snprintf(text, 30, "%c%c:\033",TXT_3BYTE, TXT3BYTE_Memory);
+	getTexLineFromCoord(&pSettings->gnssCoord, &text[textIndex]);
+	tMenuEdit_newButtonText(StMCustom3_CViewSelection3, text);
+
+	return UNSPECIFIC_RETURN;
+}
+static uint8_t OnAction_ManualCoor(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
+{
+    SDiveState * pStateReal = stateRealGetPointerWrite();
+    int32_t preComma[2];
+    int32_t postComma[2];
+    uint8_t digitContentNew;
+
+
+    switch (action) {
+    case ACTION_BUTTON_ENTER:
+
+        return digitContent;
+    case ACTION_BUTTON_ENTER_FINAL:
+        {
+            evaluateNewString(editId, (uint32_t*) &preComma[0], (uint32_t*)&postComma[0], (uint32_t*)&preComma[1], (uint32_t*)&postComma[1]);
+
+            if(preComma[0] > 0)
+            {
+            	pStateReal->targetCoord.fLat = preComma[0] + (float)(postComma[0] / 100000.0);
+            }
+            else
+            {
+                pStateReal->targetCoord.fLat = preComma[0] - (float)(postComma[0] / 100000.0);
+            }
+            if(preComma[1] > 0)
+            {
+               	pStateReal->targetCoord.fLon = preComma[1] + (float)(postComma[1] / 100000.0);
+            }
+            else
+            {
+            	pStateReal->targetCoord.fLon = preComma[1] - (float)(postComma[1] / 100000.0);
+            }
+            tMenuEdit_newInput(editId, preComma[0], postComma[0], preComma[1], postComma[1]);
+        }
+
+        break;
+    case ACTION_BUTTON_NEXT:
+        if ((blockNumber % 2 == 0) && (digitNumber == 0))
+        {
+            digitContentNew = togglePlusMinus(digitContent);
+        } else if (digitNumber == 1)
+        {
+            digitContentNew = digitContent + 1;
+            if (digitContentNew > '1') {
+                digitContentNew = '0';
+            }
+        } else
+        {
+            digitContentNew = digitContent + 1;
+            if (digitContentNew > '9') {
+                digitContentNew = '0';
+            }
+        }
+
+        return digitContentNew;
+    case ACTION_BUTTON_BACK:
+    	if ((blockNumber % 2 == 0) && (digitNumber == 0))
+    	{
+            digitContentNew = togglePlusMinus(digitContent);
+        } else if (digitNumber == 1)
+        {
+            digitContentNew = digitContent - 1;
+            if (digitContentNew < '0') {
+                digitContentNew = '1';
+            }
+        }else
+        {
+            digitContentNew = digitContent - 1;
+            if (digitContentNew < '0') {
+                digitContentNew = '9';
+            }
+        }
+        return digitContentNew;
+    }
+    return UNSPECIFIC_RETURN;
+}

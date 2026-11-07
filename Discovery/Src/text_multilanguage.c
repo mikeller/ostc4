@@ -2154,6 +2154,29 @@ static uint8_t text_FR_TiltRight[] = "";
 static uint8_t text_IT_TiltRight[] = "";
 static uint8_t text_ES_TiltRight[] = "";
 
+static uint8_t text_EN_Coordinate[] = "coordinate";
+static uint8_t text_DE_Coordinate[] = "Koordinate";
+static uint8_t text_FR_Coordinate[] = "";
+static uint8_t text_IT_Coordinate[] = "";
+static uint8_t text_ES_Coordinate[] = "";
+
+static uint8_t text_EN_Target[] = "Target";
+static uint8_t text_DE_Target[] = "Ziel";
+static uint8_t text_FR_Target[] = "";
+static uint8_t text_IT_Target[] = "";
+static uint8_t text_ES_Target[] = "";
+
+static uint8_t text_EN_Memory[] = "Stored";
+static uint8_t text_DE_Memory[] = "Gespeicherte";
+static uint8_t text_FR_Memory[] = "";
+static uint8_t text_IT_Memory[] = "";
+static uint8_t text_ES_Memory[] = "";
+
+static uint8_t text_EN_Save[] = "Save";
+static uint8_t text_DE_Save[] = "Speichere";
+static uint8_t text_FR_Save[] = "";
+static uint8_t text_IT_Save[] = "";
+static uint8_t text_ES_Save[] = "";
 /* Lookup Table -------------------------------------------------------------*/
 
 const tText text_array[] =
@@ -2493,5 +2516,13 @@ const tText text_array2[] =
 	{(uint8_t)TXT2BYTE_TiltNone,		{text_EN_TiltNone, text_DE_TiltNone, text_FR_TiltNone, text_IT_TiltNone, text_ES_TiltNone}},
 	{(uint8_t)TXT2BYTE_TiltLeft,		{text_EN_TiltLeft, text_DE_TiltLeft, text_FR_TiltLeft, text_IT_TiltLeft, text_ES_TiltLeft}},
 	{(uint8_t)TXT2BYTE_TiltRight,		{text_EN_TiltRight, text_DE_TiltRight, text_FR_TiltRight, text_IT_TiltRight, text_ES_TiltRight}},
+
+
+/* Put new string below using TXT3BYTE prefix */
+	{(uint8_t)TXT3BYTE_Coordinate,	{text_EN_Coordinate, text_DE_Coordinate, text_FR_Coordinate, text_IT_Coordinate, text_ES_Coordinate}},
+	{(uint8_t)TXT3BYTE_Target,	{text_EN_Target, text_DE_Target, text_FR_Target, text_IT_Target, text_ES_Target}},
+	{(uint8_t)TXT3BYTE_Memory,	{text_EN_Memory, text_DE_Memory, text_FR_Memory, text_IT_Memory, text_ES_Memory}},
+	{(uint8_t)TXT3BYTE_Save,	{text_EN_Save, text_DE_Save, text_FR_Save, text_IT_Save, text_ES_Save}},
+
 
 };

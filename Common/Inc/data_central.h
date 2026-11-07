@@ -175,11 +175,6 @@ typedef struct
 }		SDeviceState;
 */
 
-typedef struct
-{
-	float fLat;
-	float fLon;
-}SGnssCoord;
 
 
 typedef struct
@@ -482,6 +477,7 @@ typedef struct
     int timerStartedS;
 
     SScrubberData scrubberDataDive[2];
+    SGnssCoord targetCoord;
 } 	SDiveState;
 
 
@@ -639,4 +635,7 @@ uint8_t calculateSlowExit(uint16_t* pCountDownSec, float* pExitDepthMeter, uint8
 bool isScrubberTimerEnabled(const SSettings *settings);
 bool isScrubberTimerRunning(const SDiveState *diveState, const SSettings *settings);
 uint8_t isSensortypeActive(uint8_t sensorType);
+
+void getHeadingFromGnss(const SGnssCoord* curCoord, const SGnssCoord* targetCoord, uint16_t* pTargetHeading, uint16_t* pTargetDistance);
+
 #endif // DATA_CENTRAL_H

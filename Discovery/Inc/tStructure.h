@@ -481,6 +481,7 @@
 
 #define StMCustom2_BFSelection		_MB(2,PAGE_SURF_SYS_CVIEW,2,1,0)
 
+#define StMCustom3_CViewSelection	_MB(2,PAGE_SURF_SYS_CVIEW,3,0,0)
 #define StMCustom3_CViewSelection1	_MB(2,PAGE_SURF_SYS_CVIEW,3,1,0)
 #define StMCustom3_CViewSelection2	_MB(2,PAGE_SURF_SYS_CVIEW,3,2,0)
 #define StMCustom3_CViewSelection3	_MB(2,PAGE_SURF_SYS_CVIEW,3,3,0)

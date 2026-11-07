@@ -687,6 +687,7 @@ void caveMode_AddGasUsed(uint16_t seconds)
 	float nextStopDepth = 0.0;
 	uint8_t currentGasConsumtion = 0;
 	float localGasUsed = 0.0;
+
 	/* find deepest stop */
 	for(index = DECOINFO_STRUCT_MAX_STOPS-1; index > 0; index--)
 		if(pDecoinfo->output_stop_length_seconds[index] != 0) break;
@@ -699,18 +700,23 @@ void caveMode_AddGasUsed(uint16_t seconds)
 		}
 		else
 		{
-			index -= 1;		/* the first to stops are not defined linear */
+			index -= 1;		/* the first two stops are not defined linear */
 			nextStopDepth = stateUsed->diveSettings.input_second_to_last_stop_depth_bar + (index * stateUsed->diveSettings.input_next_stop_increment_depth_bar);
 		}
-	}
-	if((stateUsed->lifeData.pressure_ambient_bar - stateUsed->lifeData.pressure_surface_bar) < nextStopDepth + PRESSURE_150_CM)
-	{
-		currentGasConsumtion = pSettings->gasConsumption_deco_l_min;
+		if((stateUsed->lifeData.pressure_ambient_bar - stateUsed->lifeData.pressure_surface_bar) < nextStopDepth + PRESSURE_150_CM)
+		{
+			currentGasConsumtion = pSettings->gasConsumption_deco_l_min;
+		}
+		else
+		{
+			currentGasConsumtion = pSettings->gasConsumption_travel_l_min;
+		}
 	}
 	else
 	{
 		currentGasConsumtion = pSettings->gasConsumption_travel_l_min;
 	}
+
 	localGasUsed = currentGasConsumtion * stateUsed->lifeData.pressure_ambient_bar / (float)(60.0 / seconds);
 	if(localGasUsed < 1.0)
 	{

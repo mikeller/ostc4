@@ -199,6 +199,12 @@ typedef struct
 	uint8_t minutes;
 } StimeZone;
 
+typedef struct
+{
+	float fLat;
+	float fLon;
+}SGnssCoord;
+
 
 /* SSettings
 	 * gas[0] and setpoint[0] are the special ones configurable during the dive
@@ -348,6 +354,8 @@ typedef struct
 	uint8_t compassCourseTolerance;  /* on-course +/- degrees, default 5, clamp 2..15 */
 	uint8_t compassMinorTicks;       /* 1 = show finest tick tier (default), 0 = hide */
 	uint8_t compassMountTilt;        /* 0 = none (default), 1 = left-hand (-30), 2 = right-hand (+30) */
+	/* new in 0xFFFF0032 */
+	SGnssCoord gnssCoord;			 /* target coordinates for navigation */
 } SSettings;
 
 uint8_t writeData(uint8_t *);

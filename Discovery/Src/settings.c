@@ -27,6 +27,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include <string.h>
+#include <math.h>
 
 #include "settings.h"
 #include "firmwareEraseProgram.h" // for HARDWAREDATA_ADDRESS
@@ -96,7 +97,7 @@ const SFirmwareData firmware_FirmwareData __attribute__( (section(".firmware_fir
  * There might even be entries with fixed values that have no range
  */
 const SSettings SettingsStandard = {
-    .header = 0xFFFF0031,
+    .header = 0xFFFF0032,
     .warning_blink_dsec = 8 * 2,
     .lastDiveLogId = 0,
     .logFlashNextSampleStartAddress = SAMPLESTART,
@@ -370,6 +371,8 @@ const SSettings SettingsStandard = {
     .compassCourseTolerance = 5,
     .compassMinorTicks = 1,
     .compassMountTilt = 0,
+	.gnssCoord.fLat = 0.0,
+	.gnssCoord.fLon = 0.0,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -701,6 +704,10 @@ void set_new_settings_missing_in_ext_flash(uint8_t whichSettings)
         pSettings->compassMinorTicks = 1;
         pSettings->compassMountTilt = 0;
         // no break;
+    case 0xFFFF0031:
+    	pSettings->gnssCoord.fLat = 0.0;
+    	pSettings->gnssCoord.fLon = 0.0;
+    	// no break;
     default:
         pSettings->header = pStandard->header;
         break; // no break before!!
@@ -2050,6 +2057,13 @@ uint8_t check_and_correct_settings(uint8_t whichSettings)
     if (pSettings->compassMountTilt > 2)
     {
         pSettings->compassMountTilt = 0;
+        corrections++;
+        setFirstCorrection(parameterId);
+    }
+    if ((fabs(pSettings->gnssCoord.fLat) > 90.0) || (fabs(pSettings->gnssCoord.fLon) > 180.0))
+    {
+    	pSettings->gnssCoord.fLat = 0.0;
+    	pSettings->gnssCoord.fLon = 0.0;
         corrections++;
         setFirstCorrection(parameterId);
     }

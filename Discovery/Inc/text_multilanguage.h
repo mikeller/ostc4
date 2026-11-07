@@ -151,6 +151,7 @@ extern const tText text_array2[];
 		TXT_ButtonLock,
 		/* */
 		TXT_END,
+		TXT_3BYTE 	= '\xFC',
 		TXT_AWE48	= '\xFD',	/* special characters of font AWE48 */
 		TXT_MINIMAL = '\xFE',
 		TXT_2BYTE 	= '\xFF',
@@ -425,5 +426,18 @@ extern const tText text_array2[];
 
 		/* TODO: we are close to the end of TXT2BYTE_END => define function for additional entries... TXT3BYTE ? */
 };
+
+	enum TXT3BYTE_MULTILANGUAGE
+	{
+		TXT3BYTE_START = 1,
+		TXT3BYTE_Coordinate,
+		TXT3BYTE_Target,
+		TXT3BYTE_Current,
+		TXT3BYTE_Memory,
+		TXT3BYTE_Logbook,
+		TXT3BYTE_Reset,
+		TXT3BYTE_Save,
+		TXT3BYTE_END,
+	};
 
 #endif /* TEXT_MULTILINGUAGE_H */

@@ -256,13 +256,14 @@ void tMenuEdit_refresh_live_content(void)
 	 	 	 break;
 	 	 case (StMCustom1_CViewTimeout & MaskFieldDigit):refreshFct = refresh_Customviews;
 	 	 	 break;
+	 	 case StMCustom3_CViewSelection:
 	 	 case (StMCustom4_CViewSelection1 & MaskFieldDigit):
-	 	 case (StMCustom3_CViewSelection1 & MaskFieldDigit):
+	 	// case (StMCustom3_CViewSelection1 & MaskFieldDigit):
 	 	 case StMCustom3_CViewSelection2:
 	 	 case StMCustom3_CViewSelection3:
 	 	 case StMCustom3_CViewSelection4:
 	 	 case StMCustom3_CViewSelection5:
-	 	 case StMCustom3_CViewSelection6: refreshFct = CustomviewDivemode_refresh;
+	 	 case StMCustom3_CViewSelection6: if(stateUsed->mode == MODE_DIVE) refreshFct = CustomviewDivemode_refresh;
 	 	 	 break;
 #ifdef ENABLE_PULSE_SENSOR_BT
 	 	case (StMOption_Heartbeat):		refreshFct = refresh_Heartbeat;
@@ -700,8 +701,17 @@ void enterMenuEditField(void)
             }
 
             mark_new_digit_of_actual_id_block_and_subBlock();
-
             break;
+        case FIELD_FLOAT:
+            if (((subBlockPosition == 0) && ((newContent == '+') || (newContent == '-')) && (block % 2 == 0))
+            		|| ((subBlockPosition > 0) && (newContent >= '0') && (newContent <= '9'))
+					|| ((subBlockPosition == 0) && (newContent >= '0') && (newContent <= '9')  && (block % 2 != 0)))
+            {
+                ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
+            }
+            mark_new_digit_of_actual_id_block_and_subBlock();
+            break;
+
         }
         break;
     case FIELD_BUTTON:
@@ -842,14 +852,24 @@ void nextMenuEditFieldDigit(void)
     {
         ident[actualId].newText[ident[actualId].begin[block] + 0] = '0' + (newContent - '0')/10;
         ident[actualId].newText[ident[actualId].begin[block] + 1] = '0' + ((newContent - '0') - (10*((newContent - '0')/10)));
-    } else if (ident[actualId].maintype == FIELD_NUMBERS && ident[actualId].subtype == FIELD_SDIGIT && action == ACTION_BUTTON_ENTER && subBlockPosition == 0) {
+    }
+    else if (ident[actualId].maintype == FIELD_NUMBERS && ident[actualId].subtype == FIELD_SDIGIT && action == ACTION_BUTTON_ENTER && subBlockPosition == 0)
+    {
         if (newContent == '+' || newContent == '-') {
             ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
         }
     }
-    else
-    if((ident[actualId].maintype == FIELD_NUMBERS) && (action == ACTION_BUTTON_ENTER) && (newContent >= '0') && (newContent <= '9'))
+    else if ((ident[actualId].maintype == FIELD_NUMBERS) && (ident[actualId].subtype == FIELD_FLOAT) && (action == ACTION_BUTTON_ENTER) && (subBlockPosition == 0) && (block % 2 == 0))
+    {
+        if (newContent == '+' || newContent == '-')
+        {
+            ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
+        }
+    }
+    else if((ident[actualId].maintype == FIELD_NUMBERS) && (action == ACTION_BUTTON_ENTER) && (newContent >= '0') && (newContent <= '9'))
+    {
         ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
+    }
     else
         if((ident[actualId].maintype == FIELD_TEXT) && (action == ACTION_BUTTON_ENTER) && (newContent >= '0') && (newContent <= '9'))
             ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
@@ -943,7 +963,8 @@ void upMenuEditFieldDigit(void)
         return;
     }
 
-    if (ident[actualId].maintype == FIELD_NUMBERS && ident[actualId].subtype == FIELD_SDIGIT) {
+    if ((ident[actualId].maintype == FIELD_NUMBERS) && ((ident[actualId].subtype == FIELD_SDIGIT) || ((ident[actualId].subtype == FIELD_FLOAT) && (block % 2 == 0))))
+    {
         checkUpdateSDigit(newContent);
     } else if (ident[actualId].maintype == FIELD_NUMBERS && newContent >= '0' && newContent <= '9') {
         ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
@@ -987,7 +1008,8 @@ void downMenuEditFieldDigit(void)
         return;
     }
 
-    if (ident[actualId].maintype == FIELD_NUMBERS && ident[actualId].subtype == FIELD_SDIGIT) {
+    if ((ident[actualId].maintype == FIELD_NUMBERS) && ((ident[actualId].subtype == FIELD_SDIGIT) || ((ident[actualId].subtype == FIELD_SDIGIT) && (block % 2 == 0))))
+    {
         checkUpdateSDigit(newContent);
     } else if (ident[actualId].maintype == FIELD_NUMBERS && newContent >= '0' && newContent <= '9') {
         ident[actualId].newText[ident[actualId].begin[block] + subBlockPosition] = newContent;
@@ -1005,7 +1027,7 @@ void evaluateNewString(uint32_t editID, uint32_t *pNewValue1, uint32_t *pNewValu
     if(editID != ident[actualId].callerID)
         return;
 
-    bool isSigned = ident[actualId].maintype == FIELD_NUMBERS && ident[actualId].subtype == FIELD_SDIGIT;
+	bool isSigned = (ident[actualId].maintype == FIELD_NUMBERS) && ((ident[actualId].subtype == FIELD_SDIGIT) || (ident[actualId].subtype == FIELD_FLOAT));
 
     uint8_t i, digitCount, digit;
     uint32_t sum[4], multiplier;
@@ -1374,7 +1396,7 @@ void create_newText_for_actual_Id_and_field_select(void)
 
 void create_newText_for_Id(int8_t localId)
 {
-	bool isSigned = ident[localId].maintype == FIELD_NUMBERS && ident[localId].subtype == FIELD_SDIGIT;
+	bool isSigned = (ident[localId].maintype == FIELD_NUMBERS) && ((ident[localId].subtype == FIELD_SDIGIT) || (ident[localId].subtype == FIELD_FLOAT));
 
 	uint8_t i, digitCount;
 	uint32_t remainder, digit, divider;
@@ -1411,7 +1433,9 @@ void create_newText_for_Id(int8_t localId)
 
 		for(digitCount = 0; digitCount < ident[localId].size[i]; digitCount++)
 		{
-			if (isSigned && digitCount == 0) {
+			if (((isSigned && digitCount == 0) && (ident[localId].subtype == FIELD_SDIGIT))
+				|| ((isSigned && digitCount == 0) && (ident[localId].subtype == FIELD_FLOAT) && (i % 2 == 0))) /* only every second float has a sign */
+			{
 				ident[localId].newText[ident[localId].begin[i] + digitCount] = isNegative ? '-' : '+';
 			} else {
 				digit = remainder	/ divider;
@@ -1837,36 +1861,22 @@ void write_field_on_off(uint32_t editID, uint16_t XleftGimpStyle, uint16_t Xrigh
 }
 
 
-void write_field_fpoint(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, float input)
+void write_field_fpoint(uint32_t editID, uint16_t XleftGimpStyle, uint16_t XrightGimpStyle, uint16_t YtopGimpStyle, const tFont *Font, const char *text, float input1, float input2)
 {
     if(id >= 9)
         return;
 
-    ident[id].maintype = FIELD_NUMBERS;
-    ident[id].subtype  = FIELD_FLOAT;
+    int32_t preComma_1 = 0;
+    int32_t postComma_1 = 0;
+    int32_t preComma_2 = 0;
+    int32_t postComma_2 = 0;
 
-    ident[id].coord[0] = XleftGimpStyle;
-    ident[id].coord[1] = XrightGimpStyle;
-    ident[id].coord[2] = YtopGimpStyle;
-    ident[id].fontUsed = (tFont *)Font;
-    ident[id].callerID = editID;
+    preComma_1 = (int32_t)input1;		/* pre comma */
+    postComma_1 = (input1 - preComma_1) * 100000;  /* five post comma digits */
+    preComma_2 = (int32_t)input2;		/* pre comma */
+    postComma_2 = (input2 - preComma_2) * 100000;  /* five post comma digits */
 
-    strncpy(ident[id].orgText, text, 32);
-    strncpy(ident[id].newText, text, 32);
-    ident[id].orgText[31] = 0;
-    ident[id].newText[31] = 0;
-
-    change_CLUT_entry((CLUT_MenuEditField0 + id), CLUT_MenuEditFieldRegular);
-
-    if(editID == 0)
-        write_content_without_Id();
-    else
-    {
-        write_content_of_Id(id);
-        if(!tME_stop)
-            idLast = id;
-        id++;
-    }
+    write_field_udigit_and_2digit(FIELD_FLOAT, editID, XleftGimpStyle, XrightGimpStyle, YtopGimpStyle, Font, text, ((input_u)preComma_1).uint32, ((input_u)postComma_1).uint32, ((input_u)preComma_2).uint32, ((input_u)postComma_2).uint32);
 }
 
 

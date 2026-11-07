@@ -2623,6 +2623,7 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 	uint32_t newXdelta;
 	uint8_t minimal = 0;
 //	uint32_t try_again;
+	uint8_t tmpChar = 0;
 
 	if(hgfx->WindowNumberOfTextLines && line_number && (line_number <= hgfx->WindowNumberOfTextLines))
 	{
@@ -2779,10 +2780,11 @@ uint32_t GFX_write_string_color(const tFont *Font, GFX_DrawCfgWindow* hgfx, cons
 				settings.spaceMode = 0;
 		}
 		else
-		if(((*pText) == TXT_2BYTE) && !minimal)
+		if((((*pText) == TXT_2BYTE) || ((*pText) == TXT_3BYTE)) && !minimal)
 		{
+			tmpChar = *pText;
 			pText++;
-			settings.Xdelta = GFX_write_substring(&settings, hgfx, (uint8_t)TXT_2BYTE, (int8_t)*pText);
+			settings.Xdelta = GFX_write_substring(&settings, hgfx, (uint8_t)tmpChar, (int8_t)*pText);
 		}
 		else if(((*pText) == TXT_AWE48) && !minimal)
 		{
@@ -2850,6 +2852,8 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 	uint32_t found;
 	uint32_t pText;
 	uint16_t decodeUTF8;
+	uint16_t endIndex = 0;
+	uint16_t startIndex = 0;
 #ifndef BOOTLOADER_STANDALONE
 	uint8_t gfx_selected_language = 0;
 	SSettings *pSettings;
@@ -2859,7 +2863,7 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 #endif		
 
 // -----------------------------
- 	if(textId != (uint8_t)TXT_2BYTE)
+ 	if((textId != (uint8_t)TXT_2BYTE) && (textId != (uint8_t)TXT_3BYTE))
 	{
 		found = 0;
 		j = 0;
@@ -2893,8 +2897,19 @@ static uint32_t GFX_write_substring(GFX_CfgWriteString* cfg, GFX_DrawCfgWindow* 
 		if(!nextCharFor2Byte)
 			return cfg->Xdelta;
 		
+		if(textId == TXT_2BYTE)
+		{
+			startIndex = 0;
+			endIndex = TXT2BYTE_END-(int)TXT2BYTE_START;
+		}
+		else
+		{
+			startIndex = TXT2BYTE_END + TXT3BYTE_START + 1;
+			endIndex = TXT2BYTE_END + TXT3BYTE_START + TXT3BYTE_END;
+		}
+
 		found = 0;
-		for(j=0;j<(int)TXT2BYTE_END-(int)TXT2BYTE_START;j++)
+		for(j=startIndex; j<endIndex;j++)
 		{
 #ifndef BOOTLOADER_STANDALONE
 			if((uint8_t)text_array2[j].code == (uint8_t)nextCharFor2Byte)

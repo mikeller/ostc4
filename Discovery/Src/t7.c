@@ -2198,6 +2198,11 @@ static void showTimer(SSettings *settings, int nowS)
 void t7_refresh_customview(void)
 {
 	static uint8_t last_customview = CVIEW_END;
+#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+	static uint16_t targetHeading = 0;
+	static uint16_t targetDistance = 0;
+#endif
+	static uint8_t onceASecond = 10;		/* used to update content just once in a second if faster updates are not needed */
 
     char text[100];
 
@@ -2303,6 +2308,19 @@ void t7_refresh_customview(void)
                                    + 360) % 360);
         snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE, TXT2BYTE_Compass);
         GFX_write_string(&FontT42,&t7cH,text,0);
+
+#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+        if(((stateUsed->targetCoord.fLat != 0) && (stateUsed->targetCoord.fLon != 0))	/* use heading derived from GNSS coordinates */
+        		&& (stateUsed->lifeData.gnssData.fixType >= 2))							/* if we have a valid position */
+        {
+        	if((onceASecond == 0) || (targetHeading == 0))
+        	{
+        		getHeadingFromGnss(&stateUsed->lifeData.gnssData.coord, &stateUsed->targetCoord, &targetHeading, &targetDistance);
+        	}
+        	t7_compass(heading, (uint16_t)targetHeading);
+        }
+        else
+#endif
         t7_compass(heading, stateUsed->diveSettings.compassHeading);
 
         if(!pSettings->FlipDisplay)
@@ -2322,6 +2340,22 @@ void t7_refresh_customview(void)
         	t7cY0free.WindowY0 = 479 - 365;   /* 114 = 479 - unflipped Y1 */
         	t7cY0free.WindowY1 = 479 - 197;   /* 282 = 479 - unflipped Y0 */
         }
+
+#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+        if(((stateUsed->targetCoord.fLat != 0) && (stateUsed->targetCoord.fLon != 0))	/* use heading derived from GNSS coordinates */
+        		&& (stateUsed->lifeData.gnssData.fixType >= 2))							/* if we have a valid position */
+        {
+			if(targetDistance < 1000)
+			{
+				 snprintf(text,100,"\030\001%03im",targetDistance);
+			}
+			else
+			{
+				snprintf(text,100,"\030\001%03ik",(targetDistance / 1000));
+			}
+        }
+        else
+#endif
         snprintf(text,100,"\030\001%03i`",nav);
         GFX_write_string(&FontT54,&t7cY0free,text,0);
         if(!pSettings->FlipDisplay)
@@ -2361,6 +2395,14 @@ void t7_refresh_customview(void)
 #endif
     }
 
+    if(onceASecond == 0)
+    {
+    	onceASecond = 10;
+    }
+    else
+    {
+    	onceASecond--;
+    }
     last_customview = selection_customview;
 }
 
