@@ -40,29 +40,6 @@ static uint8_t writeIndex = 0;
 static uint8_t dataToRead = 0;
 static uint8_t ReqPowerDown = 0;
 
-void ConvertByteToHexString(uint8_t byte, char* str)
-{
-	uint8_t worker = 0;
-	uint8_t digit = 0;
-	uint8_t digitCnt = 1;
-
-	worker = byte;
-	while((worker!=0) && (digitCnt != 255))
-	{
-		digit = worker % 16;
-		if( digit < 10)
-		{
-			digit += '0';
-		}
-		else
-		{
-			digit += 'A' - 10;
-		}
-		str[digitCnt--]= digit;
-		worker = worker / 16;
-	}
-}
-
 void uartGnss_ReqPowerDown(uint8_t request)
 {
 	if(GnssConnected)

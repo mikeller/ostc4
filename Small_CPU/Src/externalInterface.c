@@ -120,6 +120,9 @@ static externalInterfaceSensorType uartTypeDetection[] = { SENSOR_MUX, SENSOR_DI
 #ifdef ENABLE_HUD_SUPPORT
 															SENSOR_HUD,
 #endif
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
+															SENSOR_GNSS,
+#endif
 															SENSOR_END
 };
 
@@ -750,48 +753,61 @@ uint8_t* externalInterface_GetSensorMapPointer(uint8_t finalMap)
 static externalInterfaceAutoDetect_t externalInterface_NextUartTypeDetection(externalInterfaceSensorType* pCurrenttype)
 {
 	uint8_t index = 0;
+	static uint8_t detectionDelayCnt = 0;
 	externalInterfaceAutoDetect_t nextDetectionStep = DETECTION_DONE;
 
-	while(uartTypeDetection[index] != SENSOR_END)
+	if(detectionDelayCnt)
 	{
-		if(uartTypeDetection[index] == *pCurrenttype)
-		{
-			break;
-		}
-		index++;
+		detectionDelayCnt--;
+		tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = *pCurrenttype;
 	}
-
-	if(uartTypeDetection[index] != SENSOR_END)
+	else
 	{
-		index++;
+		while(uartTypeDetection[index] != SENSOR_END)
+		{
+			if(uartTypeDetection[index] == *pCurrenttype)
+			{
+				break;
+			}
+			index++;
+		}
+
 		if(uartTypeDetection[index] != SENSOR_END)
 		{
-			externalAutoDetect = DETECTION_UART0;
-			*pCurrenttype = uartTypeDetection[index];
-			switch(*pCurrenttype)				/* sensor type specific initialization */
+			index++;
+			if(uartTypeDetection[index] != SENSOR_END)
 			{
-				case SENSOR_DIGO2: uartO2_SetChannel(0);
-					break;
-				case SENSOR_SENTINEL: externalInterfaceMuxReqIntervall = SENTINEL_UART_MAX_INTERVALL;
-					break;
-				case SENSOR_GNSS:	/* TODO: implement faster call cycles for external GNSS */
-				/*	externalInterfaceMuxReqIntervall = 500;	*/
-					/* iterations needed for module config */
-				/*	detectionDelayCnt = 6; */
-					break;
-				default:		externalInterfaceMuxReqIntervall = 1100;
-					break;
-			}
+				externalAutoDetect = DETECTION_UART0;
+				*pCurrenttype = uartTypeDetection[index];
+				switch(*pCurrenttype)				/* sensor type specific initialization */
+				{
+					case SENSOR_DIGO2: uartO2_SetChannel(0);
+						break;
+					case SENSOR_SENTINEL: externalInterfaceMuxReqIntervall = SENTINEL_UART_MAX_INTERVALL;
+						break;
+					case SENSOR_GNSS:	/* TODO: implement faster call cycles for external GNSS */
+					externalInterfaceMuxReqIntervall = 500;
+						/* iterations needed for module config */
+					detectionDelayCnt = 6;
+						break;
+					default:		externalInterfaceMuxReqIntervall = 1100;
+						break;
+				}
 
-			activeUartChannel = 0;
-			tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = *pCurrenttype;
-			externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
-			if(foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)
-			{
-				externalInterface_CheckBaudrate(SENSOR_MUX);
-				UART_MUX_SelectAddress(0);
+				activeUartChannel = 0;
+				tmpSensorMap[EXT_INTERFACE_MUX_OFFSET] = *pCurrenttype;
+				externalInterface_SensorState[EXT_INTERFACE_MUX_OFFSET] = UART_COMMON_INIT;
+				if(foundSensorMap[EXT_INTERFACE_SENSOR_CNT-1] == SENSOR_MUX)
+				{
+					externalInterface_CheckBaudrate(SENSOR_MUX);
+					UART_MUX_SelectAddress(0);
+				}
+				nextDetectionStep = DETECTION_UART0;
 			}
-			nextDetectionStep = DETECTION_UART0;
+			else
+			{
+				*pCurrenttype = SENSOR_END;
+			}
 		}
 	}
 	return nextDetectionStep;
@@ -802,9 +818,9 @@ void externalInterface_AutodetectSensor()
 	static uint8_t sensorIndex = 0;
 	static uint8_t uartMuxChannel = 0;
 	static externalInterfaceSensorType currentUartType = SENSOR_MUX;
-#ifdef ENABLE_GNSS_EXTERN
-static	uint8_t detectionDelayCnt = 0;
-#endif
+	externalInterfaceSensorType lastUartType = SENSOR_NONE;
+	externalInterfaceAutoDetect_t lastDetectionState = DETECTION_OFF;
+
 	uint8_t index = 0;
 	uint8_t sensorFound = 0;
 	uint8_t cntSensor = 0;
@@ -921,6 +937,15 @@ static	uint8_t detectionDelayCnt = 0;
 																}
 											break;
 #endif
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
+										case SENSOR_GNSS:	if(uartGnss_isSensorConnected())
+															{
+																sensorFound = 1;
+																nextType = 1;
+															}
+											break;
+#endif
+
 #ifdef ENABLE_HUD_SUPPORT
 										case SENSOR_HUD:	if(uartHUD_isSensorConnected())	{	sensorFound = 1; nextType = 1;}
 																					break;
@@ -960,8 +985,17 @@ static	uint8_t detectionDelayCnt = 0;
 									}
 									else
 									{
+										lastUartType = currentUartType;
+										lastDetectionState = externalAutoDetect;
 										externalAutoDetect =  externalInterface_NextUartTypeDetection(&currentUartType);
-										externalInterface_CheckBaudrate(currentUartType);
+										if(currentUartType == lastUartType)	/* do not yet change to next type */
+										{
+											externalAutoDetect = lastDetectionState;
+										}
+										else
+										{
+											externalInterface_CheckBaudrate(currentUartType);
+										}
 									}
 					break;
 
