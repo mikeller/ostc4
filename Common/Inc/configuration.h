@@ -73,7 +73,7 @@
 #define ENABLE_CO2_SUPPORT
 
 /* Enable to have external GPS sensor functionality available */
-/*#define ENABLE_GNSS_EXTERN*/
+/* #define ENABLE_GNSS_EXTERN */
 
 /* Enable to have internal (OSTC5) GPS sensor functionality available */
 /*#define ENABLE_GNSS_INTERN*/
@@ -124,6 +124,9 @@
 /* #define ENABLE_TEMPSTICK_SUPPORT */
 
 /* Enable to have cavemode / view available as custom view */
-/* #define ENABLE_CAVEMODE */
+/*#define ENABLE_CAVEMODE */
+
+/* Enable to store calculated gas consumption values in log (debug function) */
+/* #define ENABLE_GAS_USED_LOG */
 
 #endif

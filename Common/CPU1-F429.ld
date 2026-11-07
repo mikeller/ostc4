@@ -174,13 +174,21 @@ SECTIONS
  	KEEP( *(.firmware_firmware_data) )
   } >ROM
   
+  .lower_image_directory 0x08050040 :
+{
+    . = ALIGN(4);
+    *(.lower_image_directory*)
+    *(.lower_font_directory*)
+    . = ALIGN(4);
+} >ROM
+  
   .font_firmware_data 0x08132000 : {
   	KEEP( *(.font_firmware_data) ) 
   	  
   } >UPPER
   
   
-  .text 0x08054000 :
+  .text 0x08055000 :
   {
     . = ALIGN(4);
     *(.lower_images)

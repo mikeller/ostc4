@@ -1235,3 +1235,41 @@ uint8_t isSensortypeActive(uint8_t sensorType)
 	}
 	return ret;
 }
+
+#define EARTH_RADIUS_M 6371000.0
+void getHeadingFromGnss(const SGnssCoord* curCoord, const SGnssCoord* targetCoord, uint16_t* pTargetHeading, uint16_t* pTargetDistance)
+{
+	double x = 0.0;
+	double y = 0.0;
+	double bearing = 0.0;
+	double a = 0.0;
+	double c = 0.0;
+	float retHeading = 0.0;
+
+	/* calculate in double radiant */
+    double phi1    = curCoord->fLat * M_PI / 180.0;
+    double phi2    = targetCoord->fLat * M_PI / 180.0;
+    double dPhi    = (targetCoord->fLat - curCoord->fLat) * M_PI / 180.0;
+    double dLambda = (targetCoord->fLon - curCoord->fLon) * M_PI / 180.0;
+
+    y = sin(dLambda) * cos(phi2);
+    x = cos(phi1) * sin(phi2)- sin(phi1) * cos(phi2) * cos(dLambda);
+
+    bearing = atan2(y, x);
+    retHeading = (float)(bearing * 180.0 / M_PI);
+    if (retHeading < 0.0f) {
+    	retHeading += 360.0f;
+    }
+    /* calc distance */
+    a = sin(dPhi / 2.0) * sin(dPhi / 2.0) + cos(phi1) * cos(phi2) * sin(dLambda / 2.0) * sin(dLambda / 2.0);
+    c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a));
+
+    if (pTargetDistance != NULL)
+    {
+        *pTargetDistance = (uint16_t)(EARTH_RADIUS_M * c);
+    }
+    if(pTargetHeading != NULL)
+    {
+    	*pTargetHeading = (uint16_t) retHeading;
+    }
+}

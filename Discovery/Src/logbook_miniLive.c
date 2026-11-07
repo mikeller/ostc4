@@ -64,6 +64,8 @@ static uint16_t ReplayDataMinutes = 0;
 static uint16_t ReplayDataOffset = 0xFFFF;		/* Stepbackwards format used by log functions */
 static uint16_t ReplayMarkerIndex = 0;			/* Index of the selected replay marker */
 
+static SGnssCoord ReplayCoord = {0.0, 0.0};
+
 uint16_t *getMiniLiveLogbookPointerToData(void)
 {
 	return MLLdataDepth;
@@ -440,6 +442,9 @@ void MiniLiveLogbook_resetReplayLog(void)
 	ReplayDataLength = 0;
 	ReplayDataMaxDepth = 0;
 	ReplayDataMinutes =  0;
+
+	ReplayCoord.fLat = 0.0;
+	ReplayCoord.fLon = 0.0;
 }
 
 
@@ -462,7 +467,7 @@ uint8_t prepareReplayLog(uint8_t StepBackwards)
     	ReplayDataOffset = StepBackwards;
 		logbook_getHeader(StepBackwards ,&logbookHeader);
 
-		dataLength = logbook_readSampleData(StepBackwards, DEPTH_DATA_LENGTH, ReplayDepthData,NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ReplayMarkerData);
+		dataLength = logbook_readSampleData(StepBackwards, DEPTH_DATA_LENGTH, ReplayDepthData,NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &ReplayCoord, NULL, ReplayMarkerData);
 
 	/* check if a marker is provided. If not disable marker functionality for the replay block */
 		for(index = 0; index < dataLength; index++)
@@ -549,6 +554,11 @@ uint16_t getReplayOffset(void)
 uint16_t getReplayDataResolution(void)
 {
 	return ReplayDataResolution;
+}
+
+SGnssCoord getReplayDataCoordinate(void)
+{
+	return ReplayCoord;
 }
 
 

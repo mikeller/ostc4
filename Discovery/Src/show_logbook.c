@@ -451,7 +451,7 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
     posCoord.fLat = 0.0;
     posCoord.fLon = 0.0;
 
-#ifdef ENABLE_BOTTLE_SENSOR
+#if defined ENABLE_BOTTLE_SENSOR || defined ENABLE_GAS_USED_LOG
     uint16_t bottlePressureStart = 0;
     uint16_t bottlePressureEnd = 0;
     uint16_t loop = 0;
@@ -730,7 +730,7 @@ static void show_logbook_logbook_show_log_page1(GFX_DrawCfgScreen *hgfx,uint8_t 
 
 
 /* Show tank info */
-#ifdef ENABLE_BOTTLE_SENSOR
+#if defined ENABLE_BOTTLE_SENSOR || defined ENABLE_GAS_USED_LOG
     for(loop = 0; loop < dataLength; loop++)
     {
     	if((bottlePressureStart == 0) && (tankdata[loop] != 0))	/* find first pressure value */
@@ -944,7 +944,12 @@ static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t
     uint16_t dataLength = 0;
     uint16_t depthdata[1000];
     uint8_t  gasdata[1000];
-    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    uint16_t tankdata[1000];
+
+    uint16_t maxBottleBar = 0;
+    uint16_t minBottleBar = 10000;
+
+    dataLength = logbook_readSampleData(StepBackwards, 1000, depthdata,gasdata, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, tankdata, NULL, NULL, NULL, NULL);
 
     char msg[MSG_LENGTH];
     char gas_name[15];
@@ -982,6 +987,16 @@ static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t
 
     //--- print coordinate system & depth graph with gaschanges ---
     show_logbook_draw_depth_graph(hgfx, StepBackwards, &wintemp, 1, dataLength, depthdata, gasdata, NULL);
+
+/* draw bottle sensor graph */
+    for(index = 1; index < dataLength; index++)
+    {
+        if(tankdata[index]>maxBottleBar) maxBottleBar = tankdata[index];
+        if(tankdata[index]<minBottleBar) minBottleBar = tankdata[index];
+    }
+
+    GFX_graph_print(hgfx,&wintemp,0,1,maxBottleBar,minBottleBar, tankdata,dataLength,CLUT_GasSensor0, gasdata);
+
 
     //--- print gas list ---
     winsmal.left = wintemp.right - 190;
@@ -1022,6 +1037,21 @@ static void show_logbook_logbook_show_log_page3(GFX_DrawCfgScreen *hgfx, uint8_t
             Gfx_write_label_var(hgfx, winsmal.left, winsmal.right,winsmal.top, &FontT24,color,msg);
         }
     }
+
+    winsmal.left = wintemp.right +6;
+    winsmal.top	= wintemp.top - 3;
+    winsmal.right =  wintemp.right + 30;
+    winsmal.bottom = winsmal.top + 16;
+
+  	Gfx_write_label_var(hgfx, winsmal.left, winsmal.right,winsmal.top, &FontT24,CLUT_LogbookTemperature,"bar");
+    winsmal.top	+= 26;
+    winsmal.bottom += 26;
+    snprintf(gas_name,15,"%d",maxBottleBar);
+    Gfx_write_label_var(hgfx, winsmal.left, winsmal.right,winsmal.top, &FontT24,CLUT_LogbookTemperature,gas_name);
+    winsmal.top	= wintemp.bottom - 31;
+    winsmal.bottom = winsmal.top + 26;
+    snprintf(gas_name,15,"%d",minBottleBar);
+    Gfx_write_label_var(hgfx, winsmal.left, winsmal.right,winsmal.top, &FontT24,CLUT_LogbookTemperature,gas_name);
 
     //--- define buttons ---
     /*if(*ghost_char_logfile_oxydata)

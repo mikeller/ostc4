@@ -320,7 +320,7 @@ void logbook_initNewdiveProfile(const SDiveState* pInfo, SSettings* pSettings)
 	smallHeader.cnsDivisor = 12;
 
 	smallHeader.tankType = 6;
-#ifdef ENABLE_BOTTLE_SENSOR
+#if defined ENABLE_BOTTLE_SENSOR || defined ENABLE_GAS_USED_LOG
 	smallHeader.tankLength = 2;
 	smallHeader.tankDivisor = 30;	/* log tank data once a minute */
 #else
@@ -412,6 +412,9 @@ void logbook_writeSample(const SDiveState *state)
     uint8_t* pdata;
     //uint16_t tmpU16 = 0;
 	const SDecoinfo * pDecoinfo; // new hw 160620
+#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+	const SGasLine * pGasLine;
+#endif
 
     //BuildEevntyte 1
 		// sub old 0-3 only one at a time
@@ -677,13 +680,18 @@ void logbook_writeSample(const SDiveState *state)
         divisor.cns--;
     }
 
-#ifdef ENABLE_BOTTLE_SENSOR
+#if defined ENABLE_BOTTLE_SENSOR || defined ENABLE_GAS_USED_LOG
     if(smallHeader.tankDivisor)
     {
       if(divisor.tank == 0)
       {
           divisor.tank = smallHeader.tankDivisor - 1;
+#ifdef ENABLE_BOTTLE_SENSOR
   		  addS16(&sample[length], ((state->lifeData.bottle_bar[state->lifeData.actualGas.GasIdInSettings])));
+#else
+  		  pGasLine = settingsGetPointer()->gas;
+  		  addS16(&sample[length], ((state->lifeData.gasUsed_Ltr[state->lifeData.actualGas.GasIdInSettings] / pGasLine[state->lifeData.actualGas.GasIdInSettings].bottle_size_liter) + 1));
+#endif
   		  length += smallHeader.tankLength;
       }
       else
@@ -1076,6 +1084,11 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
 	int16_t decostepDepthVal = 0;
 	int16_t decostepDepthLast = 0;
 	uint16_t tankVal = 0;
+	uint16_t tankValLast = 0;
+	uint16_t tankValLastIndex = 0;
+	uint8_t  tankGasIdLast = 0xFF;
+    uint16_t index = 0;
+    float 	tankDelta = 0.0;
 	uint32_t small_profileLength = 0;
 	uint8_t eventdata;
     uint16_t compassHeadingVal;
@@ -1249,6 +1262,29 @@ uint16_t logbook_readSampleData(uint8_t StepBackwards, uint16_t length,uint16_t*
 						scrubberStateVal = scrubberStateLast;
 				else
 						scrubberStateLast = scrubberStateVal;
+
+
+				if(tankVal != 0)	/* pressure values are not updated very often => draw line between measurement points to avoid steps */
+				{
+					if(tankGasIdLast == gasidVal)		/* same gas as last time */
+					{
+						tankDelta = (float)(tankVal - tankValLast) / (float)(iNum - tankValLastIndex);
+						{
+							for(index = tankValLastIndex; index < iNum; index++)
+							{
+								tank[index] += tankDelta * (index - tankValLastIndex);
+							}
+						}
+					}
+					else
+					{
+						tank[index] = tankVal;
+					}
+					tankValLastIndex = iNum;
+					tankValLast = tankVal;
+					tankGasIdLast = gasidVal;
+				}
+				else tankVal = tankValLast;
 
 				counter++;
 				// Heed compression
