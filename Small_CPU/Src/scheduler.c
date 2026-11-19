@@ -1817,6 +1817,12 @@ void copyGNSSdata(void)
 {
 	RTC_TimeTypeDef sTimeNow;
 
+#if defined ENABLE_GNSS_INTERN && !defined ENABLE_GNSS_EXTERN
+	if(GPIO_GetVersion() == 0)		/* the internal receiver is only available on OSTC5 */
+	{
+		return;
+	}
+#endif
 	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.fLat;
 	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.fLon;
 	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
