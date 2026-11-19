@@ -116,7 +116,7 @@ void UART_Gnss_SendCmd(uint8_t GnssCmd)
 									msg_DateTime.msgClass = 0x13;
 									msg_DateTime.msgID = 0x40;
 									msg_DateTime.length = sizeof(UBX_MGA_INI_TIME_UTC_t) - 6;
-									msg_DateTime.type = 0x00;
+									msg_DateTime.type = 0x10;		/* UBX-MGA-INI-TIME_UTC */
 									msg_DateTime.version = 0x00;
 									msg_DateTime.year = date.Year + 2000;
 									msg_DateTime.month = date.Month;
