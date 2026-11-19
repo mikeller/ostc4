@@ -412,7 +412,7 @@ void logbook_writeSample(const SDiveState *state)
     uint8_t* pdata;
     //uint16_t tmpU16 = 0;
 	const SDecoinfo * pDecoinfo; // new hw 160620
-#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 	const SGasLine * pGasLine;
 #endif
 
