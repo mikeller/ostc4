@@ -229,9 +229,12 @@ void refresh_DateTime()
     write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
     write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-    write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
-    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
-    write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+    if(isGnssAvailable())
+    {
+        write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
+        snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
+        write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+    }
 #endif
 
 
@@ -251,21 +254,24 @@ void refresh_DateTime()
     tMenuEdit_newButtonText(StMSYS1_FORMAT, formatStr);
 
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-    if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
+    if(isGnssAvailable())
     {
-        convertUTCToLocal(pStateReal->lifeData.gnssData.DateTime.hour, pStateReal->lifeData.gnssData.DateTime.min, &localHours, &localMinutes);
-        convertStringOfDate_DDMMYY(formatStr, 20, pStateReal->lifeData.gnssData.DateTime.day
-        										, pStateReal->lifeData.gnssData.DateTime.month
-    											, pStateReal->lifeData.gnssData.DateTime.year);
-        snprintf(text, 32, "%02d:%02d - %s", localHours, localMinutes, formatStr);
-        tMenuEdit_newButtonText(StMSYS1_GNSSDT, text);
+        if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_TIME)
+        {
+            convertUTCToLocal(pStateReal->lifeData.gnssData.DateTime.hour, pStateReal->lifeData.gnssData.DateTime.min, &localHours, &localMinutes);
+            convertStringOfDate_DDMMYY(formatStr, 20, pStateReal->lifeData.gnssData.DateTime.day
+            										, pStateReal->lifeData.gnssData.DateTime.month
+        											, pStateReal->lifeData.gnssData.DateTime.year);
+            snprintf(text, 32, "%02d:%02d - %s", localHours, localMinutes, formatStr);
+            tMenuEdit_newButtonText(StMSYS1_GNSSDT, text);
+        }
+        else
+        {
+        	snprintf(text, 32, "--:--");
+        	write_label_var(  320, 790, ME_Y_LINE5, &FontT42, text);
+        }
+        tMenuEdit_newInput(StMSYS1_ZONE, pSettings->timeZone.hours, pSettings->timeZone.minutes, 0, 0);
     }
-    else
-    {
-    	snprintf(text, 32, "--:--");
-    	write_label_var(  320, 790, ME_Y_LINE5, &FontT42, text);
-    }
-    tMenuEdit_newInput(StMSYS1_ZONE, pSettings->timeZone.hours, pSettings->timeZone.minutes, 0, 0);
 #endif
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }
@@ -317,9 +323,12 @@ void openEdit_DateTime(void)
     write_label_fix(  20, 340, ME_Y_LINE3, &FontT42, TXT_DateConfig);
     write_label_fix(  20, 790, ME_Y_LINE4, &FontT42, TXT_Format);
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-    write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
-    snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
-    write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+    if(isGnssAvailable())
+    {
+        write_label_var(  20, 340, ME_Y_LINE5, &FontT42, "GNSS");
+        snprintf(text, 32, "%c%c", TXT_2BYTE, TXT2BYTE_TIMEZONE);
+        write_label_var(  20, 340, ME_Y_LINE6, &FontT42, text);
+    }
 #endif
 
     write_field_2digit(StMSYS1_Time,		320, 780, ME_Y_LINE1,  &FontT48, "##:##", (uint32_t)hour, (uint32_t)minute, 0, 0);
@@ -339,9 +348,12 @@ void openEdit_DateTime(void)
     write_field_button(StMSYS1_FORMAT, 320, 790, ME_Y_LINE4,  &FontT48, formatStr);
 
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-	snprintf(text, 32, "--:--");
-	write_field_button(StMSYS1_GNSSDT, 320, 790, ME_Y_LINE5,  &FontT48, text);
-    write_field_sdigit(StMSYS1_ZONE, 320, 780, ME_Y_LINE6,  &FontT48, "UTC: ###:###", pSettings->timeZone.hours, pSettings->timeZone.minutes,0,0);
+    if(isGnssAvailable())
+    {
+    	snprintf(text, 32, "--:--");
+    	write_field_button(StMSYS1_GNSSDT, 320, 790, ME_Y_LINE5,  &FontT48, text);
+        write_field_sdigit(StMSYS1_ZONE, 320, 780, ME_Y_LINE6,  &FontT48, "UTC: ###:###", pSettings->timeZone.hours, pSettings->timeZone.minutes,0,0);
+    }
 #endif
 
     setEvent(StMSYS1_Date, 		(uint32_t)OnAction_Date);
@@ -349,8 +361,11 @@ void openEdit_DateTime(void)
     setEvent(StMSYS1_12HR,      (uint32_t)OnAction_12HR);
     setEvent(StMSYS1_FORMAT,	(uint32_t)OnAction_Format);
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-   	setEvent(StMSYS1_GNSSDT, (uint32_t)OnAction_SetGnss);
-	setEvent(StMSYS1_ZONE,		(uint32_t)OnAction_UTC);
+    if(isGnssAvailable())
+    {
+       	setEvent(StMSYS1_GNSSDT, (uint32_t)OnAction_SetGnss);
+    	setEvent(StMSYS1_ZONE,		(uint32_t)OnAction_UTC);
+    }
 #endif
     write_buttonTextline(TXT2BYTE_ButtonBack,TXT2BYTE_ButtonEnter,TXT2BYTE_ButtonNext);
 }

@@ -110,6 +110,7 @@ void MX_TestPin_Low(void);
 
 void SetDisplayVersion(uint8_t version);
 uint8_t isNewDisplay(void);
+uint8_t isGnssAvailable(void);
 
 uint8_t UART_getChar();
 
