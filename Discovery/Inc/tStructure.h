@@ -366,6 +366,8 @@
 #define StMOption_CompassStyle_MinorTicks	_MB(2,PAGE_SURF_CUST_OPT,4,4,0)
 #define StMOption_CompassStyle_MountTilt	_MB(2,PAGE_SURF_CUST_OPT,4,5,0)
 
+#define StMOption_GNSS						_MB(2,PAGE_SURF_CUST_OPT,5,0,0)
+
 /* PAGE 9 */
 #define StMSYS		_MB(2,9,0,0,0)
 

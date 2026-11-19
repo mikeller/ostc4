@@ -409,7 +409,7 @@ static void openEdit_GNSS(void)
 
     SGnssCoord logCoord;
 
-    set_globalState(StMCustom3_CViewSelection);
+    set_globalState(StMOption_GNSS);
     resetMenuEdit(CLUT_MenuPageHardware);
 
     snprintf(text, 60, "\001GNSS %c%c", TXT_3BYTE, TXT3BYTE_Coordinate);

@@ -263,7 +263,7 @@ void tMenuEdit_refresh_live_content(void)
 	 	 case StMCustom3_CViewSelection3:
 	 	 case StMCustom3_CViewSelection4:
 	 	 case StMCustom3_CViewSelection5:
-	 	 case StMCustom3_CViewSelection6: if(stateUsed->mode == MODE_DIVE) refreshFct = CustomviewDivemode_refresh;
+	 	 case StMCustom3_CViewSelection6: refreshFct = CustomviewDivemode_refresh;
 	 	 	 break;
 #ifdef ENABLE_PULSE_SENSOR_BT
 	 	case (StMOption_Heartbeat):		refreshFct = refresh_Heartbeat;
