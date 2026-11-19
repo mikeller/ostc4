@@ -537,6 +537,9 @@ void logbook_writeSample(const SDiveState *state)
         sample[length++] = *pdata++;
         sample[length++] = *pdata++;
         sample[length++] = *pdata++;
+        sample[length++] = state->events.info_gnssAccuracy.hAcc;
+        sample[length++] = state->events.info_gnssAccuracy.numSatUsed;
+        sample[length++] = state->events.info_gnssAccuracy.posAge;
     }
     if (state->events.scrubberState) {
         pdata = (uint8_t*)&state->events.info_scrubberState;
@@ -899,6 +902,13 @@ static uint16_t readSample(int32_t* depth, int16_t * gasid, int16_t* setpoint_cb
 				if(tempU32 != 0xffffffff)
 				{
 					memcpy(&pPosition->fLat, &tempU32, 4);
+				}
+				/* accuracy of the position (hAcc, numSatUsed, posAge). It is not evaluated here */
+				for(index = 0; index < 3; index++)
+				{
+					ext_flash_read_next_sample_part( (uint8_t*)&tempU8, 1);
+					bytesRead +=1;
+					length -= 1;
 				}
 			}
 
@@ -1475,6 +1485,7 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 			{
 				pStateReal->events.gnssPositionUpdate = 1;
 				pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
+				pStateReal->events.info_gnssAccuracy = pStateReal->lifeData.gnssData.accuracy;
 			}
 #endif
 
