@@ -62,9 +62,15 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->numEphSat = 0;
 	GNSS->fixOk = 0;
 	GNSS->numTracked = 0;
+	GNSS->numUsed = 0;
 	GNSS->bestCno = 0;
+	memset(GNSS->debugSat, 0, sizeof(GNSS->debugSat));
+	GNSS->pDop = 0xFFFFu;
+	GNSS->timeFlags = 0;
+	GNSS->numSvUsedPvt = 0;
 	GNSS->psmState = 0;
 	GNSS->pvtParsed = 0;
+	/* the error counters are kept: they count since the RTE started */
 	GNSS->verifyBad = 0;
 	GNSS->verifyResend = 0;
 	GNSS->verifyTries = 0;
@@ -89,9 +95,13 @@ static uint8_t GNSS_Limit(uint8_t value, uint8_t limit) {
  * Fill one record of the GNSS debug record sequence, see data_exchange.h.
  * @param GNSS Pointer to main GNSS structure.
  * @param index Record index 0 .. GNSS_DEBUG_REC_CNT - 1, a higher index is treated like 0.
+ * @param age_s Seconds since the last valid frame.
  * @param rec The record.
  */
-void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
+void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
+	const SGnssDebugSat* pSat;
+	uint32_t pDop_tenth;
+
 	memset(rec, 0, GNSS_DEBUG_REC_SIZE);
 	if(index >= GNSS_DEBUG_REC_CNT)
 	{
@@ -101,13 +111,27 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t re
 	switch(index)
 	{
 		case GNSS_DEBUG_REC_SUMMARY_A:
-			rec[4] = (GNSS_Limit(GNSS->numTracked, 15) << 4);
+			pDop_tenth = (GNSS->pDop == 0xFFFFu) ? 255u : (GNSS->pDop / 10u);
+			rec[1] = age_s;
+			rec[2] = (pDop_tenth > 255u) ? 255u : (uint8_t)pDop_tenth;
+			rec[3] = GNSS_EncodeHAcc(GNSS->hAcc);
+			rec[4] = (GNSS_Limit(GNSS->numTracked, 15) << 4) | GNSS_Limit(GNSS->numUsed, 15);
 			rec[5] = GNSS->bestCno;
 			break;
 		case GNSS_DEBUG_REC_SUMMARY_B:
+			rec[1] = GNSS->timeFlags;
+			rec[2] = GNSS->numSvUsedPvt;
 			rec[3] = GNSS->pvtParsed ? GNSS->psmState : GNSS_PSM_UNKNOWN;
+			rec[4] = GNSS->uartErrors;
+			rec[5] = GNSS->nakCount;
 			break;
 		default:
+			pSat = &GNSS->debugSat[index - GNSS_DEBUG_REC_SAT0];
+			rec[1] = pSat->flags;
+			rec[2] = pSat->svId;
+			rec[3] = pSat->cno;
+			rec[4] = pSat->quality;
+			rec[5] = pSat->elev;
 			break;
 	}
 	GNSS_DebugRecord_Seal(rec);
@@ -147,8 +171,19 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 	GNSS->sec = GNSS_Handle.uartWorkingBuffer[16];
 	GNSS->fixType = GNSS_Handle.uartWorkingBuffer[26];
 	GNSS->fixOk = (GNSS_Handle.uartWorkingBuffer[27] & 0x01u) ? 1 : 0;	/* flags: gnssFixOK (bit 0) */
+	/* values for the debug page: payload offsets of UBX-NAV-PVT (92 bytes) + 6 bytes of the frame header: valid 11, flags 21, flags2 22, numSV 23, pDOP 76 */
+	GNSS->timeFlags = (GNSS_Handle.uartWorkingBuffer[17] & 0x07u) | ((GNSS_Handle.uartWorkingBuffer[28] >> 2) & 0x38u);	/* valid: validDate, validTime, fullyResolved; flags2 bits 5..7: confirmedAvai, confirmedDate, confirmedTime */
+	GNSS->numSvUsedPvt = GNSS_Handle.uartWorkingBuffer[29];
 	GNSS->psmState = (GNSS_Handle.uartWorkingBuffer[27] >> 2) & 0x07u;	/* flags bits 2..4 */
 	GNSS->pvtParsed = 1;
+	if((GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8)) >= 78)	/* the frame contains the pDOP */
+	{
+		GNSS->pDop = GNSS_Handle.uartWorkingBuffer[82] | (GNSS_Handle.uartWorkingBuffer[83] << 8);
+	}
+	else
+	{
+		GNSS->pDop = 0xFFFFu;
+	}
 
 	for (int var = 0; var < 4; ++var) {
 		iLong.bytes[var] = GNSS_Handle.uartWorkingBuffer[var + 30];
@@ -255,13 +290,18 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 	}
 
 	/* count the satellites with ephemeris. Block N starts at byte 14 + 12 * N of the frame: gnssId, svId, cno, elev, azim (2), prRes (2), flags (4).
-	 * flags bit 11 (bit 3 of the second flags byte) is ephAvail. The same loop counts the satellites with C/N0 > 0 and finds the best C/N0 */
+	 * flags bit 11 (bit 3 of the second flags byte) is ephAvail. The same loop collects the values of the debug page: C/N0 > 0, svUsed (bit 3), best C/N0
+	 * and the satellites with the highest C/N0 (insertion into a short sorted list) */
 	GNSS->numEphSat = 0;
 	GNSS->numTracked = 0;
+	GNSS->numUsed = 0;
 	GNSS->bestCno = 0;
+	memset(GNSS->debugSat, 0, sizeof(GNSS->debugSat));
 	for(loop = 0; loop < scanSat; loop++)
 	{
 		const uint8_t* pSv = &GNSS_Handle.uartWorkingBuffer[14 + loop * 12];
+		SGnssDebugSat entry;
+		uint8_t pos;
 
 		if(GNSS_hasLongLivedEphemeris(pSv[0]) && (pSv[9] & 0x08u))
 		{
@@ -271,9 +311,32 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 		{
 			GNSS->numTracked++;
 		}
+		if(pSv[8] & 0x08u)
+		{
+			GNSS->numUsed++;
+		}
 		if(pSv[2] > GNSS->bestCno)
 		{
 			GNSS->bestCno = pSv[2];
+		}
+
+		entry.flags = (pSv[0] & 0x07u) | ((pSv[8] & 0x08u) ? 0x08u : 0) | ((pSv[9] & 0x08u) ? 0x10u : 0) | (((pSv[8] >> 4) & 0x03u) << 5);
+		entry.svId = pSv[1];
+		entry.cno = pSv[2];
+		entry.quality = pSv[8] & 0x07u;
+		entry.elev = (((int8_t)pSv[3] >= 0) && ((int8_t)pSv[3] <= 90)) ? pSv[3] : 255u;
+		pos = 0;
+		while((pos < GNSS_DEBUG_SAT_CNT) && (GNSS->debugSat[pos].svId != 0) && (GNSS->debugSat[pos].cno >= entry.cno))
+		{
+			pos++;
+		}
+		if(pos < GNSS_DEBUG_SAT_CNT)
+		{
+			for(uint8_t k = GNSS_DEBUG_SAT_CNT - 1; k > pos; k--)
+			{
+				GNSS->debugSat[k] = GNSS->debugSat[k - 1];
+			}
+			GNSS->debugSat[pos] = entry;
 		}
 	}
 	loop = 0;

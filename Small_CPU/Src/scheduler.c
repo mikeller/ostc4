@@ -1822,6 +1822,7 @@ void copyGNSSdata(void)
 	uint32_t age_s = 0;
 	static uint8_t debugRecordIndex = 0;
 	uint8_t debugRecord[GNSS_DEBUG_REC_SIZE];
+	uint8_t debugAge = 255;
 
 #if defined ENABLE_GNSS_INTERN && !defined ENABLE_GNSS_EXTERN
 	if(GPIO_GetVersion() == 0)		/* the internal receiver is only available on OSTC5 */
@@ -1891,8 +1892,13 @@ void copyGNSSdata(void)
 	}
 	memcpy(&pInfo->signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 
-	/* one record of the GNSS debug record sequence per call, see data_exchange.h */
-	GNSS_GetDebugRecord(&GNSS_Handle, debugRecordIndex, debugRecord);
+	/* one record of the GNSS debug page per call, see data_exchange.h */
+	if(GNSS_Handle.lastFrameValid)
+	{
+		age_s = time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) / 1000u;
+		debugAge = (age_s > 254u) ? 255u : (uint8_t)age_s;
+	}
+	GNSS_GetDebugRecord(&GNSS_Handle, debugRecordIndex, debugAge, debugRecord);
 	GNSS_DebugRecord_Put(&global.dataSendToMaster.data[0], debugRecord);
 	debugRecordIndex++;
 	if(debugRecordIndex >= GNSS_DEBUG_REC_CNT)

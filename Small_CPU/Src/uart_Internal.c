@@ -153,6 +153,16 @@ void MX_USART6_UART_Init(void) {
 	MX_USART6_DMA_Init();
 }
 
+/* The HAL stops the reception of the UART in which an error (overrun, framing, noise) occurred. The error is only counted for the debug page of the main CPU,
+ * the reception is restarted by the next command as before */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+	if((huart == &huart6) && (GNSS_Handle.uartErrors < 255))
+	{
+		GNSS_Handle.uartErrors++;
+	}
+}
+
 /* Control of the internal receiver, called from the main loops of the RTE. Besides the cyclic polls (see uartGnss_Control) it runs the wake up of a receiver
  * which was put into power save mode before sleep or a dive (state INACTIVE) and keeps its states from blocking:
  *

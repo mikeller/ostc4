@@ -120,11 +120,18 @@ typedef struct
 	uint8_t numEphSat;			/* satellites of the last UBX-NAV-SAT with long lived ephemeris (GPS, Galileo, BeiDou, QZSS) available */
 	uint8_t fixOk;				/* gnssFixOK flag of the last UBX-NAV-PVT */
 
-	/* values which the position view needs, see the GNSS debug record in data_exchange.h */
+	/* values for the GNSS debug page, see the GNSS debug record in data_exchange.h */
 	uint8_t numTracked;			/* satellites of the last UBX-NAV-SAT with C/N0 > 0 */
+	uint8_t numUsed;			/* satellites of the last UBX-NAV-SAT which are used for navigation (svUsed) */
 	uint8_t bestCno;			/* highest C/N0 (dBHz) of the last UBX-NAV-SAT */
+	SGnssDebugSat debugSat[GNSS_DEBUG_SAT_CNT];	/* the satellites with the highest C/N0 of the last UBX-NAV-SAT */
+	uint16_t pDop;				/* pDOP of the last UBX-NAV-PVT in 0.01, 0xFFFF if not available */
+	uint8_t timeFlags;			/* valid flags and confirmed flags of the last UBX-NAV-PVT, see the debug record */
+	uint8_t numSvUsedPvt;		/* numSV of the last UBX-NAV-PVT */
 	uint8_t psmState;			/* psmState of the last UBX-NAV-PVT */
 	uint8_t pvtParsed;			/* a UBX-NAV-PVT was parsed since the receiver was initialized or woken: psmState is valid */
+	uint8_t uartErrors;			/* UART errors of the receiver port since the RTE started (saturating) */
+	uint8_t nakCount;			/* UBX-ACK-NAK received since the RTE started (saturating) */
 
 	/* switching the receiver to full power (initialization, wake up after sleep or dive), see the comment of the state machine in uartProtocol_GNSS.c */
 	uint8_t pwrupWake;			/* the power up follows a wake up (0xFF bytes) of a receiver in power save mode */
@@ -232,7 +239,7 @@ static const uint8_t setDateTime[] = {0xB5,0x62,0x13,0x40,0x18,0x00,0x10,0x00,0x
 static const uint8_t setPortableType[]={};
 void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart);
 void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS);
-void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
+void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 

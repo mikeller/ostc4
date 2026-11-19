@@ -470,9 +470,16 @@ void uartGnss_ProcessData(uint8_t data)
 										}
 										else
 										{
-											if((data == 0x00) && (gnssState == UART_GNSS_PWRUP))		/* UBX-ACK-NAK: the receiver rejected the command */
+											if(data == 0x00)		/* UBX-ACK-NAK: the receiver rejected a command, counted */
 											{
-												GNSS_Handle.pwrupNak = 1;		/* the power up sequence is repeated */
+												if(GNSS_Handle.nakCount < 255)
+												{
+													GNSS_Handle.nakCount++;
+												}
+												if(gnssState == UART_GNSS_PWRUP)
+												{
+													GNSS_Handle.pwrupNak = 1;		/* the power up sequence is repeated */
+												}
 											}
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}

@@ -224,16 +224,23 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  * The six unused bytes of SExchangeData (gnssDebug_A/B/C) carry one record of 6 bytes per exchange. The RTE sends the records in turn (about one per 100 ms, a
  * record is refreshed about once a second), the main CPU collects them in SGnssDebugInfo. This avoids a bigger SExchangeData and with it a different SPI frame.
  * Byte 0 is the record index (bits 0..3) and a check value (bits 4..7: XOR of the nibbles of the index and the payload) against records which were read while
- * the RTE was writing them. Bytes 1..5 are the payload. The position view needs the tracked satellites, the best C/N0 and the power save state of the receiver,
- * so there are two records:
- * record 0 (summary A): [4] satellites with C/N0 > 0 (bits 4..7), limited to 15, [5] best C/N0 in dBHz (0 = none). The other bytes are not used.
- * record 1 (summary B): [3] psmState of UBX-NAV-PVT (0 not active, 1 enabled, 2 acquisition, 3 tracking, 4 power optimized tracking, 5 inactive;
- *                       GNSS_PSM_UNKNOWN until a UBX-NAV-PVT was parsed since the receiver was initialized or woken). The other bytes are not used.
+ * the RTE was writing them. Bytes 1..5 are the payload:
+ * record 0 (summary A): [1] seconds since the last valid frame (255 = none or 255 s and more), [2] pDOP in 0.1 (255 = unknown), [3] horizontal accuracy of the
+ *                       current fix in m as in GNSS_EncodeHAcc (255 = none), [4] satellites with C/N0 > 0 (bits 4..7) and satellites used (bits 0..3), both
+ *                       limited to 15, [5] best C/N0 in dBHz (0 = none)
+ * record 1 (summary B): [1] time flags (bit 0 validDate, 1 validTime, 2 fullyResolved, 3 confirmedAvai, 4 confirmedDate, 5 confirmedTime, all of UBX-NAV-PVT),
+ *                       [2] satellites used in the solution (numSV of UBX-NAV-PVT), [3] psmState of UBX-NAV-PVT (0 not active, 1 enabled, 2 acquisition, 3 tracking,
+ *                       4 power optimized tracking, 5 inactive; GNSS_PSM_UNKNOWN until a UBX-NAV-PVT was parsed since the receiver was initialized or woken), [4] number of UART errors of the receiver
+ *                       port and [5] number of UBX-ACK-NAK, both saturating at 255 and counted since the RTE started
+ * records 2..9 (satellite 0..7, sorted by C/N0): [1] bits 0..2 gnssId, bit 3 svUsed, bit 4 ephAvail, bits 5..6 health (UBX-NAV-SAT), [2] svId (0 = no satellite),
+ *                       [3] C/N0 in dBHz, [4] qualityInd, [5] elevation in degrees (255 = unknown)
  * The field offsets are those of the u-blox 8 / u-blox M8 receiver description (UBX-13003221), the module of the OSTC5 is not identified. */
 #define GNSS_DEBUG_REC_SIZE			(6u)
+#define GNSS_DEBUG_SAT_CNT			(8u)
 #define GNSS_DEBUG_REC_SUMMARY_A	(0u)
 #define GNSS_DEBUG_REC_SUMMARY_B	(1u)
-#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_SUMMARY_B + 1u)			/* number of record types: the index is a 4 bit value */
+#define GNSS_DEBUG_REC_SAT0			(2u)
+#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT)
 #define GNSS_PSM_UNKNOWN			(0xFFu)								/* power save state (psmState) not known yet */
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
@@ -281,13 +288,31 @@ static inline void GNSS_DebugRecord_Get(const SExchangeData* d, uint8_t rec[GNSS
 	rec[5] = d->gnssDebug_C[2];
 }
 
-/* GNSS values collected by the main CPU from the records */
+/* GNSS debug values collected by the main CPU from the records */
 typedef struct
 {
-	uint8_t numTracked;		/* satellites with C/N0 > 0 */
-	uint8_t bestCno;		/* highest C/N0 in dBHz */
-	uint8_t psmState;		/* power save state, see record 1 */
-	uint8_t recordsSeen;	/* bit mask of the records received at least once: bit 0 record 0, bit 1 record 1 */
+	uint8_t flags;			/* bits 0..2 gnssId, bit 3 svUsed, bit 4 ephAvail, bits 5..6 health */
+	uint8_t svId;			/* 0: no satellite */
+	uint8_t cno;			/* dBHz */
+	uint8_t quality;		/* qualityInd 0..7 */
+	uint8_t elev;			/* degrees, 255 unknown */
+} SGnssDebugSat;
+
+typedef struct
+{
+	uint8_t frameAge_s;
+	uint8_t pDop_tenth;
+	uint8_t hAcc_m;
+	uint8_t numTracked;
+	uint8_t numUsed;
+	uint8_t bestCno;
+	uint8_t timeFlags;
+	uint8_t numSvUsedPvt;
+	uint8_t psmState;
+	uint8_t uartErrors;
+	uint8_t nakCount;
+	uint8_t recordsSeen;	/* bit mask of the records received at least once */
+	SGnssDebugSat sat[GNSS_DEBUG_SAT_CNT];
 } SGnssDebugInfo;
 
 typedef struct
