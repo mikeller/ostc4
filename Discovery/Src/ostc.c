@@ -606,6 +606,17 @@ uint8_t isGnssAvailable()
 	return ret;
 }
 
+/* The OSTC5 internal receiver is present. Same condition as the RTE uses for the internal receiver (ENABLE_GNSS_INTERN without ENABLE_GNSS_EXTERN).
+ * In contrast to isGnssAvailable() it is false for models which only have the optional external receiver. */
+uint8_t isInternalGnssAvailable()
+{
+	uint8_t ret = 0;
+#if defined ENABLE_GNSS_INTERN && !defined ENABLE_GNSS_EXTERN
+	ret = isNewDisplay();
+#endif
+	return ret;
+}
+
 #ifndef BOOTLOADER_STANDALONE
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
