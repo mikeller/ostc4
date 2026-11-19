@@ -1835,12 +1835,18 @@ void copyGNSSdata(void)
 	pInfo->DateTime.hour = GNSS_Handle.hour;
 	pInfo->DateTime.min = GNSS_Handle.min;
 	pInfo->DateTime.sec = GNSS_Handle.sec;
-	pInfo->alive = GNSS_Handle.alive & ~(GNSS_ALIVE_POS_VALID | GNSS_ALIVE_STATE_ALIVE);
+	pInfo->alive = GNSS_Handle.alive & GNSS_ALIVE_STATE_TIME;
 
-	/* The receiver is alive if it has answered recently. This is a steady state, not a toggle per received frame */
+	/* The receiver is alive if it has answered recently. This is a steady state, not a toggle per received frame.
+	 * The fix OK flag and the ephemeris count are only reported while it is alive, as they are not cleared if it stops answering */
 	if((GNSS_Handle.lastFrameValid) && (time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) <= GNSS_ALIVE_TIMEOUT_MS))
 	{
 		pInfo->alive |= GNSS_ALIVE_STATE_ALIVE;
+		if(GNSS_Handle.fixOk)
+		{
+			pInfo->alive |= GNSS_ALIVE_FIX_OK;
+		}
+		pInfo->alive |= (uint8_t)(((GNSS_Handle.numEphSat > 15u) ? 15u : GNSS_Handle.numEphSat) << GNSS_ALIVE_EPH_SHIFT);
 	}
 
 	/* The position is valid if it was received from the receiver with a fix (see GNSS_ParsePVTData) not longer ago than GNSS_POS_MAX_AGE_S.

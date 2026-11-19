@@ -58,6 +58,10 @@
 #define GNSS_ALIVE_STATE_ALIVE		(0x01u)		/* Communication to module active: a valid frame was received from the module within the last GNSS_ALIVE_TIMEOUT_MS (set by the RTE). Steady state, it does not toggle */
 #define GNSS_ALIVE_STATE_TIME		(0x02u)		/* Time information valid */
 #define GNSS_ALIVE_POS_VALID		(0x04u)		/* coord contains a valid position: fix of the receiver or last known position (not older than GNSS_POS_MAX_AGE_S), see accuracy for age and quality */
+#define GNSS_ALIVE_FIX_OK			(0x08u)		/* gnssFixOK flag of the receiver: the fix is within the DOP and accuracy masks of the receiver. Only set while the module is alive */
+#define GNSS_ALIVE_EPH_SHIFT		(4u)
+#define GNSS_ALIVE_EPH_MASK			(0xF0u)		/* number (0..15) of GPS, Galileo, BeiDou and QZSS satellites with ephemeris available in the last UBX-NAV-SAT frame. Only valid while the module is alive. GLONASS and SBAS are not counted, see GNSS_ParseNavSatData */
+#define GNSS_EPH_COUNT(pGnssInfo)	(((pGnssInfo)->alive & GNSS_ALIVE_EPH_MASK) >> GNSS_ALIVE_EPH_SHIFT)
 #define GNSS_HAS_FIX(pGnssInfo)		(((pGnssInfo)->fixType >= 2) && (((pGnssInfo)->alive & GNSS_ALIVE_POS_VALID) != 0))	/* the receiver has a fix with a valid position at the moment (and not just a last known position) */
 
 #define PRESSURE_BOTTLE_CNT			(0x2u)		/* Number of bottle information (max 255 bar) */

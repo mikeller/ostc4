@@ -59,6 +59,8 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->gSpeed = 0;
 	GNSS->headMot = 0;
 	GNSS->lastFrameValid = 0;		/* the tick of an earlier frame is meaningless after a restart or a sleep phase */
+	GNSS->numEphSat = 0;
+	GNSS->fixOk = 0;
 }
 
 /*!
@@ -103,6 +105,7 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 	GNSS->min = GNSS_Handle.uartWorkingBuffer[15];
 	GNSS->sec = GNSS_Handle.uartWorkingBuffer[16];
 	GNSS->fixType = GNSS_Handle.uartWorkingBuffer[26];
+	GNSS->fixOk = (GNSS_Handle.uartWorkingBuffer[27] & 0x01u) ? 1 : 0;	/* flags: gnssFixOK (bit 0) */
 
 	for (int var = 0; var < 4; ++var) {
 		iLong.bytes[var] = GNSS_Handle.uartWorkingBuffer[var + 30];
@@ -181,6 +184,13 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
  * Look at: 32.17.30.1 u-blox 8 Receiver description.
  * @param GNSS Pointer to main GNSS structure.
  */
+/* The broadcast ephemeris of GPS, Galileo, BeiDou and QZSS satellites is valid for hours (for GPS usually 4 hours, see the u-blox 8 / M8
+ * receiver description, chapter "Forcing a Receiver Reset"). A GLONASS ephemeris only covers about 30 minutes (same document, chapter
+ * "AssistNow Autonomous") and SBAS satellites have none, so they are not counted. gnssId values: see the appendix "Satellite Numbering" */
+static uint8_t GNSS_hasLongLivedEphemeris(uint8_t gnssId) {
+	return ((gnssId == 0) || (gnssId == 2) || (gnssId == 3) || (gnssId == 5));	/* GPS, Galileo, BeiDou, QZSS */
+}
+
 void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 
 	uint8_t loop = 0;
@@ -200,6 +210,18 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 	{
 		scanSat = (payloadLength - 8) / 12;
 	}
+
+	/* count the satellites with ephemeris. Block N starts at byte 14 + 12 * N of the frame: gnssId, svId, cno, elev, azim (2), prRes (2), flags (4).
+	 * flags bit 11 (bit 3 of the second flags byte) is ephAvail */
+	GNSS->numEphSat = 0;
+	for(loop = 0; loop < scanSat; loop++)
+	{
+		if(GNSS_hasLongLivedEphemeris(GNSS_Handle.uartWorkingBuffer[14 + loop * 12]) && (GNSS_Handle.uartWorkingBuffer[23 + loop * 12] & 0x08u))
+		{
+			GNSS->numEphSat++;
+		}
+	}
+	loop = 0;
 
 	memset(GNSS->statSat, 0, sizeof(GNSS->statSat));
 

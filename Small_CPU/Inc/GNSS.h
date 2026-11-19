@@ -101,6 +101,8 @@ typedef struct
 
 	uint8_t numSat;
 	uint8_t statSat[4];
+	uint8_t numEphSat;			/* satellites of the last UBX-NAV-SAT with long lived ephemeris (GPS, Galileo, BeiDou, QZSS) available */
+	uint8_t fixOk;				/* gnssFixOK flag of the last UBX-NAV-PVT */
 
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
