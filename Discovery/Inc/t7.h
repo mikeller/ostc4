@@ -80,6 +80,8 @@ uint8_t t7_customview_disabled(uint8_t view);
 
 bool t7_isCompassShowing(void);
 bool t7_isPositionViewSelected(void);
+bool t7_isGnssDebugPageShown(void);
+bool t7_handleGnssDebugPageAction(uint8_t action);
 /*
 	 void t7c_refresh(uint32_t FramebufferStartAddress);
 */

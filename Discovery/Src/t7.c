@@ -104,6 +104,9 @@ static const RoseConfig t7_rose_cfg = {
 void t7_refresh_surface(void);
 void t7_refresh_surface_debugmode(void);
 static uint8_t t7_getGnssPowerSaveState(void);
+#ifdef HAVE_DEBUG_VIEW
+void t7_refresh_gnss_debug(void);
+#endif
 void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
 void t7_refresh_divemode_userselected_left_lower_corner(void);
@@ -149,6 +152,9 @@ GFX_DrawCfgWindow	t7cH, t7cC, t7cW, t7cY0free;
 GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 
 uint8_t selection_customview = LLC_Temperature;
+#ifdef HAVE_DEBUG_VIEW
+static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen */
+#endif
 
 uint8_t updateNecessary = 0;
 
@@ -659,8 +665,19 @@ void t7_refresh(void)
         if(status.page == PageDive)
             set_globalState(StS);
 
+#ifdef HAVE_DEBUG_VIEW
+        if(gnssDebugPage && (selection_customview != CVIEW_Position))
+        {
+            gnssDebugPage = 0;		/* the view was left in another way than by the button */
+        }
+#endif
+
         if(settingsGetPointer()->showDebugInfo)
             t7_refresh_surface_debugmode();
+#ifdef HAVE_DEBUG_VIEW
+        else if(t7_isGnssDebugPageShown())
+            t7_refresh_gnss_debug();
+#endif
         else
             t7_refresh_surface();
     }
@@ -3903,6 +3920,295 @@ void t7_showPosition(void)
     	t7cY0free.WindowNumberOfTextLines = sessionLines;
     }
 }
+/* The debug pages of the receiver are only built with the debug view (HAVE_DEBUG_VIEW of configuration.h); without it ENTER is not used by the position view */
+#ifndef HAVE_DEBUG_VIEW
+bool t7_isGnssDebugPageShown(void)
+{
+    return false;
+}
+
+bool t7_handleGnssDebugPageAction(uint8_t action)
+{
+    (void)action;
+    return false;
+}
+#else
+bool t7_isGnssDebugPageShown(void)
+{
+    return gnssDebugPage && (selection_customview == CVIEW_Position) && (stateUsed->mode == MODE_SURFACE);
+}
+
+
+/* ENTER on the position view shows the debug page, the next ENTER leaves it and continues with the next view. Returns true if the action was used */
+bool t7_handleGnssDebugPageAction(uint8_t action)
+{
+    if((action != ACTION_BUTTON_ENTER) || (stateUsed->mode != MODE_SURFACE))
+    {
+        return false;
+    }
+    if(gnssDebugPage)
+    {
+        gnssDebugPage = 0;
+        return false;
+    }
+    if(selection_customview == CVIEW_Position)
+    {
+        gnssDebugPage = 1;
+        return true;
+    }
+    return false;
+}
+
+
+/* GNSS debug page: a full screen of values for a photograph. Rows of font T24 (28 px high, ink at most 23 px) every 34 px, in two columns.
+ * The positions are counted from the top and the left of the screen, Gfx_write_label_var mirrors them for the flipped display. The widest text of the
+ * left column is 375 px (x 12..387), the right column starts at 420 px and ends at 785 px at most.
+ * The values of the receiver are those of the debug records of the RTE, see data_exchange.h and the u-blox 8 / u-blox M8 receiver description */
+#define GNSSDBG_ROW_STEP		(34u)
+#define GNSSDBG_LEFT_X			(12u)
+#define GNSSDBG_LEFT_X_END		(410u)
+#define GNSSDBG_RIGHT_X			(420u)
+#define GNSSDBG_TITLE_Y			(6u)
+#define GNSSDBG_ROW0_Y			(44u)
+#define GNSSDBG_SAT0_Y			(GNSSDBG_ROW0_Y + GNSSDBG_ROW_STEP)
+#define GNSSDBG_COL_CNO			(520u)
+#define GNSSDBG_COL_QUALITY		(600u)
+#define GNSSDBG_COL_USED		(650u)
+#define GNSSDBG_COL_EPH			(690u)
+#define GNSSDBG_COL_ELEV		(730u)
+
+static void t7_gnssDebugWrite(uint16_t x, uint16_t xEnd, uint16_t y, uint8_t color, const char* text)
+{
+    Gfx_write_label_var(&t7screen, x, xEnd, y, &FontT24, color, text);
+}
+
+static const char* t7_gnssSessionText(void)
+{
+    switch(gnssAcquire_getState())
+    {
+        case GNSS_ACQUIRE_ACTIVE:		return "active";
+        case GNSS_ACQUIRE_COMPLETE:		return "complete";
+        case GNSS_ACQUIRE_FIX_ONLY:		return "fix only";
+        case GNSS_ACQUIRE_POORFIX:		return "poor fix";
+        case GNSS_ACQUIRE_TIMEOUT:		return "timeout";
+        case GNSS_ACQUIRE_CANCELLED:	return "stopped";
+        case GNSS_ACQUIRE_LOWBATTERY:	return "low battery";
+        case GNSS_ACQUIRE_ABORTED:		return "aborted";
+        default:						return "none";
+    }
+}
+
+void t7_refresh_gnss_debug(void)
+{
+    const SGnssInfo* pGnss = &stateUsed->lifeData.gnssData;
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+    const char* fixText[] = {"none", "DR", "2D", "3D", "GNSS+DR", "time only"};
+    const char constellation[] = {'G', 'S', 'E', 'B', 'I', 'Q', 'R'};		/* gnssId 0..6 */
+    char text[64];
+    char text2[24];
+    uint8_t alive = pGnss->alive & GNSS_ALIVE_STATE_ALIVE;
+    uint8_t haveA = pDbg->recordsSeen & 0x01u;
+    uint8_t haveB = pDbg->recordsSeen & 0x02u;
+    uint8_t fixOk = pGnss->alive & GNSS_ALIVE_FIX_OK;
+    uint8_t color;
+    uint8_t row = 0;
+    uint8_t i;
+    uint16_t y;
+    uint32_t now_s = HAL_GetTick() / 1000u;
+    uint32_t firstFix_s = DataEX_getGnssFirstFix_s();
+    uint32_t session_s = gnssAcquire_getElapsedS();
+    const SGnssDebugSat* pSat;
+
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+
+#define GNSSDBG_LEFT_ROW(color, text)	t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
+
+    /* receiver answers, age of the last valid frame */
+    if(!haveA)
+    {
+        snprintf(text2, sizeof(text2), "--");
+    }
+    else if(pDbg->frameAge_s == 255)
+    {
+        snprintf(text2, sizeof(text2), "255+ s");
+    }
+    else
+    {
+        snprintf(text2, sizeof(text2), "%u s", pDbg->frameAge_s);
+    }
+    snprintf(text, sizeof(text), "Alive: %s   frame age %s", alive ? "YES" : "NO", text2);
+    GNSSDBG_LEFT_ROW(alive ? CLUT_NiceGreen : CLUT_WarningRed, text);
+
+    /* fix type, gnssFixOK, horizontal accuracy */
+    if((!haveA) || (pDbg->hAcc_m == 255))
+    {
+        snprintf(text2, sizeof(text2), "--");
+    }
+    else
+    {
+        snprintf(text2, sizeof(text2), "%u m", pDbg->hAcc_m);
+    }
+    snprintf(text, sizeof(text), "Fix: %s  OK: %s  hAcc %s", (pGnss->fixType < 6) ? fixText[pGnss->fixType] : "?", fixOk ? "YES" : "NO", text2);
+    if((pGnss->fixType == 3) && fixOk)
+    {
+        color = CLUT_NiceGreen;
+    }
+    else if(pGnss->fixType >= 2)
+    {
+        color = CLUT_WarningYellow;
+    }
+    else
+    {
+        color = CLUT_Font020;
+    }
+    GNSSDBG_LEFT_ROW(color, text);
+
+    /* pDOP, satellites used in the solution */
+    if((!haveA) || (pDbg->pDop_tenth == 255))
+    {
+        snprintf(text2, sizeof(text2), "--");
+    }
+    else
+    {
+        snprintf(text2, sizeof(text2), "%u.%u", pDbg->pDop_tenth / 10, pDbg->pDop_tenth % 10);
+    }
+    snprintf(text, sizeof(text), "pDOP %s   SV used (PVT) %u", text2, haveB ? pDbg->numSvUsedPvt : 0);
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    /* satellites: listed, with C/N0 above 0, used (the counts are limited to 15) */
+    snprintf(text, sizeof(text), "Listed %u  Tracked %u  Used %u", pGnss->numSat, haveA ? pDbg->numTracked : 0, haveA ? pDbg->numUsed : 0);
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    /* ephemeris of GPS, Galileo, BeiDou and QZSS satellites */
+    if(alive)
+    {
+        snprintf(text, sizeof(text), "Ephemeris %u (GPS GAL BDS QZSS)", GNSS_EPH_COUNT(pGnss));
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "Ephemeris -- (GPS GAL BDS QZSS)");
+    }
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    snprintf(text, sizeof(text), "Best C/N0: %u dBHz", haveA ? pDbg->bestCno : 0);
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    /* time flags of UBX-NAV-PVT */
+    if(haveB)
+    {
+        snprintf(text, sizeof(text), "Time valid: date %s  time %s", (pDbg->timeFlags & 0x01u) ? "YES" : "NO", (pDbg->timeFlags & 0x02u) ? "YES" : "NO");
+        GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+        if(pDbg->timeFlags & 0x08u)
+        {
+            snprintf(text2, sizeof(text2), "%s", ((pDbg->timeFlags & 0x30u) == 0x30u) ? "YES" : "NO");
+        }
+        else
+        {
+            snprintf(text2, sizeof(text2), "n/a");
+        }
+        snprintf(text, sizeof(text), "Resolved %s  Confirmed %s", (pDbg->timeFlags & 0x04u) ? "YES" : "NO", text2);
+        GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+    }
+    else
+    {
+        GNSSDBG_LEFT_ROW(CLUT_Font020, "Time valid: --");
+        GNSSDBG_LEFT_ROW(CLUT_Font020, "Resolved --  Confirmed --");
+    }
+
+    if(pGnss->alive & GNSS_ALIVE_STATE_TIME)
+    {
+        snprintf(text, sizeof(text), "UTC %04u-%02u-%02u %02u:%02u:%02u", 2000 + pGnss->DateTime.year, pGnss->DateTime.month, pGnss->DateTime.day,
+                 pGnss->DateTime.hour, pGnss->DateTime.min, pGnss->DateTime.sec);
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "UTC --");
+    }
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    /* acquire fix session, time since the start of the main CPU and of the first fix */
+    snprintf(text, sizeof(text), "Session: %s %lu:%02lu", t7_gnssSessionText(), session_s / 60u, session_s % 60u);
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    if(firstFix_s == 0xFFFFFFFFu)
+    {
+        snprintf(text2, sizeof(text2), "--");
+    }
+    else
+    {
+        snprintf(text2, sizeof(text2), "%lu:%02lu", firstFix_s / 60u, firstFix_s % 60u);
+    }
+    snprintf(text, sizeof(text), "Up %lu:%02lu  TTFF %s", now_s / 60u, now_s % 60u, text2);
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+
+    /* power save state of UBX-NAV-PVT, rejected commands and UART errors of the RTE */
+    if(haveB)
+    {
+        snprintf(text, sizeof(text), "PSM %u  NAK %u  UART err %u", pDbg->psmState, pDbg->nakCount, pDbg->uartErrors);
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "PSM --  NAK --  UART err --");
+    }
+    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+#undef GNSSDBG_LEFT_ROW
+
+    /* satellites with the highest C/N0 */
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "SV");
+    t7_gnssDebugWrite(GNSSDBG_COL_CNO, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "C/N0");
+    t7_gnssDebugWrite(GNSSDBG_COL_QUALITY, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "q");
+    t7_gnssDebugWrite(GNSSDBG_COL_USED, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "U");
+    t7_gnssDebugWrite(GNSSDBG_COL_EPH, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "E");
+    t7_gnssDebugWrite(GNSSDBG_COL_ELEV, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "el");
+    for(i = 0; i < GNSS_DEBUG_SAT_CNT; i++)
+    {
+        pSat = &pDbg->sat[i];
+        y = GNSSDBG_SAT0_Y + i * GNSSDBG_ROW_STEP;
+        if(pSat->svId == 0)
+        {
+            continue;
+        }
+        if(pSat->quality > 4)
+        {
+            color = CLUT_NiceGreen;
+        }
+        else if(pSat->quality > 2)
+        {
+            color = CLUT_WarningYellow;
+        }
+        else
+        {
+            color = CLUT_Font020;
+        }
+        snprintf(text, sizeof(text), "%c%u", ((pSat->flags & 0x07u) < sizeof(constellation)) ? constellation[pSat->flags & 0x07u] : '?', pSat->svId);
+        t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y, color, text);
+        snprintf(text, sizeof(text), "%u", pSat->cno);
+        t7_gnssDebugWrite(GNSSDBG_COL_CNO, 799, y, color, text);
+        snprintf(text, sizeof(text), "%u", pSat->quality);
+        t7_gnssDebugWrite(GNSSDBG_COL_QUALITY, 799, y, color, text);
+        t7_gnssDebugWrite(GNSSDBG_COL_USED, 799, y, color, (pSat->flags & 0x08u) ? "U" : "-");
+        t7_gnssDebugWrite(GNSSDBG_COL_EPH, 799, y, color, (pSat->flags & 0x10u) ? "E" : "-");
+        if(pSat->elev == 255)
+        {
+            snprintf(text, sizeof(text), "--");
+        }
+        else
+        {
+            snprintf(text, sizeof(text), "%u", pSat->elev);
+        }
+        t7_gnssDebugWrite(GNSSDBG_COL_ELEV, 799, y, color, text);
+    }
+
+    /* legend */
+    y = GNSSDBG_SAT0_Y + GNSS_DEBUG_SAT_CNT * GNSSDBG_ROW_STEP + 10;
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y, CLUT_Font020, "q: 0 none 1 searching 2 acquired");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y + GNSSDBG_ROW_STEP, CLUT_Font020, "3 unusable 4 code lock 5-7 carrier");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y + 2 * GNSSDBG_ROW_STEP, CLUT_Font020, "U = used in the fix, E = ephemeris");
+}
+
+#endif /* HAVE_DEBUG_VIEW */
+
 void t7_SummaryOfLeftCorner(void)
 {
     char text[256+60];
