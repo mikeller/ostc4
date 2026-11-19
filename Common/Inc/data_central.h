@@ -31,6 +31,7 @@
 #include <stdbool.h>
 
 #include "settings.h"
+#include "gnss_accuracy.h"
 #include "stm32f4xx_hal.h"
 #include "configuration.h"
 
@@ -195,7 +196,11 @@ typedef struct
 	uint8_t numSat;			/* number of available satellites */
 	uint8_t signalQual[4];	/* signal quality indicator for x sats */
 	SDateTime DateTime;		/* UTC time information */
+	SGnssAccuracy accuracy;	/* accuracy of coord. Uses the padding bytes of the structure */
 } SGnssInfo;
+
+/* SGnssInfo is part of the SPI data exchange between the CPUs */
+_Static_assert(sizeof(SGnssInfo) == 24, "Size of SGnssInfo changed");
 
 typedef enum
 {
@@ -358,6 +363,7 @@ typedef struct
     uint16_t info_compassHeadingUpdate;
     int16_t gnssPositionUpdate;
     SGnssCoord info_gnssPosition;
+    SGnssAccuracy info_gnssAccuracy;	/* stored together with the position */
     int16_t scrubberState;
     uint16_t info_scrubberState;
 } SEvents;
