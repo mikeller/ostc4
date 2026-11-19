@@ -921,10 +921,12 @@ void sleep_prepare(void) {
 	GPIO_InitStruct.Pin = GPIO_PIN_All ^ ( GPIO_PIN_3 | GPIO_PIN_8 | GPIO_PIN_9); /* debug */
 #endif
 
-#ifdef ENABLE_GNSS_INTERN
-	GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
-#else
 	GPIO_InitStruct.Pin = GPIO_PIN_All;
+#ifdef ENABLE_GNSS_INTERN
+	if(GPIO_GetVersion() > 0)
+	{
+		GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN | GPS_BCKP_CONTROL_PIN);
+	}
 #endif
 	HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
 
@@ -948,9 +950,12 @@ void sleep_prepare(void) {
 	}
 #endif
 #ifndef ENABLE_SLEEP_DEBUG
-#ifndef ENABLE_GNSS_INTERN
-	__HAL_RCC_GPIOB_CLK_DISABLE();
+#ifdef ENABLE_GNSS_INTERN
+	if(GPIO_GetVersion() == 0)		/* the GPIOB clock is needed for the GNSS control pins of the OSTC5 */
 #endif
+	{
+		__HAL_RCC_GPIOB_CLK_DISABLE();
+	}
 #endif
 	__HAL_RCC_GPIOH_CLK_DISABLE();
 }
