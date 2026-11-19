@@ -37,6 +37,7 @@
 #include "uartProtocol_Sentinel.h"
 #include "uartProtocol_GNSS.h"
 #include "uartProtocol_HUD.h"
+#include "gpio.h"
 #include "device_time_hooks.h"   /* sim_skip_blocking_polls (Phase 0 overlay) */
 
 extern SGlobal global;
@@ -777,6 +778,12 @@ static externalInterfaceAutoDetect_t externalInterface_NextUartTypeDetection(ext
 		if(uartTypeDetection[index] != SENSOR_END)
 		{
 			index++;
+#if defined ENABLE_GNSS_INTERN && !defined ENABLE_GNSS_EXTERN
+			if((uartTypeDetection[index] == SENSOR_GNSS) && (GPIO_GetVersion() == 0))		/* the internal receiver is only available on OSTC5. GNSS is the last entry of the list */
+			{
+				index++;
+			}
+#endif
 			if(uartTypeDetection[index] != SENSOR_END)
 			{
 				externalAutoDetect = DETECTION_UART0;
