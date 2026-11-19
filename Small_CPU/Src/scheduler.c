@@ -1224,6 +1224,7 @@ void scheduleSleepMode(void)
 					GPIO_InitStruct.Pin = GPIO_PIN_All ^ (GPS_POWER_CONTROL_PIN);
 					HAL_GPIO_Init( GPIOB, &GPIO_InitStruct);
 					uartGnss_SetState(UART_GNSS_INIT);
+					GNSS_Handle.lastPosValid = 0;		/* the position is outdated. Reception time and RTC may be a day apart */
 				}
 			}
 			else
@@ -1816,9 +1817,9 @@ void copyExtCO2data()
 void copyGNSSdata(void)
 {
 	RTC_TimeTypeDef sTimeNow;
-	uint8_t posValid = 0;			/* coord contains a position which was received from the receiver */
+	SGnssInfo* pInfo = &global.dataSendToMaster.data[0].gnssInfo;
 	uint32_t timeNow_s;
-	uint32_t age_s;
+	uint32_t age_s = 0;
 
 #if defined ENABLE_GNSS_INTERN && !defined ENABLE_GNSS_EXTERN
 	if(GPIO_GetVersion() == 0)		/* the internal receiver is only available on OSTC5 */
@@ -1826,47 +1827,20 @@ void copyGNSSdata(void)
 		return;
 	}
 #endif
-	global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.fLat;
-	global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.fLon;
-	global.dataSendToMaster.data[0].gnssInfo.fixType = GNSS_Handle.fixType;
-	global.dataSendToMaster.data[0].gnssInfo.numSat = GNSS_Handle.numSat;
-	global.dataSendToMaster.data[0].gnssInfo.DateTime.year = (uint8_t) (GNSS_Handle.year - 2000);
-	global.dataSendToMaster.data[0].gnssInfo.DateTime.month = GNSS_Handle.month;
-	global.dataSendToMaster.data[0].gnssInfo.DateTime.day = GNSS_Handle.day;
-	global.dataSendToMaster.data[0].gnssInfo.DateTime.hour = GNSS_Handle.hour;
-	global.dataSendToMaster.data[0].gnssInfo.DateTime.min = GNSS_Handle.min;
-	global.dataSendToMaster.data[0].gnssInfo.DateTime.sec = GNSS_Handle.sec;
+	pInfo->fixType = GNSS_Handle.fixType;
+	pInfo->numSat = GNSS_Handle.numSat;
+	pInfo->DateTime.year = (uint8_t) (GNSS_Handle.year - 2000);
+	pInfo->DateTime.month = GNSS_Handle.month;
+	pInfo->DateTime.day = GNSS_Handle.day;
+	pInfo->DateTime.hour = GNSS_Handle.hour;
+	pInfo->DateTime.min = GNSS_Handle.min;
+	pInfo->DateTime.sec = GNSS_Handle.sec;
+	pInfo->alive = GNSS_Handle.alive & ~GNSS_ALIVE_POS_VALID;
 
-	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
-
-	if(GNSS_Handle.fixType >= 2)
-	{
-		posValid = 1;
-	}
-
-	if(( GNSS_Handle.fixType < 2) && (GNSS_Handle.alive & GNSS_ALIVE_BACKUP_POS))		/* fallback to last known position ? */
-	{
-		RTC_GetTime(&sTimeNow);
-		if(GNSS_Handle.last_hour > sTimeNow.Hours)
-		{
-			sTimeNow.Hours += 24;	/* compensate date change */
-		}
-		if(sTimeNow.Hours - GNSS_Handle.last_hour > 2)
-		{
-			GNSS_Handle.alive &= ~GNSS_ALIVE_BACKUP_POS;		/* position outdated */
-		}
-		else
-		{
-			global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.last_fLat;
-			global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.last_fLon;
-			posValid = 1;
-		}
-	}
-
-	global.dataSendToMaster.data[0].gnssInfo.accuracy.hAcc = GNSS_ACC_UNKNOWN;
-	global.dataSendToMaster.data[0].gnssInfo.accuracy.numSatUsed = GNSS_ACC_UNKNOWN;
-	global.dataSendToMaster.data[0].gnssInfo.accuracy.posAge = GNSS_ACC_UNKNOWN;
-	if(posValid)			/* accuracy of the position which is sent (the last known position is updated with every fix) */
+	/* The position is valid if it was received from the receiver with a fix (see GNSS_ParsePVTData) not longer ago than GNSS_POS_MAX_AGE_S.
+	 * That is the case for the current fix as well as for the last known position if the receiver has no fix at the moment (or is switched off).
+	 * Without a valid position coord is 0.0 / 0.0 and the accuracy information is not available. */
+	if(GNSS_Handle.lastPosValid)
 	{
 		RTC_GetTime(&sTimeNow);
 		timeNow_s = ((uint32_t)sTimeNow.Hours * 3600u) + ((uint32_t)sTimeNow.Minutes * 60u) + sTimeNow.Seconds;
@@ -1878,11 +1852,30 @@ void copyGNSSdata(void)
 		{
 			age_s = timeNow_s + (24u * 3600u) - GNSS_Handle.last_fixTime_s;		/* compensate date change */
 		}
-		global.dataSendToMaster.data[0].gnssInfo.accuracy.hAcc = GNSS_Handle.last_hAcc;
-		global.dataSendToMaster.data[0].gnssInfo.accuracy.numSatUsed = GNSS_Handle.last_numSatUsed;
-		global.dataSendToMaster.data[0].gnssInfo.accuracy.posAge = GNSS_EncodeAge(age_s);
+		if(age_s > GNSS_POS_MAX_AGE_S)
+		{
+			GNSS_Handle.lastPosValid = 0;		/* position outdated */
+		}
 	}
-	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
+
+	if(GNSS_Handle.lastPosValid)
+	{
+		pInfo->alive |= GNSS_ALIVE_POS_VALID;
+		pInfo->coord.fLat = GNSS_Handle.last_fLat;
+		pInfo->coord.fLon = GNSS_Handle.last_fLon;
+		pInfo->accuracy.hAcc = GNSS_Handle.last_hAcc;
+		pInfo->accuracy.numSatUsed = GNSS_Handle.last_numSatUsed;
+		pInfo->accuracy.posAge = GNSS_EncodeAge(age_s);
+	}
+	else
+	{
+		pInfo->coord.fLat = 0.0;
+		pInfo->coord.fLon = 0.0;
+		pInfo->accuracy.hAcc = GNSS_ACC_UNKNOWN;
+		pInfo->accuracy.numSatUsed = GNSS_ACC_UNKNOWN;
+		pInfo->accuracy.posAge = GNSS_ACC_UNKNOWN;
+	}
+	memcpy(&pInfo->signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 }
 
 

@@ -386,7 +386,7 @@ int main(void) {
 	GNSS_Handle.alive = 0;			/* only init at startup (outside init function) */
 	GNSS_Handle.last_fLat = 0.0;
 	GNSS_Handle.last_fLon = 0.0;
-	GNSS_Handle.last_hour = 0;
+	GNSS_Handle.lastPosValid = 0;
 
 	while (1) {
 /*		printf("Global mode = %d\n", global.mode); */

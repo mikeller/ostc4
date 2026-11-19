@@ -160,13 +160,14 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 		GNSS->alive &= ~GNSS_ALIVE_STATE_TIME;
 	}
 
-	if(GNSS->fixType >= 2)
+	/* The receiver has a fix with a position if the fix type is 2D, 3D or GNSS + dead reckoning (not "no fix", "dead reckoning only" or "time only")
+	 * and it reports an accuracy estimate for it (the accuracy is not available if the message was too short). */
+	if(((GNSS->fixType >= 2) && (GNSS->fixType <= 4)) && (GNSS->hAcc != 0) && (GNSS->hAcc != 0xFFFFFFFFu))
 	{
 		RTC_GetTime(&sTimeNow);
-		GNSS->alive |= GNSS_ALIVE_BACKUP_POS;
+		GNSS->lastPosValid = 1;
 		GNSS->last_fLat = GNSS->fLat;
 		GNSS->last_fLon = GNSS->fLon;
-		GNSS->last_hour = sTimeNow.Hours;
 		GNSS->last_hAcc = GNSS_EncodeHAcc(GNSS->hAcc);
 		GNSS->last_numSatUsed = GNSS_EncodeNumSat(GNSS_Handle.uartWorkingBuffer[29]);	/* numSV: satellites used in the solution */
 		GNSS->last_fixTime_s = ((uint32_t)sTimeNow.Hours * 3600u) + ((uint32_t)sTimeNow.Minutes * 60u) + sTimeNow.Seconds;
