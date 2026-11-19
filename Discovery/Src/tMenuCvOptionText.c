@@ -281,7 +281,7 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 			case SENSOR_CO2:
 			case SENSOR_SENTINEL_CO2: SensorActive[SENSOR_CO2] = 1;
 				break;
-#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 			case SENSOR_GNSS:	SensorActive[SENSOR_GNSS] = 1;
 				break;
 #endif
@@ -361,7 +361,7 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 									}
 				break;
 #endif
-#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 			case CVOPT_GNSS:		if(SensorActive[SENSOR_GNSS])
 									{
 										refreshFctPointerTable[activeLines] = tMCvOptText_refreshGNSS;

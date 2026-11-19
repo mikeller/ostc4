@@ -2198,7 +2198,7 @@ static void showTimer(SSettings *settings, int nowS)
 void t7_refresh_customview(void)
 {
 	static uint8_t last_customview = CVIEW_END;
-#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
 	static uint16_t targetHeading = 0;
 	static uint16_t targetDistance = 0;
 #endif
@@ -2309,7 +2309,7 @@ void t7_refresh_customview(void)
         snprintf(text,100,"\032\f\001%c%c",TXT_2BYTE, TXT2BYTE_Compass);
         GFX_write_string(&FontT42,&t7cH,text,0);
 
-#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
         if(((stateUsed->targetCoord.fLat != 0) && (stateUsed->targetCoord.fLon != 0))	/* use heading derived from GNSS coordinates */
         		&& (stateUsed->lifeData.gnssData.fixType >= 2))							/* if we have a valid position */
         {
@@ -2341,7 +2341,7 @@ void t7_refresh_customview(void)
         	t7cY0free.WindowY1 = 479 - 197;   /* 282 = 479 - unflipped Y0 */
         }
 
-#if defined ENABLE_GNSS_INTERNAL || defined ENABLE_GNSS_EXTERN
+#if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
         if(((stateUsed->targetCoord.fLat != 0) && (stateUsed->targetCoord.fLon != 0))	/* use heading derived from GNSS coordinates */
         		&& (stateUsed->lifeData.gnssData.fixType >= 2))							/* if we have a valid position */
         {
