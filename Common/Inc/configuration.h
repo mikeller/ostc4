@@ -81,6 +81,9 @@
 /* Enable to provide UTC time to GNSS module at startup. ! CAUTION ! Incorrect time will reduce performance of module */
 /* #define ENABLE_GNSS_TIME_INIT */
 
+/* Enable to provide a fixed start position (see UART_Gnss_SendCmd) to the GNSS module at startup. ! CAUTION ! Development option: a position which is off by more than the provided accuracy (1 km) will reduce performance of module */
+/* #define ENABLE_GNSS_FIXED_POSITION */
+
 /* Enable to have Sentinel rebreather interface available */
 /* #define ENABLE_SENTINEL_MODE */
 
