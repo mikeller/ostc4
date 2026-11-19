@@ -208,13 +208,13 @@ void uartGnss_Control(void)
 #ifdef ENABLE_GNSS_FIXED_POSITION
 									gnssState = UART_GNSS_SET_POSITION;
 #else
-									gnssState = UART_GNSS_IDLE;
+									gnssState = UART_GNSS_PWRUP;
 #endif
 				break;
 #ifdef ENABLE_GNSS_FIXED_POSITION
 		case UART_GNSS_SET_POSITION:  UART_Gnss_SendCmd(GNSSCMD_SET_POSITION);
 	   	   	   	   					 //  rxState = GNSSRX_DETECT_ACK_0;	/* aiding function will not acknoledge receiption (until config to do so) */
-										gnssState = UART_GNSS_IDLE;
+										gnssState = UART_GNSS_PWRUP;
 				break;
 #endif
 		case UART_GNSS_PWRDOWN:		UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
@@ -337,17 +337,13 @@ void uartGnss_ProcessData(uint8_t data)
 												case UART_GNSS_LOADCONF_1:	gnssState++;
 													break;
 												case UART_GNSS_LOADCONF_2:
-#ifdef ENABLE_GNSS_TIME_INIT
 													gnssState = UART_GNSS_SETMODE_MOBILE;
-#elif defined ENABLE_GNSS_FIXED_POSITION
-													gnssState = UART_GNSS_SET_POSITION;
-#else
-													gnssState = UART_GNSS_IDLE;
-#endif
 													break;
 												case UART_GNSS_SETMODE_MOBILE:
 #ifdef ENABLE_GNSS_TIME_INIT
 																				gnssState = UART_GNSS_SETDATE_TIME;
+#elif defined ENABLE_GNSS_FIXED_POSITION
+																				gnssState = UART_GNSS_SET_POSITION;
 #else
 																				rxState = GNSSRX_DETECT_ACK_0;
 																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
