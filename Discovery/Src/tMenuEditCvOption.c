@@ -422,7 +422,7 @@ static void openEdit_GNSS(void)
     //write_field_button(StMCustom3_CViewSelection1,	30, 800, ME_Y_LINE1,  &FontT48, text);
 
     textIndex = snprintf(text, 60, "%c%c:\033",TXT_2BYTE, TXT2BYTE_Current);
-    if(stateUsed->lifeData.gnssData.fixType < 2)
+    if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
     	logCoord.fLat = 0.0;
     	logCoord.fLon = 0.0;
@@ -783,7 +783,7 @@ static uint8_t OnAction_CompassMountTilt(uint32_t editId, uint8_t blockNumber, u
 
 static uint8_t OnAction_SetTargetCurrent(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
 {
-	if(stateUsed->lifeData.gnssData.fixType >= 2)
+	if(GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
 	{
 		stateUsedWrite->targetCoord.fLat = stateUsed->lifeData.gnssData.coord.fLat;
 		stateUsedWrite->targetCoord.fLon = stateUsed->lifeData.gnssData.coord.fLon;

@@ -2310,7 +2310,7 @@ void t7_refresh_customview(void)
 
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
         if(((stateUsed->targetCoord.fLat != 0) && (stateUsed->targetCoord.fLon != 0))	/* use heading derived from GNSS coordinates */
-        		&& (stateUsed->lifeData.gnssData.fixType >= 2))							/* if we have a valid position */
+        		&& (GNSS_HAS_FIX(&stateUsed->lifeData.gnssData)))							/* if we have a valid position */
         {
         	if((onceASecond == 0) || (targetHeading == 0))
         	{
@@ -2342,7 +2342,7 @@ void t7_refresh_customview(void)
 
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
         if(((stateUsed->targetCoord.fLat != 0) && (stateUsed->targetCoord.fLon != 0))	/* use heading derived from GNSS coordinates */
-        		&& (stateUsed->lifeData.gnssData.fixType >= 2))							/* if we have a valid position */
+        		&& (GNSS_HAS_FIX(&stateUsed->lifeData.gnssData)))							/* if we have a valid position */
         {
 			if(targetDistance < 1000)
 			{
@@ -3641,7 +3641,7 @@ void t7_showPosition(void)
         t7cY0free.WindowY1 = t7cY0free.WindowY0 + 250;
     }
 
-    if(stateUsed->lifeData.gnssData.fixType < 2)
+    if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
     	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
     	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE)
@@ -3669,7 +3669,7 @@ void t7_showPosition(void)
         t7cY0free.WindowY1 = 370;
     }
 
-    if(stateUsed->lifeData.gnssData.fixType < 2)
+    if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
 		snprintf(text,60,"\001%d\n\r",stateUsed->lifeData.gnssData.numSat);
     }
@@ -3682,7 +3682,7 @@ void t7_showPosition(void)
     }
     GFX_write_string(&FontT42, &t7cY0free, text, 1);
 
-    if(stateUsed->lifeData.gnssData.fixType < 2)	/* draw status bars */
+    if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))	/* draw status bars */
     {
     	 if(!pSettings->FlipDisplay)
     	 {

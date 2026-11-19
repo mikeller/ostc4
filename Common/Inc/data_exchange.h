@@ -58,6 +58,7 @@
 #define GNSS_ALIVE_STATE_ALIVE		(0x01u)		/* Communication to module active */
 #define GNSS_ALIVE_STATE_TIME		(0x02u)		/* Time information valid */
 #define GNSS_ALIVE_POS_VALID		(0x04u)		/* coord contains a valid position: fix of the receiver or last known position (not older than GNSS_POS_MAX_AGE_S), see accuracy for age and quality */
+#define GNSS_HAS_FIX(pGnssInfo)		(((pGnssInfo)->fixType >= 2) && (((pGnssInfo)->alive & GNSS_ALIVE_POS_VALID) != 0))	/* the receiver has a fix with a valid position at the moment (and not just a last known position) */
 
 #define PRESSURE_BOTTLE_CNT			(0x2u)		/* Number of bottle information (max 255 bar) */
 
