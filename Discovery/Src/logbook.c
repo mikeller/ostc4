@@ -58,6 +58,7 @@
 #include "tHome.h" // for  tHome_findNextStop()
 #include "settings.h"
 #include "configuration.h"
+#include "ostc.h"
  
 /* Private types -------------------------------------------------------------*/
 
@@ -1470,16 +1471,19 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 				bDiveMode = 3;
 
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-			pStateReal->events.gnssPositionUpdate = 1;
+			if(isGnssAvailable())
+			{
+				pStateReal->events.gnssPositionUpdate = 1;
 
-			if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
-			{
-				pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
-			}
-			else /* no pos => define dummy */
-			{
-				pStateReal->events.info_gnssPosition.fLon = 47.77;
-				pStateReal->events.info_gnssPosition.fLat = 8.99;
+				if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
+				{
+					pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
+				}
+				else /* no pos => define dummy */
+				{
+					pStateReal->events.info_gnssPosition.fLon = 47.77;
+					pStateReal->events.info_gnssPosition.fLat = 8.99;
+				}
 			}
 #endif
 
