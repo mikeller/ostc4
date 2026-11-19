@@ -59,6 +59,8 @@ union i_Long
 #define GNSS_MAX_NAVSAT_SV		(64u)
 #define GNSS_UBX_FRAME_SIZE_MAX	(16u + 12u * GNSS_MAX_NAVSAT_SV)
 
+#define GNSS_POS_MAX_AGE_S		(2u * 3600u)	/* a position which was received earlier is not reported as valid */
+
 typedef struct
 {
 	UART_HandleTypeDef *huart;
@@ -99,7 +101,7 @@ typedef struct
 
 	float last_fLon;	/* last known position storage and time stamp */
 	float last_fLat;
-	float last_hour;
+	uint8_t lastPosValid;		/* last_* contains a position which was received from the receiver */
 	uint8_t last_hAcc;			/* accuracy information of the last known position (see SGnssAccuracy) */
 	uint8_t last_numSatUsed;
 	uint32_t last_fixTime_s;	/* RTC time of day in s when the last known position was received */

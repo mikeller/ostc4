@@ -3710,7 +3710,7 @@ void t7_showPosition(void)
 
     		index++;
     	}
-    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
+    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_POS_VALID)
     	{
     		snprintf(text,50,"\001%2.2f %2.2f", stateUsed->lifeData.gnssData.coord.fLat,stateUsed->lifeData.gnssData.coord.fLon);
     		GFX_write_string(&FontT24, &t7cY0free, text, 3);

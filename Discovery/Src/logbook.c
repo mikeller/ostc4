@@ -1475,7 +1475,7 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 			{
 				pStateReal->events.gnssPositionUpdate = 1;
 
-				if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_BACKUP_POS)
+				if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_POS_VALID)
 				{
 					pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
 				}
