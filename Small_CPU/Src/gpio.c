@@ -184,6 +184,9 @@ void GPIO_Activate_V2(void)
 	if(GPIO_Version == 0)
 	{
 		GPIO_Version = 1;
+#ifdef ENABLE_GNSS_INTERN
+		GPIO_GNSS_Init();	/* configure power and backup control pins once after RTE start */
+#endif
 	}
 }
 
