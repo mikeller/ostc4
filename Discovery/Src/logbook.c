@@ -1471,19 +1471,10 @@ void logbook_InitAndWrite(SDiveState *pStateReal)
 				bDiveMode = 3;
 
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-			if(isGnssAvailable())
+			if((isGnssAvailable()) && (pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_POS_VALID))	/* no valid position => no event */
 			{
 				pStateReal->events.gnssPositionUpdate = 1;
-
-				if(pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_POS_VALID)
-				{
-					pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
-				}
-				else /* no pos => define dummy */
-				{
-					pStateReal->events.info_gnssPosition.fLon = 47.77;
-					pStateReal->events.info_gnssPosition.fLat = 8.99;
-				}
+				pStateReal->events.info_gnssPosition = pStateReal->lifeData.gnssData.coord;
 			}
 #endif
 
