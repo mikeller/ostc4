@@ -3629,6 +3629,7 @@ void t7_showPosition(void)
     uint8_t index = 0;
     uint8_t color = 0;
     SSettings* pSettings = settingsGetPointer();
+    uint8_t gnssAlive = stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE;	/* satellite data is only current while the receiver answers */
 
     t7cY0free.WindowLineSpacing = 28 + 48 + 14;
     t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
@@ -3666,7 +3667,14 @@ void t7_showPosition(void)
 
     if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
-		snprintf(text,60,"\001%d\n\r",stateUsed->lifeData.gnssData.numSat);
+    	if(gnssAlive)
+    	{
+    		snprintf(text,60,"\001%d\n\r",stateUsed->lifeData.gnssData.numSat);
+    	}
+    	else
+    	{
+    		snprintf(text,60,"\001--\n\r");		/* the last value is outdated: do not show it as a current reading */
+    	}
     }
     else
     {
@@ -3694,7 +3702,7 @@ void t7_showPosition(void)
 			stop.y = start.y - 20;
     	 }
 
-    	while((index < stateUsed->lifeData.gnssData.numSat) && (index < 4))
+    	while((gnssAlive) && (index < stateUsed->lifeData.gnssData.numSat) && (index < 4))	/* no bars for outdated data */
     	{
     		if(stateUsed->lifeData.gnssData.signalQual[index] > 4) color = CLUT_NiceGreen;
     		if((stateUsed->lifeData.gnssData.signalQual[index] > 2) && (stateUsed->lifeData.gnssData.signalQual[index] <= 4)) color = CLUT_WarningYellow;
