@@ -3655,8 +3655,8 @@ void t7_showPosition(void)
     }
     else
     {
-		textpointer += snprintf(&text[textpointer],50,"\001Longitude\n\r");
 		textpointer += snprintf(&text[textpointer],50,"\001Latitude\n\r");
+		textpointer += snprintf(&text[textpointer],50,"\001Longitude\n\r");
     }
     GFX_write_string(&FontT24, &t7cY0free, text, 1);
 
