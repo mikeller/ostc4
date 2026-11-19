@@ -595,6 +595,17 @@ uint8_t isNewDisplay()
 	return ret;
 }
 
+uint8_t isGnssAvailable()
+{
+	uint8_t ret = 0;
+#if defined ENABLE_GNSS_EXTERN
+	ret = 1;					/* the external receiver may be connected to any model */
+#elif defined ENABLE_GNSS_INTERN
+	ret = isNewDisplay();		/* the internal receiver is only available with the new display (OSTC5 hardware) */
+#endif
+	return ret;
+}
+
 #ifndef BOOTLOADER_STANDALONE
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {

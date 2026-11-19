@@ -47,6 +47,7 @@
 #include "unit.h"
 #include "motion.h"
 #include "configuration.h"
+#include "ostc.h"
 #include "base.h"
 #include "tMenuEditSetpoint.h"
 #include "vpm.h"
@@ -1716,12 +1717,10 @@ uint8_t t7_customview_disabled(uint8_t view)
   	}
 #endif
 
-#if !defined(ENABLE_GNSS_INTERN) && !defined (ENABLE_GNSS_EXTERN)
-  	if (view == CVIEW_Position)
+  	if ((view == CVIEW_Position) && (!isGnssAvailable()))
   	{
   	  		cv_disabled = 1;
   	}
-#endif
 
     if (((view == CVIEW_sensors) || (view == CVIEW_sensors_mV)) &&
        	((stateUsed->diveSettings.ppo2sensors_deactivated == 0x07) || (stateUsed->diveSettings.ccrOption == 0) || (stateUsed->warnings.fallback)))
