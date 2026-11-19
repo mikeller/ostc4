@@ -36,8 +36,8 @@ static gnssRequest_s activeRequest = {0,0};
 
 static receiveStateGnss_t rxState = GNSSRX_READY;
 static uint8_t GnssConnected = 0;						/* Binary indicator if a sensor is connected or not */
-static uint8_t writeIndex = 0;
-static uint8_t dataToRead = 0;
+static uint16_t writeIndex = 0;
+static uint16_t dataToRead = 0;
 static uint8_t ReqPowerDown = 0;
 
 void uartGnss_ReqPowerDown(uint8_t request)
@@ -281,7 +281,10 @@ void uartGnss_ProcessData(uint8_t data)
 		gnssState = externalInterface_GetSensorState(activeSensor + EXT_INTERFACE_MUX_OFFSET);
 	}
 
-	GNSS_Handle.uartWorkingBuffer[writeIndex++] = data;
+	if(writeIndex < sizeof(GNSS_Handle.uartWorkingBuffer))		/* data which does not fit is skipped. The start of a frame resets the index */
+	{
+		GNSS_Handle.uartWorkingBuffer[writeIndex++] = data;
+	}
 	if((rxState >= GNSSRX_DETECT_HEADER_2) && (rxState < GNSSRX_READ_CK_A))
 	{
 		ck_A += data;
@@ -389,8 +392,16 @@ void uartGnss_ProcessData(uint8_t data)
 											rxState = GNSSRX_DETECT_LENGTH_1;
 				break;
 			case GNSSRX_DETECT_LENGTH_1:    rxLength += (GNSS_Handle.uartWorkingBuffer[5] << 8);
-											rxState = GNSSRX_READ_DATA;
-											dataToRead = rxLength;
+											if((6u + (uint32_t)rxLength + 2u) > sizeof(GNSS_Handle.uartWorkingBuffer))	/* frame (header, payload, checksum) does not fit into the buffer => reject it */
+											{
+												rxState = GNSSRX_DETECT_HEADER_0;
+												gnssState = UART_GNSS_IDLE;
+											}
+											else
+											{
+												rxState = GNSSRX_READ_DATA;
+												dataToRead = rxLength;
+											}
 				break;
 			case GNSSRX_READ_DATA:				if(dataToRead > 0)
 												{

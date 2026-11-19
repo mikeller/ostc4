@@ -55,12 +55,16 @@ union i_Long
 	signed long iLong;
 };
 
+/* Size of the largest UBX frame which is accepted: 6 byte header, UBX-NAV-SAT payload (8 byte header + 12 bytes per satellite), 2 byte checksum */
+#define GNSS_MAX_NAVSAT_SV		(64u)
+#define GNSS_UBX_FRAME_SIZE_MAX	(16u + 12u * GNSS_MAX_NAVSAT_SV)
+
 typedef struct
 {
 	UART_HandleTypeDef *huart;
 
 	uint8_t uniqueID[4];
-	uint8_t uartWorkingBuffer[255];
+	uint8_t uartWorkingBuffer[GNSS_UBX_FRAME_SIZE_MAX];
 
 	unsigned short year;
 	uint8_t yearBytes[2];

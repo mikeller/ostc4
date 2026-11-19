@@ -181,14 +181,26 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 	uint8_t searchIndex = 0;
 	uint8_t statIndex = 0;	/* only 4 state information will be forwarded */
 	uint8_t signalQuality = 0;
+	uint16_t payloadLength = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	uint8_t scanSat;	/* number of satellite blocks which are really part of the message */
+
 	GNSS->numSat = GNSS_Handle.uartWorkingBuffer[11];
+	scanSat = GNSS->numSat;
+	if(payloadLength < 8)
+	{
+		scanSat = 0;
+	}
+	else if(scanSat > (payloadLength - 8) / 12)
+	{
+		scanSat = (payloadLength - 8) / 12;
+	}
 
 	memset(GNSS->statSat, 0, sizeof(GNSS->statSat));
 
 	if(GNSS->numSat > 0)
 	{
 		searchIndex = 0;
-		while((searchIndex < GNSS->numSat) && (statIndex < 4))	/* get good signal quality */
+		while((searchIndex < scanSat) && (statIndex < 4))	/* get good signal quality */
 		{
 			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
 			if(signalQuality > 4)
@@ -199,7 +211,7 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 			searchIndex++;
 		}
 		searchIndex = 0;
-		while((searchIndex < GNSS->numSat) && (statIndex < 4))	/* get medium signal quality */
+		while((searchIndex < scanSat) && (statIndex < 4))	/* get medium signal quality */
 		{
 			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
 			if((signalQuality > 2) && (signalQuality <= 4))
@@ -210,7 +222,7 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 			searchIndex++;
 		}
 		searchIndex = 0;
-		while((searchIndex < GNSS->numSat) && (statIndex < 4))	/* get poor signal quality */
+		while((searchIndex < scanSat) && (statIndex < 4))	/* get poor signal quality */
 		{
 			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
 			if(signalQuality <= 2)
