@@ -100,6 +100,9 @@ typedef struct
 	float last_fLon;	/* last known position storage and time stamp */
 	float last_fLat;
 	float last_hour;
+	uint8_t last_hAcc;			/* accuracy information of the last known position (see SGnssAccuracy) */
+	uint8_t last_numSatUsed;
+	uint32_t last_fixTime_s;	/* RTC time of day in s when the last known position was received */
 
 }GNSS_StateHandle;
 

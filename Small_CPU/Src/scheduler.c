@@ -1816,6 +1816,9 @@ void copyExtCO2data()
 void copyGNSSdata(void)
 {
 	RTC_TimeTypeDef sTimeNow;
+	uint8_t posValid = 0;			/* coord contains a position which was received from the receiver */
+	uint32_t timeNow_s;
+	uint32_t age_s;
 
 #if defined ENABLE_GNSS_INTERN && !defined ENABLE_GNSS_EXTERN
 	if(GPIO_GetVersion() == 0)		/* the internal receiver is only available on OSTC5 */
@@ -1836,6 +1839,11 @@ void copyGNSSdata(void)
 
 	global.dataSendToMaster.data[0].gnssInfo.alive = GNSS_Handle.alive;
 
+	if(GNSS_Handle.fixType >= 2)
+	{
+		posValid = 1;
+	}
+
 	if(( GNSS_Handle.fixType < 2) && (GNSS_Handle.alive & GNSS_ALIVE_BACKUP_POS))		/* fallback to last known position ? */
 	{
 		RTC_GetTime(&sTimeNow);
@@ -1851,7 +1859,28 @@ void copyGNSSdata(void)
 		{
 			global.dataSendToMaster.data[0].gnssInfo.coord.fLat = GNSS_Handle.last_fLat;
 			global.dataSendToMaster.data[0].gnssInfo.coord.fLon = GNSS_Handle.last_fLon;
+			posValid = 1;
 		}
+	}
+
+	global.dataSendToMaster.data[0].gnssInfo.accuracy.hAcc = GNSS_ACC_UNKNOWN;
+	global.dataSendToMaster.data[0].gnssInfo.accuracy.numSatUsed = GNSS_ACC_UNKNOWN;
+	global.dataSendToMaster.data[0].gnssInfo.accuracy.posAge = GNSS_ACC_UNKNOWN;
+	if(posValid)			/* accuracy of the position which is sent (the last known position is updated with every fix) */
+	{
+		RTC_GetTime(&sTimeNow);
+		timeNow_s = ((uint32_t)sTimeNow.Hours * 3600u) + ((uint32_t)sTimeNow.Minutes * 60u) + sTimeNow.Seconds;
+		if(timeNow_s >= GNSS_Handle.last_fixTime_s)
+		{
+			age_s = timeNow_s - GNSS_Handle.last_fixTime_s;
+		}
+		else
+		{
+			age_s = timeNow_s + (24u * 3600u) - GNSS_Handle.last_fixTime_s;		/* compensate date change */
+		}
+		global.dataSendToMaster.data[0].gnssInfo.accuracy.hAcc = GNSS_Handle.last_hAcc;
+		global.dataSendToMaster.data[0].gnssInfo.accuracy.numSatUsed = GNSS_Handle.last_numSatUsed;
+		global.dataSendToMaster.data[0].gnssInfo.accuracy.posAge = GNSS_EncodeAge(age_s);
 	}
 	memcpy(&global.dataSendToMaster.data[0].gnssInfo.signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 }

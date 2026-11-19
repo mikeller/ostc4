@@ -167,6 +167,9 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 		GNSS->last_fLat = GNSS->fLat;
 		GNSS->last_fLon = GNSS->fLon;
 		GNSS->last_hour = sTimeNow.Hours;
+		GNSS->last_hAcc = GNSS_EncodeHAcc(GNSS->hAcc);
+		GNSS->last_numSatUsed = GNSS_EncodeNumSat(GNSS_Handle.uartWorkingBuffer[29]);	/* numSV: satellites used in the solution */
+		GNSS->last_fixTime_s = ((uint32_t)sTimeNow.Hours * 3600u) + ((uint32_t)sTimeNow.Minutes * 60u) + sTimeNow.Seconds;
 	}
 }
 
