@@ -1228,7 +1228,7 @@ void scheduleSleepMode(void)
 			}
 			else
 			{
-				if((deepSleep = 1) && (global.lifeData.battery_voltage < 3.5))	/* switch off backup voltage if battery gets low */
+				if((deepSleep == 1) && (global.lifeData.battery_voltage < 3.5))	/* switch off backup voltage if battery gets low */
 				{
 					deepSleep = 2;
 					GPIO_GPS_BCKP_OFF();
