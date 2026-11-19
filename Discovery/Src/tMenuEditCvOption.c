@@ -803,9 +803,12 @@ static uint8_t OnAction_SetTargetLog(uint32_t editId, uint8_t blockNumber, uint8
 {
 	SGnssCoord logCoord;
 	logCoord = getReplayDataCoordinate();
-	stateUsedWrite->targetCoord.fLat = logCoord.fLat;
-	stateUsedWrite->targetCoord.fLon = logCoord.fLon;
-	update_CoordLineContent(&stateUsed->targetCoord, StMCustom3_CViewSelection1);
+	if((logCoord.fLat != 0.0) || (logCoord.fLon != 0.0))		/* the log has a position */
+	{
+		stateUsedWrite->targetCoord.fLat = logCoord.fLat;
+		stateUsedWrite->targetCoord.fLon = logCoord.fLon;
+		update_CoordLineContent(&stateUsed->targetCoord, StMCustom3_CViewSelection1);
+	}
 	return UNSPECIFIC_RETURN;
 }
 static uint8_t OnAction_ResetTarget(uint32_t editId, uint8_t blockNumber, uint8_t digitNumber, uint8_t digitContent, uint8_t action)
