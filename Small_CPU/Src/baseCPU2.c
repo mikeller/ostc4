@@ -506,7 +506,7 @@ int main(void) {
 #endif
 #endif
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-			if((uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 4000))
+			if((GPIO_GetVersion() == 0) || (uartGnss_GetState() == UART_GNSS_INACTIVE) || (time_elapsed_ms(shutdownTick,HAL_GetTick()) > 4000))
 			{
 				global.mode = MODE_SLEEP;
 				uartGnss_ReqPowerDown(0);	/* release power down request */
