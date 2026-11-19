@@ -311,7 +311,7 @@ typedef struct
 	uint8_t psmState;
 	uint8_t uartErrors;
 	uint8_t nakCount;
-	uint8_t recordsSeen;	/* bit mask of the records received at least once */
+	uint8_t recordsSeen;	/* bit 0: summary A received, bit 1: summary B, bit 2: at least one satellite record */
 	SGnssDebugSat sat[GNSS_DEBUG_SAT_CNT];
 } SGnssDebugInfo;
 

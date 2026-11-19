@@ -100,6 +100,7 @@ static uint32_t data_old__lost_connection_to_slave_counter_total = 0;
 static uint8_t DeviceDataUpdated = 0;
 
 static SGnssDebugInfo gnssDebugInfo;						/* collected from the GNSS debug records of the RTE */
+static uint32_t gnssFirstFix_s = 0xFFFFFFFFu;				/* time since the start of the main CPU at the first fix, 0xFFFFFFFF if there was none */
 static void DataEX_collectGnssDebug(const SExchangeData* pData);
 
 static uint16_t externalInterface_Cmd = 0;
@@ -1056,6 +1057,10 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 
 		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
 		DataEX_collectGnssDebug(&dataIn.data[0]);
+		if((gnssFirstFix_s == 0xFFFFFFFFu) && (pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (GNSS_HAS_FIX(&pStateReal->lifeData.gnssData)))
+		{
+			gnssFirstFix_s = HAL_GetTick() / 1000u;
+		}
 
 		if((dataIn.data[dataIn.boolPressureData].pressure_bottle[0] != 0) || (dataIn.data[dataIn.boolPressureData].pressure_bottle[1] != 0))
 		{
@@ -1427,30 +1432,54 @@ void DataEX_merge_devicedata(void)
 static void DataEX_collectGnssDebug(const SExchangeData* pData)
 {
 	uint8_t rec[GNSS_DEBUG_REC_SIZE];
+	uint8_t index;
+	SGnssDebugSat* pSat;
 
 	GNSS_DebugRecord_Get(pData, rec);
 	if(!GNSS_DebugRecord_IsValid(rec))
 	{
 		return;
 	}
-	switch(rec[0] & 0x0Fu)
+	index = rec[0] & 0x0Fu;
+	switch(index)
 	{
 		case GNSS_DEBUG_REC_SUMMARY_A:
+			gnssDebugInfo.frameAge_s = rec[1];
+			gnssDebugInfo.pDop_tenth = rec[2];
+			gnssDebugInfo.hAcc_m = rec[3];
 			gnssDebugInfo.numTracked = rec[4] >> 4;
+			gnssDebugInfo.numUsed = rec[4] & 0x0Fu;
 			gnssDebugInfo.bestCno = rec[5];
 			gnssDebugInfo.recordsSeen |= 0x01u;
 			break;
 		case GNSS_DEBUG_REC_SUMMARY_B:
+			gnssDebugInfo.timeFlags = rec[1];
+			gnssDebugInfo.numSvUsedPvt = rec[2];
 			gnssDebugInfo.psmState = rec[3];
+			gnssDebugInfo.uartErrors = rec[4];
+			gnssDebugInfo.nakCount = rec[5];
 			gnssDebugInfo.recordsSeen |= 0x02u;
 			break;
 		default:
+			pSat = &gnssDebugInfo.sat[index - GNSS_DEBUG_REC_SAT0];
+			pSat->flags = rec[1];
+			pSat->svId = rec[2];
+			pSat->cno = rec[3];
+			pSat->quality = rec[4];
+			pSat->elev = rec[5];
+			gnssDebugInfo.recordsSeen |= 0x04u;
 			break;
 	}
 }
+
 const SGnssDebugInfo* DataEX_getGnssDebugInfo(void)
 {
 	return &gnssDebugInfo;
+}
+
+uint32_t DataEX_getGnssFirstFix_s(void)
+{
+	return gnssFirstFix_s;
 }
 
 uint8_t DataEX_external_ADC_Present(void)
