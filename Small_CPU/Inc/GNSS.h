@@ -96,6 +96,9 @@ union i_Long
 #define GNSS_CFGEXTRA_PERIOD_MS		(30000u)
 #define GNSS_CFGEXTRA_MAX_TRIES		(4u)
 
+/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM */
+#define GNSS_EXTRA_POLL_CNT			(2u)
+
 #define GNSS_VERIFY_PVT_COUNT		(3u)
 #define GNSS_VERIFY_MAX_RETRIES		(3u)
 #define GNSS_FRAMES_STOPPED_MS		(3000u)
@@ -215,6 +218,7 @@ typedef struct
 	uint32_t cfgItfmConfig;		/* raw config of UBX-CFG-ITFM (bits 0..3 bbThreshold, 4..8 cwThreshold, 9..30 algorithmBits, bit 31 enable) */
 	uint32_t cfgItfmConfig2;	/* raw config2 of UBX-CFG-ITFM (bits 0..11 generalBits, 12..13 antSetting, bit 14 enable2) */
 	uint32_t cfgExtraTick;		/* HAL tick of the last periodic request of UBX-CFG-ANT / UBX-CFG-ITFM */
+	uint32_t extraTick[GNSS_EXTRA_POLL_CNT];	/* HAL tick of the last periodic request of each of the periodic read only polls */
 
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
