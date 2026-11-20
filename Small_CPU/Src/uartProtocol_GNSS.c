@@ -388,6 +388,15 @@ static void uartGnss_ExtraPollHousekeeping(void)
 {
 	uint32_t tick = HAL_GetTick();
 
+	if(GNSS_Handle.cfgGnssState == GNSS_CFGPOLL_POLLING)
+	{
+		GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_NOANSWER;
+	}
+	if((!GNSS_Handle.cfgGnssValid) && (GNSS_Handle.cfgGnssState != GNSS_CFGPOLL_NONE) && (GNSS_Handle.cfgGnssState != GNSS_CFGPOLL_NAK) && GNSS_Handle.psmZeroValid
+			&& (GNSS_Handle.cfgGnssTries <= GNSS_CFGGNSS_MAX_RETRIES) && (time_elapsed_ms(GNSS_Handle.cfgGnssTick, tick) >= GNSS_CFGGNSS_RETRY_MS))
+	{
+		GNSS_Handle.cfgReadPending |= GNSS_CFGREAD_GNSS;
+	}
 	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
 	{
 		if(*extraPoll[i].pPollState == GNSS_CFGPOLL_POLLING)
@@ -419,6 +428,15 @@ static uint8_t uartGnss_StartConfigRead(void)
 		if(GNSS_Handle.cfgReadPending & order[i])
 		{
 			GNSS_Handle.cfgReadPending &= (uint8_t)~order[i];
+			if(order[i] == GNSS_CFGREAD_GNSS)
+			{
+				GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_POLLING;
+				GNSS_Handle.cfgGnssTick = HAL_GetTick();
+				if(GNSS_Handle.cfgGnssTries < 255)
+				{
+					GNSS_Handle.cfgGnssTries++;
+				}
+			}
 			UART_Gnss_SendCmd(cmd[i]);
 			gnssState = state[i];
 			rxState = GNSSRX_DETECT_HEADER_0;
@@ -758,6 +776,10 @@ void uartGnss_ProcessData(uint8_t data)
 													if(pExtra != 0)
 													{
 														*pExtra->pPollState = GNSS_CFGPOLL_NAK;
+													}
+													else if(gnssState == UART_GNSS_GET_CFGGNSS)
+													{
+														GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_NAK;
 													}
 													gnssState = UART_GNSS_IDLE;
 												}

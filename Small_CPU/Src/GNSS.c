@@ -133,6 +133,9 @@ uint8_t GNSS_DebugScheduleRecord(uint8_t slot) {
 void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS) {
 	GNSS->cfgPmsValid = 0;
 	GNSS->cfgGnssValid = 0;
+	GNSS->cfgGnssState = GNSS_CFGPOLL_NONE;
+	GNSS->cfgGnssTries = 0;
+	GNSS->cfgGnssLength = 0;
 	GNSS->cfgNav5Valid = 0;
 	GNSS->cfgAntState = GNSS_CFGPOLL_NONE;
 	GNSS->cfgAntTries = 0;
@@ -323,6 +326,11 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 						rec[3] = GNSS->ioTries;
 						rec[4] = GNSS->ioPort;
 						rec[5] = GNSS->ioLength;
+						break;
+					case 22:		/* the read back of UBX-CFG-GNSS */
+						rec[2] = GNSS->cfgGnssState | (GNSS->cfgGnssValid ? GNSS_CFGPOLL_HAVE : 0);
+						rec[3] = GNSS->cfgGnssTries;
+						rec[4] = GNSS->cfgGnssLength;
 						break;
 					default:	/* 12..16: the counts of the lost polls by cause (15 bytes), then the UART error types (5 bytes), four bytes per item */
 						{
@@ -646,6 +654,8 @@ void GNSS_ParseCfgGnssData(GNSS_StateHandle *GNSS) {
 	uint8_t blocks = GNSS_Handle.uartWorkingBuffer[6 + 3];
 	uint8_t mask = 0;
 
+	GNSS->cfgGnssLength = (length > 255u) ? 255u : (uint8_t)length;
+	GNSS->cfgGnssState = GNSS_CFGPOLL_OK;
 	if((length >= 4u) && (length == (4u + 8u * blocks)))
 	{
 		for(uint8_t i = 0; i < blocks; i++)

@@ -138,6 +138,11 @@ union i_Long
 /* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, UBX-MON-IO */
 #define GNSS_EXTRA_POLL_CNT			(5u)
 
+/* The read back of UBX-CFG-GNSS after the power up is tried again, GNSS_CFGGNSS_RETRY_MS after the last attempt and only after a UBX-NAV-PVT reported full power (psmState 0 is
+ * seen), at most GNSS_CFGGNSS_MAX_RETRIES times, if it was not read (no answer, or a reply which cannot be used); a rejection (NAK) is not repeated */
+#define GNSS_CFGGNSS_RETRY_MS		(20000u)
+#define GNSS_CFGGNSS_MAX_RETRIES	(5u)
+
 #define GNSS_VERIFY_PVT_COUNT		(3u)
 #define GNSS_VERIFY_MAX_RETRIES		(3u)
 #define GNSS_FRAMES_STOPPED_MS		(3000u)
@@ -249,6 +254,10 @@ typedef struct
 	uint8_t cfgPmsSetup;		/* powerSetupValue of UBX-CFG-PMS: 0 full power, 1 balanced, 2 interval, 3 to 5 aggressive, 0xFF no predefined setup */
 	uint8_t cfgGnssValid;
 	uint8_t cfgGnssMask;		/* bit n: the GNSS with gnssId n is enabled in UBX-CFG-GNSS */
+	uint8_t cfgGnssState;		/* GNSS_CFGPOLL_* of the last request of UBX-CFG-GNSS (NOANSWER: not answered before the end of the poll slot, OK with cfgGnssValid 0: reply which cannot be used) */
+	uint8_t cfgGnssTries;		/* requests since the power up (the first one and the retries) */
+	uint8_t cfgGnssLength;		/* payload length of the last reply (saturating at 255) */
+	uint32_t cfgGnssTick;		/* HAL tick of the last request */
 	uint8_t cfgNav5Valid;
 	uint8_t cfgDynModel;		/* dynModel of UBX-CFG-NAV5 */
 	uint8_t cfgAntState;		/* GNSS_CFGPOLL_* of UBX-CFG-ANT */
