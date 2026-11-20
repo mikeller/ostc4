@@ -107,6 +107,7 @@ static uint8_t t7_getGnssPowerSaveState(void);
 #ifdef HAVE_DEBUG_VIEW
 void t7_refresh_gnss_debug(void);
 void t7_refresh_gnss_hardware(void);
+void t7_refresh_gnss_power(void);
 #endif
 void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
@@ -154,7 +155,7 @@ GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 
 uint8_t selection_customview = LLC_Temperature;
 #ifdef HAVE_DEBUG_VIEW
-static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware */
+static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state */
 #endif
 
 uint8_t updateNecessary = 0;
@@ -678,7 +679,9 @@ void t7_refresh(void)
 #ifdef HAVE_DEBUG_VIEW
         else if(t7_isGnssDebugPageShown())
         {
-            if(gnssDebugPage == 2)
+            if(gnssDebugPage == 3)
+                t7_refresh_gnss_power();
+            else if(gnssDebugPage == 2)
                 t7_refresh_gnss_hardware();
             else
                 t7_refresh_gnss_debug();
@@ -3945,17 +3948,17 @@ bool t7_isGnssDebugPageShown(void)
 }
 
 
-/* ENTER on the position view shows the debug page, the next ENTER the page of the receiver hardware and the third ENTER leaves it and continues with the next view.
- * Returns true if the action was used */
+/* ENTER on the position view shows the debug page, the next ENTER the page of the receiver hardware, the third ENTER the page of the power state and the fourth
+ * ENTER leaves it and continues with the next view. Returns true if the action was used */
 bool t7_handleGnssDebugPageAction(uint8_t action)
 {
     if((action != ACTION_BUTTON_ENTER) || (stateUsed->mode != MODE_SURFACE))
     {
         return false;
     }
-    if(gnssDebugPage == 1)
+    if((gnssDebugPage == 1) || (gnssDebugPage == 2))
     {
-        gnssDebugPage = 2;
+        gnssDebugPage++;
         return true;
     }
     if(gnssDebugPage)
@@ -4010,6 +4013,23 @@ static const char* t7_gnssSessionText(void)
     }
 }
 
+/* power save state (psmState of UBX-NAV-PVT) as a short word and its colour: white at full power, yellow in a power save state, red if it is inactive */
+static const char* t7_gnssPsmWord(uint8_t psm)
+{
+    static const char* const word[] = { "off", "start", "acq", "track", "POT", "idle" };
+
+    return (psm < 6) ? word[psm] : "--";
+}
+
+static uint8_t t7_gnssPsmColor(uint8_t psm)
+{
+    if(psm == 5)
+    {
+        return CLUT_WarningRed;
+    }
+    return ((psm >= 1) && (psm <= 4)) ? CLUT_WarningYellow : CLUT_Font020;
+}
+
 void t7_refresh_gnss_debug(void)
 {
     const SGnssInfo* pGnss = &stateUsed->lifeData.gnssData;
@@ -4031,7 +4051,7 @@ void t7_refresh_gnss_debug(void)
     uint32_t session_s = gnssAcquire_getElapsedS();
     const SGnssDebugSat* pSat;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/2");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/3");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSDBG_LEFT_ROW(color, text)	t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
@@ -4157,13 +4177,15 @@ void t7_refresh_gnss_debug(void)
     /* power save state of UBX-NAV-PVT, rejected commands and UART errors of the RTE */
     if(haveB)
     {
-        snprintf(text, sizeof(text), "PSM %u  NAK %u  UART err %u", pDbg->psmState, pDbg->nakCount, pDbg->uartErrors);
+        snprintf(text, sizeof(text), "PSM %s  NAK %u  UART err %u", t7_gnssPsmWord(pDbg->psmState), pDbg->nakCount, pDbg->uartErrors);
+        color = t7_gnssPsmColor(pDbg->psmState);
     }
     else
     {
         snprintf(text, sizeof(text), "PSM --  NAK --  UART err --");
+        color = CLUT_Font020;
     }
-    GNSSDBG_LEFT_ROW(CLUT_Font020, text);
+    GNSSDBG_LEFT_ROW(color, text);
 #undef GNSSDBG_LEFT_ROW
 
     /* satellites with the highest C/N0 */
@@ -4270,8 +4292,8 @@ void t7_refresh_gnss_hardware(void)
     uint16_t y = GNSSDBG_ROW0_Y;
     uint8_t chunks = 0;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/2");
-    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/3");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* identification of the receiver (UBX-MON-VER) */
     if(pDbg->identValid)
@@ -4387,6 +4409,138 @@ void t7_refresh_gnss_hardware(void)
 
     t7_gnssHwRow(y, CLUT_Font020, "AGC is a percentage of the maximum gain.");
     t7_gnssHwRow(y + GNSSDBG_ROW_STEP, CLUT_Font020, "Monitor unknown: off by default, needs a fix first.");
+}
+
+
+/* Debug page 3: the power state of the receiver and what the RTE does about it (see data_exchange.h, records 13 to 15): the power save state, the configuration read
+ * back from the receiver, the repetitions of the power up and of the check, the time since the receiver reported full power and the requests which were
+ * answered. One column of rows of font T24 every 34 px, the widest realistic row ends before x = 480. Yellow: a power save state, a power setup other than full
+ * power, repetitions, requests which were not answered; red: the power up failed or the check gave up, an inactive receiver */
+static const char* t7_gnssPmsWord(uint8_t setup)
+{
+    static const char* const word[] = { "full power", "balanced", "interval", "aggressive 1 Hz", "aggressive 2 Hz", "aggressive 4 Hz" };
+
+    return (setup < 6) ? word[setup] : "no predefined setup";
+}
+
+static const char* t7_gnssDynModelWord(uint8_t model)
+{
+    switch(model)
+    {
+        case 0:		return "portable";
+        case 2:		return "stationary";
+        case 3:		return "pedestrian";
+        case 4:		return "automotive";
+        case 5:		return "sea";
+        case 6:		return "airborne <1g";
+        case 7:		return "airborne <2g";
+        case 8:		return "airborne <4g";
+        case 9:		return "wrist-worn watch";
+        default:	return "other";
+    }
+}
+
+void t7_refresh_gnss_power(void)
+{
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+    const char* const gnssName[] = { "GPS", "SBAS", "GAL", "BDS", "IMES", "QZSS", "GLO" };	/* gnssId 0..6 */
+    const char* const psmLong[] = { "not active", "enabled", "acquisition", "tracking", "optimized tracking", "inactive" };
+    char text[100];
+    uint8_t color;
+    uint8_t row = 0;
+    uint8_t haveB = pDbg->recordsSeen & 0x02u;
+    uint8_t havePower = pDbg->recordsSeen & 0x20u;
+    uint8_t havePolls = (pDbg->recordsSeen & 0xC0u) == 0xC0u;
+    uint16_t len = 0;
+
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 3/3");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+
+#define GNSSPWR_ROW(color, text)	t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
+
+    /* power save state of UBX-NAV-PVT */
+    snprintf(text, sizeof(text), "Power save: %s", (haveB && (pDbg->psmState < 6)) ? psmLong[pDbg->psmState] : "unknown");
+    GNSSPWR_ROW(haveB ? t7_gnssPsmColor(pDbg->psmState) : CLUT_Font020, text);
+
+    /* configuration read back from the receiver */
+    if(havePower && (pDbg->cfgValid & 0x01u))
+    {
+        snprintf(text, sizeof(text), "CFG-PMS: %s", t7_gnssPmsWord(pDbg->cfgPmsSetup));
+        color = (pDbg->cfgPmsSetup == 0) ? CLUT_Font020 : CLUT_WarningYellow;
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "CFG-PMS: not read");
+        color = CLUT_Font020;
+    }
+    GNSSPWR_ROW(color, text);
+
+    if(havePower && (pDbg->cfgValid & 0x02u))
+    {
+        len = snprintf(text, sizeof(text), "GNSS on:");
+        for(uint8_t id = 0; id < 7; id++)
+        {
+            if(pDbg->cfgGnssMask & (1u << id))
+            {
+                len += snprintf(&text[len], sizeof(text) - len, " %s", gnssName[id]);
+            }
+        }
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "GNSS on: not read");
+    }
+    GNSSPWR_ROW(CLUT_Font020, text);
+
+    if(havePower && (pDbg->cfgValid & 0x04u))
+    {
+        snprintf(text, sizeof(text), "Dynamic model: %s (%u)", t7_gnssDynModelWord(pDbg->cfgDynModel), pDbg->cfgDynModel);
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "Dynamic model: not read");
+    }
+    GNSSPWR_ROW(CLUT_Font020, text);
+
+    /* power up after the wake up and check of the power save state */
+    if(havePolls && havePower)
+    {
+        snprintf(text, sizeof(text), "Power up: %s   retries %u", (pDbg->powerFlags & 0x08u) ? "FAILED" : "ok", pDbg->wakeTries);
+        color = (pDbg->powerFlags & 0x08u) ? CLUT_WarningRed : ((pDbg->wakeTries != 0) ? CLUT_WarningYellow : CLUT_Font020);
+        GNSSPWR_ROW(color, text);
+
+        snprintf(text, sizeof(text), "Check: %s   commands %u", (pDbg->powerFlags & 0x10u) ? "GAVE UP" : "ok", pDbg->verifyTries);
+        color = (pDbg->powerFlags & 0x10u) ? CLUT_WarningRed : ((pDbg->verifyTries != 0) ? CLUT_WarningYellow : CLUT_Font020);
+        GNSSPWR_ROW(color, text);
+
+        if(pDbg->psmZeroAge_s == 255u)
+        {
+            snprintf(text, sizeof(text), "Time since full power: %s", (pDbg->powerFlags & 0x40u) ? "255 s or more" : "none seen");
+            color = (pDbg->powerFlags & 0x40u) ? CLUT_Font020 : CLUT_WarningYellow;
+        }
+        else
+        {
+            snprintf(text, sizeof(text), "Time since full power: %u s", pDbg->psmZeroAge_s);
+            color = CLUT_Font020;
+        }
+        GNSSPWR_ROW(color, text);
+
+        /* answered / sent since the wake up (halved when a counter reaches 255); one request may be on its way */
+        snprintf(text, sizeof(text), "Polls: PVT %u/%u  SAT %u/%u  HW %u/%u", pDbg->pollAnswered[0], pDbg->pollSent[0], pDbg->pollAnswered[1], pDbg->pollSent[1],
+                 pDbg->pollAnswered[2], pDbg->pollSent[2]);
+        color = (((pDbg->pollSent[0] - pDbg->pollAnswered[0]) > 1) || ((pDbg->pollSent[1] - pDbg->pollAnswered[1]) > 1)) ? CLUT_WarningYellow : CLUT_Font020;
+        GNSSPWR_ROW(color, text);
+    }
+    else
+    {
+        GNSSPWR_ROW(CLUT_Font020, "Power up: --");
+        GNSSPWR_ROW(CLUT_Font020, "Check: --");
+        GNSSPWR_ROW(CLUT_Font020, "Time since full power: --");
+        GNSSPWR_ROW(CLUT_Font020, "Polls: --");
+    }
+#undef GNSSPWR_ROW
+
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row + 1) * GNSSDBG_ROW_STEP, CLUT_Font020, "Polls: answered/sent since the wake up.");
 }
 
 #endif /* HAVE_DEBUG_VIEW */
