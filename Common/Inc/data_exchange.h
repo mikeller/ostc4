@@ -242,9 +242,16 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  * record 12 (identification text chunk): [1] bits 0..6 chunk number, bit 7 text valid (UBX-MON-VER received, otherwise the characters are not valid),
  *                       [2..5] four characters of the text at offset 4 * chunk number. The text has GNSS_IDENT_SIZE bytes of fixed fields (see GNSS_IDENT_*), each is
  *                       filled with its characters and 0 up to the end of the field.
- * The RTE sends a sequence of GNSS_DEBUG_SCHEDULE_LEN records, GNSS_DEBUG_SCHEDULE_TEXT of them are text chunks (the next chunk of the text each time), the others
- * are records 0..11 once. At the rate of one record per 100 ms every record 0..11 is refreshed every 1.5 s and the complete text is sent in
- * GNSS_IDENT_CHUNKS / GNSS_DEBUG_SCHEDULE_TEXT * 1.5 s (about 11 s).
+ * record 13 (power): [1] powerSetupValue read back from UBX-CFG-PMS (0 full power, 1 balanced, 2 interval, 3..5 aggressive, 0xFF no predefined setup), [2] mask of the
+ *                       GNSS which are enabled in UBX-CFG-GNSS (bit = gnssId), [3] dynModel of UBX-CFG-NAV5, [4] seconds since the last UBX-NAV-PVT with psmState 0
+ *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
+ *                       an acknowledge after the repetitions, bit 4: the check of the power save state gave up, bit 6: a UBX-NAV-PVT with psmState 0 was seen since the wake up
+ * record 14 (polls A): [1] repetitions of the power up since the wake up, [2] full power commands sent by the check of the power save state, [3] UBX-NAV-PVT requests sent,
+ *                       [4] answered, [5] UBX-NAV-SAT requests sent (the counts are since the wake up, all halved if one reaches 255)
+ * record 15 (polls B): [1] UBX-NAV-SAT requests answered, [2] UBX-MON-HW requests sent, [3] answered, [4] and [5] 0
+ * The RTE sends a sequence of GNSS_DEBUG_SCHEDULE_LEN records: the records 0..11 and 13..15 once and GNSS_DEBUG_SCHEDULE_TEXT chunks of the text (the next chunk of the
+ * text each time). At the rate of one record per 100 ms every record is refreshed every 1.8 s and the complete text is sent in
+ * GNSS_IDENT_CHUNKS / GNSS_DEBUG_SCHEDULE_TEXT * 1.8 s (about 13 s).
  * The check value includes a constant, so that a frame with all bytes 0 (a RTE which does not send records) is not accepted.
  * The field offsets are those of the u-blox 8 / u-blox M8 receiver description (UBX-13003221), the module of the OSTC5 is not identified until the text has been
  * received. UBX-MON-HW is accepted with the 60 byte payload of the u-blox 8 / u-blox M8 receiver description only (the same layout is documented in the ZED-F9H
@@ -257,9 +264,12 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_DEBUG_REC_MONHW_A		(GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT)
 #define GNSS_DEBUG_REC_MONHW_B		(GNSS_DEBUG_REC_MONHW_A + 1u)
 #define GNSS_DEBUG_REC_TEXT			(GNSS_DEBUG_REC_MONHW_B + 1u)
-#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_TEXT + 1u)			/* number of record types: the index is a 4 bit value */
+#define GNSS_DEBUG_REC_POWER		(GNSS_DEBUG_REC_TEXT + 1u)
+#define GNSS_DEBUG_REC_POLL_A		(GNSS_DEBUG_REC_POWER + 1u)
+#define GNSS_DEBUG_REC_POLL_B		(GNSS_DEBUG_REC_POLL_A + 1u)
+#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_POLL_B + 1u)			/* number of record types: the index is a 4 bit value */
 #define GNSS_DEBUG_SCHEDULE_TEXT	(3u)								/* text chunks in a sequence of records */
-#define GNSS_DEBUG_SCHEDULE_LEN		(GNSS_DEBUG_REC_TEXT + GNSS_DEBUG_SCHEDULE_TEXT)
+#define GNSS_DEBUG_SCHEDULE_LEN		(GNSS_DEBUG_REC_CNT - 1u + GNSS_DEBUG_SCHEDULE_TEXT)	/* all records but the text once and the text chunks */
 #define GNSS_PSM_UNKNOWN			(0xFFu)								/* power save state (psmState) not known yet */
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
@@ -285,7 +295,6 @@ _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 #define GNSS_IDENT_CHUNKS			(GNSS_IDENT_SIZE / GNSS_IDENT_CHUNK_SIZE)
 _Static_assert((GNSS_IDENT_SIZE % GNSS_IDENT_CHUNK_SIZE) == 0u, "The identification text has to consist of complete chunks");
 _Static_assert(GNSS_IDENT_CHUNKS < 128u, "The chunk number is a 7 bit value");
-_Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 _Static_assert(GNSS_IDENT_CHUNKS <= 32u, "The chunks received are collected in a 32 bit mask");
@@ -356,7 +365,7 @@ typedef struct
 	uint8_t psmState;
 	uint8_t uartErrors;
 	uint8_t nakCount;
-	uint8_t recordsSeen;	/* bit 0: summary A received, bit 1: summary B, bit 2: at least one satellite record, bit 3: UBX-MON-HW A, bit 4: UBX-MON-HW B */
+	uint8_t recordsSeen;	/* bit 0: summary A received, bit 1: summary B, bit 2: at least one satellite record, bit 3: UBX-MON-HW A, bit 4: UBX-MON-HW B, bit 5: power, bit 6: polls A, bit 7: polls B */
 	SGnssDebugSat sat[GNSS_DEBUG_SAT_CNT];
 
 	/* UBX-MON-HW, valid if monHwValid */
@@ -375,6 +384,18 @@ typedef struct
 	uint8_t monVerRequests;	/* number of UBX-MON-VER requests of the RTE (limited to 15) */
 	uint32_t identChunkMask;	/* chunks received */
 	char ident[GNSS_IDENT_SIZE + 1];	/* identification text, the last byte is always 0 */
+
+	/* power state of the receiver, see the records 13 to 15 */
+	uint8_t cfgPmsSetup;		/* powerSetupValue of UBX-CFG-PMS */
+	uint8_t cfgGnssMask;		/* enabled GNSS (bit = gnssId) */
+	uint8_t cfgDynModel;
+	uint8_t cfgValid;			/* bit 0: cfgPmsSetup, bit 1: cfgGnssMask, bit 2: cfgDynModel are valid */
+	uint8_t psmZeroAge_s;		/* seconds since the last UBX-NAV-PVT with psmState 0, 255 none */
+	uint8_t powerFlags;			/* bit 3: power up failed, bit 4: the check of the power save state gave up, bit 6: psmState 0 seen since the wake up */
+	uint8_t wakeTries;
+	uint8_t verifyTries;
+	uint8_t pollSent[3];		/* UBX-NAV-PVT, UBX-NAV-SAT, UBX-MON-HW */
+	uint8_t pollAnswered[3];
 } SGnssDebugInfo;
 
 typedef struct

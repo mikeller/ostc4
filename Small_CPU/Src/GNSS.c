@@ -114,6 +114,7 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 	const SGnssDebugSat* pSat;
 	uint32_t pDop_tenth;
 	uint32_t monHwAge_s;
+	uint32_t psmZeroAge_s;
 
 	memset(rec, 0, GNSS_DEBUG_REC_SIZE);
 	if(index >= GNSS_DEBUG_REC_CNT)
@@ -155,6 +156,27 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 			rec[3] = (monHwAge_s > 254u) ? 255u : (uint8_t)monHwAge_s;
 			rec[4] = GNSS->monHwLength;
 			rec[5] = (GNSS->monHwValid ? 0x01u : 0) | (GNSS->identValid ? 0x02u : 0) | (uint8_t)(GNSS_Limit(GNSS->monVerRequests, 15) << 4);
+			break;
+		case GNSS_DEBUG_REC_POWER:
+			rec[1] = GNSS->cfgPmsSetup;
+			rec[2] = GNSS->cfgGnssMask;
+			rec[3] = GNSS->cfgDynModel;
+			psmZeroAge_s = GNSS->psmZeroValid ? (time_elapsed_ms(GNSS->psmZeroTick, HAL_GetTick()) / 1000u) : 255u;
+			rec[4] = (psmZeroAge_s > 254u) ? 255u : (uint8_t)psmZeroAge_s;
+			rec[5] = (GNSS->cfgPmsValid ? 0x01u : 0) | (GNSS->cfgGnssValid ? 0x02u : 0) | (GNSS->cfgNav5Valid ? 0x04u : 0) | (GNSS->wakeFailed ? 0x08u : 0)
+					| (GNSS->verifyGaveUp ? 0x10u : 0) | (GNSS->psmZeroValid ? 0x40u : 0);
+			break;
+		case GNSS_DEBUG_REC_POLL_A:
+			rec[1] = GNSS->wakeTries;
+			rec[2] = GNSS->verifyTries;
+			rec[3] = GNSS->pollSent[GNSS_POLL_PVT];
+			rec[4] = GNSS->pollAnswered[GNSS_POLL_PVT];
+			rec[5] = GNSS->pollSent[GNSS_POLL_SAT];
+			break;
+		case GNSS_DEBUG_REC_POLL_B:
+			rec[1] = GNSS->pollAnswered[GNSS_POLL_SAT];
+			rec[2] = GNSS->pollSent[GNSS_POLL_MONHW];
+			rec[3] = GNSS->pollAnswered[GNSS_POLL_MONHW];
 			break;
 		case GNSS_DEBUG_REC_TEXT:
 			if(textChunk >= GNSS_IDENT_CHUNKS)

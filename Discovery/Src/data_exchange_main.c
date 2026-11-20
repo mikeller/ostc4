@@ -1477,6 +1477,29 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 			gnssDebugInfo.monVerRequests = rec[5] >> 4;
 			gnssDebugInfo.recordsSeen |= 0x10u;
 			break;
+		case GNSS_DEBUG_REC_POWER:
+			gnssDebugInfo.cfgPmsSetup = rec[1];
+			gnssDebugInfo.cfgGnssMask = rec[2];
+			gnssDebugInfo.cfgDynModel = rec[3];
+			gnssDebugInfo.psmZeroAge_s = rec[4];
+			gnssDebugInfo.cfgValid = rec[5] & 0x07u;
+			gnssDebugInfo.powerFlags = rec[5] & 0xF8u;
+			gnssDebugInfo.recordsSeen |= 0x20u;
+			break;
+		case GNSS_DEBUG_REC_POLL_A:
+			gnssDebugInfo.wakeTries = rec[1];
+			gnssDebugInfo.verifyTries = rec[2];
+			gnssDebugInfo.pollSent[0] = rec[3];
+			gnssDebugInfo.pollAnswered[0] = rec[4];
+			gnssDebugInfo.pollSent[1] = rec[5];
+			gnssDebugInfo.recordsSeen |= 0x40u;
+			break;
+		case GNSS_DEBUG_REC_POLL_B:
+			gnssDebugInfo.pollAnswered[1] = rec[1];
+			gnssDebugInfo.pollSent[2] = rec[2];
+			gnssDebugInfo.pollAnswered[2] = rec[3];
+			gnssDebugInfo.recordsSeen |= 0x80u;
+			break;
 		case GNSS_DEBUG_REC_TEXT:
 			chunk = rec[1] & 0x7Fu;
 			if((rec[1] & 0x80u) && (chunk < GNSS_IDENT_CHUNKS))	/* the text is valid on the RTE side */
