@@ -138,6 +138,12 @@ void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS) {
 	GNSS->hw2Tries = 0;
 	GNSS->hw2Have = 0;
 	GNSS->hw2Length = 0;
+	GNSS->statusState = GNSS_CFGPOLL_NONE;
+	GNSS->statusTries = 0;
+	GNSS->statusHave = 0;
+	GNSS->statusLength = 0;
+	GNSS->msssPrevValid = 0;		/* the receiver was reset by the initialization or is started again after it was off */
+	GNSS->resetCount = 0;
 }
 #endif
 
@@ -266,11 +272,29 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 					case 6:
 						memcpy(&rec[2], &GNSS->postStatus, 4);
 						break;
-					default:
+					case 7:
 						rec[2] = GNSS->cfgSource;
 						rec[3] = GNSS->hw2State | (GNSS->hw2Have ? GNSS_CFGPOLL_HAVE : 0);
 						rec[4] = GNSS->hw2Tries;
 						rec[5] = GNSS->hw2Length;
+						break;
+					case 8:		/* UBX-NAV-STATUS */
+						memcpy(&rec[2], &GNSS->msss, 4);
+						break;
+					case 9:
+						memcpy(&rec[2], &GNSS->ttff, 4);
+						break;
+					case 10:
+						rec[2] = GNSS->statusFix;
+						rec[3] = GNSS->statusFlags;
+						rec[4] = GNSS->statusFixStat;
+						rec[5] = GNSS->statusFlags2;
+						break;
+					default:
+						rec[2] = GNSS->statusState | (GNSS->statusHave ? GNSS_CFGPOLL_HAVE : 0);
+						rec[3] = GNSS->statusTries;
+						rec[4] = GNSS->resetCount;
+						rec[5] = GNSS->statusLength;
 						break;
 				}
 			}
@@ -657,6 +681,37 @@ void GNSS_ParseMonHw2Data(GNSS_StateHandle *GNSS) {
 		GNSS->lowLevCfg = (uint32_t)p[8] | ((uint32_t)p[9] << 8) | ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
 		GNSS->postStatus = (uint32_t)p[20] | ((uint32_t)p[21] << 8) | ((uint32_t)p[22] << 16) | ((uint32_t)p[23] << 24);
 		GNSS->hw2Have = 1;
+	}
+}
+
+/*!
+ * UBX-NAV-STATUS (32.17.24, 16 bytes): iTOW at 0, gpsFix 4, flags 5, fixStat 6, flags2 7, ttff 8 (U4, ms), msss 12 (U4, ms since startup or reset); the same layout in
+ * pyubx2 and the ublox_msgs package. A reply with another length is not used. A reset of the receiver is detected if msss is smaller than in the reply before.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseNavStatusData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	const uint8_t* p = &GNSS_Handle.uartWorkingBuffer[6];
+	uint32_t msss;
+
+	GNSS->statusLength = (length > 255u) ? 255u : (uint8_t)length;
+	GNSS->statusState = GNSS_CFGPOLL_OK;
+	GNSS->statusTries = 0;
+	if(length == GNSS_NAVSTATUS_LEN)
+	{
+		msss = (uint32_t)p[12] | ((uint32_t)p[13] << 8) | ((uint32_t)p[14] << 16) | ((uint32_t)p[15] << 24);
+		if(GNSS->msssPrevValid && (msss < GNSS->msss) && (GNSS->resetCount < 255))
+		{
+			GNSS->resetCount++;
+		}
+		GNSS->msssPrevValid = 1;
+		GNSS->msss = msss;
+		GNSS->statusFix = p[4];
+		GNSS->statusFlags = p[5];
+		GNSS->statusFixStat = p[6];
+		GNSS->statusFlags2 = p[7];
+		GNSS->ttff = (uint32_t)p[8] | ((uint32_t)p[9] << 8) | ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
+		GNSS->statusHave = 1;
 	}
 }
 

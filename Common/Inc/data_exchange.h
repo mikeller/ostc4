@@ -249,7 +249,10 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       requests in a row which were not answered, for CFG-ANT and for CFG-ITFM;
  *                       UBX-MON-HW2 (read only poll of the ADC input): n = 4: ofsI (I1), magI (U1), ofsQ (I1), magQ (U1); n = 5: lowLevCfg, little endian; n = 6: postStatus,
  *                       little endian; n = 7: cfgSource, state of the poll (bits 0..6, GNSS_CFGPOLL_*, bit 7 GNSS_CFGPOLL_HAVE: a reply with the accepted length was received
- *                       since the power up and the values are those of it), number of requests in a row which were not answered, payload length of the last reply
+ *                       since the power up and the values are those of it), number of requests in a row which were not answered, payload length of the last reply;
+ *                       UBX-NAV-STATUS (read only poll): n = 8: msss (ms since the start or reset of the receiver), little endian; n = 9: ttff (ms), little endian;
+ *                       n = 10: gpsFix, flags, fixStat, flags2; n = 11: state of the poll (as for n = 7), number of requests in a row which were not answered, number of
+ *                       resets of the receiver detected since the power up (msss smaller than in the reply before), payload length of the last reply
  * record 13 (power): [1] powerSetupValue read back from UBX-CFG-PMS (0 full power, 1 balanced, 2 interval, 3..5 aggressive, 0xFF no predefined setup), [2] mask of the
  *                       GNSS which are enabled in UBX-CFG-GNSS (bit = gnssId), [3] dynModel of UBX-CFG-NAV5, [4] seconds since the last UBX-NAV-PVT with psmState 0
  *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
@@ -292,7 +295,7 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_CFGPOLL_HAVE			(0x80u)								/* flag in the transmitted state: a reply was received since the power up, the values are valid */
 #define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
 #ifdef HAVE_DEBUG_VIEW
-#define GNSS_DEBUG_EXTRA_BLOCKS		(8u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2 */
+#define GNSS_DEBUG_EXTRA_BLOCKS		(12u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS */
 #else
 #define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
 #endif
@@ -449,6 +452,19 @@ typedef struct
 	uint8_t cfgSource;			/* 114 ROM, 111 OTP, 112 config pins, 102 flash image */
 	uint32_t lowLevCfg;
 	uint32_t postStatus;
+
+	/* UBX-NAV-STATUS (read only poll), see the text record: valid if statusHave, statusLength 16 is the accepted length */
+	uint8_t statusState;		/* GNSS_CFGPOLL_* */
+	uint8_t statusHave;
+	uint8_t statusTries;
+	uint8_t statusLength;
+	uint8_t statusFix;			/* gpsFix */
+	uint8_t statusFlags;		/* bit 0 gpsFixOk, 1 diffSoln, 2 wknSet, 3 towSet */
+	uint8_t statusFixStat;
+	uint8_t statusFlags2;
+	uint32_t ttff;				/* ms */
+	uint32_t msss;				/* ms since the start or reset of the receiver */
+	uint8_t resetCount;			/* resets of the receiver detected since the power up */
 } SGnssDebugInfo;
 
 typedef struct
