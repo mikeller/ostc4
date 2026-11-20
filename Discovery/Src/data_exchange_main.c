@@ -1561,6 +1561,27 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 						gnssDebugInfo.resetCount = rec[4];
 						gnssDebugInfo.statusLength = rec[5];
 						break;
+					case 17:
+						gnssDebugInfo.ioRxBytes = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					case 18:
+						gnssDebugInfo.ioTxBytes = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					case 19:
+						gnssDebugInfo.ioParityErrs = (uint16_t)(rec[2] | (rec[3] << 8));
+						gnssDebugInfo.ioFramingErrs = (uint16_t)(rec[4] | (rec[5] << 8));
+						break;
+					case 20:
+						gnssDebugInfo.ioOverrunErrs = (uint16_t)(rec[2] | (rec[3] << 8));
+						gnssDebugInfo.ioBreakCond = (uint16_t)(rec[4] | (rec[5] << 8));
+						break;
+					case 21:
+						gnssDebugInfo.ioState = rec[2] & ~GNSS_CFGPOLL_HAVE;
+						gnssDebugInfo.ioHave = (rec[2] & GNSS_CFGPOLL_HAVE) ? 1u : 0u;
+						gnssDebugInfo.ioTries = rec[3];
+						gnssDebugInfo.ioPort = rec[4];
+						gnssDebugInfo.ioLength = rec[5];
+						break;
 					default:		/* 12 .. 16: four bytes of the counts of lost polls (15) and of the UART error types (5) */
 						for(uint8_t pos = 0; pos < 4; pos++)
 						{

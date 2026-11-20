@@ -148,6 +148,10 @@ void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS) {
 	GNSS->statusLength = 0;
 	GNSS->msssPrevValid = 0;		/* the receiver was reset by the initialization or is started again after it was off */
 	GNSS->resetCount = 0;
+	GNSS->ioState = GNSS_CFGPOLL_NONE;
+	GNSS->ioTries = 0;
+	GNSS->ioHave = 0;
+	GNSS->ioLength = 0;
 }
 #endif
 
@@ -299,6 +303,26 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 						rec[3] = GNSS->statusTries;
 						rec[4] = GNSS->resetCount;
 						rec[5] = GNSS->statusLength;
+						break;
+					case 17:		/* UBX-MON-IO */
+						memcpy(&rec[2], &GNSS->ioRxBytes, 4);
+						break;
+					case 18:
+						memcpy(&rec[2], &GNSS->ioTxBytes, 4);
+						break;
+					case 19:
+						memcpy(&rec[2], &GNSS->ioParityErrs, 2);
+						memcpy(&rec[4], &GNSS->ioFramingErrs, 2);
+						break;
+					case 20:
+						memcpy(&rec[2], &GNSS->ioOverrunErrs, 2);
+						memcpy(&rec[4], &GNSS->ioBreakCond, 2);
+						break;
+					case 21:
+						rec[2] = GNSS->ioState | (GNSS->ioHave ? GNSS_CFGPOLL_HAVE : 0);
+						rec[3] = GNSS->ioTries;
+						rec[4] = GNSS->ioPort;
+						rec[5] = GNSS->ioLength;
 						break;
 					default:	/* 12..16: the counts of the lost polls by cause (15 bytes), then the UART error types (5 bytes), four bytes per item */
 						{
@@ -731,6 +755,64 @@ void GNSS_ParseNavStatusData(GNSS_StateHandle *GNSS) {
 		GNSS->statusFlags2 = p[7];
 		GNSS->ttff = (uint32_t)p[8] | ((uint32_t)p[9] << 8) | ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
 		GNSS->statusHave = 1;
+	}
+}
+
+/* little endian values of the payload */
+static uint32_t GNSS_Le32(const uint8_t* p) {
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static uint16_t GNSS_Le16(const uint8_t* p) {
+	return (uint16_t)(p[0] | (p[1] << 8));
+}
+
+/*!
+ * UBX-MON-IO (32.16.5): 20 bytes per port: rxBytes (U4) at 0, txBytes (U4) 4, parityErrs (U2) 8, framingErrs (U2) 10, overrunErrs (U2) 12, breakCond (U2) 14, the last four bytes
+ * are reserved in the receiver description (pyubx2 has two busy flags there, they are not used). The first sixteen bytes agree in pyubx2. The reply is only used if its
+ * length is a whole number of ports (at most GNSS_MONIO_MAX_PORTS). The values of GNSS_MONIO_DEFAULT_PORT are taken, or those of the port which sent most bytes if that
+ * port has not sent anything.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseMonIoData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	const uint8_t* p = &GNSS_Handle.uartWorkingBuffer[6];
+	uint8_t ports = (uint8_t)(length / GNSS_MONIO_PORT_SIZE);
+	uint8_t port = GNSS_MONIO_DEFAULT_PORT;
+
+	GNSS->ioLength = (length > 255u) ? 255u : (uint8_t)length;
+	GNSS->ioState = GNSS_CFGPOLL_OK;
+	GNSS->ioTries = 0;
+	if((length != 0u) && ((length % GNSS_MONIO_PORT_SIZE) == 0u) && (ports <= GNSS_MONIO_MAX_PORTS))
+	{
+		if((port >= ports) || (GNSS_Le32(&p[port * GNSS_MONIO_PORT_SIZE + 4u]) == 0u))
+		{
+			uint32_t most = 0;
+
+			for(uint8_t i = 0; i < ports; i++)
+			{
+				uint32_t tx = GNSS_Le32(&p[i * GNSS_MONIO_PORT_SIZE + 4u]);
+
+				if(tx > most)
+				{
+					most = tx;
+					port = i;
+				}
+			}
+			if(most == 0u)
+			{
+				port = (GNSS_MONIO_DEFAULT_PORT < ports) ? GNSS_MONIO_DEFAULT_PORT : 0u;
+			}
+		}
+		p = &p[port * GNSS_MONIO_PORT_SIZE];
+		GNSS->ioPort = port;
+		GNSS->ioRxBytes = GNSS_Le32(&p[0]);
+		GNSS->ioTxBytes = GNSS_Le32(&p[4]);
+		GNSS->ioParityErrs = GNSS_Le16(&p[8]);
+		GNSS->ioFramingErrs = GNSS_Le16(&p[10]);
+		GNSS->ioOverrunErrs = GNSS_Le16(&p[12]);
+		GNSS->ioBreakCond = GNSS_Le16(&p[14]);
+		GNSS->ioHave = 1;
 	}
 }
 

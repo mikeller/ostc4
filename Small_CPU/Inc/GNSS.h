@@ -105,6 +105,7 @@ union i_Long
 #define GNSS_CFGREAD_ITFM			(0x10u)
 #define GNSS_CFGREAD_HW2			(0x20u)
 #define GNSS_CFGREAD_STATUS			(0x40u)
+#define GNSS_CFGREAD_IO				(0x80u)
 #define GNSS_CFGREAD_ALL			(0x1Fu)		/* the read back after the power up (the periodic polls above 0x10 have their own first time) */
 
 /* Read only polls of UBX-CFG-ANT (antenna supervisor) and UBX-CFG-ITFM (jamming monitor): the state of each poll (GNSS_CFGPOLL_*, data_exchange.h), see cfgAntState / cfgItfmState. Besides the poll after the
@@ -124,8 +125,18 @@ union i_Long
 #define GNSS_STATUS_FIRST_MS		(8000u)
 #define GNSS_NAVSTATUS_LEN			(16u)		/* accepted payload length of UBX-NAV-STATUS */
 
-/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS */
-#define GNSS_EXTRA_POLL_CNT			(4u)
+/* UBX-MON-IO (bytes and errors seen by the ports of the receiver) is polled every GNSS_IO_PERIOD_MS, the first time GNSS_IO_FIRST_MS after the power up. The reply has 20 bytes
+ * per port (6 ports: 128 bytes with the frame, 133 ms at 9600 baud, in a poll slot of one second). The port of the receiver which is connected to the RTE is not known from the
+ * RTE: it is port 1 (UART1, table of the port numbers in the u-blox 8 / u-blox M8 receiver description) unless that port has not sent anything and another one has, then the
+ * one which has sent most bytes */
+#define GNSS_IO_PERIOD_MS			(30000u)
+#define GNSS_IO_FIRST_MS			(10000u)
+#define GNSS_MONIO_PORT_SIZE		(20u)		/* bytes per port in UBX-MON-IO */
+#define GNSS_MONIO_MAX_PORTS		(8u)		/* longer replies are not used */
+#define GNSS_MONIO_DEFAULT_PORT		(1u)
+
+/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, UBX-MON-IO */
+#define GNSS_EXTRA_POLL_CNT			(5u)
 
 #define GNSS_VERIFY_PVT_COUNT		(3u)
 #define GNSS_VERIFY_MAX_RETRIES		(3u)
@@ -277,6 +288,19 @@ typedef struct
 	uint32_t msss;				/* ms since the start or reset of the receiver */
 	uint8_t msssPrevValid;		/* msss of an earlier reply since the power up is known: a smaller msss is a reset */
 	uint8_t resetCount;			/* resets of the receiver detected since the power up (saturating) */
+
+	/* UBX-MON-IO (read only poll): the values of port ioPort of the last reply with a length of a whole number of ports (ioHave: there was one since the power up) */
+	uint8_t ioState;			/* GNSS_CFGPOLL_* */
+	uint8_t ioTries;
+	uint8_t ioHave;
+	uint8_t ioLength;			/* payload length of the last reply (saturating at 255) */
+	uint8_t ioPort;				/* port number of the values */
+	uint32_t ioRxBytes;			/* bytes received by the receiver on the port */
+	uint32_t ioTxBytes;			/* bytes sent by the receiver on the port */
+	uint16_t ioParityErrs;		/* 100 ms timeslots with parity errors seen by the receiver */
+	uint16_t ioFramingErrs;
+	uint16_t ioOverrunErrs;
+	uint16_t ioBreakCond;
 	uint8_t ident[GNSS_IDENT_SIZE];	/* identification text, see data_exchange.h */
 
 	uint8_t alive;
@@ -372,6 +396,8 @@ static const uint8_t getCfgItfm[]={0xB5,0x62,0x06,0x39,0x00,0x00};
 static const uint8_t getMonHw2[]={0xB5,0x62,0x0A,0x0B,0x00,0x00};
 
 static const uint8_t getNavStatus[]={0xB5,0x62,0x01,0x03,0x00,0x00};
+
+static const uint8_t getMonIo[]={0xB5,0x62,0x0A,0x02,0x00,0x00};
 #endif
 
 static const uint8_t setPowerLow[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x02,0x10,0x0E,0x14,0x00,0x00,0x00};
@@ -399,6 +425,7 @@ void GNSS_ParseCfgAntData(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS);
 void GNSS_ParseMonHw2Data(GNSS_StateHandle *GNSS);
 void GNSS_ParseNavStatusData(GNSS_StateHandle *GNSS);
+void GNSS_ParseMonIoData(GNSS_StateHandle *GNSS);
 void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS);
 uint8_t GNSS_DebugScheduleRecord(uint8_t slot);
 void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll);
