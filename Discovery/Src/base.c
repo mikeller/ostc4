@@ -1874,6 +1874,7 @@ static uint32_t gnssAcquireEndTick = 0;
 static uint32_t gnssAcquireFixTick = 0;			/* time of the first usable fix of the session */
 static uint8_t gnssAcquireHasFix = 0;			/* a usable fix was seen in this session */
 static uint8_t gnssAcquirePoorFixSeen = 0;		/* a fix which is not usable was seen in this session */
+static uint8_t gnssAcquireSignalSeen = 0;		/* a satellite with a C/N0 above 0 was seen in this session (it is the same report as the tracked count of the position view) */
 static uint8_t gnssAcquireEphCount = 0;			/* satellites with ephemeris at the last update */
 
 static void gnssAcquire_end(gnssAcquireState_t result)
@@ -1902,13 +1903,14 @@ void gnssAcquire_start(void)
 	}
 	gnssAcquireHasFix = 0;
 	gnssAcquirePoorFixSeen = 0;
+	gnssAcquireSignalSeen = 0;
 	gnssAcquireEphCount = 0;
+	gnssAcquireStartTick = HAL_GetTick();
 	if(pStateReal->warnings.lowBattery)		/* same threshold as the low battery warning */
 	{
 		gnssAcquire_end(GNSS_ACQUIRE_LOWBATTERY);
 		return;
 	}
-	gnssAcquireStartTick = HAL_GetTick();
 	gnssAcquireState = GNSS_ACQUIRE_ACTIVE;
 	time_without_button_pressed_deciseconds = 0;
 }
@@ -1939,6 +1941,10 @@ void gnssAcquire_update(void)
 	}
 
 	gnssAcquireEphCount = alive ? GNSS_EPH_COUNT(pGnss) : 0;
+	if(alive && (DataEX_getGnssDebugInfo()->recordsSeen & 0x01u) && (DataEX_getGnssDebugInfo()->bestCno > 0))
+	{
+		gnssAcquireSignalSeen = 1;
+	}
 	if(alive && GNSS_HAS_FIX(pGnss))
 	{
 		if((pGnss->alive & GNSS_ALIVE_FIX_OK) && (pGnss->fixType == 3) && (pGnss->accuracy.hAcc <= GNSS_ACQUIRE_MAX_HACC_M))
@@ -1990,6 +1996,12 @@ uint8_t gnssAcquire_isWaitingForEphemeris(void)
 	return ((gnssAcquireState == GNSS_ACQUIRE_ACTIVE) && (gnssAcquireHasFix));
 }
 
+/* A satellite with a C/N0 above 0 was seen since the session started: without it a session which ended without a fix is a session without any signal */
+uint8_t gnssAcquire_wasSignalSeen(void)
+{
+	return gnssAcquireSignalSeen;
+}
+
 uint8_t gnssAcquire_getEphemerisCount(void)
 {
 	return gnssAcquireEphCount;
@@ -2002,6 +2014,20 @@ gnssAcquireState_t gnssAcquire_getState(void)
 		gnssAcquireState = GNSS_ACQUIRE_IDLE;	/* the result is outdated */
 	}
 	return gnssAcquireState;
+}
+
+/* Duration of the session: the time since the start while it runs, the duration of the last session if it has ended (until the result is outdated) */
+uint32_t gnssAcquire_getElapsedS(void)
+{
+	if(gnssAcquire_getState() == GNSS_ACQUIRE_IDLE)
+	{
+		return 0;
+	}
+	if(gnssAcquireState == GNSS_ACQUIRE_ACTIVE)
+	{
+		return time_elapsed_ms(gnssAcquireStartTick, HAL_GetTick()) / 1000u;
+	}
+	return time_elapsed_ms(gnssAcquireStartTick, gnssAcquireEndTick) / 1000u;
 }
 
 /* Remaining time of the current phase: the wait for a fix (overall timeout) or the wait for the ephemeris (hold time or overall timeout) */

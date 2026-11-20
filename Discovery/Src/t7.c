@@ -3633,9 +3633,16 @@ void t7_tissues(const SDiveState * pState)
  * - flipped display, Y1 of the label window is 311 (the rows are counted from the top):
  *     session line: Y1 - 8, ink 281..303: 42 px clearance to the bars (bottom edge 239) and 10 px to the longitude (ink ends at 271)
  *     power save line: Y1 + 24, ink 313..335: 9 px below the session line, 13 px above the last known position (ink top 349)
- * (the session line was 8 px lower before, 322..344 and 289..311). The widest text of the power save line is 248 px, centred in the 295 px window. */
+ * (the session line was 8 px lower before, 322..344 and 289..311). The widest text of the power save line is 248 px, centred in the 295 px window.
+ * The "no signal" hint (font T24, 265 px wide, ink x 268..531 of the 800 px of the screen, ink 23 px high) is a line of its own in the free band between the bars and the
+ * session line; it is only shown without a fix (so the longitude of a fix is not there) and at full power (so the power save line is not there):
+ * - normal display: starts 95 px above Y0 of the value window, ink 178..200 px (panel rows from the top 279..301): 13 px below the bars (bottom edge 213 px) and 13 px
+ *     above the session line (ink top 165 px)
+ * - flipped display: Y1 of the label window - 40, ink 249..271 (rows from the top): 10 px below the bars (bottom edge 239) and 10 px above the session line (ink top 281) */
 #define POSITION_SESSION_LINE_OFFSET_Y		(60u)
 #define POSITION_SESSION_LINE_OFFSET_Y_FLIP	(8u)		/* the session line is this far above Y1 of the label window */
+#define POSITION_HINT_LINE_OFFSET_Y			(95u)
+#define POSITION_HINT_LINE_OFFSET_Y_FLIP	(40u)		/* the hint line is this far above Y1 of the label window */
 #define POSITION_POWER_LINE_OFFSET_Y		(28u)
 #define POSITION_POWER_LINE_OFFSET_Y_FLIP	(24u)		/* the power save line is this far below Y1 of the label window */
 
@@ -3678,7 +3685,7 @@ static uint8_t t7_getGnssAcquireText(char* pText, uint8_t size)
             length = snprintf(pText, size, "\001\024Poor fix only");
             break;
         case GNSS_ACQUIRE_TIMEOUT:
-            length = snprintf(pText, size, "\001\025No fix, timed out");
+            length = snprintf(pText, size, gnssAcquire_wasSignalSeen() ? "\001\025No fix, timed out" : "\001\025No signal, timed out");
             break;
         case GNSS_ACQUIRE_LOWBATTERY:
             length = snprintf(pText, size, "\001\025Low battery");
@@ -3705,6 +3712,19 @@ static uint8_t t7_getGnssPowerSaveState(void)
         return pDbg->psmState;
     }
     return 0;
+}
+
+/* The user is told that no satellite signal is received: an acquire fix session has run for GNSS_ACQUIRE_NOSIGNAL_S, satellites are listed but none has a C/N0 above 0
+ * (the tracked count and the best C/N0 of the debug records of the RTE, which the main CPU decodes in every build: it is the "tracked/listed" count of the position view),
+ * the receiver answers, it reports full power (psmState 0; in power save mode the power save line explains why nothing is tracked) and there is no fix */
+static uint8_t t7_gnssNoSignalHint(void)
+{
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+    const SGnssInfo* pGnss = &stateUsed->lifeData.gnssData;
+
+    return (gnssAcquire_getState() == GNSS_ACQUIRE_ACTIVE) && (gnssAcquire_getElapsedS() >= GNSS_ACQUIRE_NOSIGNAL_S)
+            && (pGnss->alive & GNSS_ALIVE_STATE_ALIVE) && (!GNSS_HAS_FIX(pGnss)) && (pGnss->numSat > 0)
+            && ((pDbg->recordsSeen & 0x03u) == 0x03u) && (pDbg->psmState == 0) && (pDbg->numTracked == 0) && (pDbg->bestCno == 0);
 }
 
 void t7_showPosition(void)
@@ -3833,6 +3853,27 @@ void t7_showPosition(void)
     		t7cY0free.WindowY1 = labelY1 - POSITION_SESSION_LINE_OFFSET_Y_FLIP;
     	}
     	GFX_write_string(&FontT24, &t7cY0free, text, 1);
+    	t7cY0free.WindowY0 = sessionY0;
+    	t7cY0free.WindowY1 = sessionY1;
+    	t7cY0free.WindowNumberOfTextLines = sessionLines;
+    }
+
+    /* hint that no signal is received (see t7_gnssNoSignalHint): yellow, a line of its own between the bars and the session line */
+    if(t7_gnssNoSignalHint())
+    {
+    	sessionY0 = t7cY0free.WindowY0;
+    	sessionY1 = t7cY0free.WindowY1;
+    	sessionLines = t7cY0free.WindowNumberOfTextLines;
+    	t7cY0free.WindowNumberOfTextLines = 1;
+    	if(!pSettings->FlipDisplay)
+    	{
+    		t7cY0free.WindowY0 = sessionY0 + POSITION_HINT_LINE_OFFSET_Y;
+    	}
+    	else
+    	{
+    		t7cY0free.WindowY1 = labelY1 - POSITION_HINT_LINE_OFFSET_Y_FLIP;
+    	}
+    	GFX_write_string_color(&FontT24, &t7cY0free, "\001No signal: need open sky", 1, CLUT_WarningYellow);
     	t7cY0free.WindowY0 = sessionY0;
     	t7cY0free.WindowY1 = sessionY1;
     	t7cY0free.WindowNumberOfTextLines = sessionLines;
