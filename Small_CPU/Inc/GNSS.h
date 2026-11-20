@@ -60,6 +60,17 @@ union i_Long
 #define GNSS_MAX_NAVSAT_SV		(64u)
 #define GNSS_UBX_FRAME_SIZE_MAX	(16u + 12u * GNSS_MAX_NAVSAT_SV)
 
+/* Polls of the receiver: UBX-NAV-SAT and UBX-NAV-PVT alternately, every GNSS_MON_POLL_INTERVAL-th poll is a UBX-MON poll instead (HW, or VER as long as it was not
+ * received) so that NAV-SAT and NAV-PVT are still polled in five of six slots. Polls are one per second (see UART6_HandleUART). */
+#define GNSS_MON_POLL_INTERVAL		(6u)
+#define GNSS_MONVER_MAX_REQUESTS	(10u)	/* UBX-MON-VER is requested at most this many times per initialization of the receiver */
+
+/* Polls which are only needed by the debug pages of the main CPU (UBX-MON-HW, UBX-MON-VER) are sent only if the debug view is built (HAVE_DEBUG_VIEW of
+ * configuration.h) */
+#ifdef HAVE_DEBUG_VIEW
+#define GNSS_DEBUG_POLLS
+#endif
+
 /* Power up of the receiver after it was in power save mode (see uartProtocol_GNSS.c): wake up bytes, time for the receiver to wake (the receiver description
  * recommends about half a second), full power command; without acknowledge or with a rejection the sequence is repeated */
 #define GNSS_WAKE_WAIT_MS			(500u)
@@ -132,6 +143,22 @@ typedef struct
 	uint8_t pvtParsed;			/* a UBX-NAV-PVT was parsed since the receiver was initialized or woken: psmState is valid */
 	uint8_t uartErrors;			/* UART errors of the receiver port since the RTE started (saturating) */
 	uint8_t nakCount;			/* UBX-ACK-NAK received since the RTE started (saturating) */
+
+	/* read only polls of UBX-MON-HW and UBX-MON-VER for the debug page */
+	uint8_t monHwSeen;			/* a UBX-MON-HW (of any length) was received since the receiver was (re)initialized */
+	uint8_t monHwValid;			/* the last UBX-MON-HW has the accepted length GNSS_MONHW_LEN, the following values were taken from it */
+	uint8_t monHwLength;		/* payload length of the last UBX-MON-HW (saturating at 255) */
+	uint32_t monHwTick;			/* HAL tick of the last UBX-MON-HW */
+	uint16_t noisePerMs;
+	uint16_t agcCnt;
+	uint8_t aStatus;
+	uint8_t aPower;
+	uint8_t hwFlags;
+	uint8_t jamInd;
+	uint8_t identValid;			/* UBX-MON-VER was received, ident contains its text */
+	uint8_t monVerRequests;		/* number of UBX-MON-VER requests since the receiver was (re)initialized, limited to GNSS_MONVER_MAX_REQUESTS */
+	uint8_t monStartup;			/* number of poll slots after the initialization which are used for UBX-MON-HW / UBX-MON-VER without waiting */
+	uint8_t ident[GNSS_IDENT_SIZE];	/* identification text, see data_exchange.h */
 
 	/* switching the receiver to full power (initialization, wake up after sleep or dive), see the comment of the state machine in uartProtocol_GNSS.c */
 	uint8_t pwrupWake;			/* the power up follows a wake up (0xFF bytes) of a receiver in power save mode */
@@ -224,6 +251,11 @@ static const uint8_t getPVTData[]={0xB5,0x62,0x01,0x07,0x00,0x00};
 
 static const uint8_t getNavSat[]={0xB5,0x62,0x01,0x35,0x00,0x00};
 
+/* read only polls (UBX-MON-HW, UBX-MON-VER) */
+static const uint8_t getMonHw[]={0xB5,0x62,0x0A,0x09,0x00,0x00};
+
+static const uint8_t getMonVer[]={0xB5,0x62,0x0A,0x04,0x00,0x00};
+
 static const uint8_t setPowerLow[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x02,0x10,0x0E,0x14,0x00,0x00,0x00};
 
 static const uint8_t setPowerNormal[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
@@ -240,6 +272,8 @@ static const uint8_t setPortableType[]={};
 void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart);
 void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS);
 void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
+void GNSS_ParseMonHwData(GNSS_StateHandle *GNSS);
+void GNSS_ParseMonVerData(GNSS_StateHandle *GNSS);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 

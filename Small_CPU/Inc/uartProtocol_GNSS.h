@@ -49,6 +49,8 @@
 		UART_GNSS_SETCONF,		/* save configuration */
 		UART_GNSS_GET_PVT,
 		UART_GNSS_GET_SAT,
+		UART_GNSS_GET_MONHW,
+		UART_GNSS_GET_MONVER,
 		UART_GNSS_WAKE			/* wake up bytes sent or about to be sent to a receiver in power save mode, then waiting for it */
   } uartGnssStatus_t;
 
@@ -85,7 +87,9 @@
 	GNSSCMD_GET_NAV_DATA,
 	GNSSCMD_GET_PVT_DATA,
 	GNSSCMD_GET_POSLLH_DATA,
-	GNSSCMD_GET_NAVSAT_DATA
+	GNSSCMD_GET_NAVSAT_DATA,
+	GNSSCMD_GET_MONHW_DATA,
+	GNSSCMD_GET_MONVER_DATA
   } gnssSensorCmd_t;
 
   typedef struct

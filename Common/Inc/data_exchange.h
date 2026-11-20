@@ -245,6 +245,28 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 
+#define GNSS_MONHW_LEN				(60u)								/* accepted payload length of UBX-MON-HW */
+
+/* Identification text of the receiver, built from UBX-MON-VER: swVersion, hwVersion and the extension strings FWVER=, PROTVER=, MOD= (prefix removed) and the
+ * first extension string with a ';' (the list of supported GNSS, e.g. GPS;GLO;GAL;BDS). Fixed fields: */
+#define GNSS_IDENT_SW_OFFSET		(0u)
+#define GNSS_IDENT_SW_SIZE			(24u)		/* longer software versions are truncated */
+#define GNSS_IDENT_HW_OFFSET		(GNSS_IDENT_SW_OFFSET + GNSS_IDENT_SW_SIZE)
+#define GNSS_IDENT_HW_SIZE			(10u)
+#define GNSS_IDENT_FW_OFFSET		(GNSS_IDENT_HW_OFFSET + GNSS_IDENT_HW_SIZE)
+#define GNSS_IDENT_FW_SIZE			(12u)
+#define GNSS_IDENT_PROTO_OFFSET		(GNSS_IDENT_FW_OFFSET + GNSS_IDENT_FW_SIZE)
+#define GNSS_IDENT_PROTO_SIZE		(8u)
+#define GNSS_IDENT_MOD_OFFSET		(GNSS_IDENT_PROTO_OFFSET + GNSS_IDENT_PROTO_SIZE)
+#define GNSS_IDENT_MOD_SIZE			(14u)
+#define GNSS_IDENT_GNSS_OFFSET		(GNSS_IDENT_MOD_OFFSET + GNSS_IDENT_MOD_SIZE)
+#define GNSS_IDENT_GNSS_SIZE		(20u)
+#define GNSS_IDENT_SIZE				(GNSS_IDENT_GNSS_OFFSET + GNSS_IDENT_GNSS_SIZE)
+#define GNSS_IDENT_CHUNK_SIZE		(4u)
+#define GNSS_IDENT_CHUNKS			(GNSS_IDENT_SIZE / GNSS_IDENT_CHUNK_SIZE)
+_Static_assert((GNSS_IDENT_SIZE % GNSS_IDENT_CHUNK_SIZE) == 0u, "The identification text has to consist of complete chunks");
+_Static_assert(GNSS_IDENT_CHUNKS < 128u, "The chunk number is a 7 bit value");
+
 /* sets the check value of a record: the index is already set in the low bits of byte 0 */
 static inline void GNSS_DebugRecord_Seal(uint8_t rec[GNSS_DEBUG_REC_SIZE])
 {

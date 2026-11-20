@@ -99,6 +99,12 @@ uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 		case GNSSCMD_GET_NAVSAT_DATA: pData = getNavSat;
 									  txLength = sizeof(getNavSat) / sizeof(uint8_t);
 			break;
+		case GNSSCMD_GET_MONHW_DATA: pData = getMonHw;
+									  txLength = sizeof(getMonHw) / sizeof(uint8_t);
+			break;
+		case GNSSCMD_GET_MONVER_DATA: pData = getMonVer;
+									  txLength = sizeof(getMonVer) / sizeof(uint8_t);
+			break;
 		case GNSSCMD_MODE_PWS:		pData = setPowerLow;
 		  	  	  	  	  	  	  	txLength = sizeof(setPowerLow) / sizeof(uint8_t);
 		  	break;
@@ -264,6 +270,10 @@ void uartGnss_Control(void)
 {
 	static uint32_t warmupTick = 0;
 	static uint8_t dataToggle = 0;
+#ifdef GNSS_DEBUG_POLLS
+	static uint8_t monPollCount = 0;
+	static uint8_t monToggle = 0;
+#endif
 	uint8_t activeSensor = 0;
 	sUartComCtrl* pUartCtrl = UART_GetGnssCtrl();
 
@@ -342,6 +352,34 @@ void uartGnss_Control(void)
 									}
 									else
 									{
+										/* Every GNSS_MON_POLL_INTERVAL-th poll (and the first ones after the initialization) is a read only poll of UBX-MON-VER (until it was
+										 * received, at most GNSS_MONVER_MAX_REQUESTS times) or UBX-MON-HW (alternating as long as the version is requested) instead of NAV-SAT / NAV-PVT.
+										 * The answers are about 70 bytes (HW) and about 250 bytes (VER), the same as a NAV-SAT answer with 20 satellites, so a slot is not longer than before. */
+#ifdef GNSS_DEBUG_POLLS
+										monPollCount++;
+										if((GNSS_Handle.monStartup != 0) || (monPollCount >= GNSS_MON_POLL_INTERVAL))
+										{
+											monPollCount = 0;
+											if(GNSS_Handle.monStartup != 0)
+											{
+												GNSS_Handle.monStartup--;
+											}
+											if((!GNSS_Handle.identValid) && (GNSS_Handle.monVerRequests < GNSS_MONVER_MAX_REQUESTS) && (monToggle == 0))
+											{
+												UART_Gnss_SendCmd(GNSSCMD_GET_MONVER_DATA);
+												gnssState = UART_GNSS_GET_MONVER;
+												GNSS_Handle.monVerRequests++;
+											}
+											else
+											{
+												UART_Gnss_SendCmd(GNSSCMD_GET_MONHW_DATA);
+												gnssState = UART_GNSS_GET_MONHW;
+											}
+											monToggle ^= 1u;
+											rxState = GNSSRX_DETECT_HEADER_0;
+										}
+										else
+#endif
 										if(dataToggle)
 										{
 											UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA);
@@ -540,6 +578,12 @@ void uartGnss_ProcessData(uint8_t data)
 															break;
 														case UART_GNSS_GET_SAT: GNSS_ParseNavSatData(&GNSS_Handle);
 															break;
+#ifdef GNSS_DEBUG_POLLS
+														case UART_GNSS_GET_MONHW: GNSS_ParseMonHwData(&GNSS_Handle);
+															break;
+														case UART_GNSS_GET_MONVER: GNSS_ParseMonVerData(&GNSS_Handle);
+															break;
+#endif
 														default:
 															break;
 													}

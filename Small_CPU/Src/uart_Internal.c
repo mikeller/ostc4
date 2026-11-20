@@ -317,7 +317,7 @@ void UART6_HandleUART()
 			retryRequest = 0;
 			timeToTrigger = 1;
 
-			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT))	/* timeout */
+			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT) || (gnssState == UART_GNSS_GET_MONHW) || (gnssState == UART_GNSS_GET_MONVER))	/* timeout */
 			{
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);

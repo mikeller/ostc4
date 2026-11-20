@@ -71,11 +71,16 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->psmState = 0;
 	GNSS->pvtParsed = 0;
 	/* the error counters are kept: they count since the RTE started */
+	GNSS->monHwSeen = 0;
+	GNSS->monHwValid = 0;
+	GNSS->monHwLength = 0;
+	GNSS->monVerRequests = 0;
 	GNSS->verifyBad = 0;
 	GNSS->verifyResend = 0;
 	GNSS->verifyTries = 0;
 	GNSS->verifyGaveUp = 0;
 	GNSS->psmZeroValid = 0;
+	GNSS->monStartup = 2;		/* the first two poll slots after the start are UBX-MON-VER and UBX-MON-HW, the receiver identification is kept: it does not change */
 }
 
 /*!
@@ -380,6 +385,114 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 		}
 		loop++;
 	}
+}
+
+/*!
+ * Parse UBX-MON-HW (class 0x0A, id 0x09) for the debug page. Look at: 32.16.4 u-blox 8 Receiver description. Offsets in the frame: header 6 bytes + payload offset.
+ * Only the 60 byte payload of the description is accepted. For another length (other generations of receivers use other layouts) only the length is
+ * reported, no value is taken from the frame.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseMonHwData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+
+	GNSS->monHwSeen = 1;
+	GNSS->monHwTick = HAL_GetTick();
+	GNSS->monHwLength = (length > 255u) ? 255u : (uint8_t)length;
+	GNSS->monHwValid = 0;
+	if(length == GNSS_MONHW_LEN)
+	{
+		GNSS->noisePerMs = GNSS_Handle.uartWorkingBuffer[6 + 16] | (GNSS_Handle.uartWorkingBuffer[6 + 17] << 8);
+		GNSS->agcCnt = GNSS_Handle.uartWorkingBuffer[6 + 18] | (GNSS_Handle.uartWorkingBuffer[6 + 19] << 8);
+		GNSS->aStatus = GNSS_Handle.uartWorkingBuffer[6 + 20];
+		GNSS->aPower = GNSS_Handle.uartWorkingBuffer[6 + 21];
+		GNSS->hwFlags = GNSS_Handle.uartWorkingBuffer[6 + 22] & 0x1Fu;		/* rtcCalib, safeBoot, jammingState, xtalAbsent */
+		GNSS->jamInd = GNSS_Handle.uartWorkingBuffer[6 + 45];
+		GNSS->monHwValid = 1;
+	}
+}
+
+/* copies a string without prefix into a field of the identification text: at most size - 1 characters, the rest of the field is 0 */
+static void GNSS_CopyIdentField(uint8_t* pField, uint8_t size, const uint8_t* pSrc, uint8_t maxSrc) {
+	uint8_t pos = 0;
+
+	memset(pField, 0, size);
+	while((pos < (size - 1u)) && (pos < maxSrc) && (pSrc[pos] != 0))
+	{
+		pField[pos] = ((pSrc[pos] >= 0x20u) && (pSrc[pos] < 0x7Fu)) ? pSrc[pos] : '?';		/* only printable characters */
+		pos++;
+	}
+}
+
+/* returns 1 if the string starts with the prefix */
+static uint8_t GNSS_HasPrefix(const uint8_t* pStr, const char* pPrefix) {
+	while(*pPrefix != 0)
+	{
+		if(*pStr != (uint8_t)*pPrefix)
+		{
+			return 0;
+		}
+		pStr++;
+		pPrefix++;
+	}
+	return 1;
+}
+
+/*!
+ * Parse UBX-MON-VER (class 0x0A, id 0x04) for the debug page. Look at: 32.16.13 u-blox 8 Receiver description: payload swVersion[30], hwVersion[10], N times
+ * extension[30], all 0 terminated. The text for the main CPU consists of fixed fields (see GNSS_IDENT_*), strings which are longer than their field are truncated
+ * and only the extension strings which are shown are taken: FWVER=, PROTVER=, MOD= (prefix removed) and the first one with a ';' (list of the supported GNSS).
+ * The length of the frame is limited by the receive buffer (see uartGnss_ProcessData), the number of extension strings by the length of the payload.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseMonVerData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	const uint8_t* pPayload = &GNSS_Handle.uartWorkingBuffer[6];
+	uint8_t ext = 0;
+	uint8_t extCount;
+	uint8_t gnssFound = 0;
+	uint8_t newIdent[GNSS_IDENT_SIZE];
+	const uint8_t* pExt;
+
+	if(length < 40u)		/* swVersion and hwVersion are the minimum */
+	{
+		return;
+	}
+	memset(newIdent, 0, sizeof(newIdent));
+	GNSS_CopyIdentField(&newIdent[GNSS_IDENT_SW_OFFSET], GNSS_IDENT_SW_SIZE, &pPayload[0], 30);
+	GNSS_CopyIdentField(&newIdent[GNSS_IDENT_HW_OFFSET], GNSS_IDENT_HW_SIZE, &pPayload[30], 10);
+
+	extCount = (uint8_t)(((length - 40u) / 30u) > 255u ? 255u : ((length - 40u) / 30u));
+	for(ext = 0; ext < extCount; ext++)
+	{
+		pExt = &pPayload[40 + ext * 30];
+		if(GNSS_HasPrefix(pExt, "FWVER="))
+		{
+			GNSS_CopyIdentField(&newIdent[GNSS_IDENT_FW_OFFSET], GNSS_IDENT_FW_SIZE, pExt + 6, 24);
+		}
+		else if(GNSS_HasPrefix(pExt, "PROTVER="))
+		{
+			GNSS_CopyIdentField(&newIdent[GNSS_IDENT_PROTO_OFFSET], GNSS_IDENT_PROTO_SIZE, pExt + 8, 22);
+		}
+		else if(GNSS_HasPrefix(pExt, "MOD="))
+		{
+			GNSS_CopyIdentField(&newIdent[GNSS_IDENT_MOD_OFFSET], GNSS_IDENT_MOD_SIZE, pExt + 4, 26);
+		}
+		else if(!gnssFound)
+		{
+			for(uint8_t pos = 0; (pos < 30) && (pExt[pos] != 0); pos++)
+			{
+				if(pExt[pos] == ';')
+				{
+					GNSS_CopyIdentField(&newIdent[GNSS_IDENT_GNSS_OFFSET], GNSS_IDENT_GNSS_SIZE, pExt, 30);
+					gnssFound = 1;
+					break;
+				}
+			}
+		}
+	}
+	memcpy(GNSS->ident, newIdent, sizeof(newIdent));
+	GNSS->identValid = 1;
 }
 
 void GNSS_ParseNavigatorData(GNSS_StateHandle *GNSS) {
