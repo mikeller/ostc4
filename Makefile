@@ -2,8 +2,8 @@
 
 # Don't build the firmware by setting NO_FIRMWARE
 
-# For the 'install' target
-BUILD_TYPE := firmware
+# For the 'install' target: one of firmware, rte, fontpack, rteonly, fontpackonly, all
+BUILD_TARGET := firmware
 MODEL := "OSTC 4"
 DEVICE := /dev/rfcomm0
 FORCE :=
@@ -54,6 +54,13 @@ bootloader: firmware_binary bootloader_binary packer
 
 endif
 
+# Packages that contain only the RTE or only the fontpack, without the firmware
+fontpackonly: fontpack_binary packer
+	ostc4pack/create_full_update_bin.sh --version --no-rte --no-firmware --only
+
+rteonly: rte_binary packer
+	ostc4pack/create_full_update_bin.sh --version --no-fonts --no-firmware --only
+
 all: firmware_binary fontpack_binary rte_binary packer
 	ostc4pack/create_full_update_bin.sh --version
 
@@ -75,10 +82,10 @@ bootloader_binary: arm_tools_install
 print_version:
 	@ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only
 
-install: $(BUILD_TYPE)
+install: $(BUILD_TARGET)
 	$(eval VERSION := $(shell ostc4pack/create_full_update_bin.sh --version --no-date --print-version-only))
 	$(eval DATE := $(shell date +%Y%m%d))
-	$(eval FILENAME := "Release/OSTC4update_$(BUILD_TYPE)_$(VERSION)_$(DATE).bin")
+	$(eval FILENAME := "Release/OSTC4update_$(BUILD_TARGET)_$(VERSION)_$(DATE).bin")
 	$(FIRMWARE_INSTALLER) --update-firmware --dc-vendor="Heinrichs Weikamp" --dc-product=$(MODEL) --device=$(DEVICE) $(if $(FORCE),--force-update-firmware) --firmware-file=$(FILENAME)
 
 packer:
@@ -103,4 +110,4 @@ test:
 
 include arm_build_tools.mk
 
-.PHONY: firmware fontpack rte bootloader fontpack_library firmware_binary fontpack_binary rte_binary bootloader_binary all install clean print_version packer packer_clean distclean test
+.PHONY: firmware fontpack rte fontpackonly rteonly bootloader fontpack_library firmware_binary fontpack_binary rte_binary bootloader_binary all install clean print_version packer packer_clean distclean test

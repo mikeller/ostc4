@@ -48,6 +48,11 @@ while test $# -gt 0; do
         shift
 
         ;;
+    --only)
+        ONLY=1
+        shift
+
+        ;;
     --no-date)
         NO_DATE=1
         shift
@@ -64,7 +69,7 @@ while test $# -gt 0; do
 
         ;;
     *)
-        echo "Invalid parameter. Usage: create_full_update_bin.sh [--no-fonts] [--no-rte] [--no-firmware] [--no-date] [--version] [--print-version-only] [--do-bootloader]"
+        echo "Invalid parameter. Usage: create_full_update_bin.sh [--no-fonts] [--no-rte] [--no-firmware] [--only] [--no-date] [--version] [--print-version-only] [--do-bootloader]"
         exit 1
 
         ;;
@@ -73,6 +78,12 @@ done
 
 if [ -n "${NO_FONTS:+x}" ] && [ -n "${NO_RTE:+x}" ] && [ -z "${DO_BOOTLOADER:+x}" ]; then
     TYPE="firmware"
+fi
+
+# Mark a package that contains only the RTE or only the fontpack, so that its
+# file name differs from the one of the package that also contains the firmware.
+if [ -n "${ONLY:+x}" ] && [ -n "${NO_FIRMWARE:+x}" ] && { [ "$TYPE" = "rte" ] || [ "$TYPE" = "fontpack" ]; }; then
+    TYPE="${TYPE}only"
 fi
 
 BUILD_PATH=$PROJECT_PATH/RefPrj
