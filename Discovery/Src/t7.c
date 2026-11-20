@@ -4907,6 +4907,31 @@ void t7_refresh_gnss_adc(void)
 #define GNSSACC_COL_RESYNC		(590u)
 #define GNSSACC_COL_NAK			(690u)
 
+/* The UART errors row of page 6 is yellow while the total of the error counts rose within the last GNSSACC_ERR_RECENT_MS, not for ever because of an old non-zero total.
+ * The first look at the counts, and a total which is smaller than before (the RTE was restarted and counts from 0), only set the base. A rise which happened while the
+ * page was not shown is seen at the next look and counts from then. Returns 1 for yellow. */
+#define GNSSACC_ERR_RECENT_MS	(60000u)
+static uint8_t t7_gnssUartErrorsRecent(uint16_t total, uint32_t now)
+{
+    static uint8_t haveBase = 0;
+    static uint16_t base = 0;
+    static uint8_t haveRise = 0;
+    static uint32_t riseTick = 0;
+
+    if((!haveBase) || (total < base))
+    {
+        haveRise = 0;
+    }
+    else if(total > base)
+    {
+        haveRise = 1;
+        riseTick = now;
+    }
+    base = total;
+    haveBase = 1;
+    return haveRise && (time_elapsed_ms(riseTick, now) <= GNSSACC_ERR_RECENT_MS);
+}
+
 void t7_refresh_gnss_accounting(void)
 {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
@@ -4916,7 +4941,7 @@ void t7_refresh_gnss_accounting(void)
     uint16_t y = GNSSDBG_ROW0_Y;
     uint8_t haveDiag = ((pDbg->extraMask & GNSS_EXTRA_MASK_DIAG) == GNSS_EXTRA_MASK_DIAG);
     uint8_t haveIo = ((pDbg->extraMask & GNSS_EXTRA_MASK_IO) == GNSS_EXTRA_MASK_IO);
-    uint8_t anyUartErr = 0;
+    uint16_t uartErrTotal = 0;
 
     t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 6/7");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
@@ -4952,7 +4977,7 @@ void t7_refresh_gnss_accounting(void)
     {
         for(uint8_t i = 0; i < 5u; i++)
         {
-            anyUartErr |= pDbg->uartErrType[i];
+            uartErrTotal += pDbg->uartErrType[i];
         }
         snprintf(text, sizeof(text), "UART errors: parity %u  framing %u  noise %u  overrun %u  DMA %u", pDbg->uartErrType[0], pDbg->uartErrType[1], pDbg->uartErrType[2], pDbg->uartErrType[3],
                  pDbg->uartErrType[4]);
@@ -4961,7 +4986,7 @@ void t7_refresh_gnss_accounting(void)
     {
         snprintf(text, sizeof(text), "UART errors: --");
     }
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, anyUartErr ? CLUT_WarningYellow : CLUT_Font020, text);
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (haveDiag && t7_gnssUartErrorsRecent(uartErrTotal, HAL_GetTick())) ? CLUT_WarningYellow : CLUT_Font020, text);
     y += GNSSDBG_ROW_STEP + 10u;
 
     /* the ports of the receiver (UBX-MON-IO) */
@@ -5001,7 +5026,7 @@ void t7_refresh_gnss_accounting(void)
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Receiver parity/framing/overrun grow: garbage reaches the receiver.");
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "Only the RTE UART errors (since start) grow: the RTE loses bytes.");
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "Problems: since wake up. Lost: timeout, checksum, mismatch, NAK.");
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 3u * GNSSDBG_ROW_STEP, CLUT_Font020, "Resync: junk seen, the poll may still work.");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 3u * GNSSDBG_ROW_STEP, CLUT_Font020, "Resync: junk seen, poll may work. UART errors: yellow 60 s after rise.");
 }
 
 /* Debug page 7: the receive path of the RTE (counted since the RTE started) and the port configuration of the receiver (UBX-CFG-PRT). Rows of font T24 every 34 px, the
