@@ -79,6 +79,7 @@ uint8_t t7_GetEnabled_customviews();
 uint8_t t7_customview_disabled(uint8_t view);
 
 bool t7_isCompassShowing(void);
+bool t7_isPositionViewSelected(void);
 /*
 	 void t7c_refresh(uint32_t FramebufferStartAddress);
 */

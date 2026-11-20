@@ -101,6 +101,25 @@ typedef enum
 	LOCK_UNLOCKED
 } SButtonLock;
 
+#define GNSS_ACQUIRE_TIMEOUT_S		(15u * 60u)	/* an acquire GNSS fix session ends after this time at the latest */
+#define GNSS_ACQUIRE_MAX_HACC_M		(50u)		/* a fix counts if its horizontal accuracy estimate is not worse than this (m) */
+#define GNSS_ACQUIRE_EPH_MIN_SV		(6u)		/* the session is complete if ephemeris is available for this number of satellites (GPS, Galileo, BeiDou, QZSS). A 3D fix needs 4 anyway */
+#define GNSS_ACQUIRE_EPH_HOLD_S		(120u)		/* maximum time to wait for the ephemeris after the first fix. The receiver needs 18 to 36 s per satellite under strong signal conditions */
+#define GNSS_ACQUIRE_RESULT_SHOW_S	(60u)		/* the result of a session is reported for this time */
+
+typedef enum
+{
+	GNSS_ACQUIRE_IDLE = 0,		/* no session or the result is outdated */
+	GNSS_ACQUIRE_ACTIVE,		/* session running: the unit is kept awake */
+	GNSS_ACQUIRE_COMPLETE,		/* result: fix and ephemeris for GNSS_ACQUIRE_EPH_MIN_SV satellites */
+	GNSS_ACQUIRE_FIX_ONLY,		/* result: fix, but the ephemeris is incomplete after GNSS_ACQUIRE_EPH_HOLD_S or the timeout */
+	GNSS_ACQUIRE_POORFIX,		/* result: timeout, there was a fix but it never was accurate enough */
+	GNSS_ACQUIRE_TIMEOUT,		/* result: no fix within GNSS_ACQUIRE_TIMEOUT_S */
+	GNSS_ACQUIRE_CANCELLED,		/* result: stopped by the user */
+	GNSS_ACQUIRE_LOWBATTERY,	/* result: stopped because the battery is low */
+	GNSS_ACQUIRE_ABORTED		/* result: stopped because the unit left surface mode (e.g. dive start) */
+} gnssAcquireState_t;
+
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
@@ -124,6 +143,15 @@ void set_Backlight_Boost(uint8_t level);
 void StoreButtonAction(uint8_t action);
 SButtonLock get_ButtonLock(void);
 void reset_ButtonLock(void);
+
+void gnssAcquire_start(void);
+void gnssAcquire_cancel(void);
+void gnssAcquire_update(void);
+uint8_t gnssAcquire_isActive(void);
+gnssAcquireState_t gnssAcquire_getState(void);
+uint8_t gnssAcquire_isWaitingForEphemeris(void);
+uint8_t gnssAcquire_getEphemerisCount(void);
+uint16_t gnssAcquire_getRemainingS(void);
 
 #ifdef T7_DEBUG_RUNTIME
 uint32_t getMainLoopTime();

@@ -4196,6 +4196,11 @@ bool t7_isCompassShowing(void)
     return selection_customview == CVIEW_Compass || selection_custom_field == LLC_Compass;
 }
 
+bool t7_isPositionViewSelected(void)
+{
+    return selection_customview == CVIEW_Position;
+}
+
 void t7_drawAcentGraph(uint8_t color)
 {
 	point_t start, stop;
