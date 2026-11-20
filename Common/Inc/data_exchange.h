@@ -245,8 +245,9 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       With the debug view (HAVE_DEBUG_VIEW) GNSS_DEBUG_EXTRA_BLOCKS more items follow the text chunks in the same sequence: bits 0..6 of [1] are
  *                       GNSS_DEBUG_EXTRA_BASE + n (bit 7 is not used) and [2..5] are four bytes of the raw read back of UBX-CFG-ANT and UBX-CFG-ITFM:
  *                       n = 0: CFG-ANT flags (low, high byte) and pins (low, high byte); n = 1: CFG-ITFM config, little endian; n = 2: CFG-ITFM config2, little endian;
- *                       n = 3: state of the poll of CFG-ANT, of CFG-ITFM (GNSS_CFGPOLL_*: 0 not polled, 1 polling, 2 answer received, 3 NAK, 4 no answer), the number of
- *                       requests in a row which were not answered, for CFG-ANT and for CFG-ITFM;
+ *                       n = 3: state of the poll of CFG-ANT, of CFG-ITFM (bits 0..6, GNSS_CFGPOLL_*: 0 not polled, 1 polling, 2 answer received, 3 NAK, 4 no answer; bit 7
+ *                       GNSS_CFGPOLL_HAVE: the values were read since the power up, they are kept while a new request is open), the number of requests in a row which
+ *                       were not answered, for CFG-ANT and for CFG-ITFM;
  *                       UBX-MON-HW2 (read only poll of the ADC input): n = 4: ofsI (I1), magI (U1), ofsQ (I1), magQ (U1); n = 5: lowLevCfg, little endian; n = 6: postStatus,
  *                       little endian; n = 7: cfgSource, state of the poll (bits 0..6, GNSS_CFGPOLL_*, bit 7 GNSS_CFGPOLL_HAVE: a reply with the accepted length was received
  *                       since the power up and the values are those of it), number of requests in a row which were not answered, payload length of the last reply;
@@ -441,6 +442,8 @@ typedef struct
 
 	/* read back of UBX-CFG-ANT and UBX-CFG-ITFM (raw values), see the text record */
 	uint8_t cfgAntState;		/* GNSS_CFGPOLL_*: 0 not polled, 1 polling, 2 answer received, 3 NAK, 4 no answer */
+	uint8_t cfgAntHave;			/* the values are those of a reply since the power up */
+	uint8_t cfgItfmHave;
 	uint8_t cfgItfmState;
 	uint8_t cfgAntTries;
 	uint8_t cfgItfmTries;

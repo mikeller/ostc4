@@ -139,8 +139,10 @@ void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS) {
 	GNSS->cfgNav5Valid = 0;
 	GNSS->cfgAntState = GNSS_CFGPOLL_NONE;
 	GNSS->cfgAntTries = 0;
+	GNSS->cfgAntHave = 0;
 	GNSS->cfgItfmState = GNSS_CFGPOLL_NONE;
 	GNSS->cfgItfmTries = 0;
+	GNSS->cfgItfmHave = 0;
 	GNSS->hw2State = GNSS_CFGPOLL_NONE;
 	GNSS->hw2Tries = 0;
 	GNSS->hw2Have = 0;
@@ -266,8 +268,8 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 						memcpy(&rec[2], &GNSS->cfgItfmConfig2, 4);
 						break;
 					case 3:
-						rec[2] = GNSS->cfgAntState;
-						rec[3] = GNSS->cfgItfmState;
+						rec[2] = GNSS->cfgAntState | (GNSS->cfgAntHave ? GNSS_CFGPOLL_HAVE : 0);
+						rec[3] = GNSS->cfgItfmState | (GNSS->cfgItfmHave ? GNSS_CFGPOLL_HAVE : 0);
 						rec[4] = GNSS->cfgAntTries;
 						rec[5] = GNSS->cfgItfmTries;
 						break;
@@ -695,6 +697,7 @@ void GNSS_ParseCfgAntData(GNSS_StateHandle *GNSS) {
 		GNSS->cfgAntPins = GNSS_Handle.uartWorkingBuffer[8] | (GNSS_Handle.uartWorkingBuffer[9] << 8);
 		GNSS->cfgAntState = GNSS_CFGPOLL_OK;
 		GNSS->cfgAntTries = 0;
+		GNSS->cfgAntHave = 1;
 	}
 }
 
@@ -709,6 +712,7 @@ void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS) {
 				| ((uint32_t)GNSS_Handle.uartWorkingBuffer[13] << 24);
 		GNSS->cfgItfmState = GNSS_CFGPOLL_OK;
 		GNSS->cfgItfmTries = 0;
+		GNSS->cfgItfmHave = 1;
 	}
 }
 

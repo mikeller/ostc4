@@ -1518,8 +1518,10 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 						gnssDebugInfo.cfgItfmConfig2 = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
 						break;
 					case 3:
-						gnssDebugInfo.cfgAntState = rec[2];
-						gnssDebugInfo.cfgItfmState = rec[3];
+						gnssDebugInfo.cfgAntState = rec[2] & ~GNSS_CFGPOLL_HAVE;
+						gnssDebugInfo.cfgAntHave = (rec[2] & GNSS_CFGPOLL_HAVE) ? 1u : 0u;
+						gnssDebugInfo.cfgItfmState = rec[3] & ~GNSS_CFGPOLL_HAVE;
+						gnssDebugInfo.cfgItfmHave = (rec[3] & GNSS_CFGPOLL_HAVE) ? 1u : 0u;
 						gnssDebugInfo.cfgAntTries = rec[4];
 						gnssDebugInfo.cfgItfmTries = rec[5];
 						break;

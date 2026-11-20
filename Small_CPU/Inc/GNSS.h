@@ -265,10 +265,12 @@ typedef struct
 	uint8_t cfgDynModel;		/* dynModel of UBX-CFG-NAV5 */
 	uint8_t cfgAntState;		/* GNSS_CFGPOLL_* of UBX-CFG-ANT */
 	uint8_t cfgAntTries;		/* requests in a row which were not answered */
+	uint8_t cfgAntHave;			/* cfgAntFlags and cfgAntPins are those of a reply since the power up (they are kept while a new request is open) */
 	uint16_t cfgAntFlags;		/* raw flags of UBX-CFG-ANT (bit 0 svcs, 1 scd, 2 ocd, 3 pdwnOnSCD, 4 recovery) */
 	uint16_t cfgAntPins;		/* raw pins of UBX-CFG-ANT (bits 0..4 pinSwitch, 5..9 pinSCD, 10..14 pinOCD, bit 15 reconfig) */
 	uint8_t cfgItfmState;		/* GNSS_CFGPOLL_* of UBX-CFG-ITFM */
 	uint8_t cfgItfmTries;
+	uint8_t cfgItfmHave;		/* the same for cfgItfmConfig and cfgItfmConfig2 */
 	uint32_t cfgItfmConfig;		/* raw config of UBX-CFG-ITFM (bits 0..3 bbThreshold, 4..8 cwThreshold, 9..30 algorithmBits, bit 31 enable) */
 	uint32_t cfgItfmConfig2;	/* raw config2 of UBX-CFG-ITFM (bits 0..11 generalBits, 12..13 antSetting, bit 14 enable2) */
 	uint32_t cfgExtraTick;		/* HAL tick of the last periodic request of UBX-CFG-ANT / UBX-CFG-ITFM */
