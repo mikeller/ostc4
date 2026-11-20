@@ -3621,6 +3621,13 @@ void t7_tissues(const SDiveState * pState)
 
 
 
+/* Position of the session line of the position view (progress or result of an acquire GNSS fix session).
+ * It is a line of its own (font T24, 28 px high, ink 23 px) at the place of the third label line. Heights are counted from the bottom of the frame:
+ * - normal display: the line starts 52 px above the Y0 of the value window (83), its ink covers 135..157 px: 55 px clearance to the bars
+ *   (bottom edge 213 px), 30 px to the last known position (ink top 104 px) and 24 px to the longitude of a fix (ink bottom 182 px)
+ * - flipped display: Y1 of the label window (311), ink 289..311 px: 49 px clearance to the bars, 17 px to the longitude (ink ends at 271 px) */
+#define POSITION_SESSION_LINE_OFFSET_Y		(52u)
+
 /* Position of the satellite bars of the position view. A bar is a 20 px brush drawn along a 20 px line, so it is 40 px high:
  * - normal display: start.y = Y0 of the value window (83) + 140 => the bars cover 213..252 px above the bottom of the frame, the ink of the
  *   satellite count (font T42, value line 1) ends at 272 px: 19 px clearance. The x position gives 327..466 px
@@ -3631,6 +3638,51 @@ void t7_tissues(const SDiveState * pState)
 #define POSITION_BARS_OFFSET_Y				(140u)
 #define POSITION_BARS_OFFSET_Y_FLIP			(120u)
 
+/* Text of the session line of the position view. Returns the number of characters written */
+static uint8_t t7_getGnssAcquireText(char* pText, uint8_t size)
+{
+    uint16_t remaining;
+    uint8_t length = 0;
+
+    switch(gnssAcquire_getState())
+    {
+        case GNSS_ACQUIRE_ACTIVE:
+            remaining = gnssAcquire_getRemainingS();
+            if(gnssAcquire_isWaitingForEphemeris())		/* fix OK, waiting for the ephemeris */
+            {
+                length = snprintf(pText, size, "\001\020Fix OK eph %u/%u %u:%02u", gnssAcquire_getEphemerisCount(), GNSS_ACQUIRE_EPH_MIN_SV, remaining / 60, remaining % 60);
+            }
+            else
+            {
+                length = snprintf(pText, size, "\001\020Fix %u:%02u BACK=stop", remaining / 60, remaining % 60);
+            }
+            break;
+        case GNSS_ACQUIRE_COMPLETE:
+            length = snprintf(pText, size, "\001\026Fix + ephemeris OK");
+            break;
+        case GNSS_ACQUIRE_FIX_ONLY:
+            length = snprintf(pText, size, "\001\024Fix, eph %u/%u", gnssAcquire_getEphemerisCount(), GNSS_ACQUIRE_EPH_MIN_SV);
+            break;
+        case GNSS_ACQUIRE_POORFIX:
+            length = snprintf(pText, size, "\001\024Poor fix only");
+            break;
+        case GNSS_ACQUIRE_TIMEOUT:
+            length = snprintf(pText, size, "\001\025No fix, timed out");
+            break;
+        case GNSS_ACQUIRE_LOWBATTERY:
+            length = snprintf(pText, size, "\001\025Low battery");
+            break;
+        case GNSS_ACQUIRE_CANCELLED:
+        case GNSS_ACQUIRE_ABORTED:
+            length = snprintf(pText, size, "\001\020Fix search stopped");
+            break;
+        default:
+            break;
+    }
+    return length;
+}
+
+
 void t7_showPosition(void)
 {
     char text[256+50];
@@ -3638,6 +3690,8 @@ void t7_showPosition(void)
     point_t start, stop;
     uint8_t index = 0;
     uint8_t color = 0;
+    uint16_t sessionY0, sessionY1, sessionLines;
+    uint16_t labelY1 = 0;
     SSettings* pSettings = settingsGetPointer();
     uint8_t gnssAlive = stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE;	/* satellite data is only current while the receiver answers */
 
@@ -3653,6 +3707,7 @@ void t7_showPosition(void)
     {
        	t7cY0free.WindowY0 = t7cH.WindowY0 + 15;
         t7cY0free.WindowY1 = t7cY0free.WindowY0 + 250;
+        labelY1 = t7cY0free.WindowY1;
     }
 
     if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
@@ -3728,7 +3783,26 @@ void t7_showPosition(void)
     	}
     }
 
-
+    /* session line: a line of its own which does not overlap the bars, the window is restored afterwards */
+    if(t7_getGnssAcquireText(text, 50) != 0)
+    {
+    	sessionY0 = t7cY0free.WindowY0;
+    	sessionY1 = t7cY0free.WindowY1;
+    	sessionLines = t7cY0free.WindowNumberOfTextLines;
+    	t7cY0free.WindowNumberOfTextLines = 1;
+    	if(!pSettings->FlipDisplay)
+    	{
+    		t7cY0free.WindowY0 = sessionY0 + POSITION_SESSION_LINE_OFFSET_Y;
+    	}
+    	else
+    	{
+    		t7cY0free.WindowY1 = labelY1;
+    	}
+    	GFX_write_string(&FontT24, &t7cY0free, text, 1);
+    	t7cY0free.WindowY0 = sessionY0;
+    	t7cY0free.WindowY1 = sessionY1;
+    	t7cY0free.WindowNumberOfTextLines = sessionLines;
+    }
 }
 void t7_SummaryOfLeftCorner(void)
 {
