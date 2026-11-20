@@ -252,7 +252,10 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       since the power up and the values are those of it), number of requests in a row which were not answered, payload length of the last reply;
  *                       UBX-NAV-STATUS (read only poll): n = 8: msss (ms since the start or reset of the receiver), little endian; n = 9: ttff (ms), little endian;
  *                       n = 10: gpsFix, flags, fixStat, flags2; n = 11: state of the poll (as for n = 7), number of requests in a row which were not answered, number of
- *                       resets of the receiver detected since the power up (msss smaller than in the reply before), payload length of the last reply
+ *                       resets of the receiver detected since the power up (msss smaller than in the reply before), payload length of the last reply;
+ *                       the counts of lost or disturbed polls and the UART errors: n = 12 .. 16 are four bytes each of a field of GNSS_DEBUG_DIAG_SIZE bytes: the 15 counts
+ *                       pollLost[poll][cause] (poll 0 UBX-NAV-PVT, 1 UBX-NAV-SAT, 2 UBX-MON-HW, cause GNSS_CAUSE_*, index poll * 5 + cause) since the wake up, then the
+ *                       5 UART error counts (GNSS_UARTERR_*: parity, framing, noise, overrun, DMA) since the RTE started, all saturating at 255
  * record 13 (power): [1] powerSetupValue read back from UBX-CFG-PMS (0 full power, 1 balanced, 2 interval, 3..5 aggressive, 0xFF no predefined setup), [2] mask of the
  *                       GNSS which are enabled in UBX-CFG-GNSS (bit = gnssId), [3] dynModel of UBX-CFG-NAV5, [4] seconds since the last UBX-NAV-PVT with psmState 0
  *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
@@ -295,7 +298,8 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_CFGPOLL_HAVE			(0x80u)								/* flag in the transmitted state: a reply was received since the power up, the values are valid */
 #define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
 #ifdef HAVE_DEBUG_VIEW
-#define GNSS_DEBUG_EXTRA_BLOCKS		(12u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS */
+#define GNSS_DEBUG_EXTRA_BLOCKS		(17u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, the counts of lost polls */
+#define GNSS_DEBUG_DIAG_SIZE		(20u)								/* bytes of the counts of lost polls (3 * 5) and UART errors (5), sent in five items */
 #else
 #define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
 #endif
@@ -465,6 +469,11 @@ typedef struct
 	uint32_t ttff;				/* ms */
 	uint32_t msss;				/* ms since the start or reset of the receiver */
 	uint8_t resetCount;			/* resets of the receiver detected since the power up */
+
+	/* lost or disturbed polls since the wake up by poll (UBX-NAV-PVT, UBX-NAV-SAT, UBX-MON-HW) and cause (timeout, checksum, mismatch, resync, NAK), UART errors by type
+	 * (parity, framing, noise, overrun, DMA) since the RTE started, see the text record */
+	uint8_t pollLost[3][5];
+	uint8_t uartErrType[5];
 } SGnssDebugInfo;
 
 typedef struct

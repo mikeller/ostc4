@@ -82,6 +82,10 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->psmZeroValid = 0;
 	memset(GNSS->pollSent, 0, sizeof(GNSS->pollSent));
 	memset(GNSS->pollAnswered, 0, sizeof(GNSS->pollAnswered));
+#ifdef GNSS_DEBUG_POLLS
+	memset(GNSS->pollLost, 0, sizeof(GNSS->pollLost));
+	GNSS->pollAnomaly = 0;
+#endif
 	GNSS->cfgReadPending = 0;
 #ifdef GNSS_DEBUG_POLLS
 	GNSS_ResetReadOnlyPolls(GNSS);
@@ -290,11 +294,20 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 						rec[4] = GNSS->statusFixStat;
 						rec[5] = GNSS->statusFlags2;
 						break;
-					default:
+					case 11:
 						rec[2] = GNSS->statusState | (GNSS->statusHave ? GNSS_CFGPOLL_HAVE : 0);
 						rec[3] = GNSS->statusTries;
 						rec[4] = GNSS->resetCount;
 						rec[5] = GNSS->statusLength;
+						break;
+					default:	/* 12..16: the counts of the lost polls by cause (15 bytes), then the UART error types (5 bytes), four bytes per item */
+						{
+							uint8_t diag[GNSS_DEBUG_DIAG_SIZE];
+
+							memcpy(diag, GNSS->pollLost, 3u * GNSS_CAUSE_CNT);
+							memcpy(&diag[3u * GNSS_CAUSE_CNT], GNSS->uartErrType, GNSS_UARTERR_CNT);
+							memcpy(&rec[2], &diag[4u * (uint8_t)(textChunk - GNSS_IDENT_CHUNKS - 12u)], 4);
+						}
 						break;
 				}
 			}
@@ -570,6 +583,12 @@ void GNSS_ParseMonHwData(GNSS_StateHandle *GNSS) {
 	GNSS->monHwTick = HAL_GetTick();
 	GNSS->monHwLength = (length > 255u) ? 255u : (uint8_t)length;
 	GNSS->monHwValid = 0;
+#ifdef GNSS_DEBUG_POLLS
+	if(length != GNSS_MONHW_LEN)
+	{
+		GNSS_NotePollCause(GNSS, GNSS_POLL_MONHW, GNSS_CAUSE_MISMATCH);
+	}
+#endif
 	if(length == GNSS_MONHW_LEN)
 	{
 		GNSS->noisePerMs = GNSS_Handle.uartWorkingBuffer[6 + 16] | (GNSS_Handle.uartWorkingBuffer[6 + 17] << 8);
@@ -730,6 +749,55 @@ void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll) {
 		}
 	}
 	GNSS->pollSent[poll]++;
+#ifdef GNSS_DEBUG_POLLS
+	GNSS->pollAnomaly = 0;
+#endif
+}
+
+/*!
+ * Counts a lost or disturbed poll by its cause (GNSS_CAUSE_*), for the debug page. Not for the time out: see GNSS_NotePollTimeout.
+ * @param GNSS Pointer to main GNSS structure.
+ * @param poll GNSS_POLL_PVT, GNSS_POLL_SAT or GNSS_POLL_MONHW.
+ * @param cause GNSS_CAUSE_*.
+ */
+void GNSS_NotePollCause(GNSS_StateHandle *GNSS, uint8_t poll, uint8_t cause) {
+	if((poll < 3u) && (cause < GNSS_CAUSE_CNT))
+	{
+		if(GNSS->pollLost[poll][cause] < 255u)
+		{
+			GNSS->pollLost[poll][cause]++;
+		}
+		GNSS->pollAnomaly = 1;
+	}
+}
+
+/*!
+ * The poll slot ended without a reply: counted as a time out if nothing else was noted for the request (a checksum error or another message is the cause then).
+ * @param GNSS Pointer to main GNSS structure.
+ * @param poll GNSS_POLL_PVT, GNSS_POLL_SAT or GNSS_POLL_MONHW.
+ */
+void GNSS_NotePollTimeout(GNSS_StateHandle *GNSS, uint8_t poll) {
+	if((poll < 3u) && (!GNSS->pollAnomaly) && (GNSS->pollLost[poll][GNSS_CAUSE_TIMEOUT] < 255u))
+	{
+		GNSS->pollLost[poll][GNSS_CAUSE_TIMEOUT]++;
+	}
+}
+
+/*!
+ * Counts the types of a UART error: the flags of the error code of the HAL (HAL_UART_ERROR_PE 0x01, NE 0x02, FE 0x04, ORE 0x08, DMA 0x10).
+ * @param GNSS Pointer to main GNSS structure.
+ * @param errorCode Error code of the UART handle.
+ */
+void GNSS_NoteUartError(GNSS_StateHandle *GNSS, uint32_t errorCode) {
+	static const uint8_t flag[GNSS_UARTERR_CNT] = { 0x01u, 0x04u, 0x02u, 0x08u, 0x10u };		/* in the order of GNSS_UARTERR_* */
+
+	for(uint8_t i = 0; i < GNSS_UARTERR_CNT; i++)
+	{
+		if((errorCode & flag[i]) && (GNSS->uartErrType[i] < 255u))
+		{
+			GNSS->uartErrType[i]++;
+		}
+	}
 }
 
 void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll) {

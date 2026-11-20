@@ -161,6 +161,12 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 	{
 		GNSS_Handle.uartErrors++;
 	}
+#ifdef GNSS_DEBUG_POLLS
+	if(huart == &huart6)
+	{
+		GNSS_NoteUartError(&GNSS_Handle, HAL_UART_GetError(huart));
+	}
+#endif
 }
 
 /* Control of the internal receiver, called from the main loops of the RTE. Besides the cyclic polls (see uartGnss_Control) it runs the wake up of a receiver
@@ -214,6 +220,10 @@ void UART6_HandleUART()
 			GNSS_Handle.psmZeroValid = 0;
 			memset(GNSS_Handle.pollSent, 0, sizeof(GNSS_Handle.pollSent));		/* the poll counters count since the wake up */
 			memset(GNSS_Handle.pollAnswered, 0, sizeof(GNSS_Handle.pollAnswered));
+#ifdef GNSS_DEBUG_POLLS
+			memset(GNSS_Handle.pollLost, 0, sizeof(GNSS_Handle.pollLost));
+			GNSS_Handle.pollAnomaly = 0;
+#endif
 			lastRequestTick = tick;
 			gnssState = UART_GNSS_WAKE;
 			uartGnss_SetState(gnssState);
@@ -324,6 +334,9 @@ void UART6_HandleUART()
 				(gnssState == UART_GNSS_GET_CFGANT) || (gnssState == UART_GNSS_GET_CFGITFM) || (gnssState == UART_GNSS_GET_MONHW2) ||
 				(gnssState == UART_GNSS_GET_NAVSTATUS))	/* timeout */
 			{
+#ifdef GNSS_DEBUG_POLLS
+				uartGnss_NoteTimeout(gnssState);
+#endif
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);
 			}

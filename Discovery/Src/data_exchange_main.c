@@ -1554,12 +1554,27 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 						gnssDebugInfo.statusFixStat = rec[4];
 						gnssDebugInfo.statusFlags2 = rec[5];
 						break;
-					default:
+					case 11:
 						gnssDebugInfo.statusState = rec[2] & ~GNSS_CFGPOLL_HAVE;
 						gnssDebugInfo.statusHave = (rec[2] & GNSS_CFGPOLL_HAVE) ? 1u : 0u;
 						gnssDebugInfo.statusTries = rec[3];
 						gnssDebugInfo.resetCount = rec[4];
 						gnssDebugInfo.statusLength = rec[5];
+						break;
+					default:		/* 12 .. 16: four bytes of the counts of lost polls (15) and of the UART error types (5) */
+						for(uint8_t pos = 0; pos < 4; pos++)
+						{
+							uint8_t idx = (uint8_t)(4u * (chunk - GNSS_DEBUG_EXTRA_BASE - 12u) + pos);
+
+							if(idx < 15u)
+							{
+								gnssDebugInfo.pollLost[idx / 5u][idx % 5u] = rec[2 + pos];
+							}
+							else if(idx < GNSS_DEBUG_DIAG_SIZE)
+							{
+								gnssDebugInfo.uartErrType[idx - 15u] = rec[2 + pos];
+							}
+						}
 						break;
 				}
 				gnssDebugInfo.extraMask |= (1uL << (chunk - GNSS_DEBUG_EXTRA_BASE));

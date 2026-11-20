@@ -39,6 +39,9 @@ static uint8_t GnssConnected = 0;						/* Binary indicator if a sensor is connec
 static uint16_t writeIndex = 0;
 static uint16_t dataToRead = 0;
 static uint8_t ReqPowerDown = 0;
+#ifdef GNSS_DEBUG_POLLS
+static uint8_t rxHunting = 0;		/* bytes which are not the start of a frame were seen and counted since the last start of a frame */
+#endif
 
 void uartGnss_ReqPowerDown(uint8_t request)
 {
@@ -194,6 +197,9 @@ uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 	{
 		activeRequest.class = pData[2];
 		activeRequest.id = pData[3];
+#ifdef GNSS_DEBUG_POLLS
+		rxHunting = 0;
+#endif
 		sent = UART_SendCmdUbx(pData, txLength);
 	}
 	return sent;
@@ -277,6 +283,48 @@ static uint8_t uartGnss_VerifyPower(void)
 	}
 	return 1;
 }
+
+/* Counting of the lost or disturbed cyclic polls by cause for the debug page (GNSS_CAUSE_*): the poll of the current state, if it is one of the three cyclic ones */
+#ifdef GNSS_DEBUG_POLLS
+static uint8_t uartGnss_PollIndex(uartGnssStatus_t state)
+{
+	if(state == UART_GNSS_GET_PVT)
+	{
+		return GNSS_POLL_PVT;
+	}
+	if(state == UART_GNSS_GET_SAT)
+	{
+		return GNSS_POLL_SAT;
+	}
+	if(state == UART_GNSS_GET_MONHW)
+	{
+		return GNSS_POLL_MONHW;
+	}
+	return 0xFFu;
+}
+
+static void uartGnss_NoteCause(uint8_t cause)
+{
+	uint8_t poll = uartGnss_PollIndex(gnssState);
+
+	if(poll != 0xFFu)
+	{
+		GNSS_NotePollCause(&GNSS_Handle, poll, cause);
+	}
+}
+
+void uartGnss_NoteTimeout(uartGnssStatus_t state)
+{
+	uint8_t poll = uartGnss_PollIndex(state);
+
+	if(poll != 0xFFu)
+	{
+		GNSS_NotePollTimeout(&GNSS_Handle, poll);
+	}
+}
+#else
+#define uartGnss_NoteCause(cause)	((void)0)
+#endif
 
 /* The periodic read only polls (debug view): the state of each poll (GNSS_CFGPOLL_*) and the number of requests in a row which were not answered are kept in
  * GNSS_Handle. A request which was not answered is tried again after its period, at most GNSS_CFGEXTRA_MAX_TRIES times in a row, a rejected request (UBX-ACK-NAK)
@@ -599,7 +647,17 @@ void uartGnss_ProcessData(uint8_t data)
 											rxState++;
 											ck_A = 0;
 											ck_B = 0;
+#ifdef GNSS_DEBUG_POLLS
+											rxHunting = 0;
+#endif
 										}
+#ifdef GNSS_DEBUG_POLLS
+										else if((rxState == GNSSRX_DETECT_HEADER_0) && (!rxHunting))
+										{
+											rxHunting = 1;		/* once per gap of bytes which are not the start of a frame */
+											uartGnss_NoteCause(GNSS_CAUSE_RESYNC);
+										}
+#endif
 			break;
 		case GNSSRX_DETECT_ACK_1:
 		case GNSSRX_DETECT_HEADER_1:	if(data == 0x62)
@@ -608,6 +666,10 @@ void uartGnss_ProcessData(uint8_t data)
 			 	 	 	 	 	 	 	}
 										else
 										{
+											if(rxState == GNSSRX_DETECT_HEADER_1)
+											{
+												uartGnss_NoteCause(GNSS_CAUSE_RESYNC);		/* the start byte was not followed by the second one */
+											}
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;
@@ -683,6 +745,7 @@ void uartGnss_ProcessData(uint8_t data)
 												{
 													GNSS_Handle.pwrupNak = 1;		/* the power up sequence is repeated */
 												}
+												uartGnss_NoteCause(GNSS_CAUSE_NAK);
 #ifdef GNSS_DEBUG_POLLS
 												if(uartGnss_IsPollState(gnssState))		/* the receiver does not support the message: the poll is over */
 												{
@@ -711,6 +774,7 @@ void uartGnss_ProcessData(uint8_t data)
 #endif
 										else
 										{
+											uartGnss_NoteCause(GNSS_CAUSE_MISMATCH);		/* another class than the one of the request */
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;
@@ -720,6 +784,7 @@ void uartGnss_ProcessData(uint8_t data)
  	 	 								}
 										else
 										{
+											uartGnss_NoteCause(GNSS_CAUSE_MISMATCH);		/* another message of the class of the request */
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 				break;
@@ -729,6 +794,7 @@ void uartGnss_ProcessData(uint8_t data)
 			case GNSSRX_DETECT_LENGTH_1:    rxLength += (GNSS_Handle.uartWorkingBuffer[5] << 8);
 											if((6u + (uint32_t)rxLength + 2u) > sizeof(GNSS_Handle.uartWorkingBuffer))	/* frame (header, payload, checksum) does not fit into the buffer => reject it */
 											{
+												uartGnss_NoteCause(GNSS_CAUSE_MISMATCH);
 												rxState = GNSSRX_DETECT_HEADER_0;
 												gnssState = UART_GNSS_IDLE;
 											}
@@ -789,6 +855,10 @@ void uartGnss_ProcessData(uint8_t data)
 														default:
 															break;
 													}
+												}
+												else
+												{
+													uartGnss_NoteCause(GNSS_CAUSE_CHECKSUM);
 												}
 												rxState = GNSSRX_DETECT_HEADER_0;
 												gnssState = UART_GNSS_IDLE;

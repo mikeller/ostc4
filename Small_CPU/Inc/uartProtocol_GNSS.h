@@ -116,6 +116,7 @@ void uartGnss_ReqPowerDown(uint8_t request);
 uint8_t uartGnss_isPowerDownRequested(void);
 uartGnssStatus_t uartGnss_GetState(void);
 void uartGnss_SetState(uartGnssStatus_t newState);
+void uartGnss_NoteTimeout(uartGnssStatus_t state);
 void uartGnss_Control(void);
 void uartGnss_ProcessData(uint8_t data);
 uint8_t uartGnss_isSensorConnected();

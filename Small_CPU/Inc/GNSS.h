@@ -84,6 +84,20 @@ union i_Long
 #define GNSS_POLL_PVT				(0u)
 #define GNSS_POLL_SAT				(1u)
 #define GNSS_POLL_MONHW				(2u)
+/* Causes of a poll which is lost or disturbed, counted per poll (UBX-NAV-PVT, UBX-NAV-SAT, UBX-MON-HW, see pollLost): */
+#define GNSS_CAUSE_TIMEOUT			(0u)		/* nothing recognisable was received before the end of the poll slot (no other cause was noted for the request) */
+#define GNSS_CAUSE_CHECKSUM			(1u)		/* a frame of the expected message with a wrong checksum */
+#define GNSS_CAUSE_MISMATCH			(2u)		/* another message than the expected one, a length which does not fit the buffer, or a reply with another length than the accepted one */
+#define GNSS_CAUSE_RESYNC			(3u)		/* bytes which are not the start of a frame (once per gap), or a start byte which is not followed by the second one */
+#define GNSS_CAUSE_NAK				(4u)		/* the receiver rejected the request (UBX-ACK-NAK) */
+#define GNSS_CAUSE_CNT				(5u)
+/* Types of UART errors of the receiver port (HAL_UART_ErrorCallback), see uartErrType: */
+#define GNSS_UARTERR_PARITY			(0u)
+#define GNSS_UARTERR_FRAMING		(1u)
+#define GNSS_UARTERR_NOISE			(2u)
+#define GNSS_UARTERR_OVERRUN		(3u)
+#define GNSS_UARTERR_DMA			(4u)
+#define GNSS_UARTERR_CNT			(5u)
 #define GNSS_CFGREAD_PMS			(0x01u)
 #define GNSS_CFGREAD_GNSS			(0x02u)
 #define GNSS_CFGREAD_NAV5			(0x04u)
@@ -214,6 +228,9 @@ typedef struct
 	 * the sent counters reaches 255, which keeps the ratio */
 	uint8_t pollSent[3];		/* requests which were transmitted */
 	uint8_t pollAnswered[3];	/* requests which were answered with a valid frame */
+	uint8_t pollLost[3][GNSS_CAUSE_CNT];	/* per poll and cause (GNSS_CAUSE_*) the lost or disturbed polls since the wake up (saturating at 255, not halved) */
+	uint8_t pollAnomaly;		/* a cause other than the time out was noted for the current request */
+	uint8_t uartErrType[GNSS_UARTERR_CNT];	/* UART errors of the receiver port by type (GNSS_UARTERR_*) since the RTE started (saturating at 255), uartErrors counts the callbacks */
 
 	/* read back of the configuration after the power up (debug page, read only polls), see GNSS_ParseCfg... */
 	uint8_t cfgReadPending;		/* bit mask GNSS_CFGREAD_*: the configuration messages which are polled next, one per poll slot */
@@ -386,6 +403,9 @@ void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS);
 uint8_t GNSS_DebugScheduleRecord(uint8_t slot);
 void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll);
+void GNSS_NotePollCause(GNSS_StateHandle *GNSS, uint8_t poll, uint8_t cause);
+void GNSS_NotePollTimeout(GNSS_StateHandle *GNSS, uint8_t poll);
+void GNSS_NoteUartError(GNSS_StateHandle *GNSS, uint32_t errorCode);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 
