@@ -3621,6 +3621,16 @@ void t7_tissues(const SDiveState * pState)
 
 
 
+/* Position of the satellite bars of the position view. A bar is a 20 px brush drawn along a 20 px line, so it is 40 px high:
+ * - normal display: start.y = Y0 of the value window (83) + 140 => the bars cover 213..252 px above the bottom of the frame, the ink of the
+ *   satellite count (font T42, value line 1) ends at 272 px: 19 px clearance. The x position gives 327..466 px
+ * - flipped display: start.y = Y1 of the value window (370) - 120 => the bars cover 200..239 px (viewed from the flipped side, the rows
+ *   are counted from the top), the ink of the count ends at 181 px: 18 px clearance. The drawing function mirrors x like in the normal case.
+ *   A previous version used a negative start.y for the flipped display, which only worked because it wrapped around in gfx_brush */
+#define POSITION_BARS_OFFSET_X				(85u)
+#define POSITION_BARS_OFFSET_Y				(140u)
+#define POSITION_BARS_OFFSET_Y_FLIP			(120u)
+
 void t7_showPosition(void)
 {
     char text[256+50];
@@ -3687,20 +3697,18 @@ void t7_showPosition(void)
 
     if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))	/* draw status bars */
     {
-    	 if(!pSettings->FlipDisplay)
-    	 {
-    	    	start.x = t7cY0free.WindowX0 + 85;
-    	    	stop.x = start.x;
-    	    	start.y = t7cY0free.WindowY0 + 75;
-    	    	stop.y = start.y + 20;
-    	 }
-    	 else
-    	 {
-			start.x = t7cY0free.WindowX0 - 50;
-			stop.x = start.x;
-			start.y = t7cY0free.WindowY0 - 75;
-			stop.y = start.y - 20;
-    	 }
+    	/* the x position is the same for both orientations: the drawing functions mirror it for the flipped display */
+    	start.x = t7cY0free.WindowX0 + POSITION_BARS_OFFSET_X;
+    	stop.x = start.x;
+    	if(!pSettings->FlipDisplay)
+    	{
+    		start.y = t7cY0free.WindowY0 + POSITION_BARS_OFFSET_Y;
+    	}
+    	else
+    	{
+    		start.y = t7cY0free.WindowY1 - POSITION_BARS_OFFSET_Y_FLIP;
+    	}
+    	stop.y = start.y + 20;
 
     	while((gnssAlive) && (index < stateUsed->lifeData.gnssData.numSat) && (index < 4))	/* no bars for outdated data */
     	{
