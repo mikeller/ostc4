@@ -153,19 +153,34 @@ void MX_USART6_UART_Init(void) {
 	MX_USART6_DMA_Init();
 }
 
+/* Control of the internal receiver, called from the main loops of the RTE. Besides the cyclic polls (see uartGnss_Control) it runs the wake up of a receiver
+ * which was put into power save mode before sleep or a dive (state INACTIVE) and keeps its states from blocking:
+ *
+ *   INACTIVE --(no power down requested)--> WAKE: transmit the wake up bytes 0xFF 0xFF (only if the transmitter is idle, else try again at the next call)
+ *   WAKE     --(GNSS_WAKE_WAIT_MS later: the receiver needs about half a second)--> PWRUP
+ *   PWRUP    : uartGnss_Control transmits the full power command (UBX-CFG-PMS), again if the transmitter was busy; the acknowledge is evaluated in
+ *              uartGnss_ProcessData and ends the state with IDLE. Without acknowledge after GNSS_PWRUP_ACK_TIMEOUT_MS or with a rejection (NAK) the sequence is
+ *              repeated (WAKE again after a wake up, only the command after the initialization), at most GNSS_WAKE_MAX_RETRIES times, then the state is left
+ *              with IDLE and wakeFailed is set (the power state check after the wake up, see uartGnss_Control, may try again)
+ *   WAKE, PWRUP --(power down requested, e.g. the dive starts or the unit goes to sleep)--> IDLE: the power down command is sent from there, this has priority
+ *
+ * The receiver is only woken by the bytes, never by the time out of the cyclic polls; the INACTIVE state is entered only by the power down sequence. */
 void UART6_HandleUART()
 {
 	static uint8_t retryRequest = 0;
 	static uint32_t lastRequestTick = 0;
 	static uint32_t TriggerTick = 0;
 	static uint16_t timeToTrigger = 0;
+	static uint32_t wakeTick = 0;
+	static uint32_t txWaitTick = 0;
+	static uint8_t waitingForTx = 0;
 	uint32_t tick =  HAL_GetTick();
 
 	uartGnssStatus_t gnssState = uartGnss_GetState();
 
 	if(Uart6Ctrl.pHandle != 0)
 	{
-		if((gnssState != UART_GNSS_INIT) && (gnssState != UART_GNSS_PWRUP))
+		if(gnssState != UART_GNSS_INIT)		/* also in WAKE and PWRUP: the acknowledge of the full power command is evaluated */
 		{
 			UART_ReadData(SENSOR_GNSS, 0);
 			UART_WriteData(&Uart6Ctrl);
@@ -177,15 +192,99 @@ void UART6_HandleUART()
 			timeToTrigger = 1;
 			retryRequest = 0;
 		}
-		else if((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested()))		/* send dummy bytes to wakeup receiver */
+		else if((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested()))		/* start the wake up of the receiver */
 		{
-			txBufferUart6[0] = 0xFF;
-			txBufferUart6[1] = 0xFF;
-			HAL_UART_Transmit_DMA(Uart6Ctrl.pHandle, Uart6Ctrl.pTxBuffer,2);
-			timeToTrigger = 500;						/* receiver needs 500ms for wakeup */
+			GNSS_Handle.pwrupWake = 1;
+			GNSS_Handle.pwrupSent = 0;
+			GNSS_Handle.pwrupNak = 0;
+			GNSS_Handle.wakeSent = 0;
+			GNSS_Handle.wakeTries = 0;
+			GNSS_Handle.wakeFailed = 0;
 			lastRequestTick = tick;
-			gnssState = UART_GNSS_PWRUP;
+			gnssState = UART_GNSS_WAKE;
 			uartGnss_SetState(gnssState);
+		}
+		else if(gnssState == UART_GNSS_WAKE)
+		{
+			if(uartGnss_isPowerDownRequested())
+			{
+				gnssState = UART_GNSS_IDLE;
+				uartGnss_SetState(gnssState);
+			}
+			else if(!GNSS_Handle.wakeSent)
+			{
+				if(!waitingForTx)
+				{
+					waitingForTx = 1;
+					txWaitTick = tick;
+				}
+				if(UART_isTxIdle(&Uart6Ctrl))		/* the buffer of a transmission which is still running is not overwritten */
+				{
+					txBufferUart6[0] = 0xFF;
+					txBufferUart6[1] = 0xFF;
+					if(HAL_OK == HAL_UART_Transmit_DMA(Uart6Ctrl.pHandle, Uart6Ctrl.pTxBuffer,2))
+					{
+						GNSS_Handle.wakeSent = 1;
+						wakeTick = tick;
+						waitingForTx = 0;
+					}
+				}
+				else if(time_elapsed_ms(txWaitTick, tick) > GNSS_WAKE_TX_TIMEOUT_MS)		/* the transmitter does not get idle: do not wait for ever */
+				{
+					waitingForTx = 0;
+					GNSS_Handle.wakeFailed = 1;
+					gnssState = UART_GNSS_IDLE;
+					uartGnss_SetState(gnssState);
+				}
+			}
+			else if(time_elapsed_ms(wakeTick, tick) >= GNSS_WAKE_WAIT_MS)		/* the receiver is ready for the command */
+			{
+				GNSS_Handle.wakeSent = 0;
+				GNSS_Handle.pwrupSent = 0;
+				GNSS_Handle.pwrupNak = 0;
+				lastRequestTick = tick;
+				TriggerTick = tick;
+				timeToTrigger = 1;
+				gnssState = UART_GNSS_PWRUP;
+				uartGnss_SetState(gnssState);
+			}
+		}
+		else if(gnssState == UART_GNSS_PWRUP)
+		{
+			if(uartGnss_isPowerDownRequested())
+			{
+				gnssState = UART_GNSS_IDLE;
+				uartGnss_SetState(gnssState);
+			}
+			else if(!GNSS_Handle.pwrupSent)		/* the command was not transmitted yet (transmitter busy): the control repeats it */
+			{
+				if(timeToTrigger == 0)		/* (a new trigger with every call would postpone the control for ever) */
+				{
+					TriggerTick = tick;
+					timeToTrigger = 1;
+				}
+			}
+			else if(GNSS_Handle.pwrupNak || (time_elapsed_ms(GNSS_Handle.pwrupSendTick, tick) > GNSS_PWRUP_ACK_TIMEOUT_MS))		/* rejected or not acknowledged */
+			{
+				GNSS_Handle.pwrupNak = 0;
+				GNSS_Handle.pwrupSent = 0;
+				if(GNSS_Handle.wakeTries < GNSS_WAKE_MAX_RETRIES)
+				{
+					GNSS_Handle.wakeTries++;
+					if(GNSS_Handle.pwrupWake)
+					{
+						GNSS_Handle.wakeSent = 0;
+						gnssState = UART_GNSS_WAKE;		/* wake up bytes, wait, command */
+						uartGnss_SetState(gnssState);
+					}
+				}
+				else
+				{
+					GNSS_Handle.wakeFailed = 1;
+					gnssState = UART_GNSS_IDLE;
+					uartGnss_SetState(gnssState);
+				}
+			}
 		}
 		else if(((retryRequest == 0)		/* timeout or error */
 				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE) && (gnssState != UART_GNSS_PWRUP))	/* retry if no answer after half request interval */
@@ -206,7 +305,7 @@ void UART6_HandleUART()
 			retryRequest = 0;
 			timeToTrigger = 1;
 
-			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT) || (gnssState == UART_GNSS_PWRUP))	/* timeout */
+			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT))	/* timeout */
 			{
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);

@@ -62,10 +62,12 @@ void uartGnss_SetState(uartGnssStatus_t newState)
 	gnssState = newState;
 }
 
-void UART_Gnss_SendCmd(uint8_t GnssCmd)
+/* Returns 1 if the command is being transmitted, 0 if it was not (nothing to send or the transmitter is still busy) */
+uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 {
 	const uint8_t* pData;
 	uint8_t txLength = 0;
+	uint8_t sent = 0;
 	RTC_TimeTypeDef time;
 	RTC_DateTypeDef date;
 
@@ -163,8 +165,33 @@ void UART_Gnss_SendCmd(uint8_t GnssCmd)
 	{
 		activeRequest.class = pData[2];
 		activeRequest.id = pData[3];
-		UART_SendCmdUbx(pData, txLength);
+		sent = UART_SendCmdUbx(pData, txLength);
 	}
+	return sent;
+}
+
+/* Sends the command for full power (UBX-CFG-PMS). If the transmitter is busy nothing happens, the next call of the control repeats it. The acknowledge is
+ * evaluated by uartGnss_ProcessData (gnssState PWRUP) */
+static void uartGnss_SendFullPower(void)
+{
+	if(UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL))
+	{
+		GNSS_Handle.pwrupSent = 1;
+		GNSS_Handle.pwrupNak = 0;
+		GNSS_Handle.pwrupSendTick = HAL_GetTick();
+		rxState = GNSSRX_DETECT_ACK_0;
+	}
+}
+
+/* The initialization continues with the full power command which is sent at once; the sequence of a wake up is started in UART6_HandleUART */
+static void uartGnss_StartPowerUpAfterInit(void)
+{
+	GNSS_Handle.pwrupWake = 0;
+	GNSS_Handle.pwrupSent = 0;
+	GNSS_Handle.wakeTries = 0;
+	GNSS_Handle.wakeFailed = 0;
+	gnssState = UART_GNSS_PWRUP;
+	uartGnss_SendFullPower();
 }
 
 void uartGnss_Control(void)
@@ -221,9 +248,16 @@ void uartGnss_Control(void)
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
 
-		case UART_GNSS_PWRUP:		UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
-									rxState = GNSSRX_DETECT_ACK_0;
-									gnssState = UART_GNSS_PWRUP;
+		case UART_GNSS_PWRUP:		if(pUartCtrl == &Uart1Ctrl)		/* external receiver: sent with every call as before */
+									{
+										UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
+										rxState = GNSSRX_DETECT_ACK_0;
+										gnssState = UART_GNSS_PWRUP;
+									}
+									else if(!GNSS_Handle.pwrupSent)
+									{
+										uartGnss_SendFullPower();
+									}
 				break;
 		case UART_GNSS_SETCONF:		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
 									rxState = GNSSRX_DETECT_ACK_0;
@@ -328,7 +362,9 @@ void uartGnss_ProcessData(uint8_t data)
 											rxState = GNSSRX_READY;
 											switch(gnssState)
 											{
-												case UART_GNSS_PWRUP: gnssState = UART_GNSS_IDLE;
+												case UART_GNSS_PWRUP: gnssState = UART_GNSS_IDLE;		/* the receiver accepted the full power command */
+																	  GNSS_Handle.pwrupSent = 0;
+																	  GNSS_Handle.wakeFailed = 0;
 													break;
 												case UART_GNSS_PWRDOWN:	rxState = GNSSRX_DETECT_ACK_0;
 																		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
@@ -348,18 +384,12 @@ void uartGnss_ProcessData(uint8_t data)
 #elif defined ENABLE_GNSS_FIXED_POSITION
 																				gnssState = UART_GNSS_SET_POSITION;
 #else
-																				rxState = GNSSRX_DETECT_ACK_0;
-																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
-																				gnssState = UART_GNSS_PWRUP;
+																				uartGnss_StartPowerUpAfterInit();
 #endif
 													break;
-												case UART_GNSS_SET_POSITION:			rxState = GNSSRX_DETECT_ACK_0;
-																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
-																				gnssState = UART_GNSS_PWRUP;
+												case UART_GNSS_SET_POSITION:	uartGnss_StartPowerUpAfterInit();
 													break;
-												case UART_GNSS_SETDATE_TIME: rxState = GNSSRX_DETECT_ACK_0;
-																				UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
-																				gnssState = UART_GNSS_PWRUP;
+												case UART_GNSS_SETDATE_TIME: uartGnss_StartPowerUpAfterInit();
 												default:
 													break;
 											}
@@ -368,6 +398,10 @@ void uartGnss_ProcessData(uint8_t data)
 										}
 										else
 										{
+											if((data == 0x00) && (gnssState == UART_GNSS_PWRUP))		/* UBX-ACK-NAK: the receiver rejected the command */
+											{
+												GNSS_Handle.pwrupNak = 1;		/* the power up sequence is repeated */
+											}
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;

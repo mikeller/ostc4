@@ -48,7 +48,8 @@
 		UART_GNSS_PWRUP,
 		UART_GNSS_SETCONF,		/* save configuration */
 		UART_GNSS_GET_PVT,
-		UART_GNSS_GET_SAT
+		UART_GNSS_GET_SAT,
+		UART_GNSS_WAKE			/* wake up bytes sent or about to be sent to a receiver in power save mode, then waiting for it */
   } uartGnssStatus_t;
 
   typedef enum

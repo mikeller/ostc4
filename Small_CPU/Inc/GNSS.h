@@ -60,6 +60,13 @@ union i_Long
 #define GNSS_MAX_NAVSAT_SV		(64u)
 #define GNSS_UBX_FRAME_SIZE_MAX	(16u + 12u * GNSS_MAX_NAVSAT_SV)
 
+/* Power up of the receiver after it was in power save mode (see uartProtocol_GNSS.c): wake up bytes, time for the receiver to wake (the receiver description
+ * recommends about half a second), full power command; without acknowledge or with a rejection the sequence is repeated */
+#define GNSS_WAKE_WAIT_MS			(500u)
+#define GNSS_PWRUP_ACK_TIMEOUT_MS	(1000u)
+#define GNSS_WAKE_MAX_RETRIES		(3u)
+#define GNSS_WAKE_TX_TIMEOUT_MS		(3000u)	/* the wake up bytes cannot be sent for this long because the transmitter is busy: give up */
+
 #define GNSS_POS_MAX_AGE_S		(2u * 3600u)	/* a position which was received earlier is not reported as valid */
 
 /* The receiver is reported as alive (GNSS_ALIVE_STATE_ALIVE) as long as a valid frame was received not longer ago than this.
@@ -110,6 +117,15 @@ typedef struct
 	uint8_t bestCno;			/* highest C/N0 (dBHz) of the last UBX-NAV-SAT */
 	uint8_t psmState;			/* psmState of the last UBX-NAV-PVT */
 	uint8_t pvtParsed;			/* a UBX-NAV-PVT was parsed since the receiver was initialized or woken: psmState is valid */
+
+	/* switching the receiver to full power (initialization, wake up after sleep or dive), see the comment of the state machine in uartProtocol_GNSS.c */
+	uint8_t pwrupWake;			/* the power up follows a wake up (0xFF bytes) of a receiver in power save mode */
+	uint8_t pwrupSent;			/* the full power command of the current attempt was transmitted */
+	uint8_t pwrupNak;			/* the receiver rejected the command (UBX-ACK-NAK) */
+	uint32_t pwrupSendTick;		/* HAL tick at which the full power command was transmitted */
+	uint8_t wakeSent;			/* the wake up bytes of the current attempt were transmitted */
+	uint8_t wakeTries;			/* repetitions of the power up sequence in the current power up (0 .. GNSS_WAKE_MAX_RETRIES) */
+	uint8_t wakeFailed;			/* the power up got no acknowledge after GNSS_WAKE_MAX_RETRIES repetitions */
 
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */

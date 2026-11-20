@@ -249,11 +249,21 @@ void UART_AddFletcher(uint8_t* pBuffer, uint8_t length)
 	*pBuffer++ = ck_B;
 }
 
-void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
+/* The transmission of the UART is finished: the transmit buffer may be written */
+uint8_t UART_isTxIdle(const sUartComCtrl* pUartCtrl)
 {
+	return (pUartCtrl->pHandle->gState == HAL_UART_STATE_READY);
+}
+
+/* Returns 1 if the command is being transmitted. The buffer of a transmission which is still running (e.g. the wake up bytes) is not overwritten, the
+ * caller has to repeat the command if it returns 0 */
+uint8_t UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
+{
+	uint8_t sent = 0;
+
 	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
 	{
-		if(pGnssCtrl != NULL)
+		if((pGnssCtrl != NULL) && UART_isTxIdle(pGnssCtrl))
 		{
 			if(pGnssCtrl->dmaRxActive == 0)
 			{
@@ -266,9 +276,11 @@ void UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
 			{
 				pGnssCtrl->dmaTxActive = 1;
 				LastCmdRequestTick = HAL_GetTick();
+				sent = 1;
 			}
 		}
 	}
+	return sent;
 }
 
 
