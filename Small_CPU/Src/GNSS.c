@@ -101,11 +101,13 @@ static uint8_t GNSS_Limit(uint8_t value, uint8_t limit) {
  * @param GNSS Pointer to main GNSS structure.
  * @param index Record index 0 .. GNSS_DEBUG_REC_CNT - 1, a higher index is treated like 0.
  * @param age_s Seconds since the last valid frame.
+ * @param textChunk Number of the chunk of the identification text which is sent by a text record (a higher number is treated like 0).
  * @param rec The record.
  */
-void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
+void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t textChunk, uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	const SGnssDebugSat* pSat;
 	uint32_t pDop_tenth;
+	uint32_t monHwAge_s;
 
 	memset(rec, 0, GNSS_DEBUG_REC_SIZE);
 	if(index >= GNSS_DEBUG_REC_CNT)
@@ -129,6 +131,35 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 			rec[3] = GNSS->pvtParsed ? GNSS->psmState : GNSS_PSM_UNKNOWN;
 			rec[4] = GNSS->uartErrors;
 			rec[5] = GNSS->nakCount;
+			break;
+		case GNSS_DEBUG_REC_MONHW_A:
+			if(GNSS->monHwValid)
+			{
+				rec[1] = GNSS->noisePerMs & 0xFFu;
+				rec[2] = GNSS->noisePerMs >> 8;
+				rec[3] = GNSS->agcCnt & 0xFFu;
+				rec[4] = GNSS->agcCnt >> 8;
+				rec[5] = (GNSS->aStatus & 0x0Fu) | (uint8_t)((GNSS->aPower & 0x0Fu) << 4);
+			}
+			break;
+		case GNSS_DEBUG_REC_MONHW_B:
+			monHwAge_s = GNSS->monHwSeen ? (time_elapsed_ms(GNSS->monHwTick, HAL_GetTick()) / 1000u) : 255u;
+			rec[1] = GNSS->monHwValid ? GNSS->hwFlags : 0;
+			rec[2] = GNSS->monHwValid ? GNSS->jamInd : 0;
+			rec[3] = (monHwAge_s > 254u) ? 255u : (uint8_t)monHwAge_s;
+			rec[4] = GNSS->monHwLength;
+			rec[5] = (GNSS->monHwValid ? 0x01u : 0) | (GNSS->identValid ? 0x02u : 0) | (uint8_t)(GNSS_Limit(GNSS->monVerRequests, 15) << 4);
+			break;
+		case GNSS_DEBUG_REC_TEXT:
+			if(textChunk >= GNSS_IDENT_CHUNKS)
+			{
+				textChunk = 0;
+			}
+			rec[1] = textChunk | (GNSS->identValid ? 0x80u : 0);
+			if(GNSS->identValid)
+			{
+				memcpy(&rec[2], &GNSS->ident[textChunk * GNSS_IDENT_CHUNK_SIZE], GNSS_IDENT_CHUNK_SIZE);
+			}
 			break;
 		default:
 			pSat = &GNSS->debugSat[index - GNSS_DEBUG_REC_SAT0];

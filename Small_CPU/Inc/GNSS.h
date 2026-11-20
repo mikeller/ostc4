@@ -271,7 +271,7 @@ static const uint8_t setDateTime[] = {0xB5,0x62,0x13,0x40,0x18,0x00,0x10,0x00,0x
 static const uint8_t setPortableType[]={};
 void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart);
 void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS);
-void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
+void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t textChunk, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
 void GNSS_ParseMonHwData(GNSS_StateHandle *GNSS);
 void GNSS_ParseMonVerData(GNSS_StateHandle *GNSS);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);

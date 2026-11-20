@@ -234,13 +234,32 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       port and [5] number of UBX-ACK-NAK, both saturating at 255 and counted since the RTE started
  * records 2..9 (satellite 0..7, sorted by C/N0): [1] bits 0..2 gnssId, bit 3 svUsed, bit 4 ephAvail, bits 5..6 health (UBX-NAV-SAT), [2] svId (0 = no satellite),
  *                       [3] C/N0 in dBHz, [4] qualityInd, [5] elevation in degrees (255 = unknown)
- * The field offsets are those of the u-blox 8 / u-blox M8 receiver description (UBX-13003221), the module of the OSTC5 is not identified. */
+ * record 10 (UBX-MON-HW A): [1..2] noisePerMS (little endian), [3..4] agcCnt (little endian, 0..8191), [5] aStatus (bits 0..3) and aPower (bits 4..7)
+ * record 11 (UBX-MON-HW B): [1] flags (bit 0 rtcCalib, bit 1 safeBoot, bits 2..3 jammingState, bit 4 xtalAbsent), [2] jamInd (CW jamming indicator, offset 45),
+ *                       [3] seconds since the last UBX-MON-HW (255 = none or 255 s and more), [4] payload length of the last UBX-MON-HW (saturating at 255, 0 = none),
+ *                       [5] bit 0: the last UBX-MON-HW has the accepted length (GNSS_MONHW_LEN) and the values of record 10 and the other fields of this record are valid,
+ *                       bit 1: the identification text is valid (UBX-MON-VER received), bits 4..7: number of UBX-MON-VER requests (limited to 15)
+ * record 12 (identification text chunk): [1] bits 0..6 chunk number, bit 7 text valid (UBX-MON-VER received, otherwise the characters are not valid),
+ *                       [2..5] four characters of the text at offset 4 * chunk number. The text has GNSS_IDENT_SIZE bytes of fixed fields (see GNSS_IDENT_*), each is
+ *                       filled with its characters and 0 up to the end of the field.
+ * The RTE sends a sequence of GNSS_DEBUG_SCHEDULE_LEN records, GNSS_DEBUG_SCHEDULE_TEXT of them are text chunks (the next chunk of the text each time), the others
+ * are records 0..11 once. At the rate of one record per 100 ms every record 0..11 is refreshed every 1.5 s and the complete text is sent in
+ * GNSS_IDENT_CHUNKS / GNSS_DEBUG_SCHEDULE_TEXT * 1.5 s (about 11 s).
+ * The check value includes a constant, so that a frame with all bytes 0 (a RTE which does not send records) is not accepted.
+ * The field offsets are those of the u-blox 8 / u-blox M8 receiver description (UBX-13003221), the module of the OSTC5 is not identified until the text has been
+ * received. UBX-MON-HW is accepted with the 60 byte payload of the u-blox 8 / u-blox M8 receiver description only (the same layout is documented in the ZED-F9H
+ * interface description UBX-19030118 as deprecated message), other lengths are reported as length only. */
 #define GNSS_DEBUG_REC_SIZE			(6u)
 #define GNSS_DEBUG_SAT_CNT			(8u)
 #define GNSS_DEBUG_REC_SUMMARY_A	(0u)
 #define GNSS_DEBUG_REC_SUMMARY_B	(1u)
 #define GNSS_DEBUG_REC_SAT0			(2u)
-#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT)
+#define GNSS_DEBUG_REC_MONHW_A		(GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT)
+#define GNSS_DEBUG_REC_MONHW_B		(GNSS_DEBUG_REC_MONHW_A + 1u)
+#define GNSS_DEBUG_REC_TEXT			(GNSS_DEBUG_REC_MONHW_B + 1u)
+#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_TEXT + 1u)			/* number of record types: the index is a 4 bit value */
+#define GNSS_DEBUG_SCHEDULE_TEXT	(3u)								/* text chunks in a sequence of records */
+#define GNSS_DEBUG_SCHEDULE_LEN		(GNSS_DEBUG_REC_TEXT + GNSS_DEBUG_SCHEDULE_TEXT)
 #define GNSS_PSM_UNKNOWN			(0xFFu)								/* power save state (psmState) not known yet */
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
@@ -266,6 +285,10 @@ _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 #define GNSS_IDENT_CHUNKS			(GNSS_IDENT_SIZE / GNSS_IDENT_CHUNK_SIZE)
 _Static_assert((GNSS_IDENT_SIZE % GNSS_IDENT_CHUNK_SIZE) == 0u, "The identification text has to consist of complete chunks");
 _Static_assert(GNSS_IDENT_CHUNKS < 128u, "The chunk number is a 7 bit value");
+_Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
+
+_Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
+_Static_assert(GNSS_IDENT_CHUNKS <= 32u, "The chunks received are collected in a 32 bit mask");
 
 /* sets the check value of a record: the index is already set in the low bits of byte 0 */
 static inline void GNSS_DebugRecord_Seal(uint8_t rec[GNSS_DEBUG_REC_SIZE])
@@ -333,8 +356,25 @@ typedef struct
 	uint8_t psmState;
 	uint8_t uartErrors;
 	uint8_t nakCount;
-	uint8_t recordsSeen;	/* bit 0: summary A received, bit 1: summary B, bit 2: at least one satellite record */
+	uint8_t recordsSeen;	/* bit 0: summary A received, bit 1: summary B, bit 2: at least one satellite record, bit 3: UBX-MON-HW A, bit 4: UBX-MON-HW B */
 	SGnssDebugSat sat[GNSS_DEBUG_SAT_CNT];
+
+	/* UBX-MON-HW, valid if monHwValid */
+	uint8_t monHwValid;		/* a UBX-MON-HW with the accepted length was received (otherwise only monHwLength and monHwAge_s are available) */
+	uint8_t monHwLength;	/* payload length of the last UBX-MON-HW (255 or more is reported as 255), 0 if none was received */
+	uint8_t monHwAge_s;		/* seconds since the last UBX-MON-HW, 255 = never or 255 s and more */
+	uint16_t noisePerMs;
+	uint16_t agcCnt;		/* 0..8191 */
+	uint8_t aStatus;		/* 0 INIT, 1 DONTKNOW, 2 OK, 3 SHORT, 4 OPEN */
+	uint8_t aPower;			/* 0 OFF, 1 ON, 2 DONTKNOW */
+	uint8_t hwFlags;		/* bit 0 rtcCalib, bit 1 safeBoot, bits 2..3 jammingState, bit 4 xtalAbsent */
+	uint8_t jamInd;			/* CW jamming indicator 0..255 */
+
+	/* UBX-MON-VER */
+	uint8_t identValid;		/* the text is complete (all chunks received while the RTE reported it as valid) */
+	uint8_t monVerRequests;	/* number of UBX-MON-VER requests of the RTE (limited to 15) */
+	uint32_t identChunkMask;	/* chunks received */
+	char ident[GNSS_IDENT_SIZE + 1];	/* identification text, the last byte is always 0 */
 } SGnssDebugInfo;
 
 typedef struct

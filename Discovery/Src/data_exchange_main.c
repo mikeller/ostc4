@@ -1433,6 +1433,7 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 {
 	uint8_t rec[GNSS_DEBUG_REC_SIZE];
 	uint8_t index;
+	uint8_t chunk;
 	SGnssDebugSat* pSat;
 
 	GNSS_DebugRecord_Get(pData, rec);
@@ -1460,14 +1461,49 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 			gnssDebugInfo.nakCount = rec[5];
 			gnssDebugInfo.recordsSeen |= 0x02u;
 			break;
+		case GNSS_DEBUG_REC_MONHW_A:
+			gnssDebugInfo.noisePerMs = rec[1] | (rec[2] << 8);
+			gnssDebugInfo.agcCnt = rec[3] | (rec[4] << 8);
+			gnssDebugInfo.aStatus = rec[5] & 0x0Fu;
+			gnssDebugInfo.aPower = rec[5] >> 4;
+			gnssDebugInfo.recordsSeen |= 0x08u;
+			break;
+		case GNSS_DEBUG_REC_MONHW_B:
+			gnssDebugInfo.hwFlags = rec[1];
+			gnssDebugInfo.jamInd = rec[2];
+			gnssDebugInfo.monHwAge_s = rec[3];
+			gnssDebugInfo.monHwLength = rec[4];
+			gnssDebugInfo.monHwValid = rec[5] & 0x01u;
+			gnssDebugInfo.monVerRequests = rec[5] >> 4;
+			gnssDebugInfo.recordsSeen |= 0x10u;
+			break;
+		case GNSS_DEBUG_REC_TEXT:
+			chunk = rec[1] & 0x7Fu;
+			if((rec[1] & 0x80u) && (chunk < GNSS_IDENT_CHUNKS))	/* the text is valid on the RTE side */
+			{
+				for(uint8_t pos = 0; pos < GNSS_IDENT_CHUNK_SIZE; pos++)	/* only printable characters are shown */
+				{
+					uint8_t c = rec[2 + pos];
+					gnssDebugInfo.ident[chunk * GNSS_IDENT_CHUNK_SIZE + pos] = ((c == 0) || ((c >= 0x20u) && (c < 0x7Fu))) ? (char)c : '?';
+				}
+				gnssDebugInfo.identChunkMask |= (1uL << chunk);
+				if(gnssDebugInfo.identChunkMask == ((1uL << GNSS_IDENT_CHUNKS) - 1u))
+				{
+					gnssDebugInfo.identValid = 1;
+				}
+			}
+			break;
 		default:
-			pSat = &gnssDebugInfo.sat[index - GNSS_DEBUG_REC_SAT0];
-			pSat->flags = rec[1];
-			pSat->svId = rec[2];
-			pSat->cno = rec[3];
-			pSat->quality = rec[4];
-			pSat->elev = rec[5];
-			gnssDebugInfo.recordsSeen |= 0x04u;
+			if((index >= GNSS_DEBUG_REC_SAT0) && (index < (GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT)))
+			{
+				pSat = &gnssDebugInfo.sat[index - GNSS_DEBUG_REC_SAT0];
+				pSat->flags = rec[1];
+				pSat->svId = rec[2];
+				pSat->cno = rec[3];
+				pSat->quality = rec[4];
+				pSat->elev = rec[5];
+				gnssDebugInfo.recordsSeen |= 0x04u;
+			}
 			break;
 	}
 }

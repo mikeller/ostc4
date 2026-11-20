@@ -1820,7 +1820,9 @@ void copyGNSSdata(void)
 	SGnssInfo* pInfo = &global.dataSendToMaster.data[0].gnssInfo;
 	uint32_t timeNow_s;
 	uint32_t age_s = 0;
-	static uint8_t debugRecordIndex = 0;
+	static uint8_t debugSlot = 0;		/* position in the sequence of GNSS_DEBUG_SCHEDULE_LEN records */
+	static uint8_t debugTextChunk = 0;
+	uint8_t debugRecordIndex;
 	uint8_t debugRecord[GNSS_DEBUG_REC_SIZE];
 	uint8_t debugAge = 255;
 
@@ -1898,12 +1900,22 @@ void copyGNSSdata(void)
 		age_s = time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) / 1000u;
 		debugAge = (age_s > 254u) ? 255u : (uint8_t)age_s;
 	}
-	GNSS_GetDebugRecord(&GNSS_Handle, debugRecordIndex, debugAge, debugRecord);
+	/* The sequence consists of the records 0 .. GNSS_DEBUG_REC_TEXT - 1 followed by GNSS_DEBUG_SCHEDULE_TEXT chunks of the identification text */
+	debugRecordIndex = (debugSlot < GNSS_DEBUG_REC_TEXT) ? debugSlot : GNSS_DEBUG_REC_TEXT;
+	GNSS_GetDebugRecord(&GNSS_Handle, debugRecordIndex, debugAge, debugTextChunk, debugRecord);
 	GNSS_DebugRecord_Put(&global.dataSendToMaster.data[0], debugRecord);
-	debugRecordIndex++;
-	if(debugRecordIndex >= GNSS_DEBUG_REC_CNT)
+	if(debugRecordIndex == GNSS_DEBUG_REC_TEXT)
 	{
-		debugRecordIndex = 0;
+		debugTextChunk++;
+		if(debugTextChunk >= GNSS_IDENT_CHUNKS)
+		{
+			debugTextChunk = 0;
+		}
+	}
+	debugSlot++;
+	if(debugSlot >= GNSS_DEBUG_SCHEDULE_LEN)
+	{
+		debugSlot = 0;
 	}
 }
 
