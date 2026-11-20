@@ -106,6 +106,7 @@ void t7_refresh_surface_debugmode(void);
 static uint8_t t7_getGnssPowerSaveState(void);
 #ifdef HAVE_DEBUG_VIEW
 void t7_refresh_gnss_debug(void);
+void t7_refresh_gnss_hardware(void);
 #endif
 void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
@@ -153,7 +154,7 @@ GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 
 uint8_t selection_customview = LLC_Temperature;
 #ifdef HAVE_DEBUG_VIEW
-static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen */
+static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware */
 #endif
 
 uint8_t updateNecessary = 0;
@@ -676,7 +677,12 @@ void t7_refresh(void)
             t7_refresh_surface_debugmode();
 #ifdef HAVE_DEBUG_VIEW
         else if(t7_isGnssDebugPageShown())
-            t7_refresh_gnss_debug();
+        {
+            if(gnssDebugPage == 2)
+                t7_refresh_gnss_hardware();
+            else
+                t7_refresh_gnss_debug();
+        }
 #endif
         else
             t7_refresh_surface();
@@ -3939,12 +3945,18 @@ bool t7_isGnssDebugPageShown(void)
 }
 
 
-/* ENTER on the position view shows the debug page, the next ENTER leaves it and continues with the next view. Returns true if the action was used */
+/* ENTER on the position view shows the debug page, the next ENTER the page of the receiver hardware and the third ENTER leaves it and continues with the next view.
+ * Returns true if the action was used */
 bool t7_handleGnssDebugPageAction(uint8_t action)
 {
     if((action != ACTION_BUTTON_ENTER) || (stateUsed->mode != MODE_SURFACE))
     {
         return false;
+    }
+    if(gnssDebugPage == 1)
+    {
+        gnssDebugPage = 2;
+        return true;
     }
     if(gnssDebugPage)
     {
@@ -4019,8 +4031,8 @@ void t7_refresh_gnss_debug(void)
     uint32_t session_s = gnssAcquire_getElapsedS();
     const SGnssDebugSat* pSat;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug");
-    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/2");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSDBG_LEFT_ROW(color, text)	t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
 
@@ -4205,6 +4217,176 @@ void t7_refresh_gnss_debug(void)
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y, CLUT_Font020, "q: 0 none 1 searching 2 acquired");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y + GNSSDBG_ROW_STEP, CLUT_Font020, "3 unusable 4 code lock 5-7 carrier");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, y + 2 * GNSSDBG_ROW_STEP, CLUT_Font020, "U = used in the fix, E = ephemeris");
+}
+
+
+/* Debug page 2: the hardware status of the receiver (UBX-MON-HW) and its identification (UBX-MON-VER), see data_exchange.h. One column of rows of font T24
+ * every 34 px from the top, the widest row ends before x = 790. The colours flag a problem: red for an antenna short or open circuit, an absent RTC crystal
+ * and a critical jamming state, yellow for a jamming warning, a high CW jamming indicator, an AGC close to its limits and an outdated UBX-MON-HW. The
+ * thresholds for the AGC (below 10 % and above 90 %) and the CW jamming indicator (100 and more) are judgement calls: the receiver description gives no
+ * limits, the CW indicator depends on the environment (it has to be compared with a value measured without interference) */
+#define GNSSHW_X				(12u)
+#define GNSSHW_X_END			(790u)
+#define GNSSHW_AGC_MAX			(8191u)
+#define GNSSHW_AGC_LOW_PERCENT	(10u)
+#define GNSSHW_AGC_HIGH_PERCENT	(90u)
+#define GNSSHW_JAMIND_WARN		(100u)
+#define GNSSHW_AGE_WARN_S		(30u)		/* a UBX-MON-HW is polled every 6 s */
+
+static void t7_gnssHwRow(uint16_t y, uint8_t color, const char* text)
+{
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, color, text);
+}
+
+/* the field of the identification text is 0 terminated (see GNSS_ParseMonVerData), the limit protects against a wrong text */
+static void t7_gnssIdentField(char* pDest, size_t destSize, const SGnssDebugInfo* pDbg, uint8_t offset, uint8_t size)
+{
+    if(pDbg->identValid && (pDbg->ident[offset] != 0))
+    {
+        snprintf(pDest, destSize, "%.*s", (int)(size - 1u), &pDbg->ident[offset]);
+    }
+    else
+    {
+        snprintf(pDest, destSize, "--");
+    }
+}
+
+void t7_refresh_gnss_hardware(void)
+{
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+    const char* antStatusText[] = {"INIT", "DONTKNOW", "OK", "SHORT", "OPEN"};
+    const char* antPowerText[] = {"OFF", "ON", "DONTKNOW"};
+    const char* jamStateText[] = {"unknown", "ok", "warning", "critical"};
+    char text[112];
+    char text1[28];
+    char text2[28];
+    char text3[28];
+    uint8_t color;
+    uint8_t jamState = (pDbg->hwFlags >> 2) & 0x03u;
+    uint8_t haveA = pDbg->recordsSeen & 0x08u;
+    uint8_t haveB = pDbg->recordsSeen & 0x10u;
+    uint8_t hwValid = haveA && haveB && pDbg->monHwValid;
+    uint32_t agcPercent = ((uint32_t)pDbg->agcCnt * 100u) / GNSSHW_AGC_MAX;
+    uint16_t y = GNSSDBG_ROW0_Y;
+    uint8_t chunks = 0;
+
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/2");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+
+    /* identification of the receiver (UBX-MON-VER) */
+    if(pDbg->identValid)
+    {
+        t7_gnssIdentField(text1, sizeof(text1), pDbg, GNSS_IDENT_SW_OFFSET, GNSS_IDENT_SW_SIZE);
+        snprintf(text, sizeof(text), "Module: %s", text1);
+    }
+    else if(pDbg->identChunkMask != 0)
+    {
+        for(uint8_t i = 0; i < GNSS_IDENT_CHUNKS; i++)
+        {
+            chunks += (pDbg->identChunkMask >> i) & 1u;
+        }
+        snprintf(text, sizeof(text), "Module: receiving %u/%u", chunks, (unsigned int)GNSS_IDENT_CHUNKS);
+    }
+    else if(haveB && (pDbg->monVerRequests > 0))
+    {
+        snprintf(text, sizeof(text), "Module: not received (%u requests)", pDbg->monVerRequests);
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "Module: --");
+    }
+    t7_gnssHwRow(y, CLUT_Font020, text);
+    y += GNSSDBG_ROW_STEP;
+
+    t7_gnssIdentField(text1, sizeof(text1), pDbg, GNSS_IDENT_HW_OFFSET, GNSS_IDENT_HW_SIZE);
+    t7_gnssIdentField(text2, sizeof(text2), pDbg, GNSS_IDENT_FW_OFFSET, GNSS_IDENT_FW_SIZE);
+    t7_gnssIdentField(text3, sizeof(text3), pDbg, GNSS_IDENT_PROTO_OFFSET, GNSS_IDENT_PROTO_SIZE);
+    snprintf(text, sizeof(text), "HW %s   FW %s   Proto %s", text1, text2, text3);
+    t7_gnssHwRow(y, CLUT_Font020, text);
+    y += GNSSDBG_ROW_STEP;
+
+    t7_gnssIdentField(text1, sizeof(text1), pDbg, GNSS_IDENT_MOD_OFFSET, GNSS_IDENT_MOD_SIZE);
+    t7_gnssIdentField(text2, sizeof(text2), pDbg, GNSS_IDENT_GNSS_OFFSET, GNSS_IDENT_GNSS_SIZE);
+    snprintf(text, sizeof(text), "Type %s   GNSS %s", text1, text2);
+    t7_gnssHwRow(y, CLUT_Font020, text);
+    y += GNSSDBG_ROW_STEP + 10u;
+
+    /* hardware status (UBX-MON-HW), only with the payload length of the receiver description */
+    if(!hwValid)
+    {
+        if(haveB && (pDbg->monHwLength != 0))
+        {
+            snprintf(text, sizeof(text), "MON-HW n/a: payload %u bytes, not %u", pDbg->monHwLength, (unsigned int)GNSS_MONHW_LEN);
+            color = CLUT_WarningYellow;
+        }
+        else
+        {
+            snprintf(text, sizeof(text), "MON-HW: no answer yet");
+            color = CLUT_Font020;
+        }
+        t7_gnssHwRow(y, color, text);
+        y += GNSSDBG_ROW_STEP;
+        t7_gnssHwRow(y, CLUT_Font020, "Antenna: n/a   Power: n/a");
+        y += GNSSDBG_ROW_STEP;
+        t7_gnssHwRow(y, CLUT_Font020, "AGC: n/a");
+        y += GNSSDBG_ROW_STEP;
+        t7_gnssHwRow(y, CLUT_Font020, "Noise: n/a");
+        y += GNSSDBG_ROW_STEP;
+        t7_gnssHwRow(y, CLUT_Font020, "Jam CW: n/a   Monitor: n/a");
+        y += GNSSDBG_ROW_STEP;
+        t7_gnssHwRow(y, CLUT_Font020, "RTC xtal: n/a   calibrated: n/a");
+        y += GNSSDBG_ROW_STEP;
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "Antenna: %s   Power: %s", (pDbg->aStatus < 5) ? antStatusText[pDbg->aStatus] : "?", (pDbg->aPower < 3) ? antPowerText[pDbg->aPower] : "?");
+        t7_gnssHwRow(y, ((pDbg->aStatus == 3) || (pDbg->aStatus == 4)) ? CLUT_WarningRed : CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+
+        snprintf(text, sizeof(text), "AGC: %u of %u (%lu %%)", pDbg->agcCnt, (unsigned int)GNSSHW_AGC_MAX, (unsigned long)agcPercent);
+        t7_gnssHwRow(y, ((agcPercent < GNSSHW_AGC_LOW_PERCENT) || (agcPercent > GNSSHW_AGC_HIGH_PERCENT)) ? CLUT_WarningYellow : CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+
+        snprintf(text, sizeof(text), "Noise: %u per ms", pDbg->noisePerMs);
+        t7_gnssHwRow(y, CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+
+        snprintf(text, sizeof(text), "Jam CW: %u of 255   Monitor: %s", pDbg->jamInd, jamStateText[jamState]);
+        if(jamState == 3)
+        {
+            color = CLUT_WarningRed;
+        }
+        else if((jamState == 2) || (pDbg->jamInd >= GNSSHW_JAMIND_WARN))
+        {
+            color = CLUT_WarningYellow;
+        }
+        else
+        {
+            color = CLUT_Font020;
+        }
+        t7_gnssHwRow(y, color, text);
+        y += GNSSDBG_ROW_STEP;
+
+        snprintf(text, sizeof(text), "RTC xtal: %s   calibrated: %s", (pDbg->hwFlags & 0x10u) ? "ABSENT" : "present", (pDbg->hwFlags & 0x01u) ? "YES" : "NO");
+        t7_gnssHwRow(y, (pDbg->hwFlags & 0x10u) ? CLUT_WarningRed : CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+    }
+
+    if(haveB && (pDbg->monHwAge_s != 255u))
+    {
+        snprintf(text, sizeof(text), "MON-HW age: %u s", pDbg->monHwAge_s);
+        color = (pDbg->monHwAge_s > GNSSHW_AGE_WARN_S) ? CLUT_WarningYellow : CLUT_Font020;
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "MON-HW age: --");
+        color = haveB ? CLUT_WarningYellow : CLUT_Font020;
+    }
+    t7_gnssHwRow(y, color, text);
+    y += GNSSDBG_ROW_STEP + 10u;
+
+    t7_gnssHwRow(y, CLUT_Font020, "AGC is a percentage of the maximum gain.");
+    t7_gnssHwRow(y + GNSSDBG_ROW_STEP, CLUT_Font020, "Monitor unknown: off by default, needs a fix first.");
 }
 
 #endif /* HAVE_DEBUG_VIEW */
