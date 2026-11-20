@@ -51,7 +51,10 @@
 		UART_GNSS_GET_SAT,
 		UART_GNSS_GET_MONHW,
 		UART_GNSS_GET_MONVER,
-		UART_GNSS_WAKE			/* wake up bytes sent or about to be sent to a receiver in power save mode, then waiting for it */
+		UART_GNSS_WAKE,			/* wake up bytes sent or about to be sent to a receiver in power save mode, then waiting for it */
+		UART_GNSS_GET_CFGPMS,
+		UART_GNSS_GET_CFGGNSS,
+		UART_GNSS_GET_CFGNAV5
   } uartGnssStatus_t;
 
   typedef enum
@@ -89,7 +92,10 @@
 	GNSSCMD_GET_POSLLH_DATA,
 	GNSSCMD_GET_NAVSAT_DATA,
 	GNSSCMD_GET_MONHW_DATA,
-	GNSSCMD_GET_MONVER_DATA
+	GNSSCMD_GET_MONVER_DATA,
+	GNSSCMD_GET_CFGPMS_DATA,
+	GNSSCMD_GET_CFGGNSS_DATA,
+	GNSSCMD_GET_CFGNAV5_DATA
   } gnssSensorCmd_t;
 
   typedef struct

@@ -102,6 +102,15 @@ uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 		case GNSSCMD_GET_MONHW_DATA: pData = getMonHw;
 									  txLength = sizeof(getMonHw) / sizeof(uint8_t);
 			break;
+		case GNSSCMD_GET_CFGPMS_DATA: pData = getCfgPms;
+									  txLength = sizeof(getCfgPms) / sizeof(uint8_t);
+			break;
+		case GNSSCMD_GET_CFGGNSS_DATA: pData = getCfgGnss;
+									  txLength = sizeof(getCfgGnss) / sizeof(uint8_t);
+			break;
+		case GNSSCMD_GET_CFGNAV5_DATA: pData = getCfgNav5;
+									  txLength = sizeof(getCfgNav5) / sizeof(uint8_t);
+			break;
 		case GNSSCMD_GET_MONVER_DATA: pData = getMonVer;
 									  txLength = sizeof(getMonVer) / sizeof(uint8_t);
 			break;
@@ -255,6 +264,31 @@ static uint8_t uartGnss_VerifyPower(void)
 	return 1;
 }
 
+/* Polls the next configuration message of GNSS_Handle.cfgReadPending (read only, one per call, in the order PMS, GNSS, NAV5). Returns 1 if a poll was started. A
+ * request which cannot be sent or is not answered is not repeated: the value stays invalid */
+#ifdef GNSS_DEBUG_POLLS
+static uint8_t uartGnss_StartConfigRead(void)
+{
+	static const uint8_t order[3] = { GNSS_CFGREAD_PMS, GNSS_CFGREAD_GNSS, GNSS_CFGREAD_NAV5 };
+	static const uint8_t cmd[3] = { GNSSCMD_GET_CFGPMS_DATA, GNSSCMD_GET_CFGGNSS_DATA, GNSSCMD_GET_CFGNAV5_DATA };
+	static const uartGnssStatus_t state[3] = { UART_GNSS_GET_CFGPMS, UART_GNSS_GET_CFGGNSS, UART_GNSS_GET_CFGNAV5 };
+
+	for(uint8_t i = 0; i < 3; i++)
+	{
+		if(GNSS_Handle.cfgReadPending & order[i])
+		{
+			GNSS_Handle.cfgReadPending &= (uint8_t)~order[i];
+			UART_Gnss_SendCmd(cmd[i]);
+			gnssState = state[i];
+			rxState = GNSSRX_DETECT_HEADER_0;
+			return 1;
+		}
+	}
+	GNSS_Handle.cfgReadPending = 0;
+	return 0;
+}
+#endif
+
 /* The initialization continues with the full power command which is sent at once; the sequence of a wake up is started in UART6_HandleUART */
 static void uartGnss_StartPowerUpAfterInit(void)
 {
@@ -350,6 +384,12 @@ void uartGnss_Control(void)
 									{
 										/* the full power command is sent again, the polls continue after the acknowledge */
 									}
+#ifdef GNSS_DEBUG_POLLS
+									else if(GNSS_Handle.cfgReadPending && uartGnss_StartConfigRead())
+									{
+										/* a configuration message is polled instead of a cyclic request (read only) */
+									}
+#endif
 									else
 									{
 										/* Every GNSS_MON_POLL_INTERVAL-th poll (and the first ones after the initialization) is a read only poll of UBX-MON-VER (until it was
@@ -372,7 +412,10 @@ void uartGnss_Control(void)
 											}
 											else
 											{
-												UART_Gnss_SendCmd(GNSSCMD_GET_MONHW_DATA);
+												if(UART_Gnss_SendCmd(GNSSCMD_GET_MONHW_DATA))
+												{
+													GNSS_NotePollSent(&GNSS_Handle, GNSS_POLL_MONHW);
+												}
 												gnssState = UART_GNSS_GET_MONHW;
 											}
 											monToggle ^= 1u;
@@ -382,14 +425,20 @@ void uartGnss_Control(void)
 #endif
 										if(dataToggle)
 										{
-											UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA);
+											if(UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA))
+											{
+												GNSS_NotePollSent(&GNSS_Handle, GNSS_POLL_PVT);
+											}
 											gnssState = UART_GNSS_GET_PVT;
 											rxState = GNSSRX_DETECT_HEADER_0;
 											dataToggle = 0;
 										}
 										else
 										{
-											UART_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA);
+											if(UART_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA))
+											{
+												GNSS_NotePollSent(&GNSS_Handle, GNSS_POLL_SAT);
+											}
 											gnssState = UART_GNSS_GET_SAT;
 											rxState = GNSSRX_DETECT_HEADER_0;
 											dataToggle = 1;
@@ -475,6 +524,12 @@ void uartGnss_ProcessData(uint8_t data)
 																	  GNSS_Handle.pwrupSent = 0;
 																	  GNSS_Handle.wakeFailed = 0;
 																	  GNSS_Handle.verifyBad = 0;		/* reports from before the command do not count */
+#ifdef GNSS_DEBUG_POLLS
+																	  GNSS_Handle.cfgReadPending = GNSS_CFGREAD_ALL;		/* read back what the receiver has now */
+																	  GNSS_Handle.cfgPmsValid = 0;
+																	  GNSS_Handle.cfgGnssValid = 0;
+																	  GNSS_Handle.cfgNav5Valid = 0;
+#endif
 													break;
 												case UART_GNSS_PWRDOWN:	rxState = GNSSRX_DETECT_ACK_0;
 																		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
@@ -575,12 +630,23 @@ void uartGnss_ProcessData(uint8_t data)
 													{
 														case UART_GNSS_GET_PVT:GNSS_ParsePVTData(&GNSS_Handle);
 																			   uartGnss_EvaluatePsm();
+																			   GNSS_NotePollAnswered(&GNSS_Handle, GNSS_POLL_PVT);
 															break;
 														case UART_GNSS_GET_SAT: GNSS_ParseNavSatData(&GNSS_Handle);
+																			   GNSS_NotePollAnswered(&GNSS_Handle, GNSS_POLL_SAT);
 															break;
 #ifdef GNSS_DEBUG_POLLS
 														case UART_GNSS_GET_MONHW: GNSS_ParseMonHwData(&GNSS_Handle);
+																				  GNSS_NotePollAnswered(&GNSS_Handle, GNSS_POLL_MONHW);
 															break;
+#ifdef GNSS_DEBUG_POLLS
+														case UART_GNSS_GET_CFGPMS: GNSS_ParseCfgPmsData(&GNSS_Handle);
+															break;
+														case UART_GNSS_GET_CFGGNSS: GNSS_ParseCfgGnssData(&GNSS_Handle);
+															break;
+														case UART_GNSS_GET_CFGNAV5: GNSS_ParseCfgNav5Data(&GNSS_Handle);
+															break;
+#endif
 														case UART_GNSS_GET_MONVER: GNSS_ParseMonVerData(&GNSS_Handle);
 															break;
 #endif

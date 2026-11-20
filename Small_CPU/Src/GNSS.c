@@ -80,6 +80,12 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->verifyTries = 0;
 	GNSS->verifyGaveUp = 0;
 	GNSS->psmZeroValid = 0;
+	memset(GNSS->pollSent, 0, sizeof(GNSS->pollSent));
+	memset(GNSS->pollAnswered, 0, sizeof(GNSS->pollAnswered));
+	GNSS->cfgReadPending = 0;
+	GNSS->cfgPmsValid = 0;
+	GNSS->cfgGnssValid = 0;
+	GNSS->cfgNav5Valid = 0;
 	GNSS->monStartup = 2;		/* the first two poll slots after the start are UBX-MON-VER and UBX-MON-HW, the receiver identification is kept: it does not change */
 }
 
@@ -440,6 +446,76 @@ void GNSS_ParseMonHwData(GNSS_StateHandle *GNSS) {
 		GNSS->hwFlags = GNSS_Handle.uartWorkingBuffer[6 + 22] & 0x1Fu;		/* rtcCalib, safeBoot, jammingState, xtalAbsent */
 		GNSS->jamInd = GNSS_Handle.uartWorkingBuffer[6 + 45];
 		GNSS->monHwValid = 1;
+	}
+}
+
+/*!
+ * Read back of the configuration (read only polls), see the u-blox 8 / u-blox M8 Receiver description: UBX-CFG-PMS (32.10.24, 8 bytes, powerSetupValue at
+ * offset 1), UBX-CFG-GNSS (32.10.8: 4 byte header and 8 bytes per GNSS block with gnssId at offset 0 and the enable bit as bit 0 of the flags at offset 4),
+ * UBX-CFG-NAV5 (36 bytes, dynModel at offset 2). A frame with another length is not used.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseCfgPmsData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+
+	if(length == 8)
+	{
+		GNSS->cfgPmsSetup = GNSS_Handle.uartWorkingBuffer[6 + 1];
+		GNSS->cfgPmsValid = 1;
+	}
+}
+
+void GNSS_ParseCfgGnssData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	uint8_t blocks = GNSS_Handle.uartWorkingBuffer[6 + 3];
+	uint8_t mask = 0;
+
+	if((length >= 4u) && (length == (4u + 8u * blocks)))
+	{
+		for(uint8_t i = 0; i < blocks; i++)
+		{
+			const uint8_t* pBlock = &GNSS_Handle.uartWorkingBuffer[6 + 4 + 8 * i];
+			if((pBlock[0] < 8u) && (pBlock[4] & 0x01u))
+			{
+				mask |= (uint8_t)(1u << pBlock[0]);
+			}
+		}
+		GNSS->cfgGnssMask = mask;
+		GNSS->cfgGnssValid = 1;
+	}
+}
+
+void GNSS_ParseCfgNav5Data(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+
+	if(length == 36)
+	{
+		GNSS->cfgDynModel = GNSS_Handle.uartWorkingBuffer[6 + 2];
+		GNSS->cfgNav5Valid = 1;
+	}
+}
+
+/*!
+ * Counts the cyclic requests which were transmitted and answered.
+ * @param GNSS Pointer to main GNSS structure.
+ * @param poll GNSS_POLL_PVT, GNSS_POLL_SAT or GNSS_POLL_MONHW.
+ */
+void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll) {
+	if(GNSS->pollSent[poll] == 255)		/* keep the ratio */
+	{
+		for(uint8_t i = 0; i < 3; i++)
+		{
+			GNSS->pollSent[i] >>= 1;
+			GNSS->pollAnswered[i] >>= 1;
+		}
+	}
+	GNSS->pollSent[poll]++;
+}
+
+void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll) {
+	if(GNSS->pollAnswered[poll] < GNSS->pollSent[poll])		/* an answer to a request which was counted */
+	{
+		GNSS->pollAnswered[poll]++;
 	}
 }
 

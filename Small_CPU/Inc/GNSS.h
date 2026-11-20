@@ -65,8 +65,8 @@ union i_Long
 #define GNSS_MON_POLL_INTERVAL		(6u)
 #define GNSS_MONVER_MAX_REQUESTS	(10u)	/* UBX-MON-VER is requested at most this many times per initialization of the receiver */
 
-/* Polls which are only needed by the debug pages of the main CPU (UBX-MON-HW, UBX-MON-VER) are sent only if the debug view is built (HAVE_DEBUG_VIEW of
- * configuration.h) */
+/* Polls which are only needed by the debug pages of the main CPU (UBX-MON-HW, UBX-MON-VER, read back of the configuration) are sent only if the debug view is
+ * built (HAVE_DEBUG_VIEW of configuration.h) */
 #ifdef HAVE_DEBUG_VIEW
 #define GNSS_DEBUG_POLLS
 #endif
@@ -81,6 +81,14 @@ union i_Long
 /* Check of the power save state: the receiver is meant to run at full power while the unit is awake. If GNSS_VERIFY_PVT_COUNT UBX-NAV-PVT in a row (about 7 s)
  * report a power save state, or no valid frame arrived for GNSS_FRAMES_STOPPED_MS, the full power command is sent again (with the wake up bytes in the second
  * case), at most GNSS_VERIFY_MAX_RETRIES times until psmState 0 was seen; commands of the second kind are at least GNSS_VERIFY_SPACING_MS apart */
+#define GNSS_POLL_PVT				(0u)
+#define GNSS_POLL_SAT				(1u)
+#define GNSS_POLL_MONHW				(2u)
+#define GNSS_CFGREAD_PMS			(0x01u)
+#define GNSS_CFGREAD_GNSS			(0x02u)
+#define GNSS_CFGREAD_NAV5			(0x04u)
+#define GNSS_CFGREAD_ALL			(0x07u)
+
 #define GNSS_VERIFY_PVT_COUNT		(3u)
 #define GNSS_VERIFY_MAX_RETRIES		(3u)
 #define GNSS_FRAMES_STOPPED_MS		(3000u)
@@ -178,6 +186,20 @@ typedef struct
 	uint32_t psmZeroTick;		/* HAL tick of the last UBX-NAV-PVT with psmState 0 */
 	uint8_t psmZeroValid;		/* psmZeroTick is valid */
 
+	/* polls of the cyclic requests since the receiver was initialized or woken, index GNSS_POLL_PVT, GNSS_POLL_SAT, GNSS_POLL_MONHW; all values are halved if one of
+	 * the sent counters reaches 255, which keeps the ratio */
+	uint8_t pollSent[3];		/* requests which were transmitted */
+	uint8_t pollAnswered[3];	/* requests which were answered with a valid frame */
+
+	/* read back of the configuration after the power up (debug page, read only polls), see GNSS_ParseCfg... */
+	uint8_t cfgReadPending;		/* bit mask GNSS_CFGREAD_*: the configuration messages which are polled next, one per poll slot */
+	uint8_t cfgPmsValid;
+	uint8_t cfgPmsSetup;		/* powerSetupValue of UBX-CFG-PMS: 0 full power, 1 balanced, 2 interval, 3 to 5 aggressive, 0xFF no predefined setup */
+	uint8_t cfgGnssValid;
+	uint8_t cfgGnssMask;		/* bit n: the GNSS with gnssId n is enabled in UBX-CFG-GNSS */
+	uint8_t cfgNav5Valid;
+	uint8_t cfgDynModel;		/* dynModel of UBX-CFG-NAV5 */
+
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
 	uint32_t lastFrameTick;		/* HAL tick of the last valid frame received from the receiver (see GNSS_NoteFrameReceived) */
@@ -256,6 +278,13 @@ static const uint8_t getMonHw[]={0xB5,0x62,0x0A,0x09,0x00,0x00};
 
 static const uint8_t getMonVer[]={0xB5,0x62,0x0A,0x04,0x00,0x00};
 
+/* read back of the configuration (polls of UBX-CFG-PMS, UBX-CFG-GNSS, UBX-CFG-NAV5) */
+static const uint8_t getCfgPms[]={0xB5,0x62,0x06,0x86,0x00,0x00};
+
+static const uint8_t getCfgGnss[]={0xB5,0x62,0x06,0x3E,0x00,0x00};
+
+static const uint8_t getCfgNav5[]={0xB5,0x62,0x06,0x24,0x00,0x00};
+
 static const uint8_t setPowerLow[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x02,0x10,0x0E,0x14,0x00,0x00,0x00};
 
 static const uint8_t setPowerNormal[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
@@ -274,6 +303,11 @@ void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS);
 void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t age_s, uint8_t textChunk, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
 void GNSS_ParseMonHwData(GNSS_StateHandle *GNSS);
 void GNSS_ParseMonVerData(GNSS_StateHandle *GNSS);
+void GNSS_ParseCfgPmsData(GNSS_StateHandle *GNSS);
+void GNSS_ParseCfgGnssData(GNSS_StateHandle *GNSS);
+void GNSS_ParseCfgNav5Data(GNSS_StateHandle *GNSS);
+void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll);
+void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 

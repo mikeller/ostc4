@@ -212,6 +212,8 @@ void UART6_HandleUART()
 			GNSS_Handle.wakeFailed = 0;
 			GNSS_Handle.pvtParsed = 0;		/* the power save state is not known until the next UBX-NAV-PVT */
 			GNSS_Handle.psmZeroValid = 0;
+			memset(GNSS_Handle.pollSent, 0, sizeof(GNSS_Handle.pollSent));		/* the poll counters count since the wake up */
+			memset(GNSS_Handle.pollAnswered, 0, sizeof(GNSS_Handle.pollAnswered));
 			lastRequestTick = tick;
 			gnssState = UART_GNSS_WAKE;
 			uartGnss_SetState(gnssState);
@@ -317,7 +319,8 @@ void UART6_HandleUART()
 			retryRequest = 0;
 			timeToTrigger = 1;
 
-			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT) || (gnssState == UART_GNSS_GET_MONHW) || (gnssState == UART_GNSS_GET_MONVER))	/* timeout */
+			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT) || (gnssState == UART_GNSS_GET_MONHW) || (gnssState == UART_GNSS_GET_MONVER) ||
+				(gnssState == UART_GNSS_GET_CFGPMS) || (gnssState == UART_GNSS_GET_CFGGNSS) || (gnssState == UART_GNSS_GET_CFGNAV5))	/* timeout */
 			{
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);
