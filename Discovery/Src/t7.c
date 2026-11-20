@@ -111,6 +111,7 @@ void t7_refresh_gnss_power(void);
 void t7_refresh_gnss_config(void);
 void t7_refresh_gnss_adc(void);
 void t7_refresh_gnss_accounting(void);
+void t7_refresh_gnss_rxpath(void);
 #endif
 void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
@@ -158,8 +159,8 @@ GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 
 uint8_t selection_customview = LLC_Temperature;
 #ifdef HAVE_DEBUG_VIEW
-#define GNSS_DEBUG_PAGES		(6u)		/* the number of the debug pages, see the titles */
-static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state, 4 antenna supervisor and jamming monitor settings, 5 ADC input and receiver status, 6 lost polls, UART errors and the ports of the receiver */
+#define GNSS_DEBUG_PAGES		(7u)		/* the number of the debug pages, see the titles */
+static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state, 4 antenna supervisor and jamming monitor settings, 5 ADC input and receiver status, 6 lost polls, UART errors and the ports of the receiver, 7 receive path of the RTE and the port configuration of the receiver */
 #endif
 
 uint8_t updateNecessary = 0;
@@ -683,7 +684,9 @@ void t7_refresh(void)
 #ifdef HAVE_DEBUG_VIEW
         else if(t7_isGnssDebugPageShown())
         {
-            if(gnssDebugPage == 6)
+            if(gnssDebugPage == 7)
+                t7_refresh_gnss_rxpath();
+            else if(gnssDebugPage == 6)
                 t7_refresh_gnss_accounting();
             else if(gnssDebugPage == 5)
                 t7_refresh_gnss_adc();
@@ -3959,7 +3962,7 @@ bool t7_isGnssDebugPageShown(void)
 
 
 /* ENTER on the position view shows the debug page 1, each following ENTER the next of the GNSS_DEBUG_PAGES pages (receiver hardware, power state, antenna supervisor and
- * jamming monitor settings, ADC input and receiver status, lost polls and ports of the receiver) and the ENTER after the last one leaves them and continues with the next
+ * jamming monitor settings, ADC input and receiver status, lost polls and ports of the receiver, receive path and port configuration) and the ENTER after the last one leaves them and continues with the next
  * view. Returns true if the action was used */
 bool t7_handleGnssDebugPageAction(uint8_t action)
 {
@@ -4062,7 +4065,7 @@ void t7_refresh_gnss_debug(void)
     uint32_t session_s = gnssAcquire_getElapsedS();
     const SGnssDebugSat* pSat;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/6");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/7");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSDBG_LEFT_ROW(color, text)	t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
@@ -4304,7 +4307,7 @@ void t7_refresh_gnss_hardware(void)
     uint16_t y = GNSSDBG_ROW0_Y;
     uint8_t chunks = 0;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/6");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/7");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* identification of the receiver (UBX-MON-VER) */
@@ -4486,7 +4489,7 @@ void t7_refresh_gnss_power(void)
     uint8_t havePolls = (pDbg->recordsSeen & 0xC0u) == 0xC0u;
     uint16_t len = 0;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 3/6");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 3/7");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSPWR_ROW(color, text)	t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
@@ -4674,7 +4677,7 @@ void t7_refresh_gnss_config(void)
     uint8_t haveItfm = itfmItems && pDbg->cfgItfmHave;
     uint8_t late;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 4/6");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 4/7");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSCFG_ROW(color, text)	do { t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + row * GNSSDBG_ROW_STEP + ((row >= 4) ? 10u : 0), (color), (text)); row++; } while(0)
@@ -4801,7 +4804,7 @@ void t7_refresh_gnss_adc(void)
     uint32_t msss_s = pDbg->msss / 1000u;
     const char* sourceText = "?";
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 5/6");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 5/7");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* UBX-MON-HW2: the complex signal at the ADC of the receiver */
@@ -4909,8 +4912,8 @@ void t7_refresh_gnss_accounting(void)
     uint8_t haveIo = ((pDbg->extraMask & GNSS_EXTRA_MASK_IO) == GNSS_EXTRA_MASK_IO);
     uint8_t anyUartErr = 0;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 6/6");
-    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 6/7");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* lost or disturbed polls by cause */
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Lost polls");
@@ -4992,6 +4995,152 @@ void t7_refresh_gnss_accounting(void)
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Receiver parity/framing/overrun grow: garbage reaches the receiver.");
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "Only the RTE UART errors grow: the RTE loses bytes of the receiver.");
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "Lost polls: since the wake up. UART errors: since the RTE started.");
+}
+
+/* Debug page 7: the receive path of the RTE (counted since the RTE started) and the port configuration of the receiver (UBX-CFG-PRT). Rows of font T24 every 34 px, the
+ * widest row ends before x = 780 (checked with the metrics of the font). Without the whole set of items of a block "--" is shown. */
+static void t7_gnssProtoText(char* pDest, size_t size, const char* pName, uint16_t mask, uint16_t known)
+{
+    size_t len = (size_t)snprintf(pDest, size, "%s:", pName);
+
+    if(mask & 0x0001u)
+    {
+        len += (size_t)snprintf(&pDest[len], size - len, " UBX");
+    }
+    if(mask & 0x0002u)
+    {
+        len += (size_t)snprintf(&pDest[len], size - len, " NMEA");
+    }
+    if(mask & 0x0004u & known)
+    {
+        len += (size_t)snprintf(&pDest[len], size - len, " RTCM");
+    }
+    if(mask & 0x0020u)
+    {
+        len += (size_t)snprintf(&pDest[len], size - len, " RTCM3");
+    }
+    if(mask & ~(0x0001u | 0x0002u | (0x0004u & known) | 0x0020u))
+    {
+        len += (size_t)snprintf(&pDest[len], size - len, " +0x%04X", (unsigned int)(mask & ~(0x0001u | 0x0002u | (0x0004u & known) | 0x0020u)));
+    }
+    if(mask == 0u)
+    {
+        snprintf(&pDest[len], size - len, " none");
+    }
+}
+
+void t7_refresh_gnss_rxpath(void)
+{
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+    char text[100];
+    char word[40];
+    uint16_t y = GNSSDBG_ROW0_Y;
+    uint8_t haveRx = ((pDbg->extraMask & GNSS_EXTRA_MASK_RX) == GNSS_EXTRA_MASK_RX);
+    uint8_t havePrt = ((pDbg->extraMask & GNSS_EXTRA_MASK_PRT) == GNSS_EXTRA_MASK_PRT);
+
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 7/7");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+
+    /* the receive path of the RTE */
+    if(haveRx)
+    {
+        snprintf(text, sizeof(text), "RTE receive path: DMA chunks %u, start failed %u", pDbg->rxStarts, pDbg->rxStartFails);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->rxStartFails != 0) ? CLUT_WarningYellow : CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+        snprintf(text, sizeof(text), "Unread data discarded: %u (the reader was behind)", pDbg->rxDiscards);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->rxDiscards != 0) ? CLUT_WarningYellow : CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+        snprintf(text, sizeof(text), "Longest gap between reads: %u ms, over 100 ms: %u", pDbg->rxMaxGapMs, pDbg->rxLateGaps);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->rxMaxGapMs >= 160u) ? CLUT_WarningYellow : CLUT_Font020, text);		/* 160 bytes: 167 ms at 9600 baud */
+        y += GNSSDBG_ROW_STEP;
+        snprintf(text, sizeof(text), "Gaps between frames: text %u, other %u", pDbg->junkAscii, pDbg->junkBinary);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+        if(pDbg->junkLen == 0)
+        {
+            snprintf(text, sizeof(text), "Last gap: none yet");
+            t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
+            y += 2u * GNSSDBG_ROW_STEP;
+        }
+        else
+        {
+            char hex[40];
+            char ascii[12];
+            uint8_t count = (pDbg->junkLen < 8u) ? pDbg->junkLen : 8u;
+            size_t len = 0;
+
+            snprintf(text, sizeof(text), "Last gap: %u bytes, %s%s", pDbg->junkLen, (pDbg->junkFlags & 0x01u) ? "printable text" : "binary", (pDbg->junkFlags & 0x02u) ? ", starts with $" : "");
+            t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
+            y += GNSSDBG_ROW_STEP;
+            hex[0] = 0;
+            for(uint8_t i = 0; i < count; i++)
+            {
+                uint8_t c = pDbg->junkBytes[i];
+
+                len += (size_t)snprintf(&hex[len], sizeof(hex) - len, "%02X ", c);
+                ascii[i] = ((c >= 0x20u) && (c < 0x7Fu)) ? (char)c : '.';
+            }
+            ascii[count] = 0;
+            snprintf(text, sizeof(text), "%s  %s", hex, ascii);
+            t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
+            y += GNSSDBG_ROW_STEP;
+        }
+    }
+    else
+    {
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "RTE receive path: --");
+        y += 6u * GNSSDBG_ROW_STEP;
+    }
+    y += 10u;
+
+    /* the port configuration of the receiver (UBX-CFG-PRT) */
+    if(havePrt && (pDbg->prtState == GNSS_CFGPOLL_OK) && (!pDbg->prtHave))
+    {
+        snprintf(text, sizeof(text), "CFG-PRT: n/a, payload %u bytes, not %u", pDbg->prtLength, (unsigned int)GNSS_CFGPRT_LEN);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, text);
+        y += 2u * GNSSDBG_ROW_STEP;
+    }
+    else if(havePrt && pDbg->prtHave)
+    {
+        static const char parity[8] = { 'E', 'O', '?', '?', 'N', '?', '?', '?' };
+        static const char* const stop[4] = { "1", "1.5", "2", "0.5" };
+        uint8_t charLen = (uint8_t)(5u + ((pDbg->prtMode >> 6) & 0x03u));
+        char in[40];
+        char out[40];
+
+        t7_gnssPollWord(word, sizeof(word), pDbg->prtState, pDbg->prtTries, pDbg->prtHave);
+        snprintf(text, sizeof(text), "CFG-PRT port %u: %s   %lu baud %u%c%s", pDbg->prtPortId, word, (unsigned long)pDbg->prtBaud, charLen, parity[(pDbg->prtMode >> 9) & 0x07u],
+                 stop[(pDbg->prtMode >> 12) & 0x03u]);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->prtState >= GNSS_CFGPOLL_NAK) ? CLUT_WarningYellow : CLUT_Font020, text);
+        y += GNSSDBG_ROW_STEP;
+        t7_gnssProtoText(in, sizeof(in), "in", pDbg->prtInProto, 0x0004u);
+        t7_gnssProtoText(out, sizeof(out), "out", pDbg->prtOutProto, 0u);
+        snprintf(text, sizeof(text), "%s   %s", in, out);
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->prtOutProto & 0x0002u) ? CLUT_WarningYellow : CLUT_Font020, text);		/* the initialization sets UBX only */
+        y += GNSSDBG_ROW_STEP;
+    }
+    else
+    {
+        char heading[60];
+
+        if(!havePrt)
+        {
+            snprintf(heading, sizeof(heading), "CFG-PRT: --");
+        }
+        else
+        {
+            t7_gnssPollWord(word, sizeof(word), pDbg->prtState, pDbg->prtTries, pDbg->prtHave);
+            snprintf(heading, sizeof(heading), "CFG-PRT: %s", word);
+        }
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (havePrt && (pDbg->prtState >= GNSS_CFGPOLL_NAK)) ? CLUT_WarningYellow : CLUT_Font020, heading);
+        y += 2u * GNSSDBG_ROW_STEP;
+    }
+
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "outProtoMask NMEA bit set means NMEA sentences are sent");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "in addition to UBX replies.");
+    y += 2u * GNSSDBG_ROW_STEP;
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Discarded and no text gaps: the RTE loses bytes of the receiver.");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "Text gaps and NMEA bit set: the receiver sends NMEA as well.");
 }
 
 #endif /* HAVE_DEBUG_VIEW */
