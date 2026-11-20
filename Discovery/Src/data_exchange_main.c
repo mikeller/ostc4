@@ -99,6 +99,9 @@ static uint32_t data_old__lost_connection_to_slave_counter_total = 0;
 
 static uint8_t DeviceDataUpdated = 0;
 
+static SGnssDebugInfo gnssDebugInfo;						/* collected from the GNSS debug records of the RTE */
+static void DataEX_collectGnssDebug(const SExchangeData* pData);
+
 static uint16_t externalInterface_Cmd = 0;
 
 /* Private types -------------------------------------------------------------*/
@@ -1052,6 +1055,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 		pStateReal->lifeData.timeBinaryFormat = dataIn.data[dataIn.boolTimeData].localtime_rtc_tr;
 
 		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
+		DataEX_collectGnssDebug(&dataIn.data[0]);
 
 		if((dataIn.data[dataIn.boolPressureData].pressure_bottle[0] != 0) || (dataIn.data[dataIn.boolPressureData].pressure_bottle[1] != 0))
 		{
@@ -1419,6 +1423,36 @@ void DataEX_merge_devicedata(void)
 		DataEX_merge_DeviceData_and_store();
 	}
 }
+/* Collects one GNSS debug record (see data_exchange.h). Records with a wrong check value are ignored, the same record is received repeatedly without harm */
+static void DataEX_collectGnssDebug(const SExchangeData* pData)
+{
+	uint8_t rec[GNSS_DEBUG_REC_SIZE];
+
+	GNSS_DebugRecord_Get(pData, rec);
+	if(!GNSS_DebugRecord_IsValid(rec))
+	{
+		return;
+	}
+	switch(rec[0] & 0x0Fu)
+	{
+		case GNSS_DEBUG_REC_SUMMARY_A:
+			gnssDebugInfo.numTracked = rec[4] >> 4;
+			gnssDebugInfo.bestCno = rec[5];
+			gnssDebugInfo.recordsSeen |= 0x01u;
+			break;
+		case GNSS_DEBUG_REC_SUMMARY_B:
+			gnssDebugInfo.psmState = rec[3];
+			gnssDebugInfo.recordsSeen |= 0x02u;
+			break;
+		default:
+			break;
+	}
+}
+const SGnssDebugInfo* DataEX_getGnssDebugInfo(void)
+{
+	return &gnssDebugInfo;
+}
+
 uint8_t DataEX_external_ADC_Present(void)
 {
 	uint8_t retval;

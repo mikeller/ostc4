@@ -61,6 +61,10 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->lastFrameValid = 0;		/* the tick of an earlier frame is meaningless after a restart or a sleep phase */
 	GNSS->numEphSat = 0;
 	GNSS->fixOk = 0;
+	GNSS->numTracked = 0;
+	GNSS->bestCno = 0;
+	GNSS->psmState = 0;
+	GNSS->pvtParsed = 0;
 }
 
 /*!
@@ -70,6 +74,38 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS) {
 	GNSS->lastFrameTick = HAL_GetTick();
 	GNSS->lastFrameValid = 1;
+}
+
+static uint8_t GNSS_Limit(uint8_t value, uint8_t limit) {
+	return (value > limit) ? limit : value;
+}
+
+/*!
+ * Fill one record of the GNSS debug record sequence, see data_exchange.h.
+ * @param GNSS Pointer to main GNSS structure.
+ * @param index Record index 0 .. GNSS_DEBUG_REC_CNT - 1, a higher index is treated like 0.
+ * @param rec The record.
+ */
+void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
+	memset(rec, 0, GNSS_DEBUG_REC_SIZE);
+	if(index >= GNSS_DEBUG_REC_CNT)
+	{
+		index = 0;
+	}
+	rec[0] = index;
+	switch(index)
+	{
+		case GNSS_DEBUG_REC_SUMMARY_A:
+			rec[4] = (GNSS_Limit(GNSS->numTracked, 15) << 4);
+			rec[5] = GNSS->bestCno;
+			break;
+		case GNSS_DEBUG_REC_SUMMARY_B:
+			rec[3] = GNSS->pvtParsed ? GNSS->psmState : GNSS_PSM_UNKNOWN;
+			break;
+		default:
+			break;
+	}
+	GNSS_DebugRecord_Seal(rec);
 }
 
 /*!
@@ -106,6 +142,8 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 	GNSS->sec = GNSS_Handle.uartWorkingBuffer[16];
 	GNSS->fixType = GNSS_Handle.uartWorkingBuffer[26];
 	GNSS->fixOk = (GNSS_Handle.uartWorkingBuffer[27] & 0x01u) ? 1 : 0;	/* flags: gnssFixOK (bit 0) */
+	GNSS->psmState = (GNSS_Handle.uartWorkingBuffer[27] >> 2) & 0x07u;	/* flags bits 2..4 */
+	GNSS->pvtParsed = 1;
 
 	for (int var = 0; var < 4; ++var) {
 		iLong.bytes[var] = GNSS_Handle.uartWorkingBuffer[var + 30];
@@ -212,13 +250,25 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 	}
 
 	/* count the satellites with ephemeris. Block N starts at byte 14 + 12 * N of the frame: gnssId, svId, cno, elev, azim (2), prRes (2), flags (4).
-	 * flags bit 11 (bit 3 of the second flags byte) is ephAvail */
+	 * flags bit 11 (bit 3 of the second flags byte) is ephAvail. The same loop counts the satellites with C/N0 > 0 and finds the best C/N0 */
 	GNSS->numEphSat = 0;
+	GNSS->numTracked = 0;
+	GNSS->bestCno = 0;
 	for(loop = 0; loop < scanSat; loop++)
 	{
-		if(GNSS_hasLongLivedEphemeris(GNSS_Handle.uartWorkingBuffer[14 + loop * 12]) && (GNSS_Handle.uartWorkingBuffer[23 + loop * 12] & 0x08u))
+		const uint8_t* pSv = &GNSS_Handle.uartWorkingBuffer[14 + loop * 12];
+
+		if(GNSS_hasLongLivedEphemeris(pSv[0]) && (pSv[9] & 0x08u))
 		{
 			GNSS->numEphSat++;
+		}
+		if(pSv[2] > 0)
+		{
+			GNSS->numTracked++;
+		}
+		if(pSv[2] > GNSS->bestCno)
+		{
+			GNSS->bestCno = pSv[2];
 		}
 	}
 	loop = 0;

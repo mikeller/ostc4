@@ -30,6 +30,7 @@
 #define INC_GNSS_H_
 
 #include "stm32f4xx_hal.h"
+#include "data_exchange.h"
 
 union u_Short
 {
@@ -103,6 +104,12 @@ typedef struct
 	uint8_t statSat[4];
 	uint8_t numEphSat;			/* satellites of the last UBX-NAV-SAT with long lived ephemeris (GPS, Galileo, BeiDou, QZSS) available */
 	uint8_t fixOk;				/* gnssFixOK flag of the last UBX-NAV-PVT */
+
+	/* values which the position view needs, see the GNSS debug record in data_exchange.h */
+	uint8_t numTracked;			/* satellites of the last UBX-NAV-SAT with C/N0 > 0 */
+	uint8_t bestCno;			/* highest C/N0 (dBHz) of the last UBX-NAV-SAT */
+	uint8_t psmState;			/* psmState of the last UBX-NAV-PVT */
+	uint8_t pvtParsed;			/* a UBX-NAV-PVT was parsed since the receiver was initialized or woken: psmState is valid */
 
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
@@ -192,6 +199,7 @@ static const uint8_t setDateTime[] = {0xB5,0x62,0x13,0x40,0x18,0x00,0x10,0x00,0x
 static const uint8_t setPortableType[]={};
 void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart);
 void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS);
+void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t rec[GNSS_DEBUG_REC_SIZE]);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 

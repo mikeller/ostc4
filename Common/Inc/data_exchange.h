@@ -195,17 +195,17 @@ typedef struct
 		float battery_charge;
 		//ambient light
 		uint16_t ambient_light_level;
-		uint16_t SPARE_ALIGN32;
+		uint8_t gnssDebug_A[2];									/* part of the GNSS debug record (was a 16 bit spare), see GNSS_DebugRecord_Put */
 		float	extADC_voltage[3];
 		uint16_t CO2_ppm;
 		uint16_t CO2_signalStrength;
 		uint16_t externalInterface_CmdAnswer;
-		uint8_t	alignmentdummy;
+		uint8_t	gnssDebug_B;											/* part of the GNSS debug record (was an alignment dummy) */
 		uint8_t externalInterface_SensorID;						/* Used to identify how to read the sensor data array */
 		uint8_t sensor_data[EXTIF_SENSOR_INFO_SIZE];			/* sensor specific data array. Content may vary from sensor type to sensor type */
 		uint8_t sensor_map[EXT_INTERFACE_SENSOR_CNT];
 		uint8_t pressure_bottle[PRESSURE_BOTTLE_CNT];
-		uint8_t SPARE_OldWireless[3]; 							/* 64 - 12 for extADC - 6 for CO2 - 34 for sensor (+dummmy) - sensor map - pressure*/
+		uint8_t gnssDebug_C[3]; 								/* part of the GNSS debug record (was SPARE_OldWireless) */
 		// PIC data
 		uint8_t button_setting[4]; /* see dependency to SlaveData->buttonPICdata */
 		uint8_t SPARE1;
@@ -216,6 +216,79 @@ typedef struct
 		uint8_t tempstick[EXT_INTERFACE_TEMPSTICK_MAX];
 
 } 	SExchangeData;
+
+/* The size of the structure defines the size of the SPI frames in both directions, which the main CPU, the RTE and the bootloader have to agree on */
+_Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
+
+/* GNSS debug record.
+ * The six unused bytes of SExchangeData (gnssDebug_A/B/C) carry one record of 6 bytes per exchange. The RTE sends the records in turn (about one per 100 ms, a
+ * record is refreshed about once a second), the main CPU collects them in SGnssDebugInfo. This avoids a bigger SExchangeData and with it a different SPI frame.
+ * Byte 0 is the record index (bits 0..3) and a check value (bits 4..7: XOR of the nibbles of the index and the payload) against records which were read while
+ * the RTE was writing them. Bytes 1..5 are the payload. The position view needs the tracked satellites, the best C/N0 and the power save state of the receiver,
+ * so there are two records:
+ * record 0 (summary A): [4] satellites with C/N0 > 0 (bits 4..7), limited to 15, [5] best C/N0 in dBHz (0 = none). The other bytes are not used.
+ * record 1 (summary B): [3] psmState of UBX-NAV-PVT (0 not active, 1 enabled, 2 acquisition, 3 tracking, 4 power optimized tracking, 5 inactive;
+ *                       GNSS_PSM_UNKNOWN until a UBX-NAV-PVT was parsed since the receiver was initialized or woken). The other bytes are not used.
+ * The field offsets are those of the u-blox 8 / u-blox M8 receiver description (UBX-13003221), the module of the OSTC5 is not identified. */
+#define GNSS_DEBUG_REC_SIZE			(6u)
+#define GNSS_DEBUG_REC_SUMMARY_A	(0u)
+#define GNSS_DEBUG_REC_SUMMARY_B	(1u)
+#define GNSS_DEBUG_REC_CNT			(GNSS_DEBUG_REC_SUMMARY_B + 1u)			/* number of record types: the index is a 4 bit value */
+#define GNSS_PSM_UNKNOWN			(0xFFu)								/* power save state (psmState) not known yet */
+
+_Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
+
+/* sets the check value of a record: the index is already set in the low bits of byte 0 */
+static inline void GNSS_DebugRecord_Seal(uint8_t rec[GNSS_DEBUG_REC_SIZE])
+{
+	uint8_t chk = (rec[0] & 0x0Fu) ^ 0x05u;		/* all bytes 0 is not a valid record */
+	for(uint8_t i = 1; i < GNSS_DEBUG_REC_SIZE; i++)
+	{
+		chk ^= (rec[i] & 0x0Fu) ^ (rec[i] >> 4);
+	}
+	rec[0] = (rec[0] & 0x0Fu) | (uint8_t)(chk << 4);
+}
+
+/* returns 1 if the check value of the record is correct */
+static inline uint8_t GNSS_DebugRecord_IsValid(const uint8_t rec[GNSS_DEBUG_REC_SIZE])
+{
+	uint8_t copy[GNSS_DEBUG_REC_SIZE];
+	for(uint8_t i = 0; i < GNSS_DEBUG_REC_SIZE; i++)
+	{
+		copy[i] = rec[i];
+	}
+	GNSS_DebugRecord_Seal(copy);
+	return (copy[0] == rec[0]) && ((rec[0] & 0x0Fu) < GNSS_DEBUG_REC_CNT);
+}
+
+static inline void GNSS_DebugRecord_Put(SExchangeData* d, const uint8_t rec[GNSS_DEBUG_REC_SIZE])
+{
+	d->gnssDebug_A[0] = rec[0];
+	d->gnssDebug_A[1] = rec[1];
+	d->gnssDebug_B = rec[2];
+	d->gnssDebug_C[0] = rec[3];
+	d->gnssDebug_C[1] = rec[4];
+	d->gnssDebug_C[2] = rec[5];
+}
+
+static inline void GNSS_DebugRecord_Get(const SExchangeData* d, uint8_t rec[GNSS_DEBUG_REC_SIZE])
+{
+	rec[0] = d->gnssDebug_A[0];
+	rec[1] = d->gnssDebug_A[1];
+	rec[2] = d->gnssDebug_B;
+	rec[3] = d->gnssDebug_C[0];
+	rec[4] = d->gnssDebug_C[1];
+	rec[5] = d->gnssDebug_C[2];
+}
+
+/* GNSS values collected by the main CPU from the records */
+typedef struct
+{
+	uint8_t numTracked;		/* satellites with C/N0 > 0 */
+	uint8_t bestCno;		/* highest C/N0 in dBHz */
+	uint8_t psmState;		/* power save state, see record 1 */
+	uint8_t recordsSeen;	/* bit mask of the records received at least once: bit 0 record 0, bit 1 record 1 */
+} SGnssDebugInfo;
 
 typedef struct
 {
