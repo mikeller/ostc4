@@ -54,7 +54,9 @@
 		UART_GNSS_WAKE,			/* wake up bytes sent or about to be sent to a receiver in power save mode, then waiting for it */
 		UART_GNSS_GET_CFGPMS,
 		UART_GNSS_GET_CFGGNSS,
-		UART_GNSS_GET_CFGNAV5
+		UART_GNSS_GET_CFGNAV5,
+		UART_GNSS_GET_CFGANT,
+		UART_GNSS_GET_CFGITFM
   } uartGnssStatus_t;
 
   typedef enum
@@ -95,7 +97,9 @@
 	GNSSCMD_GET_MONVER_DATA,
 	GNSSCMD_GET_CFGPMS_DATA,
 	GNSSCMD_GET_CFGGNSS_DATA,
-	GNSSCMD_GET_CFGNAV5_DATA
+	GNSSCMD_GET_CFGNAV5_DATA,
+	GNSSCMD_GET_CFGANT_DATA,
+	GNSSCMD_GET_CFGITFM_DATA
   } gnssSensorCmd_t;
 
   typedef struct

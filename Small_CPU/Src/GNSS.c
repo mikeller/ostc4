@@ -86,6 +86,10 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->cfgPmsValid = 0;
 	GNSS->cfgGnssValid = 0;
 	GNSS->cfgNav5Valid = 0;
+	GNSS->cfgAntState = GNSS_CFGPOLL_NONE;
+	GNSS->cfgAntTries = 0;
+	GNSS->cfgItfmState = GNSS_CFGPOLL_NONE;
+	GNSS->cfgItfmTries = 0;
 	GNSS->monStartup = 2;		/* the first two poll slots after the start are UBX-MON-VER and UBX-MON-HW, the receiver identification is kept: it does not change */
 }
 
@@ -514,6 +518,37 @@ void GNSS_ParseCfgNav5Data(GNSS_StateHandle *GNSS) {
 	{
 		GNSS->cfgDynModel = GNSS_Handle.uartWorkingBuffer[6 + 2];
 		GNSS->cfgNav5Valid = 1;
+	}
+}
+
+/*!
+ * UBX-CFG-ANT (32.10.1, 4 bytes) and UBX-CFG-ITFM (32.10.16, 8 bytes), raw values little endian; a reply of another length is not used. The meaning of the bits is
+ * decoded by the main CPU (data_exchange.h).
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseCfgAntData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+
+	if(length == 4)
+	{
+		GNSS->cfgAntFlags = GNSS_Handle.uartWorkingBuffer[6] | (GNSS_Handle.uartWorkingBuffer[7] << 8);
+		GNSS->cfgAntPins = GNSS_Handle.uartWorkingBuffer[8] | (GNSS_Handle.uartWorkingBuffer[9] << 8);
+		GNSS->cfgAntState = GNSS_CFGPOLL_OK;
+		GNSS->cfgAntTries = 0;
+	}
+}
+
+void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+
+	if(length == 8)
+	{
+		GNSS->cfgItfmConfig = (uint32_t)GNSS_Handle.uartWorkingBuffer[6] | ((uint32_t)GNSS_Handle.uartWorkingBuffer[7] << 8) | ((uint32_t)GNSS_Handle.uartWorkingBuffer[8] << 16)
+				| ((uint32_t)GNSS_Handle.uartWorkingBuffer[9] << 24);
+		GNSS->cfgItfmConfig2 = (uint32_t)GNSS_Handle.uartWorkingBuffer[10] | ((uint32_t)GNSS_Handle.uartWorkingBuffer[11] << 8) | ((uint32_t)GNSS_Handle.uartWorkingBuffer[12] << 16)
+				| ((uint32_t)GNSS_Handle.uartWorkingBuffer[13] << 24);
+		GNSS->cfgItfmState = GNSS_CFGPOLL_OK;
+		GNSS->cfgItfmTries = 0;
 	}
 }
 

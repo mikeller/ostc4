@@ -87,7 +87,19 @@ union i_Long
 #define GNSS_CFGREAD_PMS			(0x01u)
 #define GNSS_CFGREAD_GNSS			(0x02u)
 #define GNSS_CFGREAD_NAV5			(0x04u)
-#define GNSS_CFGREAD_ALL			(0x07u)
+#define GNSS_CFGREAD_ANT			(0x08u)
+#define GNSS_CFGREAD_ITFM			(0x10u)
+#define GNSS_CFGREAD_ALL			(0x1Fu)
+
+/* Read only polls of UBX-CFG-ANT (antenna supervisor) and UBX-CFG-ITFM (jamming monitor): the state of each poll, see cfgAntState / cfgItfmState. Besides the poll after the
+ * power up they are repeated every GNSS_CFGEXTRA_PERIOD_MS (an answer which did not come is tried GNSS_CFGEXTRA_MAX_TRIES times, a rejection (UBX-ACK-NAK) is not repeated) */
+#define GNSS_CFGPOLL_NONE			(0u)	/* not polled since the power up */
+#define GNSS_CFGPOLL_POLLING		(1u)	/* request sent, no answer yet */
+#define GNSS_CFGPOLL_OK				(2u)	/* answer received */
+#define GNSS_CFGPOLL_NAK			(3u)	/* the receiver rejected the request (UBX-ACK-NAK) */
+#define GNSS_CFGPOLL_NOANSWER		(4u)	/* no answer within the time out */
+#define GNSS_CFGEXTRA_PERIOD_MS		(30000u)
+#define GNSS_CFGEXTRA_MAX_TRIES		(4u)
 
 #define GNSS_VERIFY_PVT_COUNT		(3u)
 #define GNSS_VERIFY_MAX_RETRIES		(3u)
@@ -199,6 +211,15 @@ typedef struct
 	uint8_t cfgGnssMask;		/* bit n: the GNSS with gnssId n is enabled in UBX-CFG-GNSS */
 	uint8_t cfgNav5Valid;
 	uint8_t cfgDynModel;		/* dynModel of UBX-CFG-NAV5 */
+	uint8_t cfgAntState;		/* GNSS_CFGPOLL_* of UBX-CFG-ANT */
+	uint8_t cfgAntTries;		/* requests in a row which were not answered */
+	uint16_t cfgAntFlags;		/* raw flags of UBX-CFG-ANT (bit 0 svcs, 1 scd, 2 ocd, 3 pdwnOnSCD, 4 recovery) */
+	uint16_t cfgAntPins;		/* raw pins of UBX-CFG-ANT (bits 0..4 pinSwitch, 5..9 pinSCD, 10..14 pinOCD, bit 15 reconfig) */
+	uint8_t cfgItfmState;		/* GNSS_CFGPOLL_* of UBX-CFG-ITFM */
+	uint8_t cfgItfmTries;
+	uint32_t cfgItfmConfig;		/* raw config of UBX-CFG-ITFM (bits 0..3 bbThreshold, 4..8 cwThreshold, 9..30 algorithmBits, bit 31 enable) */
+	uint32_t cfgItfmConfig2;	/* raw config2 of UBX-CFG-ITFM (bits 0..11 generalBits, 12..13 antSetting, bit 14 enable2) */
+	uint32_t cfgExtraTick;		/* HAL tick of the last periodic request of UBX-CFG-ANT / UBX-CFG-ITFM */
 
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
@@ -285,6 +306,12 @@ static const uint8_t getCfgGnss[]={0xB5,0x62,0x06,0x3E,0x00,0x00};
 
 static const uint8_t getCfgNav5[]={0xB5,0x62,0x06,0x24,0x00,0x00};
 
+#ifdef GNSS_DEBUG_POLLS
+static const uint8_t getCfgAnt[]={0xB5,0x62,0x06,0x13,0x00,0x00};
+
+static const uint8_t getCfgItfm[]={0xB5,0x62,0x06,0x39,0x00,0x00};
+#endif
+
 static const uint8_t setPowerLow[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x02,0x10,0x0E,0x14,0x00,0x00,0x00};
 
 static const uint8_t setPowerNormal[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
@@ -306,6 +333,8 @@ void GNSS_ParseMonVerData(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgPmsData(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgGnssData(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgNav5Data(GNSS_StateHandle *GNSS);
+void GNSS_ParseCfgAntData(GNSS_StateHandle *GNSS);
+void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS);
 void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
