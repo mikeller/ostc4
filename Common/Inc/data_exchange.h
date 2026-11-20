@@ -242,6 +242,11 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  * record 12 (identification text chunk): [1] bits 0..6 chunk number, bit 7 text valid (UBX-MON-VER received, otherwise the characters are not valid),
  *                       [2..5] four characters of the text at offset 4 * chunk number. The text has GNSS_IDENT_SIZE bytes of fixed fields (see GNSS_IDENT_*), each is
  *                       filled with its characters and 0 up to the end of the field.
+ *                       With the debug view (HAVE_DEBUG_VIEW) GNSS_DEBUG_EXTRA_BLOCKS more items follow the text chunks in the same sequence: bits 0..6 of [1] are
+ *                       GNSS_DEBUG_EXTRA_BASE + n (bit 7 is not used) and [2..5] are four bytes of the raw read back of UBX-CFG-ANT and UBX-CFG-ITFM:
+ *                       n = 0: CFG-ANT flags (low, high byte) and pins (low, high byte); n = 1: CFG-ITFM config, little endian; n = 2: CFG-ITFM config2, little endian;
+ *                       n = 3: state of the poll of CFG-ANT, of CFG-ITFM (GNSS_CFGPOLL_*: 0 not polled, 1 polling, 2 answer received, 3 NAK, 4 no answer), the number of
+ *                       requests in a row which were not answered, for CFG-ANT and for CFG-ITFM
  * record 13 (power): [1] powerSetupValue read back from UBX-CFG-PMS (0 full power, 1 balanced, 2 interval, 3..5 aggressive, 0xFF no predefined setup), [2] mask of the
  *                       GNSS which are enabled in UBX-CFG-GNSS (bit = gnssId), [3] dynModel of UBX-CFG-NAV5, [4] seconds since the last UBX-NAV-PVT with psmState 0
  *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
@@ -271,6 +276,12 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_DEBUG_SCHEDULE_TEXT	(3u)								/* text chunks in a sequence of records */
 #define GNSS_DEBUG_SCHEDULE_LEN		(GNSS_DEBUG_REC_CNT - 1u + GNSS_DEBUG_SCHEDULE_TEXT)	/* all records but the text once and the text chunks */
 #define GNSS_PSM_UNKNOWN			(0xFFu)								/* power save state (psmState) not known yet */
+#define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
+#ifdef HAVE_DEBUG_VIEW
+#define GNSS_DEBUG_EXTRA_BLOCKS		(4u)								/* items of the read back of UBX-CFG-ANT and UBX-CFG-ITFM which are sent with the text */
+#else
+#define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
+#endif
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 
@@ -295,6 +306,8 @@ _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 #define GNSS_IDENT_CHUNKS			(GNSS_IDENT_SIZE / GNSS_IDENT_CHUNK_SIZE)
 _Static_assert((GNSS_IDENT_SIZE % GNSS_IDENT_CHUNK_SIZE) == 0u, "The identification text has to consist of complete chunks");
 _Static_assert(GNSS_IDENT_CHUNKS < 128u, "The chunk number is a 7 bit value");
+#define GNSS_DEBUG_TEXT_ITEMS		(GNSS_IDENT_CHUNKS + GNSS_DEBUG_EXTRA_BLOCKS)		/* items which the text slots of the sequence send in turn */
+_Static_assert(GNSS_IDENT_CHUNKS < GNSS_DEBUG_EXTRA_BASE, "The extra items must not collide with the text chunks");
 
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 _Static_assert(GNSS_IDENT_CHUNKS <= 32u, "The chunks received are collected in a 32 bit mask");
@@ -396,6 +409,17 @@ typedef struct
 	uint8_t verifyTries;
 	uint8_t pollSent[3];		/* UBX-NAV-PVT, UBX-NAV-SAT, UBX-MON-HW */
 	uint8_t pollAnswered[3];
+
+	/* read back of UBX-CFG-ANT and UBX-CFG-ITFM (raw values), see the text record */
+	uint8_t cfgAntState;		/* GNSS_CFGPOLL_*: 0 not polled, 1 polling, 2 answer received, 3 NAK, 4 no answer */
+	uint8_t cfgItfmState;
+	uint8_t cfgAntTries;
+	uint8_t cfgItfmTries;
+	uint16_t cfgAntFlags;
+	uint16_t cfgAntPins;
+	uint32_t cfgItfmConfig;
+	uint32_t cfgItfmConfig2;
+	uint8_t extraMask;			/* bit n: extra item n was received */
 } SGnssDebugInfo;
 
 typedef struct

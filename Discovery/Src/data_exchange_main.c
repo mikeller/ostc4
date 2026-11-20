@@ -1502,6 +1502,32 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 			break;
 		case GNSS_DEBUG_REC_TEXT:
 			chunk = rec[1] & 0x7Fu;
+#ifdef HAVE_DEBUG_VIEW
+			if((chunk >= GNSS_DEBUG_EXTRA_BASE) && (chunk < (GNSS_DEBUG_EXTRA_BASE + GNSS_DEBUG_EXTRA_BLOCKS)))		/* read back of UBX-CFG-ANT and UBX-CFG-ITFM */
+			{
+				switch(chunk - GNSS_DEBUG_EXTRA_BASE)
+				{
+					case 0:
+						gnssDebugInfo.cfgAntFlags = rec[2] | (rec[3] << 8);
+						gnssDebugInfo.cfgAntPins = rec[4] | (rec[5] << 8);
+						break;
+					case 1:
+						gnssDebugInfo.cfgItfmConfig = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					case 2:
+						gnssDebugInfo.cfgItfmConfig2 = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					default:
+						gnssDebugInfo.cfgAntState = rec[2];
+						gnssDebugInfo.cfgItfmState = rec[3];
+						gnssDebugInfo.cfgAntTries = rec[4];
+						gnssDebugInfo.cfgItfmTries = rec[5];
+						break;
+				}
+				gnssDebugInfo.extraMask |= (uint8_t)(1u << (chunk - GNSS_DEBUG_EXTRA_BASE));
+			}
+			else
+#endif
 			if((rec[1] & 0x80u) && (chunk < GNSS_IDENT_CHUNKS))	/* the text is valid on the RTE side */
 			{
 				for(uint8_t pos = 0; pos < GNSS_IDENT_CHUNK_SIZE; pos++)	/* only printable characters are shown */

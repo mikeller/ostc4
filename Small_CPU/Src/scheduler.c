@@ -1909,7 +1909,7 @@ void copyGNSSdata(void)
 	if(debugRecordIndex == GNSS_DEBUG_REC_TEXT)
 	{
 		debugTextChunk++;
-		if(debugTextChunk >= GNSS_IDENT_CHUNKS)
+		if(debugTextChunk >= GNSS_DEBUG_TEXT_ITEMS)
 		{
 			debugTextChunk = 0;
 		}

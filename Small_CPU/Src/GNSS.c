@@ -183,15 +183,45 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 			rec[3] = GNSS->pollAnswered[GNSS_POLL_MONHW];
 			break;
 		case GNSS_DEBUG_REC_TEXT:
-			if(textChunk >= GNSS_IDENT_CHUNKS)
+			if(textChunk >= GNSS_DEBUG_TEXT_ITEMS)
 			{
 				textChunk = 0;
 			}
-			rec[1] = textChunk | (GNSS->identValid ? 0x80u : 0);
-			if(GNSS->identValid)
+			if(textChunk < GNSS_IDENT_CHUNKS)
 			{
-				memcpy(&rec[2], &GNSS->ident[textChunk * GNSS_IDENT_CHUNK_SIZE], GNSS_IDENT_CHUNK_SIZE);
+				rec[1] = textChunk | (GNSS->identValid ? 0x80u : 0);
+				if(GNSS->identValid)
+				{
+					memcpy(&rec[2], &GNSS->ident[textChunk * GNSS_IDENT_CHUNK_SIZE], GNSS_IDENT_CHUNK_SIZE);
+				}
 			}
+#ifdef GNSS_DEBUG_POLLS
+			else		/* read back of UBX-CFG-ANT and UBX-CFG-ITFM */
+			{
+				rec[1] = (uint8_t)(GNSS_DEBUG_EXTRA_BASE + (textChunk - GNSS_IDENT_CHUNKS));
+				switch(textChunk - GNSS_IDENT_CHUNKS)
+				{
+					case 0:
+						rec[2] = GNSS->cfgAntFlags & 0xFFu;
+						rec[3] = GNSS->cfgAntFlags >> 8;
+						rec[4] = GNSS->cfgAntPins & 0xFFu;
+						rec[5] = GNSS->cfgAntPins >> 8;
+						break;
+					case 1:
+						memcpy(&rec[2], &GNSS->cfgItfmConfig, 4);		/* little endian like the receiver (the RTE is little endian) */
+						break;
+					case 2:
+						memcpy(&rec[2], &GNSS->cfgItfmConfig2, 4);
+						break;
+					default:
+						rec[2] = GNSS->cfgAntState;
+						rec[3] = GNSS->cfgItfmState;
+						rec[4] = GNSS->cfgAntTries;
+						rec[5] = GNSS->cfgItfmTries;
+						break;
+				}
+			}
+#endif
 			break;
 		default:
 			pSat = &GNSS->debugSat[index - GNSS_DEBUG_REC_SAT0];
