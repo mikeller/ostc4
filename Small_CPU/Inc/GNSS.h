@@ -67,6 +67,14 @@ union i_Long
 #define GNSS_WAKE_MAX_RETRIES		(3u)
 #define GNSS_WAKE_TX_TIMEOUT_MS		(3000u)	/* the wake up bytes cannot be sent for this long because the transmitter is busy: give up */
 
+/* Check of the power save state: the receiver is meant to run at full power while the unit is awake. If GNSS_VERIFY_PVT_COUNT UBX-NAV-PVT in a row (about 7 s)
+ * report a power save state, or no valid frame arrived for GNSS_FRAMES_STOPPED_MS, the full power command is sent again (with the wake up bytes in the second
+ * case), at most GNSS_VERIFY_MAX_RETRIES times until psmState 0 was seen; commands of the second kind are at least GNSS_VERIFY_SPACING_MS apart */
+#define GNSS_VERIFY_PVT_COUNT		(3u)
+#define GNSS_VERIFY_MAX_RETRIES		(3u)
+#define GNSS_FRAMES_STOPPED_MS		(3000u)
+#define GNSS_VERIFY_SPACING_MS		(5000u)
+
 #define GNSS_POS_MAX_AGE_S		(2u * 3600u)	/* a position which was received earlier is not reported as valid */
 
 /* The receiver is reported as alive (GNSS_ALIVE_STATE_ALIVE) as long as a valid frame was received not longer ago than this.
@@ -126,6 +134,15 @@ typedef struct
 	uint8_t wakeSent;			/* the wake up bytes of the current attempt were transmitted */
 	uint8_t wakeTries;			/* repetitions of the power up sequence in the current power up (0 .. GNSS_WAKE_MAX_RETRIES) */
 	uint8_t wakeFailed;			/* the power up got no acknowledge after GNSS_WAKE_MAX_RETRIES repetitions */
+
+	/* check of the power save state (psmState of UBX-NAV-PVT) while the unit is awake, see uartGnss_VerifyPower */
+	uint8_t verifyBad;			/* number of UBX-NAV-PVT in a row which report a power save state (not 0) */
+	uint8_t verifyResend;		/* GNSS_VERIFY_PVT_COUNT in a row: send full power again */
+	uint8_t verifyTries;		/* full power commands sent by the check since psmState was 0 the last time (0 .. GNSS_VERIFY_MAX_RETRIES) */
+	uint8_t verifyGaveUp;		/* the check did not succeed after GNSS_VERIFY_MAX_RETRIES commands */
+	uint32_t verifyActionTick;	/* HAL tick of the last command of the check */
+	uint32_t psmZeroTick;		/* HAL tick of the last UBX-NAV-PVT with psmState 0 */
+	uint8_t psmZeroValid;		/* psmZeroTick is valid */
 
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */

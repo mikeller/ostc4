@@ -200,6 +200,8 @@ void UART6_HandleUART()
 			GNSS_Handle.wakeSent = 0;
 			GNSS_Handle.wakeTries = 0;
 			GNSS_Handle.wakeFailed = 0;
+			GNSS_Handle.pvtParsed = 0;		/* the power save state is not known until the next UBX-NAV-PVT */
+			GNSS_Handle.psmZeroValid = 0;
 			lastRequestTick = tick;
 			gnssState = UART_GNSS_WAKE;
 			uartGnss_SetState(gnssState);

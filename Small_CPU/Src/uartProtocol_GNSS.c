@@ -183,6 +183,72 @@ static void uartGnss_SendFullPower(void)
 	}
 }
 
+/* Called after every UBX-NAV-PVT: the receiver reports psmState 0 at full power. Counts the reports of a power save state in a row for uartGnss_VerifyPower; a
+ * power save state is expected while the unit is going to sleep or to dive, so it is not counted then */
+static void uartGnss_EvaluatePsm(void)
+{
+	if(GNSS_Handle.psmState == 0)
+	{
+		GNSS_Handle.psmZeroTick = HAL_GetTick();
+		GNSS_Handle.psmZeroValid = 1;
+		GNSS_Handle.verifyBad = 0;
+		GNSS_Handle.verifyResend = 0;
+		GNSS_Handle.verifyTries = 0;
+		GNSS_Handle.verifyGaveUp = 0;
+	}
+	else if(!ReqPowerDown)
+	{
+		if(GNSS_Handle.verifyBad < 255)
+		{
+			GNSS_Handle.verifyBad++;
+		}
+		if(GNSS_Handle.verifyBad >= GNSS_VERIFY_PVT_COUNT)
+		{
+			GNSS_Handle.verifyResend = 1;
+		}
+	}
+}
+
+/* Check of the power save state, called from the state IDLE (not while a power down is requested, not during the initialization or a power up, which end in
+ * IDLE). Returns 1 if it started the power up again. The number of commands is limited (GNSS_VERIFY_MAX_RETRIES until psmState 0 was seen again), they are at
+ * least GNSS_VERIFY_PVT_COUNT UBX-NAV-PVT apart (the counter starts again) or GNSS_VERIFY_SPACING_MS if no frames arrive. The wake up bytes are only sent if no valid
+ * frame arrived for GNSS_FRAMES_STOPPED_MS (the receiver may be inactive); a receiver which answers is only sent the command. */
+static uint8_t uartGnss_VerifyPower(void)
+{
+	uint32_t tick = HAL_GetTick();
+	uint8_t framesStopped = GNSS_Handle.lastFrameValid && (time_elapsed_ms(GNSS_Handle.lastFrameTick, tick) > GNSS_FRAMES_STOPPED_MS);
+
+	if(!(GNSS_Handle.verifyResend || (framesStopped && (time_elapsed_ms(GNSS_Handle.verifyActionTick, tick) > GNSS_VERIFY_SPACING_MS))))
+	{
+		return 0;
+	}
+	GNSS_Handle.verifyResend = 0;
+	if(GNSS_Handle.verifyTries >= GNSS_VERIFY_MAX_RETRIES)
+	{
+		GNSS_Handle.verifyGaveUp = 1;
+		return 0;
+	}
+	GNSS_Handle.verifyTries++;
+	GNSS_Handle.verifyBad = 0;
+	GNSS_Handle.verifyActionTick = tick;
+	GNSS_Handle.pwrupSent = 0;
+	GNSS_Handle.pwrupNak = 0;
+	GNSS_Handle.wakeTries = 0;
+	GNSS_Handle.wakeFailed = 0;
+	GNSS_Handle.pwrupWake = framesStopped;
+	if(framesStopped)
+	{
+		GNSS_Handle.wakeSent = 0;
+		gnssState = UART_GNSS_WAKE;
+	}
+	else
+	{
+		gnssState = UART_GNSS_PWRUP;
+		uartGnss_SendFullPower();
+	}
+	return 1;
+}
+
 /* The initialization continues with the full power command which is sent at once; the sequence of a wake up is started in UART6_HandleUART */
 static void uartGnss_StartPowerUpAfterInit(void)
 {
@@ -265,9 +331,14 @@ void uartGnss_Control(void)
 
 		case UART_GNSS_IDLE:		if(ReqPowerDown)
 									{
+										GNSS_Handle.verifyResend = 0;
 										UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
 										gnssState = UART_GNSS_PWRDOWN;
 										rxState = GNSSRX_DETECT_ACK_0;
+									}
+									else if((pUartCtrl != &Uart1Ctrl) && uartGnss_VerifyPower())
+									{
+										/* the full power command is sent again, the polls continue after the acknowledge */
 									}
 									else
 									{
@@ -365,6 +436,7 @@ void uartGnss_ProcessData(uint8_t data)
 												case UART_GNSS_PWRUP: gnssState = UART_GNSS_IDLE;		/* the receiver accepted the full power command */
 																	  GNSS_Handle.pwrupSent = 0;
 																	  GNSS_Handle.wakeFailed = 0;
+																	  GNSS_Handle.verifyBad = 0;		/* reports from before the command do not count */
 													break;
 												case UART_GNSS_PWRDOWN:	rxState = GNSSRX_DETECT_ACK_0;
 																		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
@@ -457,6 +529,7 @@ void uartGnss_ProcessData(uint8_t data)
 													switch(gnssState)
 													{
 														case UART_GNSS_GET_PVT:GNSS_ParsePVTData(&GNSS_Handle);
+																			   uartGnss_EvaluatePsm();
 															break;
 														case UART_GNSS_GET_SAT: GNSS_ParseNavSatData(&GNSS_Handle);
 															break;

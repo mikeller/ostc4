@@ -65,6 +65,11 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->bestCno = 0;
 	GNSS->psmState = 0;
 	GNSS->pvtParsed = 0;
+	GNSS->verifyBad = 0;
+	GNSS->verifyResend = 0;
+	GNSS->verifyTries = 0;
+	GNSS->verifyGaveUp = 0;
+	GNSS->psmZeroValid = 0;
 }
 
 /*!
