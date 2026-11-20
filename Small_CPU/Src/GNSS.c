@@ -83,13 +83,9 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	memset(GNSS->pollSent, 0, sizeof(GNSS->pollSent));
 	memset(GNSS->pollAnswered, 0, sizeof(GNSS->pollAnswered));
 	GNSS->cfgReadPending = 0;
-	GNSS->cfgPmsValid = 0;
-	GNSS->cfgGnssValid = 0;
-	GNSS->cfgNav5Valid = 0;
-	GNSS->cfgAntState = GNSS_CFGPOLL_NONE;
-	GNSS->cfgAntTries = 0;
-	GNSS->cfgItfmState = GNSS_CFGPOLL_NONE;
-	GNSS->cfgItfmTries = 0;
+#ifdef GNSS_DEBUG_POLLS
+	GNSS_ResetReadOnlyPolls(GNSS);
+#endif
 	GNSS->monStartup = 2;		/* the first two poll slots after the start are UBX-MON-VER and UBX-MON-HW, the receiver identification is kept: it does not change */
 }
 
@@ -105,6 +101,45 @@ void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS) {
 static uint8_t GNSS_Limit(uint8_t value, uint8_t limit) {
 	return (value > limit) ? limit : value;
 }
+
+/* The sequence of the debug records, see data_exchange.h: GNSS_DEBUG_SCHEDULE_LEN slots, the text slot sends the next item of the text and the extra items. With the
+ * debug view a text slot follows each of the other records (30 slots, 3 s), without it the text slots are at the end (18 slots) */
+#define GNSS_TXT	GNSS_DEBUG_REC_TEXT
+static const uint8_t debugSchedule[] =
+{
+#ifdef HAVE_DEBUG_VIEW
+	0, GNSS_TXT, 1, GNSS_TXT, 2, GNSS_TXT, 3, GNSS_TXT, 4, GNSS_TXT, 5, GNSS_TXT, 6, GNSS_TXT, 7, GNSS_TXT, 8, GNSS_TXT, 9, GNSS_TXT, 10, GNSS_TXT, 11, GNSS_TXT,
+	GNSS_DEBUG_REC_POWER, GNSS_TXT, GNSS_DEBUG_REC_POLL_A, GNSS_TXT, GNSS_DEBUG_REC_POLL_B, GNSS_TXT
+#else
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+	GNSS_TXT, GNSS_DEBUG_REC_POWER, GNSS_DEBUG_REC_POLL_A, GNSS_DEBUG_REC_POLL_B, GNSS_TXT, GNSS_TXT
+#endif
+};
+_Static_assert(sizeof(debugSchedule) == GNSS_DEBUG_SCHEDULE_LEN, "The debug record schedule does not have GNSS_DEBUG_SCHEDULE_LEN slots");
+
+uint8_t GNSS_DebugScheduleRecord(uint8_t slot) {
+	return debugSchedule[(slot < GNSS_DEBUG_SCHEDULE_LEN) ? slot : 0];
+}
+
+#ifdef GNSS_DEBUG_POLLS
+/*!
+ * The values of the read only polls are not valid until they were read after a (re)initialization or a power up of the receiver.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS) {
+	GNSS->cfgPmsValid = 0;
+	GNSS->cfgGnssValid = 0;
+	GNSS->cfgNav5Valid = 0;
+	GNSS->cfgAntState = GNSS_CFGPOLL_NONE;
+	GNSS->cfgAntTries = 0;
+	GNSS->cfgItfmState = GNSS_CFGPOLL_NONE;
+	GNSS->cfgItfmTries = 0;
+	GNSS->hw2State = GNSS_CFGPOLL_NONE;
+	GNSS->hw2Tries = 0;
+	GNSS->hw2Have = 0;
+	GNSS->hw2Length = 0;
+}
+#endif
 
 /*!
  * Fill one record of the GNSS debug record sequence, see data_exchange.h.
@@ -213,11 +248,29 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 					case 2:
 						memcpy(&rec[2], &GNSS->cfgItfmConfig2, 4);
 						break;
-					default:
+					case 3:
 						rec[2] = GNSS->cfgAntState;
 						rec[3] = GNSS->cfgItfmState;
 						rec[4] = GNSS->cfgAntTries;
 						rec[5] = GNSS->cfgItfmTries;
+						break;
+					case 4:		/* UBX-MON-HW2 */
+						rec[2] = (uint8_t)GNSS->ofsI;
+						rec[3] = GNSS->magI;
+						rec[4] = (uint8_t)GNSS->ofsQ;
+						rec[5] = GNSS->magQ;
+						break;
+					case 5:
+						memcpy(&rec[2], &GNSS->lowLevCfg, 4);
+						break;
+					case 6:
+						memcpy(&rec[2], &GNSS->postStatus, 4);
+						break;
+					default:
+						rec[2] = GNSS->cfgSource;
+						rec[3] = GNSS->hw2State | (GNSS->hw2Have ? GNSS_CFGPOLL_HAVE : 0);
+						rec[4] = GNSS->hw2Tries;
+						rec[5] = GNSS->hw2Length;
 						break;
 				}
 			}
@@ -579,6 +632,31 @@ void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS) {
 				| ((uint32_t)GNSS_Handle.uartWorkingBuffer[13] << 24);
 		GNSS->cfgItfmState = GNSS_CFGPOLL_OK;
 		GNSS->cfgItfmTries = 0;
+	}
+}
+
+/*!
+ * UBX-MON-HW2 (32.16.3, 28 bytes): ofsI at 0, magI 1, ofsQ 2, magQ 3, cfgSource 4, lowLevCfg 8 (U4), postStatus 20 (U4) of the payload (the same layout in pyubx2).
+ * The values are only taken from a reply with the accepted length, for another length only the length is kept.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseMonHw2Data(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	const uint8_t* p = &GNSS_Handle.uartWorkingBuffer[6];
+
+	GNSS->hw2Length = (length > 255u) ? 255u : (uint8_t)length;
+	GNSS->hw2State = GNSS_CFGPOLL_OK;
+	GNSS->hw2Tries = 0;
+	if(length == GNSS_MONHW2_LEN)
+	{
+		GNSS->ofsI = (int8_t)p[0];
+		GNSS->magI = p[1];
+		GNSS->ofsQ = (int8_t)p[2];
+		GNSS->magQ = p[3];
+		GNSS->cfgSource = p[4];
+		GNSS->lowLevCfg = (uint32_t)p[8] | ((uint32_t)p[9] << 8) | ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
+		GNSS->postStatus = (uint32_t)p[20] | ((uint32_t)p[21] << 8) | ((uint32_t)p[22] << 16) | ((uint32_t)p[23] << 24);
+		GNSS->hw2Have = 1;
 	}
 }
 

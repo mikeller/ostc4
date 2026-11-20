@@ -1302,6 +1302,7 @@ void externalInterface_HandleUART()
 						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_CFGNAV5)
 						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_CFGANT)
 						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_CFGITFM)
+						|| (externalInterface_SensorState[activeSensorId] == UART_GNSS_GET_MONHW2)
 						|| (externalInterface_SensorState[activeSensorId] == UART_SENTINEL_OPERATING))
 				{
 					forceMuxChannel = 1;

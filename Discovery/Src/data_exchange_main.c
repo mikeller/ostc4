@@ -1517,14 +1517,33 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 					case 2:
 						gnssDebugInfo.cfgItfmConfig2 = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
 						break;
-					default:
+					case 3:
 						gnssDebugInfo.cfgAntState = rec[2];
 						gnssDebugInfo.cfgItfmState = rec[3];
 						gnssDebugInfo.cfgAntTries = rec[4];
 						gnssDebugInfo.cfgItfmTries = rec[5];
 						break;
+					case 4:
+						gnssDebugInfo.ofsI = (int8_t)rec[2];
+						gnssDebugInfo.magI = rec[3];
+						gnssDebugInfo.ofsQ = (int8_t)rec[4];
+						gnssDebugInfo.magQ = rec[5];
+						break;
+					case 5:
+						gnssDebugInfo.lowLevCfg = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					case 6:
+						gnssDebugInfo.postStatus = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					default:
+						gnssDebugInfo.cfgSource = rec[2];
+						gnssDebugInfo.hw2State = rec[3] & ~GNSS_CFGPOLL_HAVE;
+						gnssDebugInfo.hw2Have = (rec[3] & GNSS_CFGPOLL_HAVE) ? 1u : 0u;
+						gnssDebugInfo.hw2Tries = rec[4];
+						gnssDebugInfo.hw2Length = rec[5];
+						break;
 				}
-				gnssDebugInfo.extraMask |= (uint8_t)(1u << (chunk - GNSS_DEBUG_EXTRA_BASE));
+				gnssDebugInfo.extraMask |= (1uL << (chunk - GNSS_DEBUG_EXTRA_BASE));
 			}
 			else
 #endif

@@ -118,6 +118,9 @@ uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 		case GNSSCMD_GET_CFGITFM_DATA: pData = getCfgItfm;
 									  txLength = sizeof(getCfgItfm) / sizeof(uint8_t);
 			break;
+		case GNSSCMD_GET_MONHW2_DATA: pData = getMonHw2;
+									  txLength = sizeof(getMonHw2) / sizeof(uint8_t);
+			break;
 #endif
 		case GNSSCMD_GET_MONVER_DATA: pData = getMonVer;
 									  txLength = sizeof(getMonVer) / sizeof(uint8_t);
@@ -284,12 +287,14 @@ typedef struct
 	uint8_t* pPollState;			/* GNSS_CFGPOLL_* of the poll */
 	uint8_t* pTries;				/* requests in a row which were not answered */
 	uint32_t period_ms;				/* time between the requests */
+	uint32_t first_ms;				/* the first request is this long after the power up (0: with the read back of the configuration, the next one a period later) */
 } uartGnssExtraPoll_t;
 
 static const uartGnssExtraPoll_t extraPoll[GNSS_EXTRA_POLL_CNT] =
 {
-	{ GNSS_CFGREAD_ANT, GNSSCMD_GET_CFGANT_DATA, UART_GNSS_GET_CFGANT, &GNSS_Handle.cfgAntState, &GNSS_Handle.cfgAntTries, GNSS_CFGEXTRA_PERIOD_MS },
-	{ GNSS_CFGREAD_ITFM, GNSSCMD_GET_CFGITFM_DATA, UART_GNSS_GET_CFGITFM, &GNSS_Handle.cfgItfmState, &GNSS_Handle.cfgItfmTries, GNSS_CFGEXTRA_PERIOD_MS },
+	{ GNSS_CFGREAD_ANT, GNSSCMD_GET_CFGANT_DATA, UART_GNSS_GET_CFGANT, &GNSS_Handle.cfgAntState, &GNSS_Handle.cfgAntTries, GNSS_CFGEXTRA_PERIOD_MS, 0 },
+	{ GNSS_CFGREAD_ITFM, GNSSCMD_GET_CFGITFM_DATA, UART_GNSS_GET_CFGITFM, &GNSS_Handle.cfgItfmState, &GNSS_Handle.cfgItfmTries, GNSS_CFGEXTRA_PERIOD_MS, 0 },
+	{ GNSS_CFGREAD_HW2, GNSSCMD_GET_MONHW2_DATA, UART_GNSS_GET_MONHW2, &GNSS_Handle.hw2State, &GNSS_Handle.hw2Tries, GNSS_HW2_PERIOD_MS, GNSS_HW2_FIRST_MS },
 };
 
 static const uartGnssExtraPoll_t* uartGnss_FindExtraPoll(uartGnssStatus_t state)
@@ -309,6 +314,17 @@ static uint8_t uartGnss_IsPollState(uartGnssStatus_t state)
 {
 	return (state == UART_GNSS_GET_PVT) || (state == UART_GNSS_GET_SAT) || (state == UART_GNSS_GET_MONHW) || (state == UART_GNSS_GET_MONVER)
 			|| (state == UART_GNSS_GET_CFGPMS) || (state == UART_GNSS_GET_CFGGNSS) || (state == UART_GNSS_GET_CFGNAV5) || (uartGnss_FindExtraPoll(state) != 0);
+}
+
+/* The periodic polls start again with the power up: the first request of each is first_ms later */
+static void uartGnss_RestartExtraPolls(void)
+{
+	uint32_t tick = HAL_GetTick();
+
+	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
+	{
+		GNSS_Handle.extraTick[i] = (extraPoll[i].first_ms != 0) ? (tick - (extraPoll[i].period_ms - extraPoll[i].first_ms)) : tick;
+	}
 }
 
 /* Called from the state IDLE (a poll is over then): a request which did not get an answer is marked, and the requests which are due are queued */
@@ -611,17 +627,8 @@ void uartGnss_ProcessData(uint8_t data)
 																	  GNSS_Handle.verifyBad = 0;		/* reports from before the command do not count */
 #ifdef GNSS_DEBUG_POLLS
 																	  GNSS_Handle.cfgReadPending = GNSS_CFGREAD_ALL;		/* read back what the receiver has now */
-																	  GNSS_Handle.cfgPmsValid = 0;
-																	  GNSS_Handle.cfgGnssValid = 0;
-																	  GNSS_Handle.cfgNav5Valid = 0;
-																	  GNSS_Handle.cfgAntState = GNSS_CFGPOLL_NONE;
-																	  GNSS_Handle.cfgAntTries = 0;
-																	  GNSS_Handle.cfgItfmState = GNSS_CFGPOLL_NONE;
-																	  GNSS_Handle.cfgItfmTries = 0;
-																	  for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
-																	  {
-																		  GNSS_Handle.extraTick[i] = HAL_GetTick();
-																	  }
+																	  GNSS_ResetReadOnlyPolls(&GNSS_Handle);
+																	  uartGnss_RestartExtraPolls();
 #endif
 													break;
 												case UART_GNSS_PWRDOWN:	rxState = GNSSRX_DETECT_ACK_0;
@@ -767,6 +774,8 @@ void uartGnss_ProcessData(uint8_t data)
 														case UART_GNSS_GET_CFGANT: GNSS_ParseCfgAntData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_CFGITFM: GNSS_ParseCfgItfmData(&GNSS_Handle);
+															break;
+														case UART_GNSS_GET_MONHW2: GNSS_ParseMonHw2Data(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_MONVER: GNSS_ParseMonVerData(&GNSS_Handle);
 															break;

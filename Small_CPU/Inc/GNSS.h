@@ -89,15 +89,22 @@ union i_Long
 #define GNSS_CFGREAD_NAV5			(0x04u)
 #define GNSS_CFGREAD_ANT			(0x08u)
 #define GNSS_CFGREAD_ITFM			(0x10u)
-#define GNSS_CFGREAD_ALL			(0x1Fu)
+#define GNSS_CFGREAD_HW2			(0x20u)
+#define GNSS_CFGREAD_ALL			(0x1Fu)		/* the read back after the power up (the periodic polls above 0x10 have their own first time) */
 
 /* Read only polls of UBX-CFG-ANT (antenna supervisor) and UBX-CFG-ITFM (jamming monitor): the state of each poll (GNSS_CFGPOLL_*, data_exchange.h), see cfgAntState / cfgItfmState. Besides the poll after the
  * power up they are repeated every GNSS_CFGEXTRA_PERIOD_MS (an answer which did not come is tried GNSS_CFGEXTRA_MAX_TRIES times, a rejection (UBX-ACK-NAK) is not repeated) */
 #define GNSS_CFGEXTRA_PERIOD_MS		(30000u)
 #define GNSS_CFGEXTRA_MAX_TRIES		(4u)
 
-/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM */
-#define GNSS_EXTRA_POLL_CNT			(2u)
+/* UBX-MON-HW2 (ADC input of the receiver) is polled every GNSS_HW2_PERIOD_MS, the first time GNSS_HW2_FIRST_MS after the power up. The reply is 36 bytes: 38 ms at 9600
+ * baud, in a poll slot of one second */
+#define GNSS_HW2_PERIOD_MS			(20000u)
+#define GNSS_HW2_FIRST_MS			(6000u)
+#define GNSS_MONHW2_LEN				(28u)		/* accepted payload length of UBX-MON-HW2 */
+
+/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2 */
+#define GNSS_EXTRA_POLL_CNT			(3u)
 
 #define GNSS_VERIFY_PVT_COUNT		(3u)
 #define GNSS_VERIFY_MAX_RETRIES		(3u)
@@ -220,6 +227,19 @@ typedef struct
 	uint32_t cfgExtraTick;		/* HAL tick of the last periodic request of UBX-CFG-ANT / UBX-CFG-ITFM */
 	uint32_t extraTick[GNSS_EXTRA_POLL_CNT];	/* HAL tick of the last periodic request of each of the periodic read only polls */
 
+	/* UBX-MON-HW2 (read only poll): the ADC input of the receiver. The values are those of the last reply with the accepted length, hw2Have: there was one since the power up */
+	uint8_t hw2State;			/* GNSS_CFGPOLL_* */
+	uint8_t hw2Tries;
+	uint8_t hw2Have;
+	uint8_t hw2Length;			/* payload length of the last reply (saturating at 255) */
+	int8_t ofsI;
+	uint8_t magI;
+	int8_t ofsQ;
+	uint8_t magQ;
+	uint8_t cfgSource;
+	uint32_t lowLevCfg;
+	uint32_t postStatus;
+
 	uint8_t alive;
 	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
 	uint32_t lastFrameTick;		/* HAL tick of the last valid frame received from the receiver (see GNSS_NoteFrameReceived) */
@@ -309,6 +329,8 @@ static const uint8_t getCfgNav5[]={0xB5,0x62,0x06,0x24,0x00,0x00};
 static const uint8_t getCfgAnt[]={0xB5,0x62,0x06,0x13,0x00,0x00};
 
 static const uint8_t getCfgItfm[]={0xB5,0x62,0x06,0x39,0x00,0x00};
+
+static const uint8_t getMonHw2[]={0xB5,0x62,0x0A,0x0B,0x00,0x00};
 #endif
 
 static const uint8_t setPowerLow[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x02,0x10,0x0E,0x14,0x00,0x00,0x00};
@@ -334,6 +356,9 @@ void GNSS_ParseCfgGnssData(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgNav5Data(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgAntData(GNSS_StateHandle *GNSS);
 void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS);
+void GNSS_ParseMonHw2Data(GNSS_StateHandle *GNSS);
+void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS);
+uint8_t GNSS_DebugScheduleRecord(uint8_t slot);
 void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
