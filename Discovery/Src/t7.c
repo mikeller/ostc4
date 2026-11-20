@@ -160,7 +160,7 @@ GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 uint8_t selection_customview = LLC_Temperature;
 #ifdef HAVE_DEBUG_VIEW
 #define GNSS_DEBUG_PAGES		(7u)		/* the number of the debug pages, see the titles */
-static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state, 4 antenna supervisor and jamming monitor settings, 5 ADC input and receiver status, 6 lost polls, UART errors and the ports of the receiver, 7 receive path of the RTE and the port configuration of the receiver */
+static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state, 4 antenna supervisor and jamming monitor settings, 5 ADC input and receiver status, 6 poll problems, UART errors and the ports of the receiver, 7 receive path of the RTE and the port configuration of the receiver */
 #endif
 
 uint8_t updateNecessary = 0;
@@ -4606,6 +4606,12 @@ void t7_refresh_gnss_power(void)
 /* The heading row of a read back of the configuration (page 4): the name and, once the values were read, the values, with a marker if the last request is not
  * answered (the values stay: "refreshing", "no answer", "NAK"); without values the state of the request. Returns 1 for a state which is shown in yellow (a rejection, no
  * answer) */
+/* "try" for one, "tries" otherwise */
+static const char* t7_gnssTriesWord(uint8_t tries)
+{
+    return (tries == 1u) ? "try" : "tries";
+}
+
 static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, const char* pValues, uint8_t received, uint8_t have, uint8_t state, uint8_t tries)
 {
     if(!received)
@@ -4621,7 +4627,7 @@ static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, c
                 break;
             case GNSS_CFGPOLL_NAK:			snprintf(pText, size, "%s: %s  (NAK)", pName, pValues);
                 break;
-            case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: %s  (no answer, %u tries)", pName, pValues, tries);
+            case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: %s  (no answer, %u %s)", pName, pValues, tries, t7_gnssTriesWord(tries));
                 break;
             default:						snprintf(pText, size, "%s: %s", pName, pValues);
                 break;
@@ -4633,7 +4639,7 @@ static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, c
         {
             case GNSS_CFGPOLL_NAK:			snprintf(pText, size, "%s: NAK (the receiver rejects the poll)", pName);
                 break;
-            case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: no answer (%u tries)", pName, tries);
+            case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: no answer (%u %s)", pName, tries, t7_gnssTriesWord(tries));
                 break;
             case GNSS_CFGPOLL_POLLING:		snprintf(pText, size, "%s: polling", pName);
                 break;
@@ -4762,7 +4768,7 @@ static void t7_gnssPollWord(char* pDest, size_t size, uint8_t state, uint8_t tri
             break;
         case GNSS_CFGPOLL_NAK:			snprintf(pDest, size, "NAK (not supported)");
             break;
-        case GNSS_CFGPOLL_NOANSWER:		snprintf(pDest, size, "no answer (%u tries)", tries);
+        case GNSS_CFGPOLL_NOANSWER:		snprintf(pDest, size, "no answer (%u %s)", tries, t7_gnssTriesWord(tries));
             break;
         default:						snprintf(pDest, size, "not polled yet");
             break;
@@ -4889,7 +4895,7 @@ void t7_refresh_gnss_adc(void)
     }
     y += 10u;
 
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "magI/magQ: 0 = no signal, 255 = max (u-blox doc).");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "magI/magQ: ADC input level, 0 none, 255 max (u-blox doc).");
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "ofs near +-127 = clamped. msss falls: receiver reset.");
 }
 
@@ -4916,7 +4922,7 @@ void t7_refresh_gnss_accounting(void)
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* lost or disturbed polls by cause */
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Lost polls");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Poll problems");
     t7_gnssDebugWrite(GNSSACC_COL_TIMEOUT, 799, y, CLUT_Font020, "timeout");
     t7_gnssDebugWrite(GNSSACC_COL_CHECKSUM, 799, y, CLUT_Font020, "checksum");
     t7_gnssDebugWrite(GNSSACC_COL_MISMATCH, 799, y, CLUT_Font020, "mismatch");
@@ -4993,8 +4999,9 @@ void t7_refresh_gnss_accounting(void)
     y += 10u;
 
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "Receiver parity/framing/overrun grow: garbage reaches the receiver.");
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "Only the RTE UART errors grow: the RTE loses bytes of the receiver.");
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "Lost polls: since the wake up. UART errors: since the RTE started.");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "Only the RTE UART errors (since start) grow: the RTE loses bytes.");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "Problems: since wake up. Lost: timeout, checksum, mismatch, NAK.");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 3u * GNSSDBG_ROW_STEP, CLUT_Font020, "Resync: junk seen, the poll may still work.");
 }
 
 /* Debug page 7: the receive path of the RTE (counted since the RTE started) and the port configuration of the receiver (UBX-CFG-PRT). Rows of font T24 every 34 px, the
