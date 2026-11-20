@@ -24,6 +24,7 @@
 #include "uartProtocol_Co2.h"
 #include "uartProtocol_Sentinel.h"
 #include "uartProtocol_GNSS.h"
+#include "GNSS.h"
 #include "uartProtocol_HUD.h"
 #include "externalInterface.h"
 #include "data_exchange.h"
@@ -316,12 +317,30 @@ void UART_StartDMA_Receiption(sUartComCtrl* pUartCtrl)
 	{
 		if((pUartCtrl->rxWriteIndex / CHUNK_SIZE) == (pUartCtrl->rxReadIndex / CHUNK_SIZE)) /* write pointer catched up with read pointer (should never happen) => Reset read pointer to start of block */
 		{
+#ifdef GNSS_DEBUG_POLLS
+			if((pUartCtrl == pGnssCtrl) && (!UART_isEndIndication(pUartCtrl, pUartCtrl->rxReadIndex)))		/* only if there is unread data: not at the start of the reception */
+			{
+				GNSS_NoteRxDiscard(&GNSS_Handle);		/* only counted: the reception is not changed */
+			}
+#endif
 			pUartCtrl->rxReadIndex = pUartCtrl->rxWriteIndex;
 		}
 		if(HAL_OK == HAL_UART_Receive_DMA (pUartCtrl->pHandle, &pUartCtrl->pRxBuffer[pUartCtrl->rxWriteIndex], CHUNK_SIZE))
 		{
 			pUartCtrl->dmaRxActive = 1;
+#ifdef GNSS_DEBUG_POLLS
+			if(pUartCtrl == pGnssCtrl)
+			{
+				GNSS_NoteRxStart(&GNSS_Handle, 1);
+			}
     	}
+		else if(pUartCtrl == pGnssCtrl)
+		{
+			GNSS_NoteRxStart(&GNSS_Handle, 0);
+		}
+#else
+    	}
+#endif
 	}
 }
 

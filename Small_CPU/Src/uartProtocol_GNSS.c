@@ -658,6 +658,19 @@ void uartGnss_ProcessData(uint8_t data)
 		ck_B += ck_A;
 	}
 
+#ifdef GNSS_DEBUG_POLLS
+	if((rxState == GNSSRX_DETECT_HEADER_0) || (rxState == GNSSRX_DETECT_ACK_0))		/* between two frames: bytes which are not the start of a frame are kept for the debug page */
+	{
+		if(data == 0xB5)
+		{
+			GNSS_NoteJunkEnd(&GNSS_Handle);
+		}
+		else
+		{
+			GNSS_NoteJunkByte(&GNSS_Handle, data);
+		}
+	}
+#endif
 	switch(rxState)
 	{
 		case GNSSRX_DETECT_ACK_0:

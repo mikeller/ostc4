@@ -58,6 +58,10 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->vAcc = 0;
 	GNSS->gSpeed = 0;
 	GNSS->headMot = 0;
+#ifdef GNSS_DEBUG_POLLS
+	GNSS->rxReadTickValid = 0;
+	GNSS->junkOpen = 0;
+#endif
 	GNSS->lastFrameValid = 0;		/* the tick of an earlier frame is meaningless after a restart or a sleep phase */
 	GNSS->numEphSat = 0;
 	GNSS->fixOk = 0;
@@ -328,6 +332,27 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 						rec[3] = GNSS->ioTries;
 						rec[4] = GNSS->ioPort;
 						rec[5] = GNSS->ioLength;
+						break;
+					case 23:		/* receive path of the receiver port */
+						memcpy(&rec[2], (const void*)&GNSS->rxDiscards, 2);
+						memcpy(&rec[4], (const void*)&GNSS->rxStarts, 2);
+						break;
+					case 24:
+						memcpy(&rec[2], &GNSS->rxMaxGapMs, 2);
+						rec[4] = GNSS->rxLateGaps;
+						rec[5] = GNSS->rxStartFails;
+						break;
+					case 25:
+						memcpy(&rec[2], &GNSS->junkBytes[0], 4);
+						break;
+					case 26:
+						memcpy(&rec[2], &GNSS->junkBytes[4], 4);
+						break;
+					case 27:
+						rec[2] = GNSS->junkLen;
+						rec[3] = GNSS->junkFlags;
+						rec[4] = GNSS->junkAscii;
+						rec[5] = GNSS->junkBinary;
 						break;
 					case 22:		/* the read back of UBX-CFG-GNSS */
 						rec[2] = GNSS->cfgGnssState | (GNSS->cfgGnssValid ? GNSS_CFGPOLL_HAVE : 0);
@@ -892,6 +917,144 @@ void GNSS_NoteUartError(GNSS_StateHandle *GNSS, uint32_t errorCode) {
 		}
 	}
 }
+
+#ifdef GNSS_DEBUG_POLLS
+/*!
+ * The DMA chunk which is started would overwrite unread data: the read pointer was set to the write pointer. Called in the interrupt of the DMA, so only a count.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_NoteRxDiscard(GNSS_StateHandle *GNSS) {
+	if(GNSS->rxDiscards < 0xFFFFu)
+	{
+		GNSS->rxDiscards++;
+	}
+}
+
+/*!
+ * A DMA chunk of the receiver port was started or could not be started. Called in the interrupt of the DMA, so only a count.
+ * @param GNSS Pointer to main GNSS structure.
+ * @param started 1 if the reception was started.
+ */
+void GNSS_NoteRxStart(GNSS_StateHandle *GNSS, uint8_t started) {
+	if(started)
+	{
+		if(GNSS->rxStarts < 0xFFFFu)
+		{
+			GNSS->rxStarts++;
+		}
+	}
+	else if(GNSS->rxStartFails < 0xFFu)
+	{
+		GNSS->rxStartFails++;
+	}
+}
+
+/*!
+ * The reader of the receiver port was called: keeps the longest time between two calls. The first call after the initialization of the receiver does not count (the reader is
+ * not called while it is initialized, see UART6_HandleUART).
+ * @param GNSS Pointer to main GNSS structure.
+ * @param tick HAL tick.
+ */
+void GNSS_NoteReadCall(GNSS_StateHandle *GNSS, uint32_t tick) {
+	if(GNSS->rxReadTickValid)
+	{
+		uint32_t gap = time_elapsed_ms(GNSS->rxReadTick, tick);
+
+		if((gap > GNSS_RX_LATE_GAP_MS) && (GNSS->rxLateGaps < 0xFFu))
+		{
+			GNSS->rxLateGaps++;
+		}
+		if(gap > GNSS->rxMaxGapMs)
+		{
+			GNSS->rxMaxGapMs = (gap > 0xFFFFu) ? 0xFFFFu : (uint16_t)gap;
+		}
+	}
+	GNSS->rxReadTick = tick;
+	GNSS->rxReadTickValid = 1;
+}
+
+/* The bytes of the open gap are the first bytes of a gap: classify and publish them (once per gap) */
+static void GNSS_PublishJunk(GNSS_StateHandle *GNSS) {
+	uint8_t flags = GNSS_JUNK_ASCII;
+
+	for(uint8_t i = 0; (i < GNSS_JUNK_BYTES) && (i < GNSS->junkWorkLen); i++)
+	{
+		uint8_t c = GNSS->junkWork[i];
+
+		if(((c < 0x20u) || (c > 0x7Eu)) && (c != '\r') && (c != '\n'))
+		{
+			flags &= (uint8_t)~GNSS_JUNK_ASCII;
+		}
+	}
+	if(GNSS->junkWork[0] == '$')
+	{
+		flags |= GNSS_JUNK_DOLLAR;
+	}
+	memcpy(GNSS->junkBytes, GNSS->junkWork, GNSS_JUNK_BYTES);
+	GNSS->junkFlags = flags;
+	GNSS->junkLen = GNSS->junkWorkLen;
+	if(flags & GNSS_JUNK_ASCII)
+	{
+		if(GNSS->junkAscii < 0xFFu)
+		{
+			GNSS->junkAscii++;
+		}
+	}
+	else if(GNSS->junkBinary < 0xFFu)
+	{
+		GNSS->junkBinary++;
+	}
+	GNSS->junkCounted = 1;
+}
+
+/*!
+ * A byte which is not the start of a frame (UBX sync byte 0xB5) was received while the reader is between two frames: it belongs to a gap. The first GNSS_JUNK_BYTES bytes of
+ * the gap are kept. The gap is published (and classified as printable characters or other bytes, see junkFlags) when it has that many bytes, or when it ends if it has at
+ * least GNSS_JUNK_MIN_LEN bytes, so the bytes of the last gap are shown. Reading only: nothing is sent and the reception is not changed.
+ * @param GNSS Pointer to main GNSS structure.
+ * @param data Byte received.
+ */
+void GNSS_NoteJunkByte(GNSS_StateHandle *GNSS, uint8_t data) {
+	if(!GNSS->junkOpen)
+	{
+		memset(GNSS->junkWork, 0, GNSS_JUNK_BYTES);
+		GNSS->junkWorkLen = 0;
+		GNSS->junkCounted = 0;
+		GNSS->junkOpen = 1;
+	}
+	if(GNSS->junkWorkLen < GNSS_JUNK_BYTES)
+	{
+		GNSS->junkWork[GNSS->junkWorkLen] = data;
+	}
+	if(GNSS->junkWorkLen < 0xFFu)
+	{
+		GNSS->junkWorkLen++;
+	}
+	if((GNSS->junkWorkLen == GNSS_JUNK_BYTES) && (!GNSS->junkCounted))
+	{
+		GNSS_PublishJunk(GNSS);
+	}
+	else if(GNSS->junkCounted)
+	{
+		GNSS->junkLen = GNSS->junkWorkLen;
+	}
+}
+
+/*!
+ * The start of a frame was received: the gap between frames (if there is one) is over.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_NoteJunkEnd(GNSS_StateHandle *GNSS) {
+	if(GNSS->junkOpen)
+	{
+		if((!GNSS->junkCounted) && (GNSS->junkWorkLen >= GNSS_JUNK_MIN_LEN))
+		{
+			GNSS_PublishJunk(GNSS);
+		}
+		GNSS->junkOpen = 0;
+	}
+}
+#endif
 
 void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll) {
 	if(GNSS->pollAnswered[poll] < GNSS->pollSent[poll])		/* an answer to a request which was counted */

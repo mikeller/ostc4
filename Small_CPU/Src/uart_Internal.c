@@ -198,6 +198,9 @@ void UART6_HandleUART()
 	{
 		if(gnssState != UART_GNSS_INIT)		/* also in WAKE and PWRUP: the acknowledge of the full power command is evaluated */
 		{
+#ifdef GNSS_DEBUG_POLLS
+			GNSS_NoteReadCall(&GNSS_Handle, tick);
+#endif
 			UART_ReadData(SENSOR_GNSS, 0);
 			UART_WriteData(&Uart6Ctrl);
 		}
@@ -207,6 +210,9 @@ void UART6_HandleUART()
 			TriggerTick = tick - 10;	/* just to make sure control is triggered */
 			timeToTrigger = 1;
 			retryRequest = 0;
+#ifdef GNSS_DEBUG_POLLS
+			GNSS_Handle.rxReadTickValid = 0;		/* the reader is not called while the receiver is initialized: that is no gap */
+#endif
 		}
 		else if((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested()))		/* start the wake up of the receiver */
 		{

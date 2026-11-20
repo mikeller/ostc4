@@ -134,6 +134,16 @@ union i_Long
 #define GNSS_MONIO_MAX_PORTS		(8u)		/* longer replies are not used */
 #define GNSS_MONIO_DEFAULT_PORT		(1u)
 
+/* Receive path of the receiver port (debug view): the DMA chunks which are restarted and the unread data which is discarded when the write pointer catches up with the read
+ * pointer (UART_StartDMA_Receiption, in the interrupt), the longest time between two calls of the reader (UART6_HandleUART) and the first bytes of the bytes between the frames
+ * of the receiver (see GNSS_NoteJunkByte). The ring holds GNSS_RX_RING_SIZE bytes of three chunks: 160 bytes or more which have not been read when a chunk is complete are
+ * discarded (167 ms of the full rate of 9600 baud) */
+#define GNSS_RX_LATE_GAP_MS			(100u)		/* a gap between two calls of the reader longer than this is counted (96 bytes at 9600 baud) */
+#define GNSS_JUNK_BYTES				(8u)		/* bytes of a gap between frames which are kept */
+#define GNSS_JUNK_MIN_LEN			(3u)		/* shorter gaps are not classified */
+#define GNSS_JUNK_ASCII				(0x01u)		/* junkFlags: all kept bytes are printable characters (or CR, LF) */
+#define GNSS_JUNK_DOLLAR			(0x02u)		/* junkFlags: the first byte is '$' */
+
 /* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, UBX-MON-IO */
 #define GNSS_EXTRA_POLL_CNT			(5u)
 
@@ -313,6 +323,24 @@ typedef struct
 	uint16_t ioFramingErrs;
 	uint16_t ioOverrunErrs;
 	uint16_t ioBreakCond;
+	/* receive path of the receiver port (debug view), since the RTE started, all saturating. rxDiscards and rxStarts are counted in the interrupt of the DMA (a count can be
+	 * lost if the reader is interrupted while it counts) */
+	volatile uint16_t rxDiscards;	/* chunks which were started after the unread data of the chunk was discarded (the read pointer was set to the write pointer) */
+	volatile uint16_t rxStarts;		/* DMA chunks which were started */
+	volatile uint8_t rxStartFails;	/* DMA chunks which could not be started (the reception is stopped until the next command) */
+	uint16_t rxMaxGapMs;			/* longest time between two calls of the reader (HAL tick: it stops in STOP mode, which is only used while the unit sleeps) */
+	uint8_t rxLateGaps;				/* gaps longer than GNSS_RX_LATE_GAP_MS */
+	uint8_t rxReadTickValid;
+	uint32_t rxReadTick;			/* HAL tick of the last call of the reader */
+	uint8_t junkOpen;				/* a gap between frames is open (bytes which are not the start of a frame were received after the last frame) */
+	uint8_t junkCounted;			/* the open gap was classified */
+	uint8_t junkWorkLen;			/* bytes of the open gap (saturating at 255) */
+	uint8_t junkWork[GNSS_JUNK_BYTES];
+	uint8_t junkLen;				/* the last classified gap: length (saturating at 255), 0: none yet */
+	uint8_t junkFlags;				/* GNSS_JUNK_* */
+	uint8_t junkBytes[GNSS_JUNK_BYTES];	/* its first bytes */
+	uint8_t junkAscii;				/* classified gaps of printable characters (text, e.g. NMEA sentences), since the RTE started, saturating */
+	uint8_t junkBinary;				/* classified gaps with other bytes */
 	uint8_t ident[GNSS_IDENT_SIZE];	/* identification text, see data_exchange.h */
 
 	uint8_t alive;
@@ -445,6 +473,13 @@ void GNSS_NotePollAnswered(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_NotePollCause(GNSS_StateHandle *GNSS, uint8_t poll, uint8_t cause);
 void GNSS_NotePollTimeout(GNSS_StateHandle *GNSS, uint8_t poll);
 void GNSS_NoteUartError(GNSS_StateHandle *GNSS, uint32_t errorCode);
+#ifdef GNSS_DEBUG_POLLS
+void GNSS_NoteRxDiscard(GNSS_StateHandle *GNSS);
+void GNSS_NoteRxStart(GNSS_StateHandle *GNSS, uint8_t started);
+void GNSS_NoteReadCall(GNSS_StateHandle *GNSS, uint32_t tick);
+void GNSS_NoteJunkByte(GNSS_StateHandle *GNSS, uint8_t data);
+void GNSS_NoteJunkEnd(GNSS_StateHandle *GNSS);
+#endif
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 

@@ -261,7 +261,12 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       n = 20: overrunErrs (U2), breakCond (U2), all little endian; n = 21: state of the poll (as for n = 7), number of requests in a row which were
  *                       not answered, port number of the values, payload length of the last reply;
  *                       n = 22: the read back of UBX-CFG-GNSS (the mask is in record 13): state of the last request (bits 0..6, GNSS_CFGPOLL_*, bit 7 GNSS_CFGPOLL_HAVE:
- *                       the mask was read since the power up), number of requests since the power up, payload length of the last reply
+ *                       the mask was read since the power up), number of requests since the power up, payload length of the last reply;
+ *                       receive path of the receiver port on the RTE (counted since the RTE started, saturating): n = 23: rxDiscards (U2, unread data discarded because the DMA
+ *                       caught up with the reader), rxStarts (U2, DMA chunks started); n = 24: rxMaxGapMs (U2, longest time between two calls of the reader), rxLateGaps (U1,
+ *                       gaps longer than 100 ms), rxStartFails (U1, DMA chunks which could not be started); n = 25 and 26: the first four and the second four bytes of the last
+ *                       gap between frames (bytes which are not the start of a frame, only gaps of 3 bytes and more); n = 27: length of that gap (U1, 0 none yet), flags (bit 0:
+ *                       the first 8 bytes are printable characters or CR, LF, bit 1: the first byte is '$'), number of gaps of printable characters, number of other gaps
  * record 13 (power): [1] powerSetupValue read back from UBX-CFG-PMS (0 full power, 1 balanced, 2 interval, 3..5 aggressive, 0xFF no predefined setup), [2] mask of the
  *                       GNSS which are enabled in UBX-CFG-GNSS (bit = gnssId), [3] dynModel of UBX-CFG-NAV5, [4] seconds since the last UBX-NAV-PVT with psmState 0
  *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
@@ -273,7 +278,7 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  * The RTE sends a sequence of GNSS_DEBUG_SCHEDULE_LEN records: the records 0..11 and 13..15 once and GNSS_DEBUG_SCHEDULE_TEXT items of the text record (the next item
  * each time: the chunks of the text, with the debug view the extra items after them). At the rate of one record per 100 ms every record is refreshed every
  * GNSS_DEBUG_SCHEDULE_LEN / 10 s and all items of the text record are sent in (GNSS_DEBUG_TEXT_ITEMS / GNSS_DEBUG_SCHEDULE_TEXT) sequences. Without the debug view that is
- * 1.8 s and 22 / 3 * 1.8 s (13 s), with it 3.0 s and 3 sequences (9 s for all items, see GNSS_DEBUG_TEXT_ITEMS).
+ * 1.8 s and 22 / 3 * 1.8 s (13 s), with it 3.0 s and 3.6 sequences (11 s for all items, see GNSS_DEBUG_TEXT_ITEMS).
  * The check value includes a constant, so that a frame with all bytes 0 (a RTE which does not send records) is not accepted.
  * The field offsets are those of the u-blox 8 / u-blox M8 receiver description (UBX-13003221), the module of the OSTC5 is not identified until the text has been
  * received. UBX-MON-HW is accepted with the 60 byte payload of the u-blox 8 / u-blox M8 receiver description only (the same layout is documented in the ZED-F9H
@@ -305,7 +310,7 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_CFGPOLL_HAVE			(0x80u)								/* flag in the transmitted state: a reply was received since the power up, the values are valid */
 #define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
 #ifdef HAVE_DEBUG_VIEW
-#define GNSS_DEBUG_EXTRA_BLOCKS		(23u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, the counts of lost polls, UBX-MON-IO */
+#define GNSS_DEBUG_EXTRA_BLOCKS		(28u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, the counts of lost polls, UBX-MON-IO, the receive path */
 /* items of the extra items (bits of extraMask of SGnssDebugInfo) which belong together: */
 #define GNSS_EXTRA_MASK_ANT			(0x000009uL)						/* UBX-CFG-ANT: items 0 and 3 */
 #define GNSS_EXTRA_MASK_ITFM		(0x00000EuL)						/* UBX-CFG-ITFM: items 1, 2 and 3 */
@@ -314,6 +319,7 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_EXTRA_MASK_DIAG		(0x01F000uL)						/* counts of lost polls and UART errors: items 12 to 16 */
 #define GNSS_EXTRA_MASK_IO			(0x3E0000uL)						/* UBX-MON-IO: items 17 to 21 */
 #define GNSS_EXTRA_MASK_CFGGNSS		(0x400000uL)						/* read back of UBX-CFG-GNSS: item 22 */
+#define GNSS_EXTRA_MASK_RX			(0xF800000uL)						/* receive path of the receiver port: items 23 to 27 */
 #define GNSS_DEBUG_DIAG_SIZE		(20u)								/* bytes of the counts of lost polls (3 * 5) and UART errors (5), sent in five items */
 #else
 #define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
@@ -511,6 +517,18 @@ typedef struct
 	uint8_t cfgGnssState;		/* GNSS_CFGPOLL_* */
 	uint8_t cfgGnssTries;
 	uint8_t cfgGnssLength;
+
+	/* receive path of the receiver port on the RTE, see the text record (valid with GNSS_EXTRA_MASK_RX in extraMask) */
+	uint16_t rxDiscards;
+	uint16_t rxStarts;
+	uint16_t rxMaxGapMs;
+	uint8_t rxLateGaps;
+	uint8_t rxStartFails;
+	uint8_t junkBytes[8];		/* first bytes of the last gap between frames */
+	uint8_t junkLen;			/* its length, 0: none yet */
+	uint8_t junkFlags;			/* bit 0: printable characters (or CR, LF) only, bit 1: the first byte is '$' */
+	uint8_t junkAscii;			/* gaps of printable characters */
+	uint8_t junkBinary;			/* other gaps */
 } SGnssDebugInfo;
 
 typedef struct
