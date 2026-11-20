@@ -107,7 +107,8 @@ union i_Long
 #define GNSS_CFGREAD_HW2			(0x20u)
 #define GNSS_CFGREAD_STATUS			(0x40u)
 #define GNSS_CFGREAD_IO				(0x80u)
-#define GNSS_CFGREAD_ALL			(0x1Fu)		/* the read back after the power up (the periodic polls above 0x10 have their own first time) */
+#define GNSS_CFGREAD_PRT			(0x100u)
+#define GNSS_CFGREAD_ALL			(0x11Fu)	/* the read back after the power up (the periodic polls above 0x10 other than UBX-CFG-PRT have their own first time) */
 
 /* Read only polls of UBX-CFG-ANT (antenna supervisor) and UBX-CFG-ITFM (jamming monitor): the state of each poll (GNSS_CFGPOLL_*, data_exchange.h), see cfgAntState / cfgItfmState. Besides the poll after the
  * power up they are repeated every GNSS_CFGEXTRA_PERIOD_MS (an answer which did not come is tried GNSS_CFGEXTRA_MAX_TRIES times, a rejection (UBX-ACK-NAK) is not repeated) */
@@ -144,8 +145,14 @@ union i_Long
 #define GNSS_JUNK_ASCII				(0x01u)		/* junkFlags: all kept bytes are printable characters (or CR, LF) */
 #define GNSS_JUNK_DOLLAR			(0x02u)		/* junkFlags: the first byte is '$' */
 
-/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, UBX-MON-IO */
-#define GNSS_EXTRA_POLL_CNT			(5u)
+/* UBX-CFG-PRT (protocols, baud rate and mode of a port of the receiver) of the port GNSS_CFGPRT_PORT is read after the power up and then every GNSS_PRT_PERIOD_MS. The request has
+ * 9 bytes with the port number and the checksum (9 ms at 9600 baud), the reply 28 bytes (29 ms). The OSTC5 initializes the receiver with UBX-CFG-PRT for port 1 (configUBX:
+ * UART1, 9600 baud, UBX only in and out), that is the port which is read. It is not saved (the save mask of setConfig does not include the port configuration) */
+#define GNSS_PRT_PERIOD_MS			(60000u)
+#define GNSS_CFGPRT_PORT			(1u)
+
+/* Number of the periodic read only polls (see the table in uartProtocol_GNSS.c): UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, UBX-MON-IO, UBX-CFG-PRT */
+#define GNSS_EXTRA_POLL_CNT			(6u)
 
 /* The read back of UBX-CFG-GNSS after the power up is tried again, GNSS_CFGGNSS_RETRY_MS after the last attempt and only after a UBX-NAV-PVT reported full power (psmState 0 is
  * seen), at most GNSS_CFGGNSS_MAX_RETRIES times, if it was not read (no answer, or a reply which cannot be used); a rejection (NAK) is not repeated */
@@ -260,7 +267,7 @@ typedef struct
 	uint8_t uartErrType[GNSS_UARTERR_CNT];	/* UART errors of the receiver port by type (GNSS_UARTERR_*) since the RTE started (saturating at 255), uartErrors counts the callbacks */
 
 	/* read back of the configuration after the power up (debug page, read only polls), see GNSS_ParseCfg... */
-	uint8_t cfgReadPending;		/* bit mask GNSS_CFGREAD_*: the configuration messages which are polled next, one per poll slot */
+	uint16_t cfgReadPending;	/* bit mask GNSS_CFGREAD_*: the configuration messages which are polled next, one per poll slot */
 	uint8_t cfgPmsValid;
 	uint8_t cfgPmsSetup;		/* powerSetupValue of UBX-CFG-PMS: 0 full power, 1 balanced, 2 interval, 3 to 5 aggressive, 0xFF no predefined setup */
 	uint8_t cfgGnssValid;
@@ -341,6 +348,16 @@ typedef struct
 	uint8_t junkBytes[GNSS_JUNK_BYTES];	/* its first bytes */
 	uint8_t junkAscii;				/* classified gaps of printable characters (text, e.g. NMEA sentences), since the RTE started, saturating */
 	uint8_t junkBinary;				/* classified gaps with other bytes */
+	/* UBX-CFG-PRT of port GNSS_CFGPRT_PORT (read only poll), the values are those of the last reply with the accepted length (prtHave: there was one since the power up) */
+	uint8_t prtState;			/* GNSS_CFGPOLL_* */
+	uint8_t prtTries;
+	uint8_t prtHave;
+	uint8_t prtLength;			/* payload length of the last reply (saturating at 255) */
+	uint8_t prtPortId;			/* portID of the reply */
+	uint32_t prtMode;			/* mode (UART: bits 6..7 character length, 9..11 parity, 12..13 stop bits) */
+	uint32_t prtBaud;			/* baudRate */
+	uint16_t prtInProto;		/* inProtoMask (bit 0 UBX, 1 NMEA, 2 RTCM, 5 RTCM3) */
+	uint16_t prtOutProto;		/* outProtoMask (bit 0 UBX, 1 NMEA, 5 RTCM3) */
 	uint8_t ident[GNSS_IDENT_SIZE];	/* identification text, see data_exchange.h */
 
 	uint8_t alive;
@@ -438,6 +455,9 @@ static const uint8_t getMonHw2[]={0xB5,0x62,0x0A,0x0B,0x00,0x00};
 static const uint8_t getNavStatus[]={0xB5,0x62,0x01,0x03,0x00,0x00};
 
 static const uint8_t getMonIo[]={0xB5,0x62,0x0A,0x02,0x00,0x00};
+
+/* UBX-CFG-PRT poll with the port number as payload (GNSS_CFGPRT_PORT) */
+static const uint8_t getCfgPrt[]={0xB5,0x62,0x06,0x00,0x01,0x00,GNSS_CFGPRT_PORT};
 #endif
 
 static const uint8_t setPowerLow[]={0xB5,0x62,0x06,0x86,0x08,0x00,0x00,0x02,0x10,0x0E,0x14,0x00,0x00,0x00};
@@ -466,6 +486,7 @@ void GNSS_ParseCfgItfmData(GNSS_StateHandle *GNSS);
 void GNSS_ParseMonHw2Data(GNSS_StateHandle *GNSS);
 void GNSS_ParseNavStatusData(GNSS_StateHandle *GNSS);
 void GNSS_ParseMonIoData(GNSS_StateHandle *GNSS);
+void GNSS_ParseCfgPrtData(GNSS_StateHandle *GNSS);
 void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS);
 uint8_t GNSS_DebugScheduleRecord(uint8_t slot);
 void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll);

@@ -1608,6 +1608,23 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData)
 						gnssDebugInfo.junkAscii = rec[4];
 						gnssDebugInfo.junkBinary = rec[5];
 						break;
+					case 28:
+						gnssDebugInfo.prtState = rec[2] & ~GNSS_CFGPOLL_HAVE;
+						gnssDebugInfo.prtHave = (rec[2] & GNSS_CFGPOLL_HAVE) ? 1u : 0u;
+						gnssDebugInfo.prtTries = rec[3];
+						gnssDebugInfo.prtPortId = rec[4];
+						gnssDebugInfo.prtLength = rec[5];
+						break;
+					case 29:
+						gnssDebugInfo.prtBaud = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
+					case 30:
+						gnssDebugInfo.prtInProto = (uint16_t)(rec[2] | (rec[3] << 8));
+						gnssDebugInfo.prtOutProto = (uint16_t)(rec[4] | (rec[5] << 8));
+						break;
+					case 31:
+						gnssDebugInfo.prtMode = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
+						break;
 					default:		/* 12 .. 16: four bytes of the counts of lost polls (15) and of the UART error types (5) */
 						for(uint8_t pos = 0; pos < 4; pos++)
 						{

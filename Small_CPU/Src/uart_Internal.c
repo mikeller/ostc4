@@ -338,7 +338,8 @@ void UART6_HandleUART()
 			if((gnssState == UART_GNSS_GET_SAT) || (gnssState == UART_GNSS_GET_PVT) || (gnssState == UART_GNSS_GET_MONHW) || (gnssState == UART_GNSS_GET_MONVER) ||
 				(gnssState == UART_GNSS_GET_CFGPMS) || (gnssState == UART_GNSS_GET_CFGGNSS) || (gnssState == UART_GNSS_GET_CFGNAV5) ||
 				(gnssState == UART_GNSS_GET_CFGANT) || (gnssState == UART_GNSS_GET_CFGITFM) || (gnssState == UART_GNSS_GET_MONHW2) ||
-				(gnssState == UART_GNSS_GET_NAVSTATUS) || (gnssState == UART_GNSS_GET_MONIO))	/* timeout */
+				(gnssState == UART_GNSS_GET_NAVSTATUS) || (gnssState == UART_GNSS_GET_MONIO) ||
+				(gnssState == UART_GNSS_GET_CFGPRT))	/* timeout */
 			{
 #ifdef GNSS_DEBUG_POLLS
 				uartGnss_NoteTimeout(gnssState);

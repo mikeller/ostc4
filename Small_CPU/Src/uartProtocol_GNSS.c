@@ -130,6 +130,9 @@ uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 		case GNSSCMD_GET_MONIO_DATA: pData = getMonIo;
 									  txLength = sizeof(getMonIo) / sizeof(uint8_t);
 			break;
+		case GNSSCMD_GET_CFGPRT_DATA: pData = getCfgPrt;
+									  txLength = sizeof(getCfgPrt) / sizeof(uint8_t);
+			break;
 #endif
 		case GNSSCMD_GET_MONVER_DATA: pData = getMonVer;
 									  txLength = sizeof(getMonVer) / sizeof(uint8_t);
@@ -335,7 +338,7 @@ void uartGnss_NoteTimeout(uartGnssStatus_t state)
 #ifdef GNSS_DEBUG_POLLS
 typedef struct
 {
-	uint8_t pendingBit;				/* GNSS_CFGREAD_*: the poll is due */
+	uint16_t pendingBit;			/* GNSS_CFGREAD_*: the poll is due */
 	uint8_t cmd;					/* GNSSCMD_GET_*: the request */
 	uartGnssStatus_t state;			/* gnssState while the reply is awaited */
 	uint8_t* pPollState;			/* GNSS_CFGPOLL_* of the poll */
@@ -351,6 +354,7 @@ static const uartGnssExtraPoll_t extraPoll[GNSS_EXTRA_POLL_CNT] =
 	{ GNSS_CFGREAD_HW2, GNSSCMD_GET_MONHW2_DATA, UART_GNSS_GET_MONHW2, &GNSS_Handle.hw2State, &GNSS_Handle.hw2Tries, GNSS_HW2_PERIOD_MS, GNSS_HW2_FIRST_MS },
 	{ GNSS_CFGREAD_STATUS, GNSSCMD_GET_NAVSTATUS_DATA, UART_GNSS_GET_NAVSTATUS, &GNSS_Handle.statusState, &GNSS_Handle.statusTries, GNSS_STATUS_PERIOD_MS, GNSS_STATUS_FIRST_MS },
 	{ GNSS_CFGREAD_IO, GNSSCMD_GET_MONIO_DATA, UART_GNSS_GET_MONIO, &GNSS_Handle.ioState, &GNSS_Handle.ioTries, GNSS_IO_PERIOD_MS, GNSS_IO_FIRST_MS },
+	{ GNSS_CFGREAD_PRT, GNSSCMD_GET_CFGPRT_DATA, UART_GNSS_GET_CFGPRT, &GNSS_Handle.prtState, &GNSS_Handle.prtTries, GNSS_PRT_PERIOD_MS, 0 },
 };
 
 static const uartGnssExtraPoll_t* uartGnss_FindExtraPoll(uartGnssStatus_t state)
@@ -427,7 +431,7 @@ static uint8_t uartGnss_StartConfigRead(void)
 	{
 		if(GNSS_Handle.cfgReadPending & order[i])
 		{
-			GNSS_Handle.cfgReadPending &= (uint8_t)~order[i];
+			GNSS_Handle.cfgReadPending &= (uint16_t)~order[i];
 			if(order[i] == GNSS_CFGREAD_GNSS)
 			{
 				GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_POLLING;
@@ -447,7 +451,7 @@ static uint8_t uartGnss_StartConfigRead(void)
 	{
 		if(GNSS_Handle.cfgReadPending & extraPoll[i].pendingBit)
 		{
-			GNSS_Handle.cfgReadPending &= (uint8_t)~extraPoll[i].pendingBit;
+			GNSS_Handle.cfgReadPending &= (uint16_t)~extraPoll[i].pendingBit;
 			*extraPoll[i].pPollState = GNSS_CFGPOLL_POLLING;
 			UART_Gnss_SendCmd(extraPoll[i].cmd);
 			gnssState = extraPoll[i].state;
@@ -889,6 +893,8 @@ void uartGnss_ProcessData(uint8_t data)
 														case UART_GNSS_GET_NAVSTATUS: GNSS_ParseNavStatusData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_MONIO: GNSS_ParseMonIoData(&GNSS_Handle);
+															break;
+														case UART_GNSS_GET_CFGPRT: GNSS_ParseCfgPrtData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_MONVER: GNSS_ParseMonVerData(&GNSS_Handle);
 															break;

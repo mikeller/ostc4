@@ -161,6 +161,10 @@ void GNSS_ResetReadOnlyPolls(GNSS_StateHandle *GNSS) {
 	GNSS->ioTries = 0;
 	GNSS->ioHave = 0;
 	GNSS->ioLength = 0;
+	GNSS->prtState = GNSS_CFGPOLL_NONE;
+	GNSS->prtTries = 0;
+	GNSS->prtHave = 0;
+	GNSS->prtLength = 0;
 }
 #endif
 
@@ -332,6 +336,22 @@ void GNSS_GetDebugRecord(const GNSS_StateHandle *GNSS, uint8_t index, uint8_t ag
 						rec[3] = GNSS->ioTries;
 						rec[4] = GNSS->ioPort;
 						rec[5] = GNSS->ioLength;
+						break;
+					case 28:		/* UBX-CFG-PRT */
+						rec[2] = GNSS->prtState | (GNSS->prtHave ? GNSS_CFGPOLL_HAVE : 0);
+						rec[3] = GNSS->prtTries;
+						rec[4] = GNSS->prtPortId;
+						rec[5] = GNSS->prtLength;
+						break;
+					case 29:
+						memcpy(&rec[2], &GNSS->prtBaud, 4);
+						break;
+					case 30:
+						memcpy(&rec[2], &GNSS->prtInProto, 2);
+						memcpy(&rec[4], &GNSS->prtOutProto, 2);
+						break;
+					case 31:
+						memcpy(&rec[2], &GNSS->prtMode, 4);
 						break;
 					case 23:		/* receive path of the receiver port */
 						memcpy(&rec[2], (const void*)&GNSS->rxDiscards, 2);
@@ -852,6 +872,30 @@ void GNSS_ParseMonIoData(GNSS_StateHandle *GNSS) {
 		GNSS->ioOverrunErrs = GNSS_Le16(&p[12]);
 		GNSS->ioBreakCond = GNSS_Le16(&p[14]);
 		GNSS->ioHave = 1;
+	}
+}
+
+/*!
+ * UBX-CFG-PRT for a UART port (32.10.25.2, 20 bytes): portID (U1) at 0, txReady (X2) 2, mode (X4) 4, baudRate (U4) 8, inProtoMask (X2) 12, outProtoMask (X2) 14, flags (X2) 16.
+ * The offsets are the same in the ublox_msgs package (CfgPRT.msg), in pyubx2 and in the UBX-CFG-PRT message which the OSTC5 sends to initialize the receiver (configUBX). The values
+ * are only taken from a reply with the accepted length, for another length only the length is kept.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_ParseCfgPrtData(GNSS_StateHandle *GNSS) {
+	uint16_t length = GNSS_Handle.uartWorkingBuffer[4] + (GNSS_Handle.uartWorkingBuffer[5] << 8);
+	const uint8_t* p = &GNSS_Handle.uartWorkingBuffer[6];
+
+	GNSS->prtLength = (length > 255u) ? 255u : (uint8_t)length;
+	GNSS->prtState = GNSS_CFGPOLL_OK;
+	GNSS->prtTries = 0;
+	if(length == GNSS_CFGPRT_LEN)
+	{
+		GNSS->prtPortId = p[0];
+		GNSS->prtMode = GNSS_Le32(&p[4]);
+		GNSS->prtBaud = GNSS_Le32(&p[8]);
+		GNSS->prtInProto = GNSS_Le16(&p[12]);
+		GNSS->prtOutProto = GNSS_Le16(&p[14]);
+		GNSS->prtHave = 1;
 	}
 }
 

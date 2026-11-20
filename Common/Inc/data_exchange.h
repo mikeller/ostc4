@@ -266,7 +266,10 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       caught up with the reader), rxStarts (U2, DMA chunks started); n = 24: rxMaxGapMs (U2, longest time between two calls of the reader), rxLateGaps (U1,
  *                       gaps longer than 100 ms), rxStartFails (U1, DMA chunks which could not be started); n = 25 and 26: the first four and the second four bytes of the last
  *                       gap between frames (bytes which are not the start of a frame, only gaps of 3 bytes and more); n = 27: length of that gap (U1, 0 none yet), flags (bit 0:
- *                       the first 8 bytes are printable characters or CR, LF, bit 1: the first byte is '$'), number of gaps of printable characters, number of other gaps
+ *                       the first 8 bytes are printable characters or CR, LF, bit 1: the first byte is '$'), number of gaps of printable characters, number of other gaps;
+ *                       UBX-CFG-PRT of the receiver port (read only poll with the port number as payload, port GNSS_CFGPRT_PORT of the RTE): n = 28: state of the poll (as for
+ *                       n = 7), number of requests in a row which were not answered, portID of the reply, payload length of the last reply; n = 29: baudRate, little endian;
+ *                       n = 30: inProtoMask (U2), outProtoMask (U2), little endian; n = 31: mode (X4), little endian
  * record 13 (power): [1] powerSetupValue read back from UBX-CFG-PMS (0 full power, 1 balanced, 2 interval, 3..5 aggressive, 0xFF no predefined setup), [2] mask of the
  *                       GNSS which are enabled in UBX-CFG-GNSS (bit = gnssId), [3] dynModel of UBX-CFG-NAV5, [4] seconds since the last UBX-NAV-PVT with psmState 0
  *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
@@ -310,7 +313,7 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_CFGPOLL_HAVE			(0x80u)								/* flag in the transmitted state: a reply was received since the power up, the values are valid */
 #define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
 #ifdef HAVE_DEBUG_VIEW
-#define GNSS_DEBUG_EXTRA_BLOCKS		(28u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, the counts of lost polls, UBX-MON-IO, the receive path */
+#define GNSS_DEBUG_EXTRA_BLOCKS		(32u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, the counts of lost polls, UBX-MON-IO, the receive path, UBX-CFG-PRT */
 /* items of the extra items (bits of extraMask of SGnssDebugInfo) which belong together: */
 #define GNSS_EXTRA_MASK_ANT			(0x000009uL)						/* UBX-CFG-ANT: items 0 and 3 */
 #define GNSS_EXTRA_MASK_ITFM		(0x00000EuL)						/* UBX-CFG-ITFM: items 1, 2 and 3 */
@@ -319,7 +322,8 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_EXTRA_MASK_DIAG		(0x01F000uL)						/* counts of lost polls and UART errors: items 12 to 16 */
 #define GNSS_EXTRA_MASK_IO			(0x3E0000uL)						/* UBX-MON-IO: items 17 to 21 */
 #define GNSS_EXTRA_MASK_CFGGNSS		(0x400000uL)						/* read back of UBX-CFG-GNSS: item 22 */
-#define GNSS_EXTRA_MASK_RX			(0xF800000uL)						/* receive path of the receiver port: items 23 to 27 */
+#define GNSS_EXTRA_MASK_RX			(0x0F800000uL)						/* receive path of the receiver port: items 23 to 27 */
+#define GNSS_EXTRA_MASK_PRT			(0xF0000000uL)						/* UBX-CFG-PRT: items 28 to 31 */
 #define GNSS_DEBUG_DIAG_SIZE		(20u)								/* bytes of the counts of lost polls (3 * 5) and UART errors (5), sent in five items */
 #else
 #define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
@@ -330,6 +334,7 @@ _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 #define GNSS_MONHW_LEN				(60u)								/* accepted payload length of UBX-MON-HW */
 #define GNSS_MONHW2_LEN				(28u)								/* accepted payload length of UBX-MON-HW2 */
 #define GNSS_NAVSTATUS_LEN			(16u)								/* accepted payload length of UBX-NAV-STATUS */
+#define GNSS_CFGPRT_LEN				(20u)								/* accepted payload length of UBX-CFG-PRT of a UART port */
 
 /* Identification text of the receiver, built from UBX-MON-VER: swVersion, hwVersion and the extension strings FWVER=, PROTVER=, MOD= (prefix removed) and the
  * first extension string with a ';' (the list of supported GNSS, e.g. GPS;GLO;GAL;BDS). Fixed fields: */
@@ -529,6 +534,17 @@ typedef struct
 	uint8_t junkFlags;			/* bit 0: printable characters (or CR, LF) only, bit 1: the first byte is '$' */
 	uint8_t junkAscii;			/* gaps of printable characters */
 	uint8_t junkBinary;			/* other gaps */
+
+	/* UBX-CFG-PRT of the receiver port (read only poll), see the text record: valid if prtHave, prtLength 20 is the accepted length */
+	uint8_t prtState;			/* GNSS_CFGPOLL_* */
+	uint8_t prtHave;
+	uint8_t prtTries;
+	uint8_t prtLength;
+	uint8_t prtPortId;
+	uint32_t prtBaud;
+	uint16_t prtInProto;		/* inProtoMask: bit 0 UBX, 1 NMEA, 2 RTCM, 5 RTCM3 */
+	uint16_t prtOutProto;		/* outProtoMask: bit 0 UBX, 1 NMEA, 5 RTCM3 */
+	uint32_t prtMode;			/* UART mode: bits 6..7 character length, 9..11 parity, 12..13 stop bits */
 } SGnssDebugInfo;
 
 typedef struct
