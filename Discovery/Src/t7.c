@@ -2384,7 +2384,10 @@ void t7_refresh_customview(void)
         break;
 
     case CVIEW_Position:
-        snprintf(text, 100, "\032\f\001%c%c", TXT_2BYTE, TXT2BYTE_Position);
+        /* the colour of the title shows if the receiver answers (a valid frame within GNSS_ALIVE_TIMEOUT_MS): white = yes, red = no.
+         * Both colours are fixed ones, the label colour of the other titles depends on the colour scheme. White and red differ strongly in brightness,
+         * so they can be told apart without relying on red and green. The colour is part of the string, it is not kept for other views */
+        snprintf(text, 100, "%c\f\001%c%c", (stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) ? '\020' : '\025', TXT_2BYTE, TXT2BYTE_Position);
         GFX_write_string(&FontT42, &t7cH, text, 0);
         t7_showPosition();
         break;
@@ -3644,14 +3647,6 @@ void t7_showPosition(void)
     if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
     	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
-    	if(stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE)
-    	{
-    		textpointer += snprintf(&text[textpointer],50,"\001\020Status\n\r");
-    	}
-    	else
-    	{
-    		textpointer += snprintf(&text[textpointer],50,"\001\021Status\n\r");
-    	}
     }
     else
     {
