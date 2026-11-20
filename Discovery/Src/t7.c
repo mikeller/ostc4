@@ -108,6 +108,7 @@ static uint8_t t7_getGnssPowerSaveState(void);
 void t7_refresh_gnss_debug(void);
 void t7_refresh_gnss_hardware(void);
 void t7_refresh_gnss_power(void);
+void t7_refresh_gnss_config(void);
 #endif
 void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
@@ -155,7 +156,7 @@ GFX_DrawCfgWindow	t7surfaceL, t7surfaceR;
 
 uint8_t selection_customview = LLC_Temperature;
 #ifdef HAVE_DEBUG_VIEW
-static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state */
+static uint8_t gnssDebugPage = 0;			/* the debug page of the position view is shown instead of the home screen: 0 none, 1 receiver values, 2 receiver hardware, 3 power state, 4 antenna supervisor and jamming monitor settings */
 #endif
 
 uint8_t updateNecessary = 0;
@@ -679,7 +680,9 @@ void t7_refresh(void)
 #ifdef HAVE_DEBUG_VIEW
         else if(t7_isGnssDebugPageShown())
         {
-            if(gnssDebugPage == 3)
+            if(gnssDebugPage == 4)
+                t7_refresh_gnss_config();
+            else if(gnssDebugPage == 3)
                 t7_refresh_gnss_power();
             else if(gnssDebugPage == 2)
                 t7_refresh_gnss_hardware();
@@ -3948,15 +3951,15 @@ bool t7_isGnssDebugPageShown(void)
 }
 
 
-/* ENTER on the position view shows the debug page, the next ENTER the page of the receiver hardware, the third ENTER the page of the power state and the fourth
- * ENTER leaves it and continues with the next view. Returns true if the action was used */
+/* ENTER on the position view shows the debug page, the next ENTER the page of the receiver hardware, the third ENTER the page of the power state, the fourth ENTER
+ * the page of the antenna supervisor and jamming monitor settings and the fifth ENTER leaves it and continues with the next view. Returns true if the action was used */
 bool t7_handleGnssDebugPageAction(uint8_t action)
 {
     if((action != ACTION_BUTTON_ENTER) || (stateUsed->mode != MODE_SURFACE))
     {
         return false;
     }
-    if((gnssDebugPage == 1) || (gnssDebugPage == 2))
+    if((gnssDebugPage >= 1) && (gnssDebugPage < 4))
     {
         gnssDebugPage++;
         return true;
@@ -4051,7 +4054,7 @@ void t7_refresh_gnss_debug(void)
     uint32_t session_s = gnssAcquire_getElapsedS();
     const SGnssDebugSat* pSat;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/3");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 1/4");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSDBG_LEFT_ROW(color, text)	t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
@@ -4292,7 +4295,7 @@ void t7_refresh_gnss_hardware(void)
     uint16_t y = GNSSDBG_ROW0_Y;
     uint8_t chunks = 0;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/3");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 2/4");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* identification of the receiver (UBX-MON-VER) */
@@ -4453,8 +4456,8 @@ void t7_refresh_gnss_power(void)
     uint8_t havePolls = (pDbg->recordsSeen & 0xC0u) == 0xC0u;
     uint16_t len = 0;
 
-    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 3/3");
-    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 3/4");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
 #define GNSSPWR_ROW(color, text)	t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
 
@@ -4541,6 +4544,132 @@ void t7_refresh_gnss_power(void)
 #undef GNSSPWR_ROW
 
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row + 1) * GNSSDBG_ROW_STEP, CLUT_Font020, "Polls: answered/sent since the wake up.");
+}
+
+
+/* Debug page 4: the settings of the antenna supervisor (UBX-CFG-ANT) and of the jamming monitor (UBX-CFG-ITFM) as the receiver reports them to the read only polls
+ * of the RTE; nothing is set. The text of the u-blox 8 / u-blox M8 receiver description UBX-13003221 has the field names but not the bit graphics, so the bit
+ * positions were checked against public parsers: CFG-ANT in the ublox_msgs package (KumarRobotics), pyubx2 and python-ubx, CFG-ITFM in pyubx2 (field widths in
+ * order from bit 0) and the ublox crate (explicit positions). Bits: CFG-ANT flags 0 svcs, 1 scd, 2 ocd, 3 pdwnOnSCD, 4 recovery, pins 0..4 pinSwitch, 5..9 pinSCD,
+ * 10..14 pinOCD, 15 reconfig; CFG-ITFM config 0..3 bbThreshold, 4..8 cwThreshold, 9..30 algorithmBits, 31 enable, config2 0..11 generalBits, 12..13 antSetting,
+ * 14 enable2. antSetting: the u-blox description says 1 passive and 2 active, the ublox crate has them the other way round, so the raw number is shown with the
+ * description's name. The defaults for protocol 18 firmware 3.xx (description, appendix C.1) are svcs, scd, pdwnOnSCD and recovery on, ocd off and the pins
+ * 16, 15 and 14: flags 0x001B, pins 0x39F0. The monitor is off by default and needs the algorithm and general bits 0x16B156 and 0x31E (description, CFG-ITFM).
+ * One column of rows of font T24 every 34 px, the widest row ends before x = 700. */
+#define GNSSCFG_ANT_FLAGS_DEFAULT		(0x001Bu)
+#define GNSSCFG_ANT_PINS_DEFAULT		(0x39F0u)
+#define GNSSCFG_ITFM_ALGO_BITS			(0x16B156u)
+#define GNSSCFG_ITFM_GENERAL_BITS		(0x31Eu)
+
+void t7_refresh_gnss_config(void)
+{
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+    const char* const antSetting[] = { "unknown", "passive", "active", "?" };
+    char text[100];
+    uint8_t row = 0;
+    uint16_t y;
+    uint32_t cfg = pDbg->cfgItfmConfig;
+    uint32_t cfg2 = pDbg->cfgItfmConfig2;
+    uint32_t algo = (cfg >> 9) & 0x3FFFFFu;		/* 22 bits */
+    uint32_t general = cfg2 & 0xFFFu;
+    uint8_t haveState = pDbg->extraMask & 0x08u;
+    uint8_t haveAnt = haveState && (pDbg->cfgAntState == GNSS_CFGPOLL_OK) && ((pDbg->extraMask & 0x01u) != 0);
+    uint8_t haveItfm = haveState && (pDbg->cfgItfmState == GNSS_CFGPOLL_OK) && ((pDbg->extraMask & 0x06u) == 0x06u);
+
+    t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 4/4");
+    t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
+
+#define GNSSCFG_ROW(color, text)	do { t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + row * GNSSDBG_ROW_STEP + ((row >= 4) ? 10u : 0), (color), (text)); row++; } while(0)
+
+    /* antenna supervisor */
+    if(!haveState)
+    {
+        snprintf(text, sizeof(text), "CFG-ANT: --");
+    }
+    else if(pDbg->cfgAntState == GNSS_CFGPOLL_OK)
+    {
+        snprintf(text, sizeof(text), "CFG-ANT: flags 0x%04X  pins 0x%04X", pDbg->cfgAntFlags, pDbg->cfgAntPins);
+    }
+    else if(pDbg->cfgAntState == GNSS_CFGPOLL_NAK)
+    {
+        snprintf(text, sizeof(text), "CFG-ANT: NAK (the receiver rejects the poll)");
+    }
+    else if(pDbg->cfgAntState == GNSS_CFGPOLL_NOANSWER)
+    {
+        snprintf(text, sizeof(text), "CFG-ANT: no answer (%u tries)", pDbg->cfgAntTries);
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "CFG-ANT: %s", (pDbg->cfgAntState == GNSS_CFGPOLL_POLLING) ? "polling" : "not polled yet");
+    }
+    GNSSCFG_ROW(((haveState) && (pDbg->cfgAntState >= GNSS_CFGPOLL_NAK)) ? CLUT_WarningYellow : CLUT_Font020, text);
+    if(haveAnt)
+    {
+        snprintf(text, sizeof(text), "svcs %u  scd %u  ocd %u  pdwnOnSCD %u  recovery %u", pDbg->cfgAntFlags & 1u, (pDbg->cfgAntFlags >> 1) & 1u, (pDbg->cfgAntFlags >> 2) & 1u,
+                 (pDbg->cfgAntFlags >> 3) & 1u, (pDbg->cfgAntFlags >> 4) & 1u);
+        GNSSCFG_ROW(CLUT_Font020, text);
+        snprintf(text, sizeof(text), "pinSwitch %u  pinSCD %u  pinOCD %u  reconfig %u", pDbg->cfgAntPins & 31u, (pDbg->cfgAntPins >> 5) & 31u, (pDbg->cfgAntPins >> 10) & 31u,
+                 (pDbg->cfgAntPins >> 15) & 1u);
+        GNSSCFG_ROW(CLUT_Font020, text);
+        if((pDbg->cfgAntFlags == GNSSCFG_ANT_FLAGS_DEFAULT) && (pDbg->cfgAntPins == GNSSCFG_ANT_PINS_DEFAULT))
+        {
+            GNSSCFG_ROW(CLUT_Font020, "= SPG 3.xx default (flags 0x001B, pins 0x39F0)");
+        }
+        else
+        {
+            GNSSCFG_ROW(CLUT_WarningYellow, "differs from the SPG 3.xx default (0x001B, 0x39F0)");
+        }
+    }
+    else
+    {
+        row = 4;
+    }
+
+    /* jamming monitor */
+    if(!haveState)
+    {
+        snprintf(text, sizeof(text), "CFG-ITFM: --");
+    }
+    else if(pDbg->cfgItfmState == GNSS_CFGPOLL_OK)
+    {
+        snprintf(text, sizeof(text), "CFG-ITFM: config 0x%08X  config2 0x%08X", (unsigned int)cfg, (unsigned int)cfg2);
+    }
+    else if(pDbg->cfgItfmState == GNSS_CFGPOLL_NAK)
+    {
+        snprintf(text, sizeof(text), "CFG-ITFM: NAK (the receiver rejects the poll)");
+    }
+    else if(pDbg->cfgItfmState == GNSS_CFGPOLL_NOANSWER)
+    {
+        snprintf(text, sizeof(text), "CFG-ITFM: no answer (%u tries)", pDbg->cfgItfmTries);
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "CFG-ITFM: %s", (pDbg->cfgItfmState == GNSS_CFGPOLL_POLLING) ? "polling" : "not polled yet");
+    }
+    GNSSCFG_ROW(((haveState) && (pDbg->cfgItfmState >= GNSS_CFGPOLL_NAK)) ? CLUT_WarningYellow : CLUT_Font020, text);
+    if(haveItfm)
+    {
+        snprintf(text, sizeof(text), "enable %lu  bbThreshold %lu dB  cwThreshold %lu dB", (unsigned long)(cfg >> 31), (unsigned long)(cfg & 0xFu), (unsigned long)((cfg >> 4) & 0x1Fu));
+        GNSSCFG_ROW(CLUT_Font020, text);
+        snprintf(text, sizeof(text), "algorithmBits 0x%06lX %s  generalBits 0x%03lX %s", (unsigned long)algo, (algo == GNSSCFG_ITFM_ALGO_BITS) ? "ok" : "other", (unsigned long)general,
+                 (general == GNSSCFG_ITFM_GENERAL_BITS) ? "ok" : "other");
+        GNSSCFG_ROW(((algo == GNSSCFG_ITFM_ALGO_BITS) && (general == GNSSCFG_ITFM_GENERAL_BITS)) ? CLUT_Font020 : CLUT_WarningYellow, text);
+        snprintf(text, sizeof(text), "antSetting %lu (%s)  scan aux bands %lu", (unsigned long)((cfg2 >> 12) & 3u), antSetting[(cfg2 >> 12) & 3u], (unsigned long)((cfg2 >> 14) & 1u));
+        GNSSCFG_ROW(CLUT_Font020, text);
+    }
+    else
+    {
+        row = 8;
+    }
+#undef GNSSCFG_ROW
+
+    /* what the values mean (u-blox 8 / u-blox M8 receiver description) */
+    y = GNSSDBG_ROW0_Y + 8u * GNSSDBG_ROW_STEP + 20u;
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020,
+                      (haveAnt && (pDbg->cfgAntFlags & 4u)) ? "ocd 1: OPEN needs an ANT_DET circuit on the board" : "ocd 0: open circuit detection off, OPEN is never reported");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020,
+                      (haveItfm && (cfg >> 31)) ? "enable 1: monitor on, it needs a first fix to report" : "enable 0: jamming monitor off (Monitor: unknown)");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "antSetting: 0 unknown, 1 passive, 2 active (u-blox doc)");
 }
 
 #endif /* HAVE_DEBUG_VIEW */

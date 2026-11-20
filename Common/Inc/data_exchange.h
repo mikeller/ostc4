@@ -276,6 +276,11 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_DEBUG_SCHEDULE_TEXT	(3u)								/* text chunks in a sequence of records */
 #define GNSS_DEBUG_SCHEDULE_LEN		(GNSS_DEBUG_REC_CNT - 1u + GNSS_DEBUG_SCHEDULE_TEXT)	/* all records but the text once and the text chunks */
 #define GNSS_PSM_UNKNOWN			(0xFFu)								/* power save state (psmState) not known yet */
+#define GNSS_CFGPOLL_NONE			(0u)								/* state of the read only poll of UBX-CFG-ANT / UBX-CFG-ITFM: not polled since the power up */
+#define GNSS_CFGPOLL_POLLING		(1u)								/* request sent, no answer yet */
+#define GNSS_CFGPOLL_OK				(2u)								/* answer received */
+#define GNSS_CFGPOLL_NAK			(3u)								/* the receiver rejected the request (UBX-ACK-NAK) */
+#define GNSS_CFGPOLL_NOANSWER		(4u)								/* no answer within the time out */
 #define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
 #ifdef HAVE_DEBUG_VIEW
 #define GNSS_DEBUG_EXTRA_BLOCKS		(4u)								/* items of the read back of UBX-CFG-ANT and UBX-CFG-ITFM which are sent with the text */

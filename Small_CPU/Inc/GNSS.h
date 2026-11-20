@@ -91,13 +91,8 @@ union i_Long
 #define GNSS_CFGREAD_ITFM			(0x10u)
 #define GNSS_CFGREAD_ALL			(0x1Fu)
 
-/* Read only polls of UBX-CFG-ANT (antenna supervisor) and UBX-CFG-ITFM (jamming monitor): the state of each poll, see cfgAntState / cfgItfmState. Besides the poll after the
+/* Read only polls of UBX-CFG-ANT (antenna supervisor) and UBX-CFG-ITFM (jamming monitor): the state of each poll (GNSS_CFGPOLL_*, data_exchange.h), see cfgAntState / cfgItfmState. Besides the poll after the
  * power up they are repeated every GNSS_CFGEXTRA_PERIOD_MS (an answer which did not come is tried GNSS_CFGEXTRA_MAX_TRIES times, a rejection (UBX-ACK-NAK) is not repeated) */
-#define GNSS_CFGPOLL_NONE			(0u)	/* not polled since the power up */
-#define GNSS_CFGPOLL_POLLING		(1u)	/* request sent, no answer yet */
-#define GNSS_CFGPOLL_OK				(2u)	/* answer received */
-#define GNSS_CFGPOLL_NAK			(3u)	/* the receiver rejected the request (UBX-ACK-NAK) */
-#define GNSS_CFGPOLL_NOANSWER		(4u)	/* no answer within the time out */
 #define GNSS_CFGEXTRA_PERIOD_MS		(30000u)
 #define GNSS_CFGEXTRA_MAX_TRIES		(4u)
 
