@@ -3712,7 +3712,7 @@ void t7_showPosition(void)
 
     if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
-    	textpointer += snprintf(&text[textpointer],50,"\001Satellites\n\r");
+    	textpointer += snprintf(&text[textpointer],50,"\001Sats tracked/listed\n\r");
     }
     else
     {
@@ -3734,7 +3734,16 @@ void t7_showPosition(void)
     {
     	if(gnssAlive)
     	{
-    		snprintf(text,60,"\001%d\n\r",stateUsed->lifeData.gnssData.numSat);
+    		/* tracked: satellites with a C/N0 above 0, listed: all satellites of the receiver list, which includes those which are only searched for (the
+    		 * number shown before was the listed one). The tracked count comes from the debug records, it is not available until the first one was received */
+    		if(DataEX_getGnssDebugInfo()->recordsSeen & 0x01u)
+    		{
+    			snprintf(text,60,"\001%u/%u\n\r",DataEX_getGnssDebugInfo()->numTracked,stateUsed->lifeData.gnssData.numSat);
+    		}
+    		else
+    		{
+    			snprintf(text,60,"\001--/%u\n\r",stateUsed->lifeData.gnssData.numSat);
+    		}
     	}
     	else
     	{
