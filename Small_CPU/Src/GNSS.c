@@ -58,6 +58,16 @@ void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart) {
 	GNSS->vAcc = 0;
 	GNSS->gSpeed = 0;
 	GNSS->headMot = 0;
+	GNSS->lastFrameValid = 0;		/* the tick of an earlier frame is meaningless after a restart or a sleep phase */
+}
+
+/*!
+ * Remember that the receiver answered. Used to derive the alive indication, see GNSS_ALIVE_TIMEOUT_MS.
+ * @param GNSS Pointer to main GNSS structure.
+ */
+void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS) {
+	GNSS->lastFrameTick = HAL_GetTick();
+	GNSS->lastFrameValid = 1;
 }
 
 /*!
@@ -143,14 +153,6 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 		GNSS->fLat = searchCnt++;
 	}
 
-	if(GNSS->alive & GNSS_ALIVE_STATE_ALIVE)							/* alive */
-	{
-		GNSS->alive &= ~GNSS_ALIVE_STATE_ALIVE;
-	}
-	else
-	{
-		GNSS->alive |= GNSS_ALIVE_STATE_ALIVE;
-	}
 	if((GNSS_Handle.uartWorkingBuffer[17] & 0x03) == 0x03)	/* date/time valid */
 	{
 		GNSS->alive |= GNSS_ALIVE_STATE_TIME;

@@ -364,6 +364,7 @@ void uartGnss_ProcessData(uint8_t data)
 													break;
 											}
 											GnssConnected = 1;
+											GNSS_NoteFrameReceived(&GNSS_Handle);
 										}
 										else
 										{
@@ -418,6 +419,7 @@ void uartGnss_ProcessData(uint8_t data)
 			case GNSSRX_READ_CK_B:				ck_B_Ref = data;
 												if((ck_A_Ref == ck_A) && (ck_B_Ref == ck_B))
 												{
+													GNSS_NoteFrameReceived(&GNSS_Handle);
 													switch(gnssState)
 													{
 														case UART_GNSS_GET_PVT:GNSS_ParsePVTData(&GNSS_Handle);

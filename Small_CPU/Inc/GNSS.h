@@ -61,6 +61,11 @@ union i_Long
 
 #define GNSS_POS_MAX_AGE_S		(2u * 3600u)	/* a position which was received earlier is not reported as valid */
 
+/* The receiver is reported as alive (GNSS_ALIVE_STATE_ALIVE) as long as a valid frame was received not longer ago than this.
+ * The RTE polls NAV-SAT and NAV-PVT alternately once per second (see UART6_HandleUART), so a reply is expected about every second
+ * (NAV-PVT alone about every two seconds). The window tolerates a few lost polls without making the indication flicker. */
+#define GNSS_ALIVE_TIMEOUT_MS	(5000u)
+
 typedef struct
 {
 	UART_HandleTypeDef *huart;
@@ -98,6 +103,8 @@ typedef struct
 	uint8_t statSat[4];
 
 	uint8_t alive;
+	uint8_t lastFrameValid;		/* a valid frame was received since the receiver was (re)initialized */
+	uint32_t lastFrameTick;		/* HAL tick of the last valid frame received from the receiver (see GNSS_NoteFrameReceived) */
 
 	float last_fLon;	/* last known position storage and time stamp */
 	float last_fLat;
@@ -182,6 +189,7 @@ static const uint8_t setDateTime[] = {0xB5,0x62,0x13,0x40,0x18,0x00,0x10,0x00,0x
 
 static const uint8_t setPortableType[]={};
 void GNSS_Init(GNSS_StateHandle *GNSS, UART_HandleTypeDef *huart);
+void GNSS_NoteFrameReceived(GNSS_StateHandle *GNSS);
 void GNSS_LoadConfig(GNSS_StateHandle *GNSS);
 uint8_t GNSS_ParseBuffer(GNSS_StateHandle *GNSS);
 

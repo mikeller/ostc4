@@ -1835,7 +1835,13 @@ void copyGNSSdata(void)
 	pInfo->DateTime.hour = GNSS_Handle.hour;
 	pInfo->DateTime.min = GNSS_Handle.min;
 	pInfo->DateTime.sec = GNSS_Handle.sec;
-	pInfo->alive = GNSS_Handle.alive & ~GNSS_ALIVE_POS_VALID;
+	pInfo->alive = GNSS_Handle.alive & ~(GNSS_ALIVE_POS_VALID | GNSS_ALIVE_STATE_ALIVE);
+
+	/* The receiver is alive if it has answered recently. This is a steady state, not a toggle per received frame */
+	if((GNSS_Handle.lastFrameValid) && (time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) <= GNSS_ALIVE_TIMEOUT_MS))
+	{
+		pInfo->alive |= GNSS_ALIVE_STATE_ALIVE;
+	}
 
 	/* The position is valid if it was received from the receiver with a fix (see GNSS_ParsePVTData) not longer ago than GNSS_POS_MAX_AGE_S.
 	 * That is the case for the current fix as well as for the last known position if the receiver has no fix at the moment (or is switched off).

@@ -55,7 +55,7 @@
 #define CO2_WARNING_LEVEL_PPM		(2000u)	    /* Early warning to indicate unexpected high co2 concentration (yellow) */
 #define CO2_ALARM_LEVEL_PPM			(5000u)		/* starting by this level CO2 has a negative impact on health (long exposure) */
 
-#define GNSS_ALIVE_STATE_ALIVE		(0x01u)		/* Communication to module active */
+#define GNSS_ALIVE_STATE_ALIVE		(0x01u)		/* Communication to module active: a valid frame was received from the module within the last GNSS_ALIVE_TIMEOUT_MS (set by the RTE). Steady state, it does not toggle */
 #define GNSS_ALIVE_STATE_TIME		(0x02u)		/* Time information valid */
 #define GNSS_ALIVE_POS_VALID		(0x04u)		/* coord contains a valid position: fix of the receiver or last known position (not older than GNSS_POS_MAX_AGE_S), see accuracy for age and quality */
 #define GNSS_HAS_FIX(pGnssInfo)		(((pGnssInfo)->fixType >= 2) && (((pGnssInfo)->alive & GNSS_ALIVE_POS_VALID) != 0))	/* the receiver has a fix with a valid position at the moment (and not just a last known position) */
