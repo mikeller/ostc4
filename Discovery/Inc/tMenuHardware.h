@@ -35,5 +35,6 @@
 /* Exported functions --------------------------------------------------------*/
 
 uint32_t tMHardware_refresh(uint8_t line, char *text, uint16_t *tab, char *subtext);
+uint8_t tMHardware_getAcquireFixLine(void);
 
 #endif /* TMENU_HARDWARE_H */

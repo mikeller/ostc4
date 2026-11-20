@@ -43,6 +43,8 @@
 #include "data_exchange_main.h"
 #include "tMenuCvOptionText.h"
 #include "hud.h"
+#include "base.h"
+#include "tMenuHardware.h"
 
 
 //extern void tM_build_pages(void);
@@ -89,9 +91,29 @@ static externalInterfaceSensorType localSensorMap[3];				/* reduce the complete 
 static uint8_t hudFunctionIndex = 0;								/* used for selection of the LED to function mapping */
 #endif
 
+/* No edit page: the entry starts the acquire GNSS fix session (or stops a running one) and returns to the home screen which shows the position view */
+static void openEdit_GNSSAcquire(void)
+{
+    if(gnssAcquire_isActive())
+    {
+        gnssAcquire_cancel();
+    }
+    else
+    {
+        gnssAcquire_start();
+    }
+    set_globalState_tHome();
+}
+
 void openEdit_Hardware(uint8_t line)
 {
     set_globalState_Menu_Line(line);
+
+    if((isGnssAvailable()) && (line == tMHardware_getAcquireFixLine()))		/* handled before the switch as unknown lines open the Bluetooth page */
+    {
+        openEdit_GNSSAcquire();
+        return;
+    }
 
     switch(line)
     {
