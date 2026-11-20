@@ -4452,6 +4452,27 @@ static const char* t7_gnssDynModelWord(uint8_t model)
     }
 }
 
+/* colour of a poll count (answered / sent over the recent requests): the colour so far, or yellow if more than 25 % of the requests were lost, red above 50 %; nothing
+ * is said before four requests were sent */
+static uint8_t t7_gnssPollLossColor(uint8_t sent, uint8_t answered, uint8_t colorSoFar)
+{
+    uint32_t lost = (sent > answered) ? (uint32_t)(sent - answered) : 0u;
+
+    if(sent < 4u)
+    {
+        return colorSoFar;
+    }
+    if((lost * 2u) > sent)
+    {
+        return CLUT_WarningRed;
+    }
+    if(((lost * 4u) > sent) && (colorSoFar != CLUT_WarningRed))
+    {
+        return CLUT_WarningYellow;
+    }
+    return colorSoFar;
+}
+
 void t7_refresh_gnss_power(void)
 {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
@@ -4554,10 +4575,15 @@ void t7_refresh_gnss_power(void)
         }
         GNSSPWR_ROW(color, text);
 
-        /* answered / sent since the wake up (halved when a counter reaches 255); one request may be on its way */
+        /* answered / sent over the recent requests of each poll (see pollSent of the RTE; only the ratio is meaningful, one request may be on its way): yellow if more than
+         * 25 % of the recent requests of one of the polls were lost, red above 50 % (not before four requests) */
         snprintf(text, sizeof(text), "Polls: PVT %u/%u  SAT %u/%u  HW %u/%u", pDbg->pollAnswered[0], pDbg->pollSent[0], pDbg->pollAnswered[1], pDbg->pollSent[1],
                  pDbg->pollAnswered[2], pDbg->pollSent[2]);
-        color = (((pDbg->pollSent[0] - pDbg->pollAnswered[0]) > 1) || ((pDbg->pollSent[1] - pDbg->pollAnswered[1]) > 1)) ? CLUT_WarningYellow : CLUT_Font020;
+        color = CLUT_Font020;
+        for(uint8_t poll = 0; poll < 3u; poll++)
+        {
+            color = t7_gnssPollLossColor(pDbg->pollSent[poll], pDbg->pollAnswered[poll], color);
+        }
         GNSSPWR_ROW(color, text);
     }
     else
@@ -4569,7 +4595,50 @@ void t7_refresh_gnss_power(void)
     }
 #undef GNSSPWR_ROW
 
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row + 1) * GNSSDBG_ROW_STEP, CLUT_Font020, "Polls: answered/sent since the wake up.");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row + 1) * GNSSDBG_ROW_STEP, CLUT_Font020, "Polls: answered/sent over the recent requests (ratio only).");
+    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + (row + 2) * GNSSDBG_ROW_STEP, CLUT_Font020, "Yellow: over 25 % lost. Red: over 50 % lost.");
+}
+
+
+/* The heading row of a read back of the configuration (page 4): the name and, once the values were read, the values, with a marker if the last request is not
+ * answered (the values stay: "refreshing", "no answer", "NAK"); without values the state of the request. Returns 1 for a state which is shown in yellow (a rejection, no
+ * answer) */
+static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, const char* pValues, uint8_t received, uint8_t have, uint8_t state, uint8_t tries)
+{
+    if(!received)
+    {
+        snprintf(pText, size, "%s: --", pName);
+        return 0;
+    }
+    if(have)
+    {
+        switch(state)
+        {
+            case GNSS_CFGPOLL_POLLING:		snprintf(pText, size, "%s: %s  (refreshing)", pName, pValues);
+                break;
+            case GNSS_CFGPOLL_NAK:			snprintf(pText, size, "%s: %s  (NAK)", pName, pValues);
+                break;
+            case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: %s  (no answer, %u tries)", pName, pValues, tries);
+                break;
+            default:						snprintf(pText, size, "%s: %s", pName, pValues);
+                break;
+        }
+    }
+    else
+    {
+        switch(state)
+        {
+            case GNSS_CFGPOLL_NAK:			snprintf(pText, size, "%s: NAK (the receiver rejects the poll)", pName);
+                break;
+            case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: no answer (%u tries)", pName, tries);
+                break;
+            case GNSS_CFGPOLL_POLLING:		snprintf(pText, size, "%s: polling", pName);
+                break;
+            default:						snprintf(pText, size, "%s: not polled yet", pName);
+                break;
+        }
+    }
+    return (state == GNSS_CFGPOLL_NAK) || (state == GNSS_CFGPOLL_NOANSWER);
 }
 
 
@@ -4592,15 +4661,18 @@ void t7_refresh_gnss_config(void)
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* const antSetting[] = { "unknown", "passive", "active", "?" };
     char text[100];
+    char values[60];
     uint8_t row = 0;
     uint16_t y;
     uint32_t cfg = pDbg->cfgItfmConfig;
     uint32_t cfg2 = pDbg->cfgItfmConfig2;
     uint32_t algo = (cfg >> 9) & 0x3FFFFFu;		/* 22 bits */
     uint32_t general = cfg2 & 0xFFFu;
-    uint8_t haveState = pDbg->extraMask & 0x08u;
-    uint8_t haveAnt = haveState && (pDbg->cfgAntState == GNSS_CFGPOLL_OK) && ((pDbg->extraMask & 0x01u) != 0);
-    uint8_t haveItfm = haveState && (pDbg->cfgItfmState == GNSS_CFGPOLL_OK) && ((pDbg->extraMask & 0x06u) == 0x06u);
+    uint8_t antItems = ((pDbg->extraMask & GNSS_EXTRA_MASK_ANT) == GNSS_EXTRA_MASK_ANT);
+    uint8_t itfmItems = ((pDbg->extraMask & GNSS_EXTRA_MASK_ITFM) == GNSS_EXTRA_MASK_ITFM);
+    uint8_t haveAnt = antItems && pDbg->cfgAntHave;			/* the values were read since the power up, they stay while the next request is open */
+    uint8_t haveItfm = itfmItems && pDbg->cfgItfmHave;
+    uint8_t late;
 
     t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_TITLE_Y, CLUT_Font020, "GNSS debug 4/6");
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
@@ -4608,27 +4680,9 @@ void t7_refresh_gnss_config(void)
 #define GNSSCFG_ROW(color, text)	do { t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, GNSSDBG_ROW0_Y + row * GNSSDBG_ROW_STEP + ((row >= 4) ? 10u : 0), (color), (text)); row++; } while(0)
 
     /* antenna supervisor */
-    if(!haveState)
-    {
-        snprintf(text, sizeof(text), "CFG-ANT: --");
-    }
-    else if(pDbg->cfgAntState == GNSS_CFGPOLL_OK)
-    {
-        snprintf(text, sizeof(text), "CFG-ANT: flags 0x%04X  pins 0x%04X", pDbg->cfgAntFlags, pDbg->cfgAntPins);
-    }
-    else if(pDbg->cfgAntState == GNSS_CFGPOLL_NAK)
-    {
-        snprintf(text, sizeof(text), "CFG-ANT: NAK (the receiver rejects the poll)");
-    }
-    else if(pDbg->cfgAntState == GNSS_CFGPOLL_NOANSWER)
-    {
-        snprintf(text, sizeof(text), "CFG-ANT: no answer (%u tries)", pDbg->cfgAntTries);
-    }
-    else
-    {
-        snprintf(text, sizeof(text), "CFG-ANT: %s", (pDbg->cfgAntState == GNSS_CFGPOLL_POLLING) ? "polling" : "not polled yet");
-    }
-    GNSSCFG_ROW(((haveState) && (pDbg->cfgAntState >= GNSS_CFGPOLL_NAK)) ? CLUT_WarningYellow : CLUT_Font020, text);
+    snprintf(values, sizeof(values), "flags 0x%04X  pins 0x%04X", pDbg->cfgAntFlags, pDbg->cfgAntPins);
+    late = t7_gnssCfgHeadline(text, sizeof(text), "CFG-ANT", values, antItems, haveAnt, pDbg->cfgAntState, pDbg->cfgAntTries);
+    GNSSCFG_ROW(late ? CLUT_WarningYellow : CLUT_Font020, text);
     if(haveAnt)
     {
         snprintf(text, sizeof(text), "svcs %u  scd %u  ocd %u  pdwnOnSCD %u  recovery %u", pDbg->cfgAntFlags & 1u, (pDbg->cfgAntFlags >> 1) & 1u, (pDbg->cfgAntFlags >> 2) & 1u,
@@ -4652,27 +4706,9 @@ void t7_refresh_gnss_config(void)
     }
 
     /* jamming monitor */
-    if(!haveState)
-    {
-        snprintf(text, sizeof(text), "CFG-ITFM: --");
-    }
-    else if(pDbg->cfgItfmState == GNSS_CFGPOLL_OK)
-    {
-        snprintf(text, sizeof(text), "CFG-ITFM: config 0x%08X  config2 0x%08X", (unsigned int)cfg, (unsigned int)cfg2);
-    }
-    else if(pDbg->cfgItfmState == GNSS_CFGPOLL_NAK)
-    {
-        snprintf(text, sizeof(text), "CFG-ITFM: NAK (the receiver rejects the poll)");
-    }
-    else if(pDbg->cfgItfmState == GNSS_CFGPOLL_NOANSWER)
-    {
-        snprintf(text, sizeof(text), "CFG-ITFM: no answer (%u tries)", pDbg->cfgItfmTries);
-    }
-    else
-    {
-        snprintf(text, sizeof(text), "CFG-ITFM: %s", (pDbg->cfgItfmState == GNSS_CFGPOLL_POLLING) ? "polling" : "not polled yet");
-    }
-    GNSSCFG_ROW(((haveState) && (pDbg->cfgItfmState >= GNSS_CFGPOLL_NAK)) ? CLUT_WarningYellow : CLUT_Font020, text);
+    snprintf(values, sizeof(values), "config 0x%08X  config2 0x%08X", (unsigned int)cfg, (unsigned int)cfg2);
+    late = t7_gnssCfgHeadline(text, sizeof(text), "CFG-ITFM", values, itfmItems, haveItfm, pDbg->cfgItfmState, pDbg->cfgItfmTries);
+    GNSSCFG_ROW(late ? CLUT_WarningYellow : CLUT_Font020, text);
     if(haveItfm)
     {
         snprintf(text, sizeof(text), "enable %lu  bbThreshold %lu dB  cwThreshold %lu dB", (unsigned long)(cfg >> 31), (unsigned long)(cfg & 0xFu), (unsigned long)((cfg >> 4) & 0x1Fu));
@@ -4691,10 +4727,22 @@ void t7_refresh_gnss_config(void)
 
     /* what the values mean (u-blox 8 / u-blox M8 receiver description) */
     y = GNSSDBG_ROW0_Y + 8u * GNSSDBG_ROW_STEP + 20u;
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020,
-                      (haveAnt && (pDbg->cfgAntFlags & 4u)) ? "ocd 1: OPEN needs an ANT_DET circuit on the board" : "ocd 0: open circuit detection off, OPEN is never reported");
-    t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020,
-                      (haveItfm && (cfg >> 31)) ? "enable 1: monitor on, it needs a first fix to report" : "enable 0: jamming monitor off (Monitor: unknown)");
+    if(haveAnt)
+    {
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, (pDbg->cfgAntFlags & 4u) ? "ocd 1: OPEN needs an ANT_DET circuit on the board" : "ocd 0: open circuit detection off, OPEN is never reported");
+    }
+    else
+    {
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "CFG-ANT not read: nothing known about open circuit detection");
+    }
+    if(haveItfm)
+    {
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, (cfg >> 31) ? "enable 1: monitor on, it needs a first fix to report" : "enable 0: jamming monitor off (Monitor: unknown)");
+    }
+    else
+    {
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "CFG-ITFM not read: nothing known about the jamming monitor");
+    }
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "antSetting: 0 unknown, 1 passive, 2 active (u-blox doc)");
 }
 
