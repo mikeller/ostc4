@@ -103,6 +103,7 @@ static const RoseConfig t7_rose_cfg = {
 
 void t7_refresh_surface(void);
 void t7_refresh_surface_debugmode(void);
+static uint8_t t7_getGnssPowerSaveState(void);
 void t7_refresh_divemode(void);
 void t7_refresh_sleep_design_fun(void);
 void t7_refresh_divemode_userselected_left_lower_corner(void);
@@ -2384,10 +2385,11 @@ void t7_refresh_customview(void)
         break;
 
     case CVIEW_Position:
-        /* the colour of the title shows if the receiver answers (a valid frame within GNSS_ALIVE_TIMEOUT_MS): white = yes, red = no.
+        /* the colour of the title shows if the receiver answers (a valid frame within GNSS_ALIVE_TIMEOUT_MS): white = yes, yellow = yes but it is in power save mode
+         * (see the line below the bars), red = no.
          * Both colours are fixed ones, the label colour of the other titles depends on the colour scheme. White and red differ strongly in brightness,
          * so they can be told apart without relying on red and green. The colour is part of the string, it is not kept for other views */
-        snprintf(text, 100, "%c\f\001%c%c", (stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) ? '\020' : '\025', TXT_2BYTE, TXT2BYTE_Position);
+        snprintf(text, 100, "%c\f\001%c%c", (stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) ? (t7_getGnssPowerSaveState() ? '\024' : '\020') : '\025', TXT_2BYTE, TXT2BYTE_Position);
         GFX_write_string(&FontT42, &t7cH, text, 0);
         t7_showPosition();
         break;
@@ -3621,12 +3623,21 @@ void t7_tissues(const SDiveState * pState)
 
 
 
-/* Position of the session line of the position view (progress or result of an acquire GNSS fix session).
- * It is a line of its own (font T24, 28 px high, ink 23 px) at the place of the third label line. Heights are counted from the bottom of the frame:
- * - normal display: the line starts 52 px above the Y0 of the value window (83), its ink covers 135..157 px: 55 px clearance to the bars
- *   (bottom edge 213 px), 30 px to the last known position (ink top 104 px) and 24 px to the longitude of a fix (ink bottom 182 px)
- * - flipped display: Y1 of the label window (311), ink 289..311 px: 49 px clearance to the bars, 17 px to the longitude (ink ends at 271 px) */
-#define POSITION_SESSION_LINE_OFFSET_Y		(52u)
+/* Position of the session line of the position view (progress or result of an acquire GNSS fix session) and of the line which shows that the receiver is in
+ * power save mode. Both are lines of their own (font T24, 28 px high, ink 23 px) below the bars and the longitude of a fix and above the last known position.
+ * Heights are counted from the bottom of the frame (the normal display shows 479 - height from the top, the flipped display the height from the top):
+ * - normal display, Y0 of the value window is 83:
+ *     session line: starts 60 px above it, ink 143..165 px (panel rows from the top 314..336): 53 px clearance to the bars (bottom edge 213 px) and 16 px to the
+ *     longitude of a fix (ink bottom 182 px)
+ *     power save line: starts 28 px above it, ink 111..133 px (346..368): 9 px below the session line, 6 px above the last known position (ink top 104 px)
+ * - flipped display, Y1 of the label window is 311 (the rows are counted from the top):
+ *     session line: Y1 - 8, ink 281..303: 42 px clearance to the bars (bottom edge 239) and 10 px to the longitude (ink ends at 271)
+ *     power save line: Y1 + 24, ink 313..335: 9 px below the session line, 13 px above the last known position (ink top 349)
+ * (the session line was 8 px lower before, 322..344 and 289..311). The widest text of the power save line is 248 px, centred in the 295 px window. */
+#define POSITION_SESSION_LINE_OFFSET_Y		(60u)
+#define POSITION_SESSION_LINE_OFFSET_Y_FLIP	(8u)		/* the session line is this far above Y1 of the label window */
+#define POSITION_POWER_LINE_OFFSET_Y		(28u)
+#define POSITION_POWER_LINE_OFFSET_Y_FLIP	(24u)		/* the power save line is this far below Y1 of the label window */
 
 /* Position of the satellite bars of the position view. A bar is a 20 px brush drawn along a 20 px line, so it is 40 px high:
  * - normal display: start.y = Y0 of the value window (83) + 140 => the bars cover 213..252 px above the bottom of the frame, the ink of the
@@ -3683,6 +3694,19 @@ static uint8_t t7_getGnssAcquireText(char* pText, uint8_t size)
 }
 
 
+/* Power save state of the receiver (psmState of UBX-NAV-PVT): 0 if it is not known (receiver does not answer, no UBX-NAV-PVT parsed yet) or not in power save
+ * mode, else 1 enabled, 2 acquisition, 3 tracking, 4 power optimized tracking, 5 inactive */
+static uint8_t t7_getGnssPowerSaveState(void)
+{
+    const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
+
+    if((stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (pDbg->recordsSeen & 0x02u) && (pDbg->psmState >= 1) && (pDbg->psmState <= 5))
+    {
+        return pDbg->psmState;
+    }
+    return 0;
+}
+
 void t7_showPosition(void)
 {
     char text[256+50];
@@ -3694,6 +3718,7 @@ void t7_showPosition(void)
     uint16_t labelY1 = 0;
     SSettings* pSettings = settingsGetPointer();
     uint8_t gnssAlive = stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE;	/* satellite data is only current while the receiver answers */
+    uint8_t powerSave = t7_getGnssPowerSaveState();
 
     t7cY0free.WindowLineSpacing = 28 + 48 + 14;
     t7cY0free.WindowY0 = t7cH.WindowY0 - 5 - 2 * t7cY0free.WindowLineSpacing;
@@ -3805,9 +3830,33 @@ void t7_showPosition(void)
     	}
     	else
     	{
-    		t7cY0free.WindowY1 = labelY1;
+    		t7cY0free.WindowY1 = labelY1 - POSITION_SESSION_LINE_OFFSET_Y_FLIP;
     	}
     	GFX_write_string(&FontT24, &t7cY0free, text, 1);
+    	t7cY0free.WindowY0 = sessionY0;
+    	t7cY0free.WindowY1 = sessionY1;
+    	t7cY0free.WindowNumberOfTextLines = sessionLines;
+    }
+
+    /* power save line: shown only while the receiver reports a power save state (the normal view stays clean), yellow; the inactive state is red */
+    if(powerSave != 0)
+    {
+    	static const char* const powerSaveText[] = { "", "Power save: starting", "Power save: acquiring", "Power save: tracking", "Power save: low power", "Power save: inactive" };
+
+    	sessionY0 = t7cY0free.WindowY0;
+    	sessionY1 = t7cY0free.WindowY1;
+    	sessionLines = t7cY0free.WindowNumberOfTextLines;
+    	t7cY0free.WindowNumberOfTextLines = 1;
+    	if(!pSettings->FlipDisplay)
+    	{
+    		t7cY0free.WindowY0 = sessionY0 + POSITION_POWER_LINE_OFFSET_Y;
+    	}
+    	else
+    	{
+    		t7cY0free.WindowY1 = labelY1 + POSITION_POWER_LINE_OFFSET_Y_FLIP;
+    	}
+    	snprintf(text, 50, "\001%s", powerSaveText[powerSave]);
+    	GFX_write_string_color(&FontT24, &t7cY0free, text, 1, (powerSave == 5) ? CLUT_WarningRed : CLUT_WarningYellow);
     	t7cY0free.WindowY0 = sessionY0;
     	t7cY0free.WindowY1 = sessionY1;
     	t7cY0free.WindowNumberOfTextLines = sessionLines;
