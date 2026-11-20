@@ -81,6 +81,7 @@ union i_Long
 /* Check of the power save state: the receiver is meant to run at full power while the unit is awake. If GNSS_VERIFY_PVT_COUNT UBX-NAV-PVT in a row (about 7 s)
  * report a power save state, or no valid frame arrived for GNSS_FRAMES_STOPPED_MS, the full power command is sent again (with the wake up bytes in the second
  * case), at most GNSS_VERIFY_MAX_RETRIES times until psmState 0 was seen; commands of the second kind are at least GNSS_VERIFY_SPACING_MS apart */
+#define GNSS_POLL_WINDOW			(16u)	/* see pollSent */
 #define GNSS_POLL_PVT				(0u)
 #define GNSS_POLL_SAT				(1u)
 #define GNSS_POLL_MONHW				(2u)
@@ -240,8 +241,10 @@ typedef struct
 	uint32_t psmZeroTick;		/* HAL tick of the last UBX-NAV-PVT with psmState 0 */
 	uint8_t psmZeroValid;		/* psmZeroTick is valid */
 
-	/* polls of the cyclic requests since the receiver was initialized or woken, index GNSS_POLL_PVT, GNSS_POLL_SAT, GNSS_POLL_MONHW; all values are halved if one of
-	 * the sent counters reaches 255, which keeps the ratio */
+	/* polls of the cyclic requests since the receiver was initialized or woken, index GNSS_POLL_PVT, GNSS_POLL_SAT, GNSS_POLL_MONHW. They count the most recent requests:
+	 * both counts of a poll are halved when its sent counter reaches GNSS_POLL_WINDOW, so they cover the last GNSS_POLL_WINDOW / 2 to GNSS_POLL_WINDOW requests (older ones
+	 * count half, a quarter, ...) and show a loss which stopped as recovered after a few polls. A request which is on its way is counted as sent, so one is missing in
+	 * the answered count most of the time. Only the ratio is meaningful, not the number. */
 	uint8_t pollSent[3];		/* requests which were transmitted */
 	uint8_t pollAnswered[3];	/* requests which were answered with a valid frame */
 	uint8_t pollLost[3][GNSS_CAUSE_CNT];	/* per poll and cause (GNSS_CAUSE_*) the lost or disturbed polls since the wake up (saturating at 255, not halved) */

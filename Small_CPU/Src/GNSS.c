@@ -827,18 +827,15 @@ void GNSS_ParseMonIoData(GNSS_StateHandle *GNSS) {
 }
 
 /*!
- * Counts the cyclic requests which were transmitted and answered.
+ * Counts the cyclic requests which were transmitted and answered over a recent window, see pollSent.
  * @param GNSS Pointer to main GNSS structure.
  * @param poll GNSS_POLL_PVT, GNSS_POLL_SAT or GNSS_POLL_MONHW.
  */
 void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll) {
-	if(GNSS->pollSent[poll] == 255)		/* keep the ratio */
+	if(GNSS->pollSent[poll] >= GNSS_POLL_WINDOW)		/* the counts of this poll cover the recent requests */
 	{
-		for(uint8_t i = 0; i < 3; i++)
-		{
-			GNSS->pollSent[i] >>= 1;
-			GNSS->pollAnswered[i] >>= 1;
-		}
+		GNSS->pollSent[poll] >>= 1;
+		GNSS->pollAnswered[poll] >>= 1;
 	}
 	GNSS->pollSent[poll]++;
 #ifdef GNSS_DEBUG_POLLS

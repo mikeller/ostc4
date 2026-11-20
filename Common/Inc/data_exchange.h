@@ -266,7 +266,8 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
  *                       (255 = none since the wake up or 255 s and more), [5] bit 0: [1] is valid, bit 1: [2] is valid, bit 2: [3] is valid, bit 3: the power up did not get
  *                       an acknowledge after the repetitions, bit 4: the check of the power save state gave up, bit 6: a UBX-NAV-PVT with psmState 0 was seen since the wake up
  * record 14 (polls A): [1] repetitions of the power up since the wake up, [2] full power commands sent by the check of the power save state, [3] UBX-NAV-PVT requests sent,
- *                       [4] answered, [5] UBX-NAV-SAT requests sent (the counts are since the wake up, all halved if one reaches 255)
+ *                       [4] answered, [5] UBX-NAV-SAT requests sent (the counts cover the most recent requests of the poll: both counts of a poll are halved when its sent
+ *                       count reaches GNSS_POLL_WINDOW of the RTE, 16)
  * record 15 (polls B): [1] UBX-NAV-SAT requests answered, [2] UBX-MON-HW requests sent, [3] answered, [4] and [5] 0
  * The RTE sends a sequence of GNSS_DEBUG_SCHEDULE_LEN records: the records 0..11 and 13..15 once and GNSS_DEBUG_SCHEDULE_TEXT items of the text record (the next item
  * each time: the chunks of the text, with the debug view the extra items after them). At the rate of one record per 100 ms every record is refreshed every
