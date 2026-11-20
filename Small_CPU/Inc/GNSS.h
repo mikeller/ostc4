@@ -118,13 +118,11 @@ union i_Long
  * baud, in a poll slot of one second */
 #define GNSS_HW2_PERIOD_MS			(20000u)
 #define GNSS_HW2_FIRST_MS			(6000u)
-#define GNSS_MONHW2_LEN				(28u)		/* accepted payload length of UBX-MON-HW2 */
 
 /* UBX-NAV-STATUS (time since the start or reset of the receiver, time to first fix, flags) is polled every GNSS_STATUS_PERIOD_MS, the first time GNSS_STATUS_FIRST_MS
  * after the power up. The reply is 24 bytes: 25 ms at 9600 baud. A reset of the receiver is detected if the time since the start (msss) is smaller than in the reply before */
 #define GNSS_STATUS_PERIOD_MS		(20000u)
 #define GNSS_STATUS_FIRST_MS		(8000u)
-#define GNSS_NAVSTATUS_LEN			(16u)		/* accepted payload length of UBX-NAV-STATUS */
 
 /* UBX-MON-IO (bytes and errors seen by the ports of the receiver) is polled every GNSS_IO_PERIOD_MS, the first time GNSS_IO_FIRST_MS after the power up. The reply has 20 bytes
  * per port (6 ports: 128 bytes with the frame, 133 ms at 9600 baud, in a poll slot of one second). The port of the receiver which is connected to the RTE is not known from the

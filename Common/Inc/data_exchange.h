@@ -306,6 +306,14 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_DEBUG_EXTRA_BASE		(0x60u)								/* number of the first extra item in the text record */
 #ifdef HAVE_DEBUG_VIEW
 #define GNSS_DEBUG_EXTRA_BLOCKS		(23u)								/* extra items which are sent with the text: the read back of UBX-CFG-ANT, UBX-CFG-ITFM, UBX-MON-HW2, UBX-NAV-STATUS, the counts of lost polls, UBX-MON-IO */
+/* items of the extra items (bits of extraMask of SGnssDebugInfo) which belong together: */
+#define GNSS_EXTRA_MASK_ANT			(0x000009uL)						/* UBX-CFG-ANT: items 0 and 3 */
+#define GNSS_EXTRA_MASK_ITFM		(0x00000EuL)						/* UBX-CFG-ITFM: items 1, 2 and 3 */
+#define GNSS_EXTRA_MASK_HW2			(0x0000F0uL)						/* UBX-MON-HW2: items 4 to 7 */
+#define GNSS_EXTRA_MASK_STATUS		(0x000F00uL)						/* UBX-NAV-STATUS: items 8 to 11 */
+#define GNSS_EXTRA_MASK_DIAG		(0x01F000uL)						/* counts of lost polls and UART errors: items 12 to 16 */
+#define GNSS_EXTRA_MASK_IO			(0x3E0000uL)						/* UBX-MON-IO: items 17 to 21 */
+#define GNSS_EXTRA_MASK_CFGGNSS		(0x400000uL)						/* read back of UBX-CFG-GNSS: item 22 */
 #define GNSS_DEBUG_DIAG_SIZE		(20u)								/* bytes of the counts of lost polls (3 * 5) and UART errors (5), sent in five items */
 #else
 #define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
@@ -314,6 +322,8 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 
 #define GNSS_MONHW_LEN				(60u)								/* accepted payload length of UBX-MON-HW */
+#define GNSS_MONHW2_LEN				(28u)								/* accepted payload length of UBX-MON-HW2 */
+#define GNSS_NAVSTATUS_LEN			(16u)								/* accepted payload length of UBX-NAV-STATUS */
 
 /* Identification text of the receiver, built from UBX-MON-VER: swVersion, hwVersion and the extension strings FWVER=, PROTVER=, MOD= (prefix removed) and the
  * first extension string with a ';' (the list of supported GNSS, e.g. GPS;GLO;GAL;BDS). Fixed fields: */
