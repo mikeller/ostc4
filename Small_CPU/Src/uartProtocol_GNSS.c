@@ -39,6 +39,9 @@ static uint8_t GnssConnected = 0;						/* Binary indicator if a sensor is connec
 static uint16_t writeIndex = 0;
 static uint16_t dataToRead = 0;
 static uint8_t ReqPowerDown = 0;
+static uint8_t prtTries = 0;
+static uint8_t prtSent = 0;
+static uint32_t prtTick = 0;
 #ifdef GNSS_DEBUG_POLLS
 static uint8_t rxHunting = 0;		/* bytes which are not the start of a frame were seen and counted since the last start of a frame */
 #endif
@@ -223,6 +226,75 @@ static void uartGnss_SendFullPower(void)
 		rxState = GNSSRX_DETECT_ACK_0;
 	}
 }
+
+/* UART1 is configured after the CFG-GNSS reset and on every wake, not saved to BBR. */
+static void uartGnss_StartPortConfig(void)
+{
+	prtTries = 0;
+	prtSent = 0;
+	prtTick = HAL_GetTick();
+	gnssState = UART_GNSS_CONFIG_PRT;
+#ifdef GNSS_DEBUG_POLLS
+	GNSS_Handle.prtHave = 0;
+	GNSS_Handle.prtState = GNSS_CFGPOLL_POLLING;
+#endif
+}
+
+static void uartGnss_ConfigurePort(void)
+{
+	if(prtSent && (time_elapsed_ms(prtTick, HAL_GetTick()) < GNSS_PRT_ACK_TIMEOUT_MS))
+	{
+		return;
+	}
+	if((prtTries >= GNSS_PRT_MAX_TRIES) || (!prtSent && (time_elapsed_ms(prtTick, HAL_GetTick()) > GNSS_WAKE_TX_TIMEOUT_MS)))
+	{
+#ifdef GNSS_DEBUG_POLLS
+		if(GNSS_Handle.prtState == GNSS_CFGPOLL_POLLING)
+		{
+			GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
+		}
+#endif
+		gnssState = UART_GNSS_IDLE;
+		return;
+	}
+	if(UART_Gnss_SendCmd(GNSSCMD_LOADCONF_0))
+	{
+		prtTries++;
+		prtSent = 1;
+		prtTick = HAL_GetTick();
+		rxState = GNSSRX_DETECT_ACK_0;
+#ifdef GNSS_DEBUG_POLLS
+		GNSS_Handle.prtTries = prtTries;
+#endif
+	}
+}
+
+#ifdef GNSS_DEBUG_POLLS
+static void uartGnss_VerifyPort(void)
+{
+	if(!prtSent)
+	{
+		if(time_elapsed_ms(prtTick, HAL_GetTick()) > GNSS_WAKE_TX_TIMEOUT_MS)
+		{
+			GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
+			gnssState = UART_GNSS_CONFIG_PRT;
+			return;
+		}
+		if(UART_Gnss_SendCmd(GNSSCMD_GET_CFGPRT_DATA))
+		{
+			prtSent = 1;
+			prtTick = HAL_GetTick();
+			rxState = GNSSRX_DETECT_HEADER_0;
+		}
+	}
+	else if(time_elapsed_ms(prtTick, HAL_GetTick()) >= GNSS_PRT_ACK_TIMEOUT_MS)
+	{
+		GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
+		prtSent = 0;
+		gnssState = UART_GNSS_CONFIG_PRT;
+	}
+}
+#endif
 
 /* Called after every UBX-NAV-PVT: the receiver reports psmState 0 at full power. Counts the reports of a power save state in a row for uartGnss_VerifyPower; a
  * power save state is expected while the unit is going to sleep or to dive, so it is not counted then */
@@ -544,6 +616,16 @@ void uartGnss_Control(void)
 										uartGnss_SendFullPower();
 									}
 				break;
+		case UART_GNSS_CONFIG_PRT:
+   if(ReqPowerDown) gnssState = UART_GNSS_IDLE;
+   else uartGnss_ConfigurePort();
+   break;
+#ifdef GNSS_DEBUG_POLLS
+		case UART_GNSS_VERIFY_PRT:
+   if(ReqPowerDown) gnssState = UART_GNSS_IDLE;
+   else uartGnss_VerifyPort();
+   break;
+#endif
 		case UART_GNSS_SETCONF:		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
@@ -721,7 +803,14 @@ void uartGnss_ProcessData(uint8_t data)
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;
-		case GNSSRX_DETECT_ACK_3:		if((data == 0x01))
+		case GNSSRX_DETECT_ACK_3:  if((gnssState == UART_GNSS_CONFIG_PRT) && prtSent)
+          {
+           ck_A = (uint8_t)(0x05u + data);
+           ck_B = (uint8_t)(0x05u + ck_A);
+           rxState = ((data == 0x00) || (data == 0x01)) ? GNSSRX_DETECT_LENGTH_0 : GNSSRX_DETECT_ACK_0;
+           break;
+          }
+          if((data == 0x01))
 										{
 											rxState = GNSSRX_READY;
 											switch(gnssState)
@@ -735,6 +824,7 @@ void uartGnss_ProcessData(uint8_t data)
 																	  GNSS_ResetReadOnlyPolls(&GNSS_Handle);
 																	  uartGnss_RestartExtraPolls();
 #endif
+                                       if(pUartCtrl != &Uart1Ctrl) uartGnss_StartPortConfig();
 													break;
 												case UART_GNSS_PWRDOWN:	rxState = GNSSRX_DETECT_ACK_0;
 																		UART_Gnss_SendCmd(GNSSCMD_SET_CONFIG);
@@ -863,6 +953,34 @@ void uartGnss_ProcessData(uint8_t data)
 												if((ck_A_Ref == ck_A) && (ck_B_Ref == ck_B))
 												{
 													GNSS_NoteFrameReceived(&GNSS_Handle);
+             if((gnssState == UART_GNSS_CONFIG_PRT) && prtSent)
+             {
+              const uint8_t* f = GNSS_Handle.uartWorkingBuffer;
+              if((f[2] == 0x05) && (rxLength == 2) && (f[6] == 0x06) && (f[7] == 0x00))
+              {
+               if(f[3] == 0x01)
+               {
+#ifdef GNSS_DEBUG_POLLS
+                gnssState = UART_GNSS_VERIFY_PRT;
+                GNSS_Handle.prtState = GNSS_CFGPOLL_POLLING;
+                prtTick = HAL_GetTick();
+#else
+                gnssState = UART_GNSS_IDLE;
+#endif
+                prtSent = 0;
+               }
+               else if(f[3] == 0x00)
+               {
+                if(GNSS_Handle.nakCount < 255) GNSS_Handle.nakCount++;
+#ifdef GNSS_DEBUG_POLLS
+                GNSS_Handle.prtState = GNSS_CFGPOLL_NAK;
+#endif
+                prtSent = 0;
+               }
+              }
+              rxState = GNSSRX_DETECT_ACK_0;
+              break;
+             }
 													switch(gnssState)
 													{
 														case UART_GNSS_GET_PVT:GNSS_ParsePVTData(&GNSS_Handle);
@@ -893,7 +1011,24 @@ void uartGnss_ProcessData(uint8_t data)
 														case UART_GNSS_GET_MONIO: GNSS_ParseMonIoData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_CFGPRT: GNSS_ParseCfgPrtData(&GNSS_Handle);
-															break;
+               break;
+              case UART_GNSS_VERIFY_PRT:
+               GNSS_ParseCfgPrtData(&GNSS_Handle);
+               GNSS_Handle.prtTries = prtTries;
+               if(GNSS_Handle.prtHave && GNSS_Handle.prtLength == GNSS_CFGPRT_LEN &&
+                  GNSS_Handle.prtPortId == GNSS_CFGPRT_PORT && GNSS_Handle.prtBaud == 9600u &&
+                  GNSS_Handle.prtMode == 0x08D0u && GNSS_Handle.prtOutProto == 0x0001u)
+               {
+                GNSS_Handle.prtTries = 0;
+                gnssState = UART_GNSS_IDLE;
+               }
+               else
+               {
+                GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
+                gnssState = UART_GNSS_CONFIG_PRT;
+               }
+               prtSent = 0;
+               break;
 														case UART_GNSS_GET_MONVER: GNSS_ParseMonVerData(&GNSS_Handle);
 															break;
 #endif
@@ -905,8 +1040,8 @@ void uartGnss_ProcessData(uint8_t data)
 												{
 													uartGnss_NoteCause(GNSS_CAUSE_CHECKSUM);
 												}
-												rxState = GNSSRX_DETECT_HEADER_0;
-												gnssState = UART_GNSS_IDLE;
+		             rxState = (gnssState == UART_GNSS_CONFIG_PRT) ? GNSSRX_DETECT_ACK_0 : GNSSRX_DETECT_HEADER_0;
+             if((gnssState != UART_GNSS_CONFIG_PRT) && (gnssState != UART_GNSS_VERIFY_PRT)) gnssState = UART_GNSS_IDLE;
 				break;
 
 		default:	rxState = GNSSRX_READY;

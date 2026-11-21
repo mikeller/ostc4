@@ -5169,6 +5169,11 @@ void t7_refresh_gnss_rxpath(void)
         y += 2u * GNSSDBG_ROW_STEP;
     }
 
+    if(havePrt && pDbg->prtState >= GNSS_CFGPOLL_NAK && pDbg->prtTries >= 3u)
+    {
+        t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, "UART1 UBX-only write/readback failed (3 attempts)");
+        y += GNSSDBG_ROW_STEP;
+    }
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "outProtoMask NMEA bit set means NMEA sentences are sent");
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "in addition to UBX replies.");
     y += 2u * GNSSDBG_ROW_STEP;

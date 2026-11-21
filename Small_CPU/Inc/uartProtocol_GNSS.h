@@ -60,7 +60,9 @@
 		UART_GNSS_GET_MONHW2,
 		UART_GNSS_GET_NAVSTATUS,
 		UART_GNSS_GET_MONIO,
-		UART_GNSS_GET_CFGPRT
+		UART_GNSS_GET_CFGPRT,
+		UART_GNSS_CONFIG_PRT,		/* post-reset/wake UART1 write, awaiting matching ACK */
+		UART_GNSS_VERIFY_PRT		/* debug readback before resuming polls */
   } uartGnssStatus_t;
 
   typedef enum

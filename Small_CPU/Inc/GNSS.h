@@ -77,6 +77,8 @@ union i_Long
 #define GNSS_PWRUP_ACK_TIMEOUT_MS	(1000u)
 #define GNSS_WAKE_MAX_RETRIES		(3u)
 #define GNSS_WAKE_TX_TIMEOUT_MS		(3000u)	/* the wake up bytes cannot be sent for this long because the transmitter is busy: give up */
+#define GNSS_PRT_ACK_TIMEOUT_MS		(1000u)
+#define GNSS_PRT_MAX_TRIES			(3u)
 
 /* Check of the power save state: the receiver is meant to run at full power while the unit is awake. If GNSS_VERIFY_PVT_COUNT UBX-NAV-PVT in a row (about 7 s)
  * report a power save state, or no valid frame arrived for GNSS_FRAMES_STOPPED_MS, the full power command is sent again (with the wake up bytes in the second
@@ -147,7 +149,7 @@ union i_Long
 
 /* UBX-CFG-PRT (protocols, baud rate and mode of a port of the receiver) of the port GNSS_CFGPRT_PORT is read after the power up and then every GNSS_PRT_PERIOD_MS. The request has
  * 9 bytes with the port number and the checksum (9 ms at 9600 baud), the reply 28 bytes (29 ms). The OSTC5 initializes the receiver with UBX-CFG-PRT for port 1 (configUBX:
- * UART1, 9600 baud, UBX only in and out), that is the port which is read. It is not saved (the save mask of setConfig does not include the port configuration) */
+ * UART1, 9600 baud, UBX only out), that is the port which is read. It is not saved (the save mask of setConfig does not include the port configuration) */
 #define GNSS_PRT_PERIOD_MS			(60000u)
 #define GNSS_CFGPRT_PORT			(1u)
 
@@ -414,7 +416,8 @@ typedef struct {
 
 enum GNSSMode{Portable=0, Stationary=1, Pedestrian=2, Automotiv=3, Airbone1G=5, Airbone2G=6,Airbone4G=7,Wirst=8,Bike=9};
 
-static const uint8_t configUBX[]={0xB5,0x62,0x06,0x00,0x14,0x00,0x01,0x00,0x00,0x00,0xD0,0x08,0x00,0x00,0x80,0x25,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x00,0x00,0x00};
+/* UART1: 8N1, 9600 baud, accept UBX/NMEA/RTCM input, transmit UBX only. */
+static const uint8_t configUBX[]={0xB5,0x62,0x06,0x00,0x14,0x00,0x01,0x00,0x00,0x00,0xD0,0x08,0x00,0x00,0x80,0x25,0x00,0x00,0x07,0x00,0x01,0x00,0x00,0x00,0x00,0x00};
 
 static const uint8_t setNMEA410[]={0xB5,0x62,0x06,0x17,0x14,0x00,0x00,0x41,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 

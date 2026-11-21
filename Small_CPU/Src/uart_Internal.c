@@ -317,7 +317,8 @@ void UART6_HandleUART()
 			}
 		}
 		else if(((retryRequest == 0)		/* timeout or error */
-				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE) && (gnssState != UART_GNSS_PWRUP))	/* retry if no answer after half request interval */
+				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE) && (gnssState != UART_GNSS_PWRUP)
+						&& (gnssState != UART_GNSS_CONFIG_PRT) && (gnssState != UART_GNSS_VERIFY_PRT))	/* port write/readback have their own bounded timeouts */
 					|| (gnssState == UART_GNSS_ERROR))))
 		{
 			/* The channel switch will cause the sensor to respond with an error message. */
