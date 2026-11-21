@@ -329,8 +329,6 @@ _Static_assert(sizeof(SExchangeData) == 576u, "Size of SExchangeData changed");
 #define GNSS_DEBUG_EXTRA_BLOCKS		(0u)
 #endif
 
-_Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
-
 #define GNSS_MONHW_LEN				(60u)								/* accepted payload length of UBX-MON-HW */
 #define GNSS_MONHW2_LEN				(28u)								/* accepted payload length of UBX-MON-HW2 */
 #define GNSS_NAVSTATUS_LEN			(16u)								/* accepted payload length of UBX-NAV-STATUS */

@@ -876,14 +876,12 @@ void uartGnss_ProcessData(uint8_t data)
 														case UART_GNSS_GET_MONHW: GNSS_ParseMonHwData(&GNSS_Handle);
 																				  GNSS_NotePollAnswered(&GNSS_Handle, GNSS_POLL_MONHW);
 															break;
-#ifdef GNSS_DEBUG_POLLS
 														case UART_GNSS_GET_CFGPMS: GNSS_ParseCfgPmsData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_CFGGNSS: GNSS_ParseCfgGnssData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_CFGNAV5: GNSS_ParseCfgNav5Data(&GNSS_Handle);
 															break;
-#endif
 														case UART_GNSS_GET_CFGANT: GNSS_ParseCfgAntData(&GNSS_Handle);
 															break;
 														case UART_GNSS_GET_CFGITFM: GNSS_ParseCfgItfmData(&GNSS_Handle);

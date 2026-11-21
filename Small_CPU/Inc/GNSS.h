@@ -236,7 +236,6 @@ typedef struct
 	uint8_t identValid;			/* UBX-MON-VER was received, ident contains its text */
 	uint8_t monVerRequests;		/* number of UBX-MON-VER requests since the receiver was (re)initialized, limited to GNSS_MONVER_MAX_REQUESTS */
 	uint8_t monStartup;			/* number of poll slots after the initialization which are used for UBX-MON-HW / UBX-MON-VER without waiting */
-	uint8_t ident[GNSS_IDENT_SIZE];	/* identification text, see data_exchange.h */
 
 	/* switching the receiver to full power (initialization, wake up after sleep or dive), see the comment of the state machine in uartProtocol_GNSS.c */
 	uint8_t pwrupWake;			/* the power up follows a wake up (0xFF bytes) of a receiver in power save mode */
@@ -288,7 +287,6 @@ typedef struct
 	uint8_t cfgItfmHave;		/* the same for cfgItfmConfig and cfgItfmConfig2 */
 	uint32_t cfgItfmConfig;		/* raw config of UBX-CFG-ITFM (bits 0..3 bbThreshold, 4..8 cwThreshold, 9..30 algorithmBits, bit 31 enable) */
 	uint32_t cfgItfmConfig2;	/* raw config2 of UBX-CFG-ITFM (bits 0..11 generalBits, 12..13 antSetting, bit 14 enable2) */
-	uint32_t cfgExtraTick;		/* HAL tick of the last periodic request of UBX-CFG-ANT / UBX-CFG-ITFM */
 	uint32_t extraTick[GNSS_EXTRA_POLL_CNT];	/* HAL tick of the last periodic request of each of the periodic read only polls */
 
 	/* UBX-MON-HW2 (read only poll): the ADC input of the receiver. The values are those of the last reply with the accepted length, hw2Have: there was one since the power up */

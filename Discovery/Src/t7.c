@@ -4256,6 +4256,7 @@ void t7_refresh_gnss_debug(void)
 }
 
 
+
 /* Debug page 2: the hardware status of the receiver (UBX-MON-HW) and its identification (UBX-MON-VER), see data_exchange.h. One column of rows of font T24
  * every 34 px from the top, the widest row ends before x = 790. The colours flag a problem: red for an antenna short or open circuit, an absent RTC crystal
  * and a critical jamming state, yellow for a jamming warning, a high CW jamming indicator, an AGC index at the ends of its range and an outdated UBX-MON-HW. The
