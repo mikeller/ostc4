@@ -1844,7 +1844,7 @@ void copyGNSSdata(void)
 
 	/* The receiver is alive if it has answered recently. This is a steady state, not a toggle per received frame.
 	 * The fix OK flag and the ephemeris count are only reported while it is alive, as they are not cleared if it stops answering */
-	if ((GNSS_Handle.lastFrameValid) && (time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) <= GNSS_ALIVE_TIMEOUT_MS)) {
+	if (GNSS_Handle.lastFrameValid && time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) <= GNSS_ALIVE_TIMEOUT_MS) {
 		pInfo->alive |= GNSS_ALIVE_STATE_ALIVE;
 		if (GNSS_Handle.fixOk) {
 			pInfo->alive |= GNSS_ALIVE_FIX_OK;

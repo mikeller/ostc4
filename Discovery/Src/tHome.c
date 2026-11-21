@@ -748,7 +748,7 @@ void tHome_tick(void)
         }
     }
 
-    if ((stateUsed->mode == MODE_SURFACE) && (!t7_customview_disabled(CVIEW_sensors)) && (!gnssAcquire_isActive()))	/* do not leave the position view during an acquire GNSS fix session */
+    if (stateUsed->mode == MODE_SURFACE && !t7_customview_disabled(CVIEW_sensors) && !gnssAcquire_isActive())	/* do not leave the position view during an acquire GNSS fix session */
     {
     	tHome_tick_count_o2sens++;
     	if(tHome_tick_count_o2sens > AUTORETURN_O2SENS)

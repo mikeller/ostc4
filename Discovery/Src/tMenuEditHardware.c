@@ -105,7 +105,7 @@ void openEdit_Hardware(uint8_t line)
 {
     set_globalState_Menu_Line(line);
 
-    if ((isGnssAvailable()) && (line == tMHardware_getAcquireFixLine())) {		/* handled before the switch as unknown lines open the Bluetooth page */
+    if (isGnssAvailable() && line == tMHardware_getAcquireFixLine()) {		/* handled before the switch as unknown lines open the Bluetooth page */
         openEdit_GNSSAcquire();
         return;
     }

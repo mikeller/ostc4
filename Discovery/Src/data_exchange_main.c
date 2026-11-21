@@ -1057,7 +1057,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 
 		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
 		DataEX_collectGnssDebug(&dataIn.data[0]);
-		if ((gnssFirstFix_s == 0xFFFFFFFFu) && (pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (GNSS_HAS_FIX(&pStateReal->lifeData.gnssData))) {
+		if (gnssFirstFix_s == 0xFFFFFFFFu && (pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && GNSS_HAS_FIX(&pStateReal->lifeData.gnssData)) {
 			gnssFirstFix_s = HAL_GetTick() / 1000u;
 		}
 
@@ -1499,7 +1499,7 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 		case GNSS_DEBUG_REC_TEXT:
 			chunk = rec[1] & 0x7Fu;
 #ifdef HAVE_DEBUG_VIEW
-			if ((chunk >= GNSS_DEBUG_EXTRA_BASE) && (chunk < (GNSS_DEBUG_EXTRA_BASE + GNSS_DEBUG_EXTRA_BLOCKS))) {		/* read back of UBX-CFG-ANT and UBX-CFG-ITFM */
+			if (chunk >= GNSS_DEBUG_EXTRA_BASE && chunk < (GNSS_DEBUG_EXTRA_BASE + GNSS_DEBUG_EXTRA_BLOCKS)) {		/* read back of UBX-CFG-ANT and UBX-CFG-ITFM */
 				switch (chunk - GNSS_DEBUG_EXTRA_BASE) {
 					case 0:
 						gnssDebugInfo.cfgAntFlags = rec[2] | (rec[3] << 8);
@@ -1635,7 +1635,7 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 			}
 			else
 #endif
-			if ((rec[1] & 0x80u) && (chunk < GNSS_IDENT_CHUNKS)) {	/* the text is valid on the RTE side */
+			if ((rec[1] & 0x80u) && chunk < GNSS_IDENT_CHUNKS) {	/* the text is valid on the RTE side */
 				for (uint8_t pos = 0; pos < GNSS_IDENT_CHUNK_SIZE; pos++) {	/* only printable characters are shown */
 					uint8_t c = rec[2 + pos];
 					gnssDebugInfo.ident[chunk * GNSS_IDENT_CHUNK_SIZE + pos] = ((c == 0) || ((c >= 0x20u) && (c < 0x7Fu))) ? (char)c : '?';
@@ -1647,7 +1647,7 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 			}
 			break;
 		default:
-			if ((index >= GNSS_DEBUG_REC_SAT0) && (index < (GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT))) {
+			if (index >= GNSS_DEBUG_REC_SAT0 && index < (GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT)) {
 				pSat = &gnssDebugInfo.sat[index - GNSS_DEBUG_REC_SAT0];
 				pSat->flags = rec[1];
 				pSat->svId = rec[2];

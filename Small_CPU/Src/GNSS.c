@@ -498,7 +498,7 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
 
 	/* The receiver has a fix with a position if the fix type is 2D, 3D or GNSS + dead reckoning (not "no fix", "dead reckoning only" or "time only")
 	 * and it reports an accuracy estimate for it (the accuracy is not available if the message was too short). */
-	if(((GNSS->fixType >= 2) && (GNSS->fixType <= 4)) && (GNSS->hAcc != 0) && (GNSS->hAcc != 0xFFFFFFFFu))
+	if (GNSS->fixType >= 2 && GNSS->fixType <= 4 && GNSS->hAcc != 0 && GNSS->hAcc != 0xFFFFFFFFu)
 	{
 		RTC_GetTime(&sTimeNow);
 		GNSS->lastPosValid = 1;
@@ -519,7 +519,7 @@ void GNSS_ParsePVTData(GNSS_StateHandle *GNSS) {
  * receiver description, chapter "Forcing a Receiver Reset"). A GLONASS ephemeris only covers about 30 minutes (same document, chapter
  * "AssistNow Autonomous") and SBAS satellites have none, so they are not counted. gnssId values: see the appendix "Satellite Numbering" */
 static uint8_t GNSS_hasLongLivedEphemeris(uint8_t gnssId) {
-	return ((gnssId == 0) || (gnssId == 2) || (gnssId == 3) || (gnssId == 5));	/* GPS, Galileo, BeiDou, QZSS */
+	return gnssId == 0 || gnssId == 2 || gnssId == 3 || gnssId == 5;	/* GPS, Galileo, BeiDou, QZSS */
 }
 
 void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
@@ -574,7 +574,7 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 		entry.quality = pSv[8] & 0x07u;
 		entry.elev = (((int8_t)pSv[3] >= 0) && ((int8_t)pSv[3] <= 90)) ? pSv[3] : 255u;
 		pos = 0;
-		while ((pos < GNSS_DEBUG_SAT_CNT) && (GNSS->debugSat[pos].svId != 0) && (GNSS->debugSat[pos].cno >= entry.cno)) {
+		while (pos < GNSS_DEBUG_SAT_CNT && GNSS->debugSat[pos].svId != 0 && GNSS->debugSat[pos].cno >= entry.cno) {
 			pos++;
 		}
 		if (pos < GNSS_DEBUG_SAT_CNT) {
@@ -591,7 +591,7 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 	if(GNSS->numSat > 0)
 	{
 		searchIndex = 0;
-		while((searchIndex < scanSat) && (statIndex < 4))	/* get good signal quality */
+		while (searchIndex < scanSat && statIndex < 4)	/* get good signal quality */
 		{
 			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
 			if(signalQuality > 4)
@@ -602,7 +602,7 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 			searchIndex++;
 		}
 		searchIndex = 0;
-		while((searchIndex < scanSat) && (statIndex < 4))	/* get medium signal quality */
+		while (searchIndex < scanSat && statIndex < 4)	/* get medium signal quality */
 		{
 			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
 			if((signalQuality > 2) && (signalQuality <= 4))
@@ -613,7 +613,7 @@ void GNSS_ParseNavSatData(GNSS_StateHandle *GNSS) {
 			searchIndex++;
 		}
 		searchIndex = 0;
-		while((searchIndex < scanSat) && (statIndex < 4))	/* get poor signal quality */
+		while (searchIndex < scanSat && statIndex < 4)	/* get poor signal quality */
 		{
 			signalQuality = (GNSS_Handle.uartWorkingBuffer[22 + searchIndex * 12] & 0x7);
 			if(signalQuality <= 2)
@@ -678,10 +678,10 @@ void GNSS_ParseCfgGnssData(GNSS_StateHandle *GNSS) {
 
 	GNSS->cfgGnssLength = (length > 255u) ? 255u : (uint8_t)length;
 	GNSS->cfgGnssState = GNSS_CFGPOLL_OK;
-	if ((length >= 4u) && (length == (4u + 8u * blocks))) {
+	if (length >= 4u && length == (4u + 8u * blocks)) {
 		for (uint8_t i = 0; i < blocks; i++) {
 			const uint8_t* pBlock = &GNSS_Handle.uartWorkingBuffer[6 + 4 + 8 * i];
-			if ((pBlock[0] < 8u) && (pBlock[4] & 0x01u)) {
+			if (pBlock[0] < 8u && (pBlock[4] & 0x01u)) {
 				mask |= (uint8_t)(1u << pBlock[0]);
 			}
 		}
@@ -769,7 +769,7 @@ void GNSS_ParseNavStatusData(GNSS_StateHandle *GNSS) {
 	GNSS->statusTries = 0;
 	if (length == GNSS_NAVSTATUS_LEN) {
 		msss = (uint32_t)p[12] | ((uint32_t)p[13] << 8) | ((uint32_t)p[14] << 16) | ((uint32_t)p[15] << 24);
-		if (GNSS->msssPrevValid && (msss < GNSS->msss) && (GNSS->resetCount < 255)) {
+		if (GNSS->msssPrevValid && msss < GNSS->msss && GNSS->resetCount < 255) {
 			GNSS->resetCount++;
 		}
 		GNSS->msssPrevValid = 1;
@@ -808,8 +808,8 @@ void GNSS_ParseMonIoData(GNSS_StateHandle *GNSS) {
 	GNSS->ioLength = (length > 255u) ? 255u : (uint8_t)length;
 	GNSS->ioState = GNSS_CFGPOLL_OK;
 	GNSS->ioTries = 0;
-	if ((length != 0u) && ((length % GNSS_MONIO_PORT_SIZE) == 0u) && (ports <= GNSS_MONIO_MAX_PORTS)) {
-		if ((port >= ports) || (GNSS_Le32(&p[port * GNSS_MONIO_PORT_SIZE + 4u]) == 0u)) {
+	if (length != 0u && (length % GNSS_MONIO_PORT_SIZE) == 0u && ports <= GNSS_MONIO_MAX_PORTS) {
+		if (port >= ports || GNSS_Le32(&p[port * GNSS_MONIO_PORT_SIZE + 4u]) == 0u) {
 			uint32_t most = 0;
 
 			for (uint8_t i = 0; i < ports; i++) {
@@ -882,7 +882,7 @@ void GNSS_NotePollSent(GNSS_StateHandle *GNSS, uint8_t poll) {
  * @param cause GNSS_CAUSE_*.
  */
 void GNSS_NotePollCause(GNSS_StateHandle *GNSS, uint8_t poll, uint8_t cause) {
-	if ((poll < 3u) && (cause < GNSS_CAUSE_CNT)) {
+	if (poll < 3u && cause < GNSS_CAUSE_CNT) {
 		if (GNSS->pollLost[poll][cause] < 255u) {
 			GNSS->pollLost[poll][cause]++;
 		}
@@ -896,7 +896,7 @@ void GNSS_NotePollCause(GNSS_StateHandle *GNSS, uint8_t poll, uint8_t cause) {
  * @param poll GNSS_POLL_PVT, GNSS_POLL_SAT or GNSS_POLL_MONHW.
  */
 void GNSS_NotePollTimeout(GNSS_StateHandle *GNSS, uint8_t poll) {
-	if ((poll < 3u) && (!GNSS->pollAnomaly) && (GNSS->pollLost[poll][GNSS_CAUSE_TIMEOUT] < 255u)) {
+	if (poll < 3u && !GNSS->pollAnomaly && GNSS->pollLost[poll][GNSS_CAUSE_TIMEOUT] < 255u) {
 		GNSS->pollLost[poll][GNSS_CAUSE_TIMEOUT]++;
 	}
 }
@@ -910,7 +910,7 @@ void GNSS_NoteUartError(GNSS_StateHandle *GNSS, uint32_t errorCode) {
 	static const uint8_t flag[GNSS_UARTERR_CNT] = { 0x01u, 0x04u, 0x02u, 0x08u, 0x10u };		/* in the order of GNSS_UARTERR_* */
 
 	for (uint8_t i = 0; i < GNSS_UARTERR_CNT; i++) {
-		if ((errorCode & flag[i]) && (GNSS->uartErrType[i] < 255u)) {
+		if ((errorCode & flag[i]) && GNSS->uartErrType[i] < 255u) {
 			GNSS->uartErrType[i]++;
 		}
 	}
@@ -952,7 +952,7 @@ void GNSS_NoteReadCall(GNSS_StateHandle *GNSS, uint32_t tick) {
 	if (GNSS->rxReadTickValid) {
 		uint32_t gap = time_elapsed_ms(GNSS->rxReadTick, tick);
 
-		if ((gap > GNSS_RX_LATE_GAP_MS) && (GNSS->rxLateGaps < 0xFFu)) {
+		if (gap > GNSS_RX_LATE_GAP_MS && GNSS->rxLateGaps < 0xFFu) {
 			GNSS->rxLateGaps++;
 		}
 		if (gap > GNSS->rxMaxGapMs) {
@@ -970,7 +970,7 @@ static void GNSS_PublishJunk(GNSS_StateHandle *GNSS) {
 	for (uint8_t i = 0; (i < GNSS_JUNK_BYTES) && (i < GNSS->junkWorkLen); i++) {
 		uint8_t c = GNSS->junkWork[i];
 
-		if(((c < 0x20u) || (c > 0x7Eu)) && (c != '\r') && (c != '\n')) {
+		if ((c < 0x20u || c > 0x7Eu) && c != '\r' && c != '\n') {
 			flags &= (uint8_t)~GNSS_JUNK_ASCII;
 		}
 	}
@@ -1010,7 +1010,7 @@ void GNSS_NoteJunkByte(GNSS_StateHandle *GNSS, uint8_t data) {
 	if (GNSS->junkWorkLen < 0xFFu) {
 		GNSS->junkWorkLen++;
 	}
-	if ((GNSS->junkWorkLen == GNSS_JUNK_BYTES) && (!GNSS->junkCounted)) {
+	if (GNSS->junkWorkLen == GNSS_JUNK_BYTES && !GNSS->junkCounted) {
 		GNSS_PublishJunk(GNSS);
 	} else if (GNSS->junkCounted) {
 		GNSS->junkLen = GNSS->junkWorkLen;
@@ -1023,7 +1023,7 @@ void GNSS_NoteJunkByte(GNSS_StateHandle *GNSS, uint8_t data) {
  */
 void GNSS_NoteJunkEnd(GNSS_StateHandle *GNSS) {
 	if (GNSS->junkOpen) {
-		if ((!GNSS->junkCounted) && (GNSS->junkWorkLen >= GNSS_JUNK_MIN_LEN)) {
+		if (!GNSS->junkCounted && GNSS->junkWorkLen >= GNSS_JUNK_MIN_LEN) {
 			GNSS_PublishJunk(GNSS);
 		}
 		GNSS->junkOpen = 0;
@@ -1042,7 +1042,7 @@ static void GNSS_CopyIdentField(uint8_t* pField, uint8_t size, const uint8_t* pS
 	uint8_t pos = 0;
 
 	memset(pField, 0, size);
-	while ((pos < (size - 1u)) && (pos < maxSrc) && (pSrc[pos] != 0)) {
+	while (pos < (size - 1u) && pos < maxSrc && pSrc[pos] != 0) {
 		pField[pos] = ((pSrc[pos] >= 0x20u) && (pSrc[pos] < 0x7Fu)) ? pSrc[pos] : '?';		/* only printable characters */
 		pos++;
 	}

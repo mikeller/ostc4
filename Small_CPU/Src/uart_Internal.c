@@ -156,7 +156,7 @@ void MX_USART6_UART_Init(void) {
 /* The HAL stops the reception of the UART in which an error (overrun, framing, noise) occurred. The error is only counted for the debug page of the main CPU,
  * the reception is restarted by the next command as before */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-	if ((huart == &huart6) && (GNSS_Handle.uartErrors < 255)) {
+	if (huart == &huart6 && GNSS_Handle.uartErrors < 255) {
 		GNSS_Handle.uartErrors++;
 	}
 #ifdef GNSS_DEBUG_POLLS
@@ -210,7 +210,7 @@ void UART6_HandleUART()
 #ifdef GNSS_DEBUG_POLLS
 			GNSS_Handle.rxReadTickValid = 0;		/* the reader is not called while the receiver is initialized: that is no gap */
 #endif
-		} else if ((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested())) {		/* start the wake up of the receiver */
+		} else if (gnssState == UART_GNSS_INACTIVE && !uartGnss_isPowerDownRequested()) {		/* start the wake up of the receiver */
 			GNSS_Handle.pwrupWake = 1;
 			GNSS_Handle.pwrupSent = 0;
 			GNSS_Handle.pwrupNak = 0;
