@@ -364,18 +364,16 @@ _Static_assert(GNSS_IDENT_CHUNKS <= 32u, "The chunks received are collected in a
 /* sets the check value of a record: the index is already set in the low bits of byte 0 */
 static inline void GNSS_DebugRecord_Seal(uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	uint8_t chk = (rec[0] & 0x0Fu) ^ 0x05u;		/* all bytes 0 is not a valid record */
-	for(uint8_t i = 1; i < GNSS_DEBUG_REC_SIZE; i++) {
+	for (uint8_t i = 1; i < GNSS_DEBUG_REC_SIZE; i++)
 		chk ^= (rec[i] & 0x0Fu) ^ (rec[i] >> 4);
-	}
 	rec[0] = (rec[0] & 0x0Fu) | (uint8_t)(chk << 4);
 }
 
 /* returns 1 if the check value of the record is correct */
 static inline uint8_t GNSS_DebugRecord_IsValid(const uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	uint8_t copy[GNSS_DEBUG_REC_SIZE];
-	for(uint8_t i = 0; i < GNSS_DEBUG_REC_SIZE; i++) {
+	for (uint8_t i = 0; i < GNSS_DEBUG_REC_SIZE; i++)
 		copy[i] = rec[i];
-	}
 	GNSS_DebugRecord_Seal(copy);
 	return (copy[0] == rec[0]) && ((rec[0] & 0x0Fu) < GNSS_DEBUG_REC_CNT);
 }

@@ -363,7 +363,7 @@ uint8_t tMCvOptText_BuildDynamicContentList()
 				break;
 #endif
 #if defined ENABLE_GNSS_INTERN || defined ENABLE_GNSS_EXTERN
-			case CVOPT_GNSS:		if((SensorActive[SENSOR_GNSS]) || (isInternalGnssAvailable()))	/* the internal receiver is not in the sensor map unless a sensor detection was run */
+			case CVOPT_GNSS:		if ((SensorActive[SENSOR_GNSS]) || (isInternalGnssAvailable()))	/* the internal receiver is not in the sensor map unless a sensor detection was run */
 									{
 										refreshFctPointerTable[activeLines] = tMCvOptText_refreshGNSS;
 										CvOptAvailable = 1;

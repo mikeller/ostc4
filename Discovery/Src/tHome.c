@@ -682,8 +682,8 @@ void tHome_change_customview_button_pressed(uint8_t action)
     tHome_tick_count_cview = 0;
     tHome_tick_count_o2sens = 0;
 
-    if(settingsGetPointer()->design == 7) {
-        if(!t7_handleGnssDebugPageAction(action)) {	/* ENTER on the position view opens its debug page first */
+    if (settingsGetPointer()->design == 7) {
+        if (!t7_handleGnssDebugPageAction(action)) {	/* ENTER on the position view opens its debug page first */
             t7_change_customview(action);
         }
     }
@@ -748,7 +748,7 @@ void tHome_tick(void)
         }
     }
 
-    if((stateUsed->mode == MODE_SURFACE) && (!t7_customview_disabled(CVIEW_sensors)) && (!gnssAcquire_isActive()))	/* do not leave the position view during an acquire GNSS fix session */
+    if ((stateUsed->mode == MODE_SURFACE) && (!t7_customview_disabled(CVIEW_sensors)) && (!gnssAcquire_isActive()))	/* do not leave the position view during an acquire GNSS fix session */
     {
     	tHome_tick_count_o2sens++;
     	if(tHome_tick_count_o2sens > AUTORETURN_O2SENS)

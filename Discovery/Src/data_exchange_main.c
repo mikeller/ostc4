@@ -1057,7 +1057,7 @@ void DataEX_copy_to_LifeData(_Bool *modeChangeFlag)
 
 		memcpy(&pStateReal->lifeData.gnssData, &dataIn.data[0].gnssInfo, sizeof(dataIn.data[0].gnssInfo));
 		DataEX_collectGnssDebug(&dataIn.data[0]);
-		if((gnssFirstFix_s == 0xFFFFFFFFu) && (pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (GNSS_HAS_FIX(&pStateReal->lifeData.gnssData))) {
+		if ((gnssFirstFix_s == 0xFFFFFFFFu) && (pStateReal->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (GNSS_HAS_FIX(&pStateReal->lifeData.gnssData))) {
 			gnssFirstFix_s = HAL_GetTick() / 1000u;
 		}
 
@@ -1435,11 +1435,11 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 	SGnssDebugSat* pSat;
 
 	GNSS_DebugRecord_Get(pData, rec);
-	if(!GNSS_DebugRecord_IsValid(rec)) {
+	if (!GNSS_DebugRecord_IsValid(rec)) {
 		return;
 	}
 	index = rec[0] & 0x0Fu;
-	switch(index) {
+	switch (index) {
 		case GNSS_DEBUG_REC_SUMMARY_A:
 			gnssDebugInfo.frameAge_s = rec[1];
 			gnssDebugInfo.pDop_tenth = rec[2];
@@ -1499,8 +1499,8 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 		case GNSS_DEBUG_REC_TEXT:
 			chunk = rec[1] & 0x7Fu;
 #ifdef HAVE_DEBUG_VIEW
-			if((chunk >= GNSS_DEBUG_EXTRA_BASE) && (chunk < (GNSS_DEBUG_EXTRA_BASE + GNSS_DEBUG_EXTRA_BLOCKS))) {		/* read back of UBX-CFG-ANT and UBX-CFG-ITFM */
-				switch(chunk - GNSS_DEBUG_EXTRA_BASE) {
+			if ((chunk >= GNSS_DEBUG_EXTRA_BASE) && (chunk < (GNSS_DEBUG_EXTRA_BASE + GNSS_DEBUG_EXTRA_BLOCKS))) {		/* read back of UBX-CFG-ANT and UBX-CFG-ITFM */
+				switch (chunk - GNSS_DEBUG_EXTRA_BASE) {
 					case 0:
 						gnssDebugInfo.cfgAntFlags = rec[2] | (rec[3] << 8);
 						gnssDebugInfo.cfgAntPins = rec[4] | (rec[5] << 8);
@@ -1620,12 +1620,12 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 						gnssDebugInfo.prtMode = (uint32_t)rec[2] | ((uint32_t)rec[3] << 8) | ((uint32_t)rec[4] << 16) | ((uint32_t)rec[5] << 24);
 						break;
 					default:		/* 12 .. 16: four bytes of the counts of lost polls (15) and of the UART error types (5) */
-						for(uint8_t pos = 0; pos < 4; pos++) {
+						for (uint8_t pos = 0; pos < 4; pos++) {
 							uint8_t idx = (uint8_t)(4u * (chunk - GNSS_DEBUG_EXTRA_BASE - 12u) + pos);
 
-							if(idx < 15u) {
+							if (idx < 15u) {
 								gnssDebugInfo.pollLost[idx / 5u][idx % 5u] = rec[2 + pos];
-							} else if(idx < GNSS_DEBUG_DIAG_SIZE) {
+							} else if (idx < GNSS_DEBUG_DIAG_SIZE) {
 								gnssDebugInfo.uartErrType[idx - 15u] = rec[2 + pos];
 							}
 						}
@@ -1635,19 +1635,19 @@ static void DataEX_collectGnssDebug(const SExchangeData* pData) {
 			}
 			else
 #endif
-			if((rec[1] & 0x80u) && (chunk < GNSS_IDENT_CHUNKS)) {	/* the text is valid on the RTE side */
-				for(uint8_t pos = 0; pos < GNSS_IDENT_CHUNK_SIZE; pos++) {	/* only printable characters are shown */
+			if ((rec[1] & 0x80u) && (chunk < GNSS_IDENT_CHUNKS)) {	/* the text is valid on the RTE side */
+				for (uint8_t pos = 0; pos < GNSS_IDENT_CHUNK_SIZE; pos++) {	/* only printable characters are shown */
 					uint8_t c = rec[2 + pos];
 					gnssDebugInfo.ident[chunk * GNSS_IDENT_CHUNK_SIZE + pos] = ((c == 0) || ((c >= 0x20u) && (c < 0x7Fu))) ? (char)c : '?';
 				}
 				gnssDebugInfo.identChunkMask |= (1uL << chunk);
-				if(gnssDebugInfo.identChunkMask == ((1uL << GNSS_IDENT_CHUNKS) - 1u)) {
+				if (gnssDebugInfo.identChunkMask == ((1uL << GNSS_IDENT_CHUNKS) - 1u)) {
 					gnssDebugInfo.identValid = 1;
 				}
 			}
 			break;
 		default:
-			if((index >= GNSS_DEBUG_REC_SAT0) && (index < (GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT))) {
+			if ((index >= GNSS_DEBUG_REC_SAT0) && (index < (GNSS_DEBUG_REC_SAT0 + GNSS_DEBUG_SAT_CNT))) {
 				pSat = &gnssDebugInfo.sat[index - GNSS_DEBUG_REC_SAT0];
 				pSat->flags = rec[1];
 				pSat->svId = rec[2];
