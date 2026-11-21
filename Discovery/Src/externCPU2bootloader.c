@@ -161,7 +161,7 @@ uint8_t boot_write_memory(uint32_t address, uint8_t length_minus_1, uint8_t *dat
 	Bootloader_spi_single(0x5a);
 	Bootloader_send_command(0x31);
 	if(!boot_ack())
-		return 1;
+		return 0;
 	HAL_Delay(5);
 	addressNew[0] = (uint8_t)((address >> 24) & 0xFF);
 	addressNew[1] = (uint8_t)((address >> 16) & 0xFF);

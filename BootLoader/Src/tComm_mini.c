@@ -855,14 +855,11 @@ uint8_t select_mode(uint8_t type)
             answer = receive_update_flex(1);
             if(answer == 0)
                 return 0;
-            else if(answer == 2) // 2 = RTE without bootToBootloader
-            {
-                aTxBuffer[0] = 0xFF;
-                HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBuffer, 1,10000);
-                return 0;
-            }
             else
             {
+                /* CPU2/RTE is reset before receive_update_flex() returns.
+                 * Complete the service command before accepting the next
+                 * command, so the host can close the session cleanly. */
                 aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
                 if(answer == 1) /* 0xFF is checksum error, 2 = RTE without bootToBootloader */
                 {
