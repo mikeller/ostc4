@@ -258,8 +258,7 @@ uint8_t UART_isTxIdle(const sUartComCtrl* pUartCtrl)
 
 /* Returns 1 if the command is being transmitted. The buffer of a transmission which is still running (e.g. the wake up bytes) is not overwritten, the
  * caller has to repeat the command if it returns 0 */
-uint8_t UART_SendCmdUbx(const uint8_t *cmd, uint8_t len)
-{
+uint8_t UART_SendCmdUbx(const uint8_t *cmd, uint8_t len) {
 	uint8_t sent = 0;
 
 	if(len < TX_BUF_SIZE)		/* A longer string is an indication for a missing 0 termination */
@@ -318,8 +317,7 @@ void UART_StartDMA_Receiption(sUartComCtrl* pUartCtrl)
 		if((pUartCtrl->rxWriteIndex / CHUNK_SIZE) == (pUartCtrl->rxReadIndex / CHUNK_SIZE)) /* write pointer catched up with read pointer (should never happen) => Reset read pointer to start of block */
 		{
 #ifdef GNSS_DEBUG_POLLS
-			if((pUartCtrl == pGnssCtrl) && (!UART_isEndIndication(pUartCtrl, pUartCtrl->rxReadIndex)))		/* only if there is unread data: not at the start of the reception */
-			{
+			if((pUartCtrl == pGnssCtrl) && (!UART_isEndIndication(pUartCtrl, pUartCtrl->rxReadIndex))) {		/* only if there is unread data: not at the start of the reception */
 				GNSS_NoteRxDiscard(&GNSS_Handle);		/* only counted: the reception is not changed */
 			}
 #endif
@@ -329,13 +327,10 @@ void UART_StartDMA_Receiption(sUartComCtrl* pUartCtrl)
 		{
 			pUartCtrl->dmaRxActive = 1;
 #ifdef GNSS_DEBUG_POLLS
-			if(pUartCtrl == pGnssCtrl)
-			{
+			if(pUartCtrl == pGnssCtrl) {
 				GNSS_NoteRxStart(&GNSS_Handle, 1);
 			}
-    	}
-		else if(pUartCtrl == pGnssCtrl)
-		{
+    	} else if(pUartCtrl == pGnssCtrl) {
 			GNSS_NoteRxStart(&GNSS_Handle, 0);
 		}
 #else

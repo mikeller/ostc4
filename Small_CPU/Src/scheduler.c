@@ -1844,11 +1844,9 @@ void copyGNSSdata(void)
 
 	/* The receiver is alive if it has answered recently. This is a steady state, not a toggle per received frame.
 	 * The fix OK flag and the ephemeris count are only reported while it is alive, as they are not cleared if it stops answering */
-	if((GNSS_Handle.lastFrameValid) && (time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) <= GNSS_ALIVE_TIMEOUT_MS))
-	{
+	if((GNSS_Handle.lastFrameValid) && (time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) <= GNSS_ALIVE_TIMEOUT_MS)) {
 		pInfo->alive |= GNSS_ALIVE_STATE_ALIVE;
-		if(GNSS_Handle.fixOk)
-		{
+		if(GNSS_Handle.fixOk) {
 			pInfo->alive |= GNSS_ALIVE_FIX_OK;
 		}
 		pInfo->alive |= (uint8_t)(((GNSS_Handle.numEphSat > 15u) ? 15u : GNSS_Handle.numEphSat) << GNSS_ALIVE_EPH_SHIFT);
@@ -1895,25 +1893,21 @@ void copyGNSSdata(void)
 	memcpy(&pInfo->signalQual,&GNSS_Handle.statSat, sizeof(GNSS_Handle.statSat));
 
 	/* one record of the GNSS debug page per call, see data_exchange.h */
-	if(GNSS_Handle.lastFrameValid)
-	{
+	if(GNSS_Handle.lastFrameValid) {
 		age_s = time_elapsed_ms(GNSS_Handle.lastFrameTick, HAL_GetTick()) / 1000u;
 		debugAge = (age_s > 254u) ? 255u : (uint8_t)age_s;
 	}
 	debugRecordIndex = GNSS_DebugScheduleRecord(debugSlot);
 	GNSS_GetDebugRecord(&GNSS_Handle, debugRecordIndex, debugAge, debugTextChunk, debugRecord);
 	GNSS_DebugRecord_Put(&global.dataSendToMaster.data[0], debugRecord);
-	if(debugRecordIndex == GNSS_DEBUG_REC_TEXT)
-	{
+	if(debugRecordIndex == GNSS_DEBUG_REC_TEXT) {
 		debugTextChunk++;
-		if(debugTextChunk >= GNSS_DEBUG_TEXT_ITEMS)
-		{
+		if(debugTextChunk >= GNSS_DEBUG_TEXT_ITEMS) {
 			debugTextChunk = 0;
 		}
 	}
 	debugSlot++;
-	if(debugSlot >= GNSS_DEBUG_SCHEDULE_LEN)
-	{
+	if(debugSlot >= GNSS_DEBUG_SCHEDULE_LEN) {
 		debugSlot = 0;
 	}
 }

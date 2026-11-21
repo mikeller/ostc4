@@ -673,8 +673,7 @@ void t7_refresh(void)
             set_globalState(StS);
 
 #ifdef HAVE_DEBUG_VIEW
-        if(gnssDebugPage && (selection_customview != CVIEW_Position))
-        {
+        if(gnssDebugPage && (selection_customview != CVIEW_Position)) {
             gnssDebugPage = 0;		/* the view was left in another way than by the button */
         }
 #endif
@@ -682,8 +681,7 @@ void t7_refresh(void)
         if(settingsGetPointer()->showDebugInfo)
             t7_refresh_surface_debugmode();
 #ifdef HAVE_DEBUG_VIEW
-        else if(t7_isGnssDebugPageShown())
-        {
+        else if(t7_isGnssDebugPageShown()) {
             if(gnssDebugPage == 7)
                 t7_refresh_gnss_rxpath();
             else if(gnssDebugPage == 6)
@@ -3696,21 +3694,16 @@ void t7_tissues(const SDiveState * pState)
 #define POSITION_BARS_OFFSET_Y_FLIP			(120u)
 
 /* Text of the session line of the position view. Returns the number of characters written */
-static uint8_t t7_getGnssAcquireText(char* pText, uint8_t size)
-{
+static uint8_t t7_getGnssAcquireText(char* pText, uint8_t size) {
     uint16_t remaining;
     uint8_t length = 0;
 
-    switch(gnssAcquire_getState())
-    {
+    switch(gnssAcquire_getState()) {
         case GNSS_ACQUIRE_ACTIVE:
             remaining = gnssAcquire_getRemainingS();
-            if(gnssAcquire_isWaitingForEphemeris())		/* fix OK, waiting for the ephemeris */
-            {
+            if(gnssAcquire_isWaitingForEphemeris()) {		/* fix OK, waiting for the ephemeris */
                 length = snprintf(pText, size, "\001\020Fix OK eph %u/%u %u:%02u", gnssAcquire_getEphemerisCount(), GNSS_ACQUIRE_EPH_MIN_SV, remaining / 60, remaining % 60);
-            }
-            else
-            {
+            } else {
                 length = snprintf(pText, size, "\001\020Fix %u:%02u BACK=stop", remaining / 60, remaining % 60);
             }
             break;
@@ -3742,12 +3735,10 @@ static uint8_t t7_getGnssAcquireText(char* pText, uint8_t size)
 
 /* Power save state of the receiver (psmState of UBX-NAV-PVT): 0 if it is not known (receiver does not answer, no UBX-NAV-PVT parsed yet) or not in power save
  * mode, else 1 enabled, 2 acquisition, 3 tracking, 4 power optimized tracking, 5 inactive */
-static uint8_t t7_getGnssPowerSaveState(void)
-{
+static uint8_t t7_getGnssPowerSaveState(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
 
-    if((stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (pDbg->recordsSeen & 0x02u) && (pDbg->psmState >= 1) && (pDbg->psmState <= 5))
-    {
+    if((stateUsed->lifeData.gnssData.alive & GNSS_ALIVE_STATE_ALIVE) && (pDbg->recordsSeen & 0x02u) && (pDbg->psmState >= 1) && (pDbg->psmState <= 5)) {
         return pDbg->psmState;
     }
     return 0;
@@ -3756,8 +3747,7 @@ static uint8_t t7_getGnssPowerSaveState(void)
 /* The user is told that no satellite signal is received: an acquire fix session has run for GNSS_ACQUIRE_NOSIGNAL_S, satellites are listed but none has a C/N0 above 0
  * (the tracked count and the best C/N0 of the debug records of the RTE, which the main CPU decodes in every build: it is the "tracked/listed" count of the position view),
  * the receiver answers, it reports full power (psmState 0; in power save mode the power save line explains why nothing is tracked) and there is no fix */
-static uint8_t t7_gnssNoSignalHint(void)
-{
+static uint8_t t7_gnssNoSignalHint(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const SGnssInfo* pGnss = &stateUsed->lifeData.gnssData;
 
@@ -3816,21 +3806,15 @@ void t7_showPosition(void)
 
     if(!GNSS_HAS_FIX(&stateUsed->lifeData.gnssData))
     {
-    	if(gnssAlive)
-    	{
+    	if(gnssAlive) {
     		/* tracked: satellites with a C/N0 above 0, listed: all satellites of the receiver list, which includes those which are only searched for (the
     		 * number shown before was the listed one). The tracked count comes from the debug records, it is not available until the first one was received */
-    		if(DataEX_getGnssDebugInfo()->recordsSeen & 0x01u)
-    		{
+    		if(DataEX_getGnssDebugInfo()->recordsSeen & 0x01u) {
     			snprintf(text,60,"\001%u/%u\n\r",DataEX_getGnssDebugInfo()->numTracked,stateUsed->lifeData.gnssData.numSat);
-    		}
-    		else
-    		{
+    		} else {
     			snprintf(text,60,"\001--/%u\n\r",stateUsed->lifeData.gnssData.numSat);
     		}
-    	}
-    	else
-    	{
+    	} else {
     		snprintf(text,60,"\001--\n\r");		/* the last value is outdated: do not show it as a current reading */
     	}
     }
@@ -3848,12 +3832,9 @@ void t7_showPosition(void)
     	/* the x position is the same for both orientations: the drawing functions mirror it for the flipped display */
     	start.x = t7cY0free.WindowX0 + POSITION_BARS_OFFSET_X;
     	stop.x = start.x;
-    	if(!pSettings->FlipDisplay)
-    	{
+    	if(!pSettings->FlipDisplay) {
     		start.y = t7cY0free.WindowY0 + POSITION_BARS_OFFSET_Y;
-    	}
-    	else
-    	{
+    	} else {
     		start.y = t7cY0free.WindowY1 - POSITION_BARS_OFFSET_Y_FLIP;
     	}
     	stop.y = start.y + 20;
@@ -3877,18 +3858,14 @@ void t7_showPosition(void)
     }
 
     /* session line: a line of its own which does not overlap the bars, the window is restored afterwards */
-    if(t7_getGnssAcquireText(text, 50) != 0)
-    {
+    if(t7_getGnssAcquireText(text, 50) != 0) {
     	sessionY0 = t7cY0free.WindowY0;
     	sessionY1 = t7cY0free.WindowY1;
     	sessionLines = t7cY0free.WindowNumberOfTextLines;
     	t7cY0free.WindowNumberOfTextLines = 1;
-    	if(!pSettings->FlipDisplay)
-    	{
+    	if(!pSettings->FlipDisplay) {
     		t7cY0free.WindowY0 = sessionY0 + POSITION_SESSION_LINE_OFFSET_Y;
-    	}
-    	else
-    	{
+    	} else {
     		t7cY0free.WindowY1 = labelY1 - POSITION_SESSION_LINE_OFFSET_Y_FLIP;
     	}
     	GFX_write_string(&FontT24, &t7cY0free, text, 1);
@@ -3898,18 +3875,14 @@ void t7_showPosition(void)
     }
 
     /* hint that no signal is received (see t7_gnssNoSignalHint): yellow, a line of its own between the bars and the session line */
-    if(t7_gnssNoSignalHint())
-    {
+    if(t7_gnssNoSignalHint()) {
     	sessionY0 = t7cY0free.WindowY0;
     	sessionY1 = t7cY0free.WindowY1;
     	sessionLines = t7cY0free.WindowNumberOfTextLines;
     	t7cY0free.WindowNumberOfTextLines = 1;
-    	if(!pSettings->FlipDisplay)
-    	{
+    	if(!pSettings->FlipDisplay) {
     		t7cY0free.WindowY0 = sessionY0 + POSITION_HINT_LINE_OFFSET_Y;
-    	}
-    	else
-    	{
+    	} else {
     		t7cY0free.WindowY1 = labelY1 - POSITION_HINT_LINE_OFFSET_Y_FLIP;
     	}
     	GFX_write_string_color(&FontT24, &t7cY0free, "\001No signal: need open sky", 1, CLUT_WarningYellow);
@@ -3919,20 +3892,16 @@ void t7_showPosition(void)
     }
 
     /* power save line: shown only while the receiver reports a power save state (the normal view stays clean), yellow; the inactive state is red */
-    if(powerSave != 0)
-    {
+    if(powerSave != 0) {
     	static const char* const powerSaveText[] = { "", "Power save: starting", "Power save: acquiring", "Power save: tracking", "Power save: low power", "Power save: inactive" };
 
     	sessionY0 = t7cY0free.WindowY0;
     	sessionY1 = t7cY0free.WindowY1;
     	sessionLines = t7cY0free.WindowNumberOfTextLines;
     	t7cY0free.WindowNumberOfTextLines = 1;
-    	if(!pSettings->FlipDisplay)
-    	{
+    	if(!pSettings->FlipDisplay) {
     		t7cY0free.WindowY0 = sessionY0 + POSITION_POWER_LINE_OFFSET_Y;
-    	}
-    	else
-    	{
+    	} else {
     		t7cY0free.WindowY1 = labelY1 + POSITION_POWER_LINE_OFFSET_Y_FLIP;
     	}
     	snprintf(text, 50, "\001%s", powerSaveText[powerSave]);
@@ -3944,19 +3913,16 @@ void t7_showPosition(void)
 }
 /* The debug pages of the receiver are only built with the debug view (HAVE_DEBUG_VIEW of configuration.h); without it ENTER is not used by the position view */
 #ifndef HAVE_DEBUG_VIEW
-bool t7_isGnssDebugPageShown(void)
-{
+bool t7_isGnssDebugPageShown(void) {
     return false;
 }
 
-bool t7_handleGnssDebugPageAction(uint8_t action)
-{
+bool t7_handleGnssDebugPageAction(uint8_t action) {
     (void)action;
     return false;
 }
 #else
-bool t7_isGnssDebugPageShown(void)
-{
+bool t7_isGnssDebugPageShown(void) {
     return gnssDebugPage && (selection_customview == CVIEW_Position) && (stateUsed->mode == MODE_SURFACE);
 }
 
@@ -3964,24 +3930,19 @@ bool t7_isGnssDebugPageShown(void)
 /* ENTER on the position view shows the debug page 1, each following ENTER the next of the GNSS_DEBUG_PAGES pages (receiver hardware, power state, antenna supervisor and
  * jamming monitor settings, ADC input and receiver status, lost polls and ports of the receiver, receive path and port configuration) and the ENTER after the last one leaves them and continues with the next
  * view. Returns true if the action was used */
-bool t7_handleGnssDebugPageAction(uint8_t action)
-{
-    if((action != ACTION_BUTTON_ENTER) || (stateUsed->mode != MODE_SURFACE))
-    {
+bool t7_handleGnssDebugPageAction(uint8_t action) {
+    if((action != ACTION_BUTTON_ENTER) || (stateUsed->mode != MODE_SURFACE)) {
         return false;
     }
-    if((gnssDebugPage >= 1) && (gnssDebugPage < GNSS_DEBUG_PAGES))
-    {
+    if((gnssDebugPage >= 1) && (gnssDebugPage < GNSS_DEBUG_PAGES)) {
         gnssDebugPage++;
         return true;
     }
-    if(gnssDebugPage)
-    {
+    if(gnssDebugPage) {
         gnssDebugPage = 0;
         return false;
     }
-    if(selection_customview == CVIEW_Position)
-    {
+    if(selection_customview == CVIEW_Position) {
         gnssDebugPage = 1;
         return true;
     }
@@ -4006,15 +3967,12 @@ bool t7_handleGnssDebugPageAction(uint8_t action)
 #define GNSSDBG_COL_EPH			(690u)
 #define GNSSDBG_COL_ELEV		(730u)
 
-static void t7_gnssDebugWrite(uint16_t x, uint16_t xEnd, uint16_t y, uint8_t color, const char* text)
-{
+static void t7_gnssDebugWrite(uint16_t x, uint16_t xEnd, uint16_t y, uint8_t color, const char* text) {
     Gfx_write_label_var(&t7screen, x, xEnd, y, &FontT24, color, text);
 }
 
-static const char* t7_gnssSessionText(void)
-{
-    switch(gnssAcquire_getState())
-    {
+static const char* t7_gnssSessionText(void) {
+    switch(gnssAcquire_getState()) {
         case GNSS_ACQUIRE_ACTIVE:		return "active";
         case GNSS_ACQUIRE_COMPLETE:		return "complete";
         case GNSS_ACQUIRE_FIX_ONLY:		return "fix only";
@@ -4028,24 +3986,20 @@ static const char* t7_gnssSessionText(void)
 }
 
 /* power save state (psmState of UBX-NAV-PVT) as a short word and its colour: white at full power, yellow in a power save state, red if it is inactive */
-static const char* t7_gnssPsmWord(uint8_t psm)
-{
+static const char* t7_gnssPsmWord(uint8_t psm) {
     static const char* const word[] = { "off", "start", "acq", "track", "POT", "idle" };
 
     return (psm < 6) ? word[psm] : "--";
 }
 
-static uint8_t t7_gnssPsmColor(uint8_t psm)
-{
-    if(psm == 5)
-    {
+static uint8_t t7_gnssPsmColor(uint8_t psm) {
+    if(psm == 5) {
         return CLUT_WarningRed;
     }
     return ((psm >= 1) && (psm <= 4)) ? CLUT_WarningYellow : CLUT_Font020;
 }
 
-void t7_refresh_gnss_debug(void)
-{
+void t7_refresh_gnss_debug(void) {
     const SGnssInfo* pGnss = &stateUsed->lifeData.gnssData;
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* fixText[] = {"none", "DR", "2D", "3D", "GNSS+DR", "time only"};
@@ -4071,52 +4025,36 @@ void t7_refresh_gnss_debug(void)
 #define GNSSDBG_LEFT_ROW(color, text)	t7_gnssDebugWrite(GNSSDBG_LEFT_X, GNSSDBG_LEFT_X_END, GNSSDBG_ROW0_Y + (row++) * GNSSDBG_ROW_STEP, (color), (text))
 
     /* receiver answers, age of the last valid frame */
-    if(!haveA)
-    {
+    if(!haveA) {
         snprintf(text2, sizeof(text2), "--");
-    }
-    else if(pDbg->frameAge_s == 255)
-    {
+    } else if(pDbg->frameAge_s == 255) {
         snprintf(text2, sizeof(text2), "255+ s");
-    }
-    else
-    {
+    } else {
         snprintf(text2, sizeof(text2), "%u s", pDbg->frameAge_s);
     }
     snprintf(text, sizeof(text), "Alive: %s   frame age %s", alive ? "YES" : "NO", text2);
     GNSSDBG_LEFT_ROW(alive ? CLUT_NiceGreen : CLUT_WarningRed, text);
 
     /* fix type, gnssFixOK, horizontal accuracy */
-    if((!haveA) || (pDbg->hAcc_m == 255))
-    {
+    if((!haveA) || (pDbg->hAcc_m == 255)) {
         snprintf(text2, sizeof(text2), "--");
-    }
-    else
-    {
+    } else {
         snprintf(text2, sizeof(text2), "%u m", pDbg->hAcc_m);
     }
     snprintf(text, sizeof(text), "Fix: %s  OK: %s  hAcc %s", (pGnss->fixType < 6) ? fixText[pGnss->fixType] : "?", fixOk ? "YES" : "NO", text2);
-    if((pGnss->fixType == 3) && fixOk)
-    {
+    if((pGnss->fixType == 3) && fixOk) {
         color = CLUT_NiceGreen;
-    }
-    else if(pGnss->fixType >= 2)
-    {
+    } else if(pGnss->fixType >= 2) {
         color = CLUT_WarningYellow;
-    }
-    else
-    {
+    } else {
         color = CLUT_Font020;
     }
     GNSSDBG_LEFT_ROW(color, text);
 
     /* pDOP, satellites used in the solution */
-    if((!haveA) || (pDbg->pDop_tenth == 255))
-    {
+    if((!haveA) || (pDbg->pDop_tenth == 255)) {
         snprintf(text2, sizeof(text2), "--");
-    }
-    else
-    {
+    } else {
         snprintf(text2, sizeof(text2), "%u.%u", pDbg->pDop_tenth / 10, pDbg->pDop_tenth % 10);
     }
     snprintf(text, sizeof(text), "pDOP %s   SV used (PVT) %u", text2, haveB ? pDbg->numSvUsedPvt : 0);
@@ -4127,12 +4065,9 @@ void t7_refresh_gnss_debug(void)
     GNSSDBG_LEFT_ROW(CLUT_Font020, text);
 
     /* ephemeris of GPS, Galileo, BeiDou and QZSS satellites */
-    if(alive)
-    {
+    if(alive) {
         snprintf(text, sizeof(text), "Ephemeris %u (GPS GAL BDS QZSS)", GNSS_EPH_COUNT(pGnss));
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "Ephemeris -- (GPS GAL BDS QZSS)");
     }
     GNSSDBG_LEFT_ROW(CLUT_Font020, text);
@@ -4141,34 +4076,25 @@ void t7_refresh_gnss_debug(void)
     GNSSDBG_LEFT_ROW(CLUT_Font020, text);
 
     /* time flags of UBX-NAV-PVT */
-    if(haveB)
-    {
+    if(haveB) {
         snprintf(text, sizeof(text), "Time valid: date %s  time %s", (pDbg->timeFlags & 0x01u) ? "YES" : "NO", (pDbg->timeFlags & 0x02u) ? "YES" : "NO");
         GNSSDBG_LEFT_ROW(CLUT_Font020, text);
-        if(pDbg->timeFlags & 0x08u)
-        {
+        if(pDbg->timeFlags & 0x08u) {
             snprintf(text2, sizeof(text2), "%s", ((pDbg->timeFlags & 0x30u) == 0x30u) ? "YES" : "NO");
-        }
-        else
-        {
+        } else {
             snprintf(text2, sizeof(text2), "n/a");
         }
         snprintf(text, sizeof(text), "Resolved %s  Confirmed %s", (pDbg->timeFlags & 0x04u) ? "YES" : "NO", text2);
         GNSSDBG_LEFT_ROW(CLUT_Font020, text);
-    }
-    else
-    {
+    } else {
         GNSSDBG_LEFT_ROW(CLUT_Font020, "Time valid: --");
         GNSSDBG_LEFT_ROW(CLUT_Font020, "Resolved --  Confirmed --");
     }
 
-    if(pGnss->alive & GNSS_ALIVE_STATE_TIME)
-    {
+    if(pGnss->alive & GNSS_ALIVE_STATE_TIME) {
         snprintf(text, sizeof(text), "UTC %04u-%02u-%02u %02u:%02u:%02u", 2000 + pGnss->DateTime.year, pGnss->DateTime.month, pGnss->DateTime.day,
                  pGnss->DateTime.hour, pGnss->DateTime.min, pGnss->DateTime.sec);
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "UTC --");
     }
     GNSSDBG_LEFT_ROW(CLUT_Font020, text);
@@ -4177,25 +4103,19 @@ void t7_refresh_gnss_debug(void)
     snprintf(text, sizeof(text), "Session: %s %lu:%02lu", t7_gnssSessionText(), session_s / 60u, session_s % 60u);
     GNSSDBG_LEFT_ROW(CLUT_Font020, text);
 
-    if(firstFix_s == 0xFFFFFFFFu)
-    {
+    if(firstFix_s == 0xFFFFFFFFu) {
         snprintf(text2, sizeof(text2), "--");
-    }
-    else
-    {
+    } else {
         snprintf(text2, sizeof(text2), "%lu:%02lu", firstFix_s / 60u, firstFix_s % 60u);
     }
     snprintf(text, sizeof(text), "Up %lu:%02lu  TTFF %s", now_s / 60u, now_s % 60u, text2);
     GNSSDBG_LEFT_ROW(CLUT_Font020, text);
 
     /* power save state of UBX-NAV-PVT, rejected commands and UART errors of the RTE */
-    if(haveB)
-    {
+    if(haveB) {
         snprintf(text, sizeof(text), "PSM %s  NAK %u  UART err %u", t7_gnssPsmWord(pDbg->psmState), pDbg->nakCount, pDbg->uartErrors);
         color = t7_gnssPsmColor(pDbg->psmState);
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "PSM --  NAK --  UART err --");
         color = CLUT_Font020;
     }
@@ -4209,24 +4129,17 @@ void t7_refresh_gnss_debug(void)
     t7_gnssDebugWrite(GNSSDBG_COL_USED, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "U");
     t7_gnssDebugWrite(GNSSDBG_COL_EPH, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "E");
     t7_gnssDebugWrite(GNSSDBG_COL_ELEV, 799, GNSSDBG_ROW0_Y, CLUT_Font020, "el");
-    for(i = 0; i < GNSS_DEBUG_SAT_CNT; i++)
-    {
+    for(i = 0; i < GNSS_DEBUG_SAT_CNT; i++) {
         pSat = &pDbg->sat[i];
         y = GNSSDBG_SAT0_Y + i * GNSSDBG_ROW_STEP;
-        if(pSat->svId == 0)
-        {
+        if(pSat->svId == 0) {
             continue;
         }
-        if(pSat->quality > 4)
-        {
+        if(pSat->quality > 4) {
             color = CLUT_NiceGreen;
-        }
-        else if(pSat->quality > 2)
-        {
+        } else if(pSat->quality > 2) {
             color = CLUT_WarningYellow;
-        }
-        else
-        {
+        } else {
             color = CLUT_Font020;
         }
         snprintf(text, sizeof(text), "%c%u", ((pSat->flags & 0x07u) < sizeof(constellation)) ? constellation[pSat->flags & 0x07u] : '?', pSat->svId);
@@ -4237,12 +4150,9 @@ void t7_refresh_gnss_debug(void)
         t7_gnssDebugWrite(GNSSDBG_COL_QUALITY, 799, y, color, text);
         t7_gnssDebugWrite(GNSSDBG_COL_USED, 799, y, color, (pSat->flags & 0x08u) ? "U" : "-");
         t7_gnssDebugWrite(GNSSDBG_COL_EPH, 799, y, color, (pSat->flags & 0x10u) ? "E" : "-");
-        if(pSat->elev == 255)
-        {
+        if(pSat->elev == 255) {
             snprintf(text, sizeof(text), "--");
-        }
-        else
-        {
+        } else {
             snprintf(text, sizeof(text), "%u", pSat->elev);
         }
         t7_gnssDebugWrite(GNSSDBG_COL_ELEV, 799, y, color, text);
@@ -4271,26 +4181,20 @@ void t7_refresh_gnss_debug(void)
 #define GNSSHW_JAMIND_WARN		(100u)
 #define GNSSHW_AGE_WARN_S		(30u)		/* a UBX-MON-HW is polled every 6 s */
 
-static void t7_gnssHwRow(uint16_t y, uint8_t color, const char* text)
-{
+static void t7_gnssHwRow(uint16_t y, uint8_t color, const char* text) {
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, color, text);
 }
 
 /* the field of the identification text is 0 terminated (see GNSS_ParseMonVerData), the limit protects against a wrong text */
-static void t7_gnssIdentField(char* pDest, size_t destSize, const SGnssDebugInfo* pDbg, uint8_t offset, uint8_t size)
-{
-    if(pDbg->identValid && (pDbg->ident[offset] != 0))
-    {
+static void t7_gnssIdentField(char* pDest, size_t destSize, const SGnssDebugInfo* pDbg, uint8_t offset, uint8_t size) {
+    if(pDbg->identValid && (pDbg->ident[offset] != 0)) {
         snprintf(pDest, destSize, "%.*s", (int)(size - 1u), &pDbg->ident[offset]);
-    }
-    else
-    {
+    } else {
         snprintf(pDest, destSize, "--");
     }
 }
 
-void t7_refresh_gnss_hardware(void)
-{
+void t7_refresh_gnss_hardware(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* antStatusText[] = {"INIT", "DONTKNOW", "OK", "SHORT", "OPEN"};
     const char* antPowerText[] = {"OFF", "ON", "DONTKNOW"};
@@ -4312,25 +4216,17 @@ void t7_refresh_gnss_hardware(void)
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* identification of the receiver (UBX-MON-VER) */
-    if(pDbg->identValid)
-    {
+    if(pDbg->identValid) {
         t7_gnssIdentField(text1, sizeof(text1), pDbg, GNSS_IDENT_SW_OFFSET, GNSS_IDENT_SW_SIZE);
         snprintf(text, sizeof(text), "Module: %s", text1);
-    }
-    else if(pDbg->identChunkMask != 0)
-    {
-        for(uint8_t i = 0; i < GNSS_IDENT_CHUNKS; i++)
-        {
+    } else if(pDbg->identChunkMask != 0) {
+        for(uint8_t i = 0; i < GNSS_IDENT_CHUNKS; i++) {
             chunks += (pDbg->identChunkMask >> i) & 1u;
         }
         snprintf(text, sizeof(text), "Module: receiving %u/%u", chunks, (unsigned int)GNSS_IDENT_CHUNKS);
-    }
-    else if(haveB && (pDbg->monVerRequests > 0))
-    {
+    } else if(haveB && (pDbg->monVerRequests > 0)) {
         snprintf(text, sizeof(text), "Module: not received (%u requests)", pDbg->monVerRequests);
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "Module: --");
     }
     t7_gnssHwRow(y, CLUT_Font020, text);
@@ -4350,15 +4246,11 @@ void t7_refresh_gnss_hardware(void)
     y += GNSSDBG_ROW_STEP + 10u;
 
     /* hardware status (UBX-MON-HW), only with the payload length of the receiver description */
-    if(!hwValid)
-    {
-        if(haveB && (pDbg->monHwLength != 0))
-        {
+    if(!hwValid) {
+        if(haveB && (pDbg->monHwLength != 0)) {
             snprintf(text, sizeof(text), "MON-HW n/a: payload %u bytes, not %u", pDbg->monHwLength, (unsigned int)GNSS_MONHW_LEN);
             color = CLUT_WarningYellow;
-        }
-        else
-        {
+        } else {
             snprintf(text, sizeof(text), "MON-HW: no answer yet");
             color = CLUT_Font020;
         }
@@ -4374,9 +4266,7 @@ void t7_refresh_gnss_hardware(void)
         y += GNSSDBG_ROW_STEP;
         t7_gnssHwRow(y, CLUT_Font020, "RTC xtal: n/a   calibrated: n/a");
         y += GNSSDBG_ROW_STEP;
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "Antenna: %s   Power: %s", (pDbg->aStatus < 5) ? antStatusText[pDbg->aStatus] : "?", (pDbg->aPower < 3) ? antPowerText[pDbg->aPower] : "?");
         t7_gnssHwRow(y, ((pDbg->aStatus == 3) || (pDbg->aStatus == 4)) ? CLUT_WarningRed : CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
@@ -4390,16 +4280,11 @@ void t7_refresh_gnss_hardware(void)
         y += GNSSDBG_ROW_STEP;
 
         snprintf(text, sizeof(text), "Jam CW: %u of 255   Monitor: %s", pDbg->jamInd, jamStateText[jamState]);
-        if(jamState == 3)
-        {
+        if(jamState == 3) {
             color = CLUT_WarningRed;
-        }
-        else if((jamState == 2) || (pDbg->jamInd >= GNSSHW_JAMIND_WARN))
-        {
+        } else if((jamState == 2) || (pDbg->jamInd >= GNSSHW_JAMIND_WARN)) {
             color = CLUT_WarningYellow;
-        }
-        else
-        {
+        } else {
             color = CLUT_Font020;
         }
         t7_gnssHwRow(y, color, text);
@@ -4410,13 +4295,10 @@ void t7_refresh_gnss_hardware(void)
         y += GNSSDBG_ROW_STEP;
     }
 
-    if(haveB && (pDbg->monHwAge_s != 255u))
-    {
+    if(haveB && (pDbg->monHwAge_s != 255u)) {
         snprintf(text, sizeof(text), "MON-HW age: %u s", pDbg->monHwAge_s);
         color = (pDbg->monHwAge_s > GNSSHW_AGE_WARN_S) ? CLUT_WarningYellow : CLUT_Font020;
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "MON-HW age: --");
         color = haveB ? CLUT_WarningYellow : CLUT_Font020;
     }
@@ -4432,17 +4314,14 @@ void t7_refresh_gnss_hardware(void)
  * back from the receiver, the repetitions of the power up and of the check, the time since the receiver reported full power and the requests which were
  * answered. One column of rows of font T24 every 34 px, the widest realistic row ends before x = 480. Yellow: a power save state, a power setup other than full
  * power, repetitions, requests which were not answered; red: the power up failed or the check gave up, an inactive receiver */
-static const char* t7_gnssPmsWord(uint8_t setup)
-{
+static const char* t7_gnssPmsWord(uint8_t setup) {
     static const char* const word[] = { "full power", "balanced", "interval", "aggressive 1 Hz", "aggressive 2 Hz", "aggressive 4 Hz" };
 
     return (setup < 6) ? word[setup] : "no predefined setup";
 }
 
-static const char* t7_gnssDynModelWord(uint8_t model)
-{
-    switch(model)
-    {
+static const char* t7_gnssDynModelWord(uint8_t model) {
+    switch(model) {
         case 0:		return "portable";
         case 2:		return "stationary";
         case 3:		return "pedestrian";
@@ -4458,27 +4337,22 @@ static const char* t7_gnssDynModelWord(uint8_t model)
 
 /* colour of a poll count (answered / sent over the recent requests): the colour so far, or yellow if more than 25 % of the requests were lost, red above 50 %; nothing
  * is said before four requests were sent */
-static uint8_t t7_gnssPollLossColor(uint8_t sent, uint8_t answered, uint8_t colorSoFar)
-{
+static uint8_t t7_gnssPollLossColor(uint8_t sent, uint8_t answered, uint8_t colorSoFar) {
     uint32_t lost = (sent > answered) ? (uint32_t)(sent - answered) : 0u;
 
-    if(sent < 4u)
-    {
+    if(sent < 4u) {
         return colorSoFar;
     }
-    if((lost * 2u) > sent)
-    {
+    if((lost * 2u) > sent) {
         return CLUT_WarningRed;
     }
-    if(((lost * 4u) > sent) && (colorSoFar != CLUT_WarningRed))
-    {
+    if(((lost * 4u) > sent) && (colorSoFar != CLUT_WarningRed)) {
         return CLUT_WarningYellow;
     }
     return colorSoFar;
 }
 
-void t7_refresh_gnss_power(void)
-{
+void t7_refresh_gnss_power(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* const gnssName[] = { "GPS", "SBAS", "GAL", "BDS", "IMES", "QZSS", "GLO" };	/* gnssId 0..6 */
     const char* const psmLong[] = { "not active", "enabled", "acquisition", "tracking", "optimized tracking", "inactive" };
@@ -4500,38 +4374,27 @@ void t7_refresh_gnss_power(void)
     GNSSPWR_ROW(haveB ? t7_gnssPsmColor(pDbg->psmState) : CLUT_Font020, text);
 
     /* configuration read back from the receiver */
-    if(havePower && (pDbg->cfgValid & 0x01u))
-    {
+    if(havePower && (pDbg->cfgValid & 0x01u)) {
         snprintf(text, sizeof(text), "CFG-PMS: %s", t7_gnssPmsWord(pDbg->cfgPmsSetup));
         color = (pDbg->cfgPmsSetup == 0) ? CLUT_Font020 : CLUT_WarningYellow;
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "CFG-PMS: not read");
         color = CLUT_Font020;
     }
     GNSSPWR_ROW(color, text);
 
-    if(havePower && (pDbg->cfgValid & 0x02u))
-    {
+    if(havePower && (pDbg->cfgValid & 0x02u)) {
         len = snprintf(text, sizeof(text), "GNSS on:");
-        for(uint8_t id = 0; id < 7; id++)
-        {
-            if(pDbg->cfgGnssMask & (1u << id))
-            {
+        for(uint8_t id = 0; id < 7; id++) {
+            if(pDbg->cfgGnssMask & (1u << id)) {
                 len += snprintf(&text[len], sizeof(text) - len, " %s", gnssName[id]);
             }
         }
-    }
-    else if((pDbg->extraMask & GNSS_EXTRA_MASK_CFGGNSS) == 0)
-    {
+    } else if((pDbg->extraMask & GNSS_EXTRA_MASK_CFGGNSS) == 0) {
         snprintf(text, sizeof(text), "GNSS on: not read");
-    }
-    else
-    {
+    } else {
         /* why it is not read: the request is repeated every 20 s, at most five times (see the RTE) */
-        switch(pDbg->cfgGnssState)
-        {
+        switch(pDbg->cfgGnssState) {
             case GNSS_CFGPOLL_POLLING:		snprintf(text, sizeof(text), "GNSS on: not read (polling, try %u)", pDbg->cfgGnssTries);
                 break;
             case GNSS_CFGPOLL_NAK:			snprintf(text, sizeof(text), "GNSS on: not read (NAK, not supported)");
@@ -4546,19 +4409,15 @@ void t7_refresh_gnss_power(void)
     }
     GNSSPWR_ROW(((pDbg->extraMask & GNSS_EXTRA_MASK_CFGGNSS) && !(havePower && (pDbg->cfgValid & 0x02u)) && (pDbg->cfgGnssState >= GNSS_CFGPOLL_NAK)) ? CLUT_WarningYellow : CLUT_Font020, text);
 
-    if(havePower && (pDbg->cfgValid & 0x04u))
-    {
+    if(havePower && (pDbg->cfgValid & 0x04u)) {
         snprintf(text, sizeof(text), "Dynamic model: %s (%u)", t7_gnssDynModelWord(pDbg->cfgDynModel), pDbg->cfgDynModel);
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "Dynamic model: not read");
     }
     GNSSPWR_ROW(CLUT_Font020, text);
 
     /* power up after the wake up and check of the power save state */
-    if(havePolls && havePower)
-    {
+    if(havePolls && havePower) {
         snprintf(text, sizeof(text), "Power up: %s   retries %u", (pDbg->powerFlags & 0x08u) ? "FAILED" : "ok", pDbg->wakeTries);
         color = (pDbg->powerFlags & 0x08u) ? CLUT_WarningRed : ((pDbg->wakeTries != 0) ? CLUT_WarningYellow : CLUT_Font020);
         GNSSPWR_ROW(color, text);
@@ -4567,13 +4426,10 @@ void t7_refresh_gnss_power(void)
         color = (pDbg->powerFlags & 0x10u) ? CLUT_WarningRed : ((pDbg->verifyTries != 0) ? CLUT_WarningYellow : CLUT_Font020);
         GNSSPWR_ROW(color, text);
 
-        if(pDbg->psmZeroAge_s == 255u)
-        {
+        if(pDbg->psmZeroAge_s == 255u) {
             snprintf(text, sizeof(text), "Time since full power: %s", (pDbg->powerFlags & 0x40u) ? "255 s or more" : "none seen");
             color = (pDbg->powerFlags & 0x40u) ? CLUT_Font020 : CLUT_WarningYellow;
-        }
-        else
-        {
+        } else {
             snprintf(text, sizeof(text), "Time since full power: %u s", pDbg->psmZeroAge_s);
             color = CLUT_Font020;
         }
@@ -4584,14 +4440,11 @@ void t7_refresh_gnss_power(void)
         snprintf(text, sizeof(text), "Polls: PVT %u/%u  SAT %u/%u  HW %u/%u", pDbg->pollAnswered[0], pDbg->pollSent[0], pDbg->pollAnswered[1], pDbg->pollSent[1],
                  pDbg->pollAnswered[2], pDbg->pollSent[2]);
         color = CLUT_Font020;
-        for(uint8_t poll = 0; poll < 3u; poll++)
-        {
+        for(uint8_t poll = 0; poll < 3u; poll++) {
             color = t7_gnssPollLossColor(pDbg->pollSent[poll], pDbg->pollAnswered[poll], color);
         }
         GNSSPWR_ROW(color, text);
-    }
-    else
-    {
+    } else {
         GNSSPWR_ROW(CLUT_Font020, "Power up: --");
         GNSSPWR_ROW(CLUT_Font020, "Check: --");
         GNSSPWR_ROW(CLUT_Font020, "Time since full power: --");
@@ -4608,22 +4461,17 @@ void t7_refresh_gnss_power(void)
  * answered (the values stay: "refreshing", "no answer", "NAK"); without values the state of the request. Returns 1 for a state which is shown in yellow (a rejection, no
  * answer) */
 /* "try" for one, "tries" otherwise */
-static const char* t7_gnssTriesWord(uint8_t tries)
-{
+static const char* t7_gnssTriesWord(uint8_t tries) {
     return (tries == 1u) ? "try" : "tries";
 }
 
-static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, const char* pValues, uint8_t received, uint8_t have, uint8_t state, uint8_t tries)
-{
-    if(!received)
-    {
+static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, const char* pValues, uint8_t received, uint8_t have, uint8_t state, uint8_t tries) {
+    if(!received) {
         snprintf(pText, size, "%s: --", pName);
         return 0;
     }
-    if(have)
-    {
-        switch(state)
-        {
+    if(have) {
+        switch(state) {
             case GNSS_CFGPOLL_POLLING:		snprintf(pText, size, "%s: %s  (refreshing)", pName, pValues);
                 break;
             case GNSS_CFGPOLL_NAK:			snprintf(pText, size, "%s: %s  (NAK)", pName, pValues);
@@ -4633,11 +4481,8 @@ static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, c
             default:						snprintf(pText, size, "%s: %s", pName, pValues);
                 break;
         }
-    }
-    else
-    {
-        switch(state)
-        {
+    } else {
+        switch(state) {
             case GNSS_CFGPOLL_NAK:			snprintf(pText, size, "%s: NAK (the receiver rejects the poll)", pName);
                 break;
             case GNSS_CFGPOLL_NOANSWER:		snprintf(pText, size, "%s: no answer (%u %s)", pName, tries, t7_gnssTriesWord(tries));
@@ -4666,8 +4511,7 @@ static uint8_t t7_gnssCfgHeadline(char* pText, size_t size, const char* pName, c
 #define GNSSCFG_ITFM_ALGO_BITS			(0x16B156u)
 #define GNSSCFG_ITFM_GENERAL_BITS		(0x31Eu)
 
-void t7_refresh_gnss_config(void)
-{
+void t7_refresh_gnss_config(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* const antSetting[] = { "unknown", "passive", "active", "?" };
     char text[100];
@@ -4693,25 +4537,19 @@ void t7_refresh_gnss_config(void)
     snprintf(values, sizeof(values), "flags 0x%04X  pins 0x%04X", pDbg->cfgAntFlags, pDbg->cfgAntPins);
     late = t7_gnssCfgHeadline(text, sizeof(text), "CFG-ANT", values, antItems, haveAnt, pDbg->cfgAntState, pDbg->cfgAntTries);
     GNSSCFG_ROW(late ? CLUT_WarningYellow : CLUT_Font020, text);
-    if(haveAnt)
-    {
+    if(haveAnt) {
         snprintf(text, sizeof(text), "svcs %u  scd %u  ocd %u  pdwnOnSCD %u  recovery %u", pDbg->cfgAntFlags & 1u, (pDbg->cfgAntFlags >> 1) & 1u, (pDbg->cfgAntFlags >> 2) & 1u,
                  (pDbg->cfgAntFlags >> 3) & 1u, (pDbg->cfgAntFlags >> 4) & 1u);
         GNSSCFG_ROW(CLUT_Font020, text);
         snprintf(text, sizeof(text), "pinSwitch %u  pinSCD %u  pinOCD %u  reconfig %u", pDbg->cfgAntPins & 31u, (pDbg->cfgAntPins >> 5) & 31u, (pDbg->cfgAntPins >> 10) & 31u,
                  (pDbg->cfgAntPins >> 15) & 1u);
         GNSSCFG_ROW(CLUT_Font020, text);
-        if((pDbg->cfgAntFlags == GNSSCFG_ANT_FLAGS_DEFAULT) && (pDbg->cfgAntPins == GNSSCFG_ANT_PINS_DEFAULT))
-        {
+        if((pDbg->cfgAntFlags == GNSSCFG_ANT_FLAGS_DEFAULT) && (pDbg->cfgAntPins == GNSSCFG_ANT_PINS_DEFAULT)) {
             GNSSCFG_ROW(CLUT_Font020, "= SPG 3.xx default (flags 0x001B, pins 0x39F0)");
-        }
-        else
-        {
+        } else {
             GNSSCFG_ROW(CLUT_WarningYellow, "differs from the SPG 3.xx default (0x001B, 0x39F0)");
         }
-    }
-    else
-    {
+    } else {
         row = 4;
     }
 
@@ -4719,8 +4557,7 @@ void t7_refresh_gnss_config(void)
     snprintf(values, sizeof(values), "config 0x%08X  config2 0x%08X", (unsigned int)cfg, (unsigned int)cfg2);
     late = t7_gnssCfgHeadline(text, sizeof(text), "CFG-ITFM", values, itfmItems, haveItfm, pDbg->cfgItfmState, pDbg->cfgItfmTries);
     GNSSCFG_ROW(late ? CLUT_WarningYellow : CLUT_Font020, text);
-    if(haveItfm)
-    {
+    if(haveItfm) {
         snprintf(text, sizeof(text), "enable %lu  bbThreshold %lu dB  cwThreshold %lu dB", (unsigned long)(cfg >> 31), (unsigned long)(cfg & 0xFu), (unsigned long)((cfg >> 4) & 0x1Fu));
         GNSSCFG_ROW(CLUT_Font020, text);
         snprintf(text, sizeof(text), "algorithmBits 0x%06lX %s  generalBits 0x%03lX %s", (unsigned long)algo, (algo == GNSSCFG_ITFM_ALGO_BITS) ? "ok" : "other", (unsigned long)general,
@@ -4728,29 +4565,21 @@ void t7_refresh_gnss_config(void)
         GNSSCFG_ROW(((algo == GNSSCFG_ITFM_ALGO_BITS) && (general == GNSSCFG_ITFM_GENERAL_BITS)) ? CLUT_Font020 : CLUT_WarningYellow, text);
         snprintf(text, sizeof(text), "antSetting %lu (%s)  scan aux bands %lu", (unsigned long)((cfg2 >> 12) & 3u), antSetting[(cfg2 >> 12) & 3u], (unsigned long)((cfg2 >> 14) & 1u));
         GNSSCFG_ROW(CLUT_Font020, text);
-    }
-    else
-    {
+    } else {
         row = 8;
     }
 #undef GNSSCFG_ROW
 
     /* what the values mean (u-blox 8 / u-blox M8 receiver description) */
     y = GNSSDBG_ROW0_Y + 8u * GNSSDBG_ROW_STEP + 20u;
-    if(haveAnt)
-    {
+    if(haveAnt) {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, (pDbg->cfgAntFlags & 4u) ? "ocd 1: OPEN needs an ANT_DET circuit on the board" : "ocd 0: open circuit detection off, OPEN is never reported");
-    }
-    else
-    {
+    } else {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "CFG-ANT not read: nothing known about open circuit detection");
     }
-    if(haveItfm)
-    {
+    if(haveItfm) {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, (cfg >> 31) ? "enable 1: monitor on, it needs a first fix to report" : "enable 0: jamming monitor off (Monitor: unknown)");
-    }
-    else
-    {
+    } else {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + GNSSDBG_ROW_STEP, CLUT_Font020, "CFG-ITFM not read: nothing known about the jamming monitor");
     }
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y + 2u * GNSSDBG_ROW_STEP, CLUT_Font020, "antSetting: 0 unknown, 1 passive, 2 active (u-blox doc)");
@@ -4759,10 +4588,8 @@ void t7_refresh_gnss_config(void)
 /* Debug pages 5 and 6: the polls of the RTE which are only for the debug view (see data_exchange.h, the extra items of the text record). Rows of font T24 every 34 px,
  * the widest row ends before x = 780. Values which were read are kept while a new request is open ("refreshing"); a rejection (NAK) and a missing answer are shown
  * in yellow instead of the values if nothing was read. Yellow is a judgement call: the receiver description names no limits for the values. */
-static void t7_gnssPollWord(char* pDest, size_t size, uint8_t state, uint8_t tries, uint8_t have)
-{
-    switch(state)
-    {
+static void t7_gnssPollWord(char* pDest, size_t size, uint8_t state, uint8_t tries, uint8_t have) {
+    switch(state) {
         case GNSS_CFGPOLL_POLLING:		snprintf(pDest, size, "%s", have ? "refreshing" : "polling");
             break;
         case GNSS_CFGPOLL_OK:			snprintf(pDest, size, "read");
@@ -4777,17 +4604,13 @@ static void t7_gnssPollWord(char* pDest, size_t size, uint8_t state, uint8_t tri
 }
 
 /* the heading row of the values of a poll: the name and the state of the poll; yellow for a rejection and a missing answer */
-static void t7_gnssPollHeading(uint16_t y, const char* pName, uint8_t received, uint8_t state, uint8_t tries, uint8_t have)
-{
+static void t7_gnssPollHeading(uint16_t y, const char* pName, uint8_t received, uint8_t state, uint8_t tries, uint8_t have) {
     char text[100];
     char word[40];
 
-    if(!received)
-    {
+    if(!received) {
         snprintf(text, sizeof(text), "%s: --", pName);
-    }
-    else
-    {
+    } else {
         t7_gnssPollWord(word, sizeof(word), state, tries, have);
         snprintf(text, sizeof(text), "%s: %s", pName, word);
     }
@@ -4799,8 +4622,7 @@ static void t7_gnssPollHeading(uint16_t y, const char* pName, uint8_t received, 
 #define GNSSADC_MAG_NOSIGNAL		(2u)		/* both magnitudes up to this value are shown as no signal */
 #define GNSSADC_OFS_CLAMPED			(120)		/* an offset beyond +-this value is shown as clamped */
 
-void t7_refresh_gnss_adc(void)
-{
+void t7_refresh_gnss_adc(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* const fixText[] = { "none", "DR", "2D", "3D", "GNSS+DR", "time only" };
     char text[100];
@@ -4815,18 +4637,14 @@ void t7_refresh_gnss_adc(void)
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next page");
 
     /* UBX-MON-HW2: the complex signal at the ADC of the receiver */
-    if(haveHw2 && (pDbg->hw2State == GNSS_CFGPOLL_OK) && (!pDbg->hw2Have))
-    {
+    if(haveHw2 && (pDbg->hw2State == GNSS_CFGPOLL_OK) && (!pDbg->hw2Have)) {
         snprintf(text, sizeof(text), "MON-HW2: n/a, payload %u bytes, not %u", pDbg->hw2Length, (unsigned int)GNSS_MONHW2_LEN);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, text);
-    }
-    else
-    {
+    } else {
         t7_gnssPollHeading(y, "MON-HW2 (ADC input)", haveHw2, pDbg->hw2State, pDbg->hw2Tries, pDbg->hw2Have);
     }
     y += GNSSDBG_ROW_STEP;
-    if(haveHw2 && pDbg->hw2Have)
-    {
+    if(haveHw2 && pDbg->hw2Have) {
         snprintf(text, sizeof(text), "magI %u   magQ %u", pDbg->magI, pDbg->magQ);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, ((pDbg->magI <= GNSSADC_MAG_NOSIGNAL) && (pDbg->magQ <= GNSSADC_MAG_NOSIGNAL)) ? CLUT_WarningYellow : CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
@@ -4834,8 +4652,7 @@ void t7_refresh_gnss_adc(void)
         color = ((pDbg->ofsI >= GNSSADC_OFS_CLAMPED) || (pDbg->ofsI <= -GNSSADC_OFS_CLAMPED) || (pDbg->ofsQ >= GNSSADC_OFS_CLAMPED) || (pDbg->ofsQ <= -GNSSADC_OFS_CLAMPED)) ? CLUT_WarningYellow : CLUT_Font020;
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, color, text);
         y += GNSSDBG_ROW_STEP;
-        switch(pDbg->cfgSource)
-        {
+        switch(pDbg->cfgSource) {
             case 114:	sourceText = "ROM";
                 break;
             case 111:	sourceText = "OTP";
@@ -4853,45 +4670,34 @@ void t7_refresh_gnss_adc(void)
         snprintf(text, sizeof(text), "postStatus 0x%08lX   lowLevCfg 0x%08lX", (unsigned long)pDbg->postStatus, (unsigned long)pDbg->lowLevCfg);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
-    }
-    else
-    {
+    } else {
         y += 4u * GNSSDBG_ROW_STEP;
     }
     y += 10u;
 
     /* UBX-NAV-STATUS */
-    if(haveStatus && (pDbg->statusState == GNSS_CFGPOLL_OK) && (!pDbg->statusHave))
-    {
+    if(haveStatus && (pDbg->statusState == GNSS_CFGPOLL_OK) && (!pDbg->statusHave)) {
         snprintf(text, sizeof(text), "NAV-STATUS: n/a, payload %u bytes, not %u", pDbg->statusLength, (unsigned int)GNSS_NAVSTATUS_LEN);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, text);
-    }
-    else
-    {
+    } else {
         t7_gnssPollHeading(y, "NAV-STATUS", haveStatus, pDbg->statusState, pDbg->statusTries, pDbg->statusHave);
     }
     y += GNSSDBG_ROW_STEP;
-    if(haveStatus && pDbg->statusHave)
-    {
+    if(haveStatus && pDbg->statusHave) {
         snprintf(text, sizeof(text), "msss %lu:%02lu (%lu ms)   ttff %lu ms", (unsigned long)(msss_s / 60u), (unsigned long)(msss_s % 60u), (unsigned long)pDbg->msss, (unsigned long)pDbg->ttff);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
         snprintf(text, sizeof(text), "gpsFix %u (%s)   flags 0x%02X   flags2 0x%02X", pDbg->statusFix, (pDbg->statusFix < 6u) ? fixText[pDbg->statusFix] : "?", pDbg->statusFlags, pDbg->statusFlags2);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
-        if(pDbg->resetCount != 0)
-        {
+        if(pDbg->resetCount != 0) {
             snprintf(text, sizeof(text), "reset detected: YES (%u times since the power up)", pDbg->resetCount);
-        }
-        else
-        {
+        } else {
             snprintf(text, sizeof(text), "reset detected: no");
         }
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->resetCount != 0) ? CLUT_WarningRed : CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
-    }
-    else
-    {
+    } else {
         y += 3u * GNSSDBG_ROW_STEP;
     }
     y += 10u;
@@ -4912,19 +4718,15 @@ void t7_refresh_gnss_adc(void)
  * The first look at the counts, and a total which is smaller than before (the RTE was restarted and counts from 0), only set the base. A rise which happened while the
  * page was not shown is seen at the next look and counts from then. Returns 1 for yellow. */
 #define GNSSACC_ERR_RECENT_MS	(60000u)
-static uint8_t t7_gnssUartErrorsRecent(uint16_t total, uint32_t now)
-{
+static uint8_t t7_gnssUartErrorsRecent(uint16_t total, uint32_t now) {
     static uint8_t haveBase = 0;
     static uint16_t base = 0;
     static uint8_t haveRise = 0;
     static uint32_t riseTick = 0;
 
-    if((!haveBase) || (total < base))
-    {
+    if((!haveBase) || (total < base)) {
         haveRise = 0;
-    }
-    else if(total > base)
-    {
+    } else if(total > base) {
         haveRise = 1;
         riseTick = now;
     }
@@ -4933,8 +4735,7 @@ static uint8_t t7_gnssUartErrorsRecent(uint16_t total, uint32_t now)
     return haveRise && (time_elapsed_ms(riseTick, now) <= GNSSACC_ERR_RECENT_MS);
 }
 
-void t7_refresh_gnss_accounting(void)
-{
+void t7_refresh_gnss_accounting(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     const char* const pollName[] = { "NAV-PVT", "NAV-SAT", "MON-HW" };
     static const uint16_t col[5] = { GNSSACC_COL_TIMEOUT, GNSSACC_COL_CHECKSUM, GNSSACC_COL_MISMATCH, GNSSACC_COL_RESYNC, GNSSACC_COL_NAK };
@@ -4955,17 +4756,12 @@ void t7_refresh_gnss_accounting(void)
     t7_gnssDebugWrite(GNSSACC_COL_RESYNC, 799, y, CLUT_Font020, "resync");
     t7_gnssDebugWrite(GNSSACC_COL_NAK, 799, y, CLUT_Font020, "NAK");
     y += GNSSDBG_ROW_STEP;
-    for(uint8_t poll = 0; poll < 3u; poll++)
-    {
+    for(uint8_t poll = 0; poll < 3u; poll++) {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, pollName[poll]);
-        for(uint8_t cause = 0; cause < 5u; cause++)
-        {
-            if(haveDiag)
-            {
+        for(uint8_t cause = 0; cause < 5u; cause++) {
+            if(haveDiag) {
                 snprintf(text, sizeof(text), "%u", pDbg->pollLost[poll][cause]);
-            }
-            else
-            {
+            } else {
                 snprintf(text, sizeof(text), "--");
             }
             t7_gnssDebugWrite(col[cause], 799, y, (haveDiag && (pDbg->pollLost[poll][cause] != 0)) ? CLUT_WarningYellow : CLUT_Font020, text);
@@ -4974,52 +4770,40 @@ void t7_refresh_gnss_accounting(void)
     }
 
     /* UART errors of the RTE by type */
-    if(haveDiag)
-    {
-        for(uint8_t i = 0; i < 5u; i++)
-        {
+    if(haveDiag) {
+        for(uint8_t i = 0; i < 5u; i++) {
             uartErrTotal += pDbg->uartErrType[i];
         }
         snprintf(text, sizeof(text), "UART errors: parity %u  framing %u  noise %u  overrun %u  DMA %u", pDbg->uartErrType[0], pDbg->uartErrType[1], pDbg->uartErrType[2], pDbg->uartErrType[3],
                  pDbg->uartErrType[4]);
-    }
-    else
-    {
+    } else {
         snprintf(text, sizeof(text), "UART errors: --");
     }
     t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (haveDiag && t7_gnssUartErrorsRecent(uartErrTotal, HAL_GetTick())) ? CLUT_WarningYellow : CLUT_Font020, text);
     y += GNSSDBG_ROW_STEP + 10u;
 
     /* the ports of the receiver (UBX-MON-IO) */
-    if(haveIo && (pDbg->ioState == GNSS_CFGPOLL_OK) && (!pDbg->ioHave))
-    {
+    if(haveIo && (pDbg->ioState == GNSS_CFGPOLL_OK) && (!pDbg->ioHave)) {
         snprintf(text, sizeof(text), "MON-IO: n/a, payload %u bytes is not a whole number of ports", pDbg->ioLength);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, text);
-    }
-    else if(haveIo && pDbg->ioHave)
-    {
+    } else if(haveIo && pDbg->ioHave) {
         char word[40];
 
         t7_gnssPollWord(word, sizeof(word), pDbg->ioState, pDbg->ioTries, pDbg->ioHave);
         snprintf(text, sizeof(text), "MON-IO (port %u of the receiver): %s", pDbg->ioPort, word);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->ioState >= GNSS_CFGPOLL_NAK) ? CLUT_WarningYellow : CLUT_Font020, text);
-    }
-    else
-    {
+    } else {
         t7_gnssPollHeading(y, "MON-IO", haveIo, pDbg->ioState, pDbg->ioTries, pDbg->ioHave);
     }
     y += GNSSDBG_ROW_STEP;
-    if(haveIo && pDbg->ioHave)
-    {
+    if(haveIo && pDbg->ioHave) {
         snprintf(text, sizeof(text), "receiver rx %lu bytes   tx %lu bytes", (unsigned long)pDbg->ioRxBytes, (unsigned long)pDbg->ioTxBytes);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
         snprintf(text, sizeof(text), "receiver: parity %u  framing %u  overrun %u  break %u", pDbg->ioParityErrs, pDbg->ioFramingErrs, pDbg->ioOverrunErrs, pDbg->ioBreakCond);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, ((pDbg->ioParityErrs | pDbg->ioFramingErrs | pDbg->ioOverrunErrs) != 0) ? CLUT_WarningYellow : CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
-    }
-    else
-    {
+    } else {
         y += 2u * GNSSDBG_ROW_STEP;
     }
     y += 10u;
@@ -5032,38 +4816,30 @@ void t7_refresh_gnss_accounting(void)
 
 /* Debug page 7: the receive path of the RTE (counted since the RTE started) and the port configuration of the receiver (UBX-CFG-PRT). Rows of font T24 every 34 px, the
  * widest row ends before x = 780 (checked with the metrics of the font). Without the whole set of items of a block "--" is shown. */
-static void t7_gnssProtoText(char* pDest, size_t size, const char* pName, uint16_t mask, uint16_t known)
-{
+static void t7_gnssProtoText(char* pDest, size_t size, const char* pName, uint16_t mask, uint16_t known) {
     size_t len = (size_t)snprintf(pDest, size, "%s:", pName);
 
-    if(mask & 0x0001u)
-    {
+    if(mask & 0x0001u) {
         len += (size_t)snprintf(&pDest[len], size - len, " UBX");
     }
-    if(mask & 0x0002u)
-    {
+    if(mask & 0x0002u) {
         len += (size_t)snprintf(&pDest[len], size - len, " NMEA");
     }
-    if(mask & 0x0004u & known)
-    {
+    if(mask & 0x0004u & known) {
         len += (size_t)snprintf(&pDest[len], size - len, " RTCM");
     }
-    if(mask & 0x0020u)
-    {
+    if(mask & 0x0020u) {
         len += (size_t)snprintf(&pDest[len], size - len, " RTCM3");
     }
-    if(mask & ~(0x0001u | 0x0002u | (0x0004u & known) | 0x0020u))
-    {
+    if(mask & ~(0x0001u | 0x0002u | (0x0004u & known) | 0x0020u)) {
         len += (size_t)snprintf(&pDest[len], size - len, " +0x%04X", (unsigned int)(mask & ~(0x0001u | 0x0002u | (0x0004u & known) | 0x0020u)));
     }
-    if(mask == 0u)
-    {
+    if(mask == 0u) {
         snprintf(&pDest[len], size - len, " none");
     }
 }
 
-void t7_refresh_gnss_rxpath(void)
-{
+void t7_refresh_gnss_rxpath(void) {
     const SGnssDebugInfo* pDbg = DataEX_getGnssDebugInfo();
     char text[100];
     char word[40];
@@ -5075,8 +4851,7 @@ void t7_refresh_gnss_rxpath(void)
     t7_gnssDebugWrite(GNSSDBG_RIGHT_X, 799, GNSSDBG_TITLE_Y, CLUT_Font020, "ENTER: next view");
 
     /* the receive path of the RTE */
-    if(haveRx)
-    {
+    if(haveRx) {
         snprintf(text, sizeof(text), "RTE receive path: DMA chunks %u, start failed %u", pDbg->rxStarts, pDbg->rxStartFails);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->rxStartFails != 0) ? CLUT_WarningYellow : CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
@@ -5089,14 +4864,11 @@ void t7_refresh_gnss_rxpath(void)
         snprintf(text, sizeof(text), "Gaps between frames: text %u, other %u", pDbg->junkAscii, pDbg->junkBinary);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
         y += GNSSDBG_ROW_STEP;
-        if(pDbg->junkLen == 0)
-        {
+        if(pDbg->junkLen == 0) {
             snprintf(text, sizeof(text), "Last gap: none yet");
             t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
             y += 2u * GNSSDBG_ROW_STEP;
-        }
-        else
-        {
+        } else {
             char hex[40];
             char ascii[12];
             uint8_t count = (pDbg->junkLen < 8u) ? pDbg->junkLen : 8u;
@@ -5106,8 +4878,7 @@ void t7_refresh_gnss_rxpath(void)
             t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
             y += GNSSDBG_ROW_STEP;
             hex[0] = 0;
-            for(uint8_t i = 0; i < count; i++)
-            {
+            for(uint8_t i = 0; i < count; i++) {
                 uint8_t c = pDbg->junkBytes[i];
 
                 len += (size_t)snprintf(&hex[len], sizeof(hex) - len, "%02X ", c);
@@ -5118,23 +4889,18 @@ void t7_refresh_gnss_rxpath(void)
             t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, text);
             y += GNSSDBG_ROW_STEP;
         }
-    }
-    else
-    {
+    } else {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_Font020, "RTE receive path: --");
         y += 6u * GNSSDBG_ROW_STEP;
     }
     y += 10u;
 
     /* the port configuration of the receiver (UBX-CFG-PRT) */
-    if(havePrt && (pDbg->prtState == GNSS_CFGPOLL_OK) && (!pDbg->prtHave))
-    {
+    if(havePrt && (pDbg->prtState == GNSS_CFGPOLL_OK) && (!pDbg->prtHave)) {
         snprintf(text, sizeof(text), "CFG-PRT: n/a, payload %u bytes, not %u", pDbg->prtLength, (unsigned int)GNSS_CFGPRT_LEN);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, text);
         y += 2u * GNSSDBG_ROW_STEP;
-    }
-    else if(havePrt && pDbg->prtHave)
-    {
+    } else if(havePrt && pDbg->prtHave) {
         static const char parity[8] = { 'E', 'O', '?', '?', 'N', '?', '?', '?' };
         static const char* const stop[4] = { "1", "1.5", "2", "0.5" };
         uint8_t charLen = (uint8_t)(5u + ((pDbg->prtMode >> 6) & 0x03u));
@@ -5151,17 +4917,12 @@ void t7_refresh_gnss_rxpath(void)
         snprintf(text, sizeof(text), "%s   %s", in, out);
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, (pDbg->prtOutProto & 0x0002u) ? CLUT_WarningYellow : CLUT_Font020, text);		/* the initialization sets UBX only */
         y += GNSSDBG_ROW_STEP;
-    }
-    else
-    {
+    } else {
         char heading[60];
 
-        if(!havePrt)
-        {
+        if(!havePrt) {
             snprintf(heading, sizeof(heading), "CFG-PRT: --");
-        }
-        else
-        {
+        } else {
             t7_gnssPollWord(word, sizeof(word), pDbg->prtState, pDbg->prtTries, pDbg->prtHave);
             snprintf(heading, sizeof(heading), "CFG-PRT: %s", word);
         }
@@ -5169,8 +4930,7 @@ void t7_refresh_gnss_rxpath(void)
         y += 2u * GNSSDBG_ROW_STEP;
     }
 
-    if(havePrt && pDbg->prtState >= GNSS_CFGPOLL_NAK && pDbg->prtTries >= 3u)
-    {
+    if(havePrt && pDbg->prtState >= GNSS_CFGPOLL_NAK && pDbg->prtTries >= 3u) {
         t7_gnssDebugWrite(GNSSHW_X, GNSSHW_X_END, y, CLUT_WarningYellow, "UART1 UBX-only write/readback failed (3 attempts)");
         y += GNSSDBG_ROW_STEP;
     }
@@ -5649,8 +5409,7 @@ bool t7_isCompassShowing(void)
     return selection_customview == CVIEW_Compass || selection_custom_field == LLC_Compass;
 }
 
-bool t7_isPositionViewSelected(void)
-{
+bool t7_isPositionViewSelected(void) {
     return selection_customview == CVIEW_Position;
 }
 

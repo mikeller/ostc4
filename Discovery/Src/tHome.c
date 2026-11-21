@@ -682,10 +682,8 @@ void tHome_change_customview_button_pressed(uint8_t action)
     tHome_tick_count_cview = 0;
     tHome_tick_count_o2sens = 0;
 
-    if(settingsGetPointer()->design == 7)
-    {
-        if(!t7_handleGnssDebugPageAction(action))	/* ENTER on the position view opens its debug page first */
-        {
+    if(settingsGetPointer()->design == 7) {
+        if(!t7_handleGnssDebugPageAction(action)) {	/* ENTER on the position view opens its debug page first */
             t7_change_customview(action);
         }
     }

@@ -891,12 +891,9 @@ static void TriggerButtonAction()
 			} else if (action == ACTION_BUTTON_BACK) {
 				if (get_globalState() == StS)
 				{
-					if((gnssAcquire_isActive()) && (t7_isPositionViewSelected()))	/* stops the session instead of opening the logbook while the position is shown */
-					{
+					if((gnssAcquire_isActive()) && (t7_isPositionViewSelected())) {	/* stops the session instead of opening the logbook while the position is shown */
 						gnssAcquire_cancel();
-					}
-					else
-					{
+					} else {
 						openInfo(StILOGLIST);
 					}
 				}
@@ -1877,28 +1874,23 @@ static uint8_t gnssAcquirePoorFixSeen = 0;		/* a fix which is not usable was see
 static uint8_t gnssAcquireSignalSeen = 0;		/* a satellite with a C/N0 above 0 was seen in this session (it is the same report as the tracked count of the position view) */
 static uint8_t gnssAcquireEphCount = 0;			/* satellites with ephemeris at the last update */
 
-static void gnssAcquire_end(gnssAcquireState_t result)
-{
+static void gnssAcquire_end(gnssAcquireState_t result) {
 	gnssAcquireState = result;
 	gnssAcquireEndTick = HAL_GetTick();
 	time_without_button_pressed_deciseconds = 0;	/* the normal auto power down countdown restarts now, to leave time to read the result */
 	if((result == GNSS_ACQUIRE_COMPLETE) || (result == GNSS_ACQUIRE_FIX_ONLY) || (result == GNSS_ACQUIRE_POORFIX)
-		|| (result == GNSS_ACQUIRE_TIMEOUT) || (result == GNSS_ACQUIRE_LOWBATTERY))
-	{
+		|| (result == GNSS_ACQUIRE_TIMEOUT) || (result == GNSS_ACQUIRE_LOWBATTERY)) {
 		requestBuzzerActivation(REQUEST_BUZZER_ONCE);
 	}
 }
 
-void gnssAcquire_start(void)
-{
+void gnssAcquire_start(void) {
 	const SDiveState* pStateReal = stateRealGetPointer();
 
-	if((!isGnssAvailable()) || (pStateReal->mode != MODE_SURFACE) || (gnssAcquireState == GNSS_ACQUIRE_ACTIVE))
-	{
+	if((!isGnssAvailable()) || (pStateReal->mode != MODE_SURFACE) || (gnssAcquireState == GNSS_ACQUIRE_ACTIVE)) {
 		return;
 	}
-	if(!t7_customview_disabled(CVIEW_Position))
-	{
+	if(!t7_customview_disabled(CVIEW_Position)) {
 		t7_select_customview(CVIEW_Position);
 	}
 	gnssAcquireHasFix = 0;
@@ -1906,8 +1898,7 @@ void gnssAcquire_start(void)
 	gnssAcquireSignalSeen = 0;
 	gnssAcquireEphCount = 0;
 	gnssAcquireStartTick = HAL_GetTick();
-	if(pStateReal->warnings.lowBattery)		/* same threshold as the low battery warning */
-	{
+	if(pStateReal->warnings.lowBattery) {		/* same threshold as the low battery warning */
 		gnssAcquire_end(GNSS_ACQUIRE_LOWBATTERY);
 		return;
 	}
@@ -1915,143 +1906,107 @@ void gnssAcquire_start(void)
 	time_without_button_pressed_deciseconds = 0;
 }
 
-void gnssAcquire_cancel(void)
-{
-	if(gnssAcquireState == GNSS_ACQUIRE_ACTIVE)
-	{
+void gnssAcquire_cancel(void) {
+	if(gnssAcquireState == GNSS_ACQUIRE_ACTIVE) {
 		gnssAcquire_end(GNSS_ACQUIRE_CANCELLED);
 	}
 }
 
-void gnssAcquire_update(void)
-{
+void gnssAcquire_update(void) {
 	const SDiveState* pStateReal = stateRealGetPointer();
 	const SGnssInfo* pGnss = &pStateReal->lifeData.gnssData;
 	uint8_t alive = pGnss->alive & GNSS_ALIVE_STATE_ALIVE;
 	uint32_t tick = HAL_GetTick();
 
-	if(gnssAcquireState != GNSS_ACQUIRE_ACTIVE)
-	{
+	if(gnssAcquireState != GNSS_ACQUIRE_ACTIVE) {
 		return;
 	}
-	if((pStateReal->mode != MODE_SURFACE) || (get_globalState() == StStop))
-	{
+	if((pStateReal->mode != MODE_SURFACE) || (get_globalState() == StStop)) {
 		gnssAcquire_end(GNSS_ACQUIRE_ABORTED);
 		return;
 	}
 
 	gnssAcquireEphCount = alive ? GNSS_EPH_COUNT(pGnss) : 0;
-	if(alive && (DataEX_getGnssDebugInfo()->recordsSeen & 0x01u) && (DataEX_getGnssDebugInfo()->bestCno > 0))
-	{
+	if(alive && (DataEX_getGnssDebugInfo()->recordsSeen & 0x01u) && (DataEX_getGnssDebugInfo()->bestCno > 0)) {
 		gnssAcquireSignalSeen = 1;
 	}
-	if(alive && GNSS_HAS_FIX(pGnss))
-	{
-		if((pGnss->alive & GNSS_ALIVE_FIX_OK) && (pGnss->fixType == 3) && (pGnss->accuracy.hAcc <= GNSS_ACQUIRE_MAX_HACC_M))
-		{
-			if(!gnssAcquireHasFix)
-			{
+	if(alive && GNSS_HAS_FIX(pGnss)) {
+		if((pGnss->alive & GNSS_ALIVE_FIX_OK) && (pGnss->fixType == 3) && (pGnss->accuracy.hAcc <= GNSS_ACQUIRE_MAX_HACC_M)) {
+			if(!gnssAcquireHasFix) {
 				gnssAcquireHasFix = 1;
 				gnssAcquireFixTick = tick;
 			}
-		}
-		else
-		{
+		} else {
 			gnssAcquirePoorFixSeen = 1;
 		}
 	}
 
-	if((gnssAcquireHasFix) && (gnssAcquireEphCount >= GNSS_ACQUIRE_EPH_MIN_SV))
-	{
+	if((gnssAcquireHasFix) && (gnssAcquireEphCount >= GNSS_ACQUIRE_EPH_MIN_SV)) {
 		gnssAcquire_end(GNSS_ACQUIRE_COMPLETE);
-	}
-	else if(pStateReal->warnings.lowBattery)
-	{
+	} else if(pStateReal->warnings.lowBattery) {
 		gnssAcquire_end(GNSS_ACQUIRE_LOWBATTERY);
-	}
-	else if((gnssAcquireHasFix) && (time_elapsed_ms(gnssAcquireFixTick, tick) >= (GNSS_ACQUIRE_EPH_HOLD_S * 1000u)))
-	{
+	} else if((gnssAcquireHasFix) && (time_elapsed_ms(gnssAcquireFixTick, tick) >= (GNSS_ACQUIRE_EPH_HOLD_S * 1000u))) {
 		gnssAcquire_end(GNSS_ACQUIRE_FIX_ONLY);
-	}
-	else if(time_elapsed_ms(gnssAcquireStartTick, tick) >= (GNSS_ACQUIRE_TIMEOUT_S * 1000u))
-	{
-		if(gnssAcquireHasFix)
-		{
+	} else if(time_elapsed_ms(gnssAcquireStartTick, tick) >= (GNSS_ACQUIRE_TIMEOUT_S * 1000u)) {
+		if(gnssAcquireHasFix) {
 			gnssAcquire_end(GNSS_ACQUIRE_FIX_ONLY);
-		}
-		else
-		{
+		} else {
 			gnssAcquire_end(gnssAcquirePoorFixSeen ? GNSS_ACQUIRE_POORFIX : GNSS_ACQUIRE_TIMEOUT);
 		}
 	}
 }
 
-uint8_t gnssAcquire_isActive(void)
-{
+uint8_t gnssAcquire_isActive(void) {
 	return (gnssAcquireState == GNSS_ACQUIRE_ACTIVE);
 }
 
-uint8_t gnssAcquire_isWaitingForEphemeris(void)
-{
+uint8_t gnssAcquire_isWaitingForEphemeris(void) {
 	return ((gnssAcquireState == GNSS_ACQUIRE_ACTIVE) && (gnssAcquireHasFix));
 }
 
 /* A satellite with a C/N0 above 0 was seen since the session started: without it a session which ended without a fix is a session without any signal */
-uint8_t gnssAcquire_wasSignalSeen(void)
-{
+uint8_t gnssAcquire_wasSignalSeen(void) {
 	return gnssAcquireSignalSeen;
 }
 
-uint8_t gnssAcquire_getEphemerisCount(void)
-{
+uint8_t gnssAcquire_getEphemerisCount(void) {
 	return gnssAcquireEphCount;
 }
 
-gnssAcquireState_t gnssAcquire_getState(void)
-{
-	if((gnssAcquireState > GNSS_ACQUIRE_ACTIVE) && (time_elapsed_ms(gnssAcquireEndTick, HAL_GetTick()) > (GNSS_ACQUIRE_RESULT_SHOW_S * 1000u)))
-	{
+gnssAcquireState_t gnssAcquire_getState(void) {
+	if((gnssAcquireState > GNSS_ACQUIRE_ACTIVE) && (time_elapsed_ms(gnssAcquireEndTick, HAL_GetTick()) > (GNSS_ACQUIRE_RESULT_SHOW_S * 1000u))) {
 		gnssAcquireState = GNSS_ACQUIRE_IDLE;	/* the result is outdated */
 	}
 	return gnssAcquireState;
 }
 
 /* Duration of the session: the time since the start while it runs, the duration of the last session if it has ended (until the result is outdated) */
-uint32_t gnssAcquire_getElapsedS(void)
-{
-	if(gnssAcquire_getState() == GNSS_ACQUIRE_IDLE)
-	{
+uint32_t gnssAcquire_getElapsedS(void) {
+	if(gnssAcquire_getState() == GNSS_ACQUIRE_IDLE) {
 		return 0;
 	}
-	if(gnssAcquireState == GNSS_ACQUIRE_ACTIVE)
-	{
+	if(gnssAcquireState == GNSS_ACQUIRE_ACTIVE) {
 		return time_elapsed_ms(gnssAcquireStartTick, HAL_GetTick()) / 1000u;
 	}
 	return time_elapsed_ms(gnssAcquireStartTick, gnssAcquireEndTick) / 1000u;
 }
 
 /* Remaining time of the current phase: the wait for a fix (overall timeout) or the wait for the ephemeris (hold time or overall timeout) */
-uint16_t gnssAcquire_getRemainingS(void)
-{
+uint16_t gnssAcquire_getRemainingS(void) {
 	uint32_t tick = HAL_GetTick();
 	uint32_t remaining_s;
 	uint32_t elapsed_s;
 
-	if(gnssAcquireState != GNSS_ACQUIRE_ACTIVE)
-	{
+	if(gnssAcquireState != GNSS_ACQUIRE_ACTIVE) {
 		return 0;
 	}
 	elapsed_s = time_elapsed_ms(gnssAcquireStartTick, tick) / 1000u;
 	remaining_s = (elapsed_s >= GNSS_ACQUIRE_TIMEOUT_S) ? 0 : (GNSS_ACQUIRE_TIMEOUT_S - elapsed_s);
-	if(gnssAcquireHasFix)
-	{
+	if(gnssAcquireHasFix) {
 		elapsed_s = time_elapsed_ms(gnssAcquireFixTick, tick) / 1000u;
-		if(elapsed_s >= GNSS_ACQUIRE_EPH_HOLD_S)
-		{
+		if(elapsed_s >= GNSS_ACQUIRE_EPH_HOLD_S) {
 			remaining_s = 0;
-		}
-		else if((GNSS_ACQUIRE_EPH_HOLD_S - elapsed_s) < remaining_s)
-		{
+		} else if((GNSS_ACQUIRE_EPH_HOLD_S - elapsed_s) < remaining_s) {
 			remaining_s = GNSS_ACQUIRE_EPH_HOLD_S - elapsed_s;
 		}
 	}

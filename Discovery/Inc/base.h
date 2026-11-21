@@ -108,8 +108,7 @@ typedef enum
 #define GNSS_ACQUIRE_RESULT_SHOW_S	(60u)		/* the result of a session is reported for this time */
 #define GNSS_ACQUIRE_NOSIGNAL_S		(3u * 60u)	/* the position view tells the user that no satellite signal is received if the session has run this long and no satellite has a C/N0 above 0. The cold start time to first fix of u-blox M8 modules is 26 s to 57 s (NEO-M8 data sheet UBX-15031086, other modules of the family are not specified there), so three minutes is more than three times the longest of them and still leaves most of the 15 minutes of the session to move to a better place */
 
-typedef enum
-{
+typedef enum {
 	GNSS_ACQUIRE_IDLE = 0,		/* no session or the result is outdated */
 	GNSS_ACQUIRE_ACTIVE,		/* session running: the unit is kept awake */
 	GNSS_ACQUIRE_COMPLETE,		/* result: fix and ephemeris for GNSS_ACQUIRE_EPH_MIN_SV satellites */

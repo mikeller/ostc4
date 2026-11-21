@@ -362,30 +362,25 @@ _Static_assert(GNSS_DEBUG_REC_CNT <= 16u, "The record index is a 4 bit value");
 _Static_assert(GNSS_IDENT_CHUNKS <= 32u, "The chunks received are collected in a 32 bit mask");
 
 /* sets the check value of a record: the index is already set in the low bits of byte 0 */
-static inline void GNSS_DebugRecord_Seal(uint8_t rec[GNSS_DEBUG_REC_SIZE])
-{
+static inline void GNSS_DebugRecord_Seal(uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	uint8_t chk = (rec[0] & 0x0Fu) ^ 0x05u;		/* all bytes 0 is not a valid record */
-	for(uint8_t i = 1; i < GNSS_DEBUG_REC_SIZE; i++)
-	{
+	for(uint8_t i = 1; i < GNSS_DEBUG_REC_SIZE; i++) {
 		chk ^= (rec[i] & 0x0Fu) ^ (rec[i] >> 4);
 	}
 	rec[0] = (rec[0] & 0x0Fu) | (uint8_t)(chk << 4);
 }
 
 /* returns 1 if the check value of the record is correct */
-static inline uint8_t GNSS_DebugRecord_IsValid(const uint8_t rec[GNSS_DEBUG_REC_SIZE])
-{
+static inline uint8_t GNSS_DebugRecord_IsValid(const uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	uint8_t copy[GNSS_DEBUG_REC_SIZE];
-	for(uint8_t i = 0; i < GNSS_DEBUG_REC_SIZE; i++)
-	{
+	for(uint8_t i = 0; i < GNSS_DEBUG_REC_SIZE; i++) {
 		copy[i] = rec[i];
 	}
 	GNSS_DebugRecord_Seal(copy);
 	return (copy[0] == rec[0]) && ((rec[0] & 0x0Fu) < GNSS_DEBUG_REC_CNT);
 }
 
-static inline void GNSS_DebugRecord_Put(SExchangeData* d, const uint8_t rec[GNSS_DEBUG_REC_SIZE])
-{
+static inline void GNSS_DebugRecord_Put(SExchangeData* d, const uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	d->gnssDebug_A[0] = rec[0];
 	d->gnssDebug_A[1] = rec[1];
 	d->gnssDebug_B = rec[2];
@@ -394,8 +389,7 @@ static inline void GNSS_DebugRecord_Put(SExchangeData* d, const uint8_t rec[GNSS
 	d->gnssDebug_C[2] = rec[5];
 }
 
-static inline void GNSS_DebugRecord_Get(const SExchangeData* d, uint8_t rec[GNSS_DEBUG_REC_SIZE])
-{
+static inline void GNSS_DebugRecord_Get(const SExchangeData* d, uint8_t rec[GNSS_DEBUG_REC_SIZE]) {
 	rec[0] = d->gnssDebug_A[0];
 	rec[1] = d->gnssDebug_A[1];
 	rec[2] = d->gnssDebug_B;
@@ -405,8 +399,7 @@ static inline void GNSS_DebugRecord_Get(const SExchangeData* d, uint8_t rec[GNSS
 }
 
 /* GNSS debug values collected by the main CPU from the records */
-typedef struct
-{
+typedef struct {
 	uint8_t flags;			/* bits 0..2 gnssId, bit 3 svUsed, bit 4 ephAvail, bits 5..6 health */
 	uint8_t svId;			/* 0: no satellite */
 	uint8_t cno;			/* dBHz */
@@ -414,8 +407,7 @@ typedef struct
 	uint8_t elev;			/* degrees, 255 unknown */
 } SGnssDebugSat;
 
-typedef struct
-{
+typedef struct {
 	uint8_t frameAge_s;
 	uint8_t pDop_tenth;
 	uint8_t hAcc_m;

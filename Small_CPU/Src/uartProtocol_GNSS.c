@@ -216,10 +216,8 @@ uint8_t UART_Gnss_SendCmd(uint8_t GnssCmd)
 
 /* Sends the command for full power (UBX-CFG-PMS). If the transmitter is busy nothing happens, the next call of the control repeats it. The acknowledge is
  * evaluated by uartGnss_ProcessData (gnssState PWRUP) */
-static void uartGnss_SendFullPower(void)
-{
-	if(UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL))
-	{
+static void uartGnss_SendFullPower(void) {
+	if(UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL)) {
 		GNSS_Handle.pwrupSent = 1;
 		GNSS_Handle.pwrupNak = 0;
 		GNSS_Handle.pwrupSendTick = HAL_GetTick();
@@ -228,8 +226,7 @@ static void uartGnss_SendFullPower(void)
 }
 
 /* UART1 is configured after the CFG-GNSS reset and on every wake, not saved to BBR. */
-static void uartGnss_StartPortConfig(void)
-{
+static void uartGnss_StartPortConfig(void) {
 	prtTries = 0;
 	prtSent = 0;
 	prtTick = HAL_GetTick();
@@ -240,25 +237,20 @@ static void uartGnss_StartPortConfig(void)
 #endif
 }
 
-static void uartGnss_ConfigurePort(void)
-{
-	if(prtSent && (time_elapsed_ms(prtTick, HAL_GetTick()) < GNSS_PRT_ACK_TIMEOUT_MS))
-	{
+static void uartGnss_ConfigurePort(void) {
+	if(prtSent && (time_elapsed_ms(prtTick, HAL_GetTick()) < GNSS_PRT_ACK_TIMEOUT_MS)) {
 		return;
 	}
-	if((prtTries >= GNSS_PRT_MAX_TRIES) || (!prtSent && (time_elapsed_ms(prtTick, HAL_GetTick()) > GNSS_WAKE_TX_TIMEOUT_MS)))
-	{
+	if((prtTries >= GNSS_PRT_MAX_TRIES) || (!prtSent && (time_elapsed_ms(prtTick, HAL_GetTick()) > GNSS_WAKE_TX_TIMEOUT_MS))) {
 #ifdef GNSS_DEBUG_POLLS
-		if(GNSS_Handle.prtState == GNSS_CFGPOLL_POLLING)
-		{
+		if(GNSS_Handle.prtState == GNSS_CFGPOLL_POLLING) {
 			GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
 		}
 #endif
 		gnssState = UART_GNSS_IDLE;
 		return;
 	}
-	if(UART_Gnss_SendCmd(GNSSCMD_LOADCONF_0))
-	{
+	if(UART_Gnss_SendCmd(GNSSCMD_LOADCONF_0)) {
 		prtTries++;
 		prtSent = 1;
 		prtTick = HAL_GetTick();
@@ -270,25 +262,19 @@ static void uartGnss_ConfigurePort(void)
 }
 
 #ifdef GNSS_DEBUG_POLLS
-static void uartGnss_VerifyPort(void)
-{
-	if(!prtSent)
-	{
-		if(time_elapsed_ms(prtTick, HAL_GetTick()) > GNSS_WAKE_TX_TIMEOUT_MS)
-		{
+static void uartGnss_VerifyPort(void) {
+	if(!prtSent) {
+		if(time_elapsed_ms(prtTick, HAL_GetTick()) > GNSS_WAKE_TX_TIMEOUT_MS) {
 			GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
 			gnssState = UART_GNSS_CONFIG_PRT;
 			return;
 		}
-		if(UART_Gnss_SendCmd(GNSSCMD_GET_CFGPRT_DATA))
-		{
+		if(UART_Gnss_SendCmd(GNSSCMD_GET_CFGPRT_DATA)) {
 			prtSent = 1;
 			prtTick = HAL_GetTick();
 			rxState = GNSSRX_DETECT_HEADER_0;
 		}
-	}
-	else if(time_elapsed_ms(prtTick, HAL_GetTick()) >= GNSS_PRT_ACK_TIMEOUT_MS)
-	{
+	} else if(time_elapsed_ms(prtTick, HAL_GetTick()) >= GNSS_PRT_ACK_TIMEOUT_MS) {
 		GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
 		prtSent = 0;
 		gnssState = UART_GNSS_CONFIG_PRT;
@@ -298,25 +284,19 @@ static void uartGnss_VerifyPort(void)
 
 /* Called after every UBX-NAV-PVT: the receiver reports psmState 0 at full power. Counts the reports of a power save state in a row for uartGnss_VerifyPower; a
  * power save state is expected while the unit is going to sleep or to dive, so it is not counted then */
-static void uartGnss_EvaluatePsm(void)
-{
-	if(GNSS_Handle.psmState == 0)
-	{
+static void uartGnss_EvaluatePsm(void) {
+	if(GNSS_Handle.psmState == 0) {
 		GNSS_Handle.psmZeroTick = HAL_GetTick();
 		GNSS_Handle.psmZeroValid = 1;
 		GNSS_Handle.verifyBad = 0;
 		GNSS_Handle.verifyResend = 0;
 		GNSS_Handle.verifyTries = 0;
 		GNSS_Handle.verifyGaveUp = 0;
-	}
-	else if(!ReqPowerDown)
-	{
-		if(GNSS_Handle.verifyBad < 255)
-		{
+	} else if(!ReqPowerDown) {
+		if(GNSS_Handle.verifyBad < 255) {
 			GNSS_Handle.verifyBad++;
 		}
-		if(GNSS_Handle.verifyBad >= GNSS_VERIFY_PVT_COUNT)
-		{
+		if(GNSS_Handle.verifyBad >= GNSS_VERIFY_PVT_COUNT) {
 			GNSS_Handle.verifyResend = 1;
 		}
 	}
@@ -326,18 +306,15 @@ static void uartGnss_EvaluatePsm(void)
  * IDLE). Returns 1 if it started the power up again. The number of commands is limited (GNSS_VERIFY_MAX_RETRIES until psmState 0 was seen again), they are at
  * least GNSS_VERIFY_PVT_COUNT UBX-NAV-PVT apart (the counter starts again) or GNSS_VERIFY_SPACING_MS if no frames arrive. The wake up bytes are only sent if no valid
  * frame arrived for GNSS_FRAMES_STOPPED_MS (the receiver may be inactive); a receiver which answers is only sent the command. */
-static uint8_t uartGnss_VerifyPower(void)
-{
+static uint8_t uartGnss_VerifyPower(void) {
 	uint32_t tick = HAL_GetTick();
 	uint8_t framesStopped = GNSS_Handle.lastFrameValid && (time_elapsed_ms(GNSS_Handle.lastFrameTick, tick) > GNSS_FRAMES_STOPPED_MS);
 
-	if(!(GNSS_Handle.verifyResend || (framesStopped && (time_elapsed_ms(GNSS_Handle.verifyActionTick, tick) > GNSS_VERIFY_SPACING_MS))))
-	{
+	if(!(GNSS_Handle.verifyResend || (framesStopped && (time_elapsed_ms(GNSS_Handle.verifyActionTick, tick) > GNSS_VERIFY_SPACING_MS)))) {
 		return 0;
 	}
 	GNSS_Handle.verifyResend = 0;
-	if(GNSS_Handle.verifyTries >= GNSS_VERIFY_MAX_RETRIES)
-	{
+	if(GNSS_Handle.verifyTries >= GNSS_VERIFY_MAX_RETRIES) {
 		GNSS_Handle.verifyGaveUp = 1;
 		return 0;
 	}
@@ -349,13 +326,10 @@ static uint8_t uartGnss_VerifyPower(void)
 	GNSS_Handle.wakeTries = 0;
 	GNSS_Handle.wakeFailed = 0;
 	GNSS_Handle.pwrupWake = framesStopped;
-	if(framesStopped)
-	{
+	if(framesStopped) {
 		GNSS_Handle.wakeSent = 0;
 		gnssState = UART_GNSS_WAKE;
-	}
-	else
-	{
+	} else {
 		gnssState = UART_GNSS_PWRUP;
 		uartGnss_SendFullPower();
 	}
@@ -364,39 +338,31 @@ static uint8_t uartGnss_VerifyPower(void)
 
 /* Counting of the lost or disturbed cyclic polls by cause for the debug page (GNSS_CAUSE_*): the poll of the current state, if it is one of the three cyclic ones */
 #ifdef GNSS_DEBUG_POLLS
-static uint8_t uartGnss_PollIndex(uartGnssStatus_t state)
-{
-	if(state == UART_GNSS_GET_PVT)
-	{
+static uint8_t uartGnss_PollIndex(uartGnssStatus_t state) {
+	if(state == UART_GNSS_GET_PVT) {
 		return GNSS_POLL_PVT;
 	}
-	if(state == UART_GNSS_GET_SAT)
-	{
+	if(state == UART_GNSS_GET_SAT) {
 		return GNSS_POLL_SAT;
 	}
-	if(state == UART_GNSS_GET_MONHW)
-	{
+	if(state == UART_GNSS_GET_MONHW) {
 		return GNSS_POLL_MONHW;
 	}
 	return 0xFFu;
 }
 
-static void uartGnss_NoteCause(uint8_t cause)
-{
+static void uartGnss_NoteCause(uint8_t cause) {
 	uint8_t poll = uartGnss_PollIndex(gnssState);
 
-	if(poll != 0xFFu)
-	{
+	if(poll != 0xFFu) {
 		GNSS_NotePollCause(&GNSS_Handle, poll, cause);
 	}
 }
 
-void uartGnss_NoteTimeout(uartGnssStatus_t state)
-{
+void uartGnss_NoteTimeout(uartGnssStatus_t state) {
 	uint8_t poll = uartGnss_PollIndex(state);
 
-	if(poll != 0xFFu)
-	{
+	if(poll != 0xFFu) {
 		GNSS_NotePollTimeout(&GNSS_Handle, poll);
 	}
 }
@@ -408,8 +374,7 @@ void uartGnss_NoteTimeout(uartGnssStatus_t state)
  * GNSS_Handle. A request which was not answered is tried again after its period, at most GNSS_CFGEXTRA_MAX_TRIES times in a row, a rejected request (UBX-ACK-NAK)
  * is not repeated. Every poll costs one poll slot (the cyclic polls are delayed by that), the reply of each is short. */
 #ifdef GNSS_DEBUG_POLLS
-typedef struct
-{
+typedef struct {
 	uint16_t pendingBit;			/* GNSS_CFGREAD_*: the poll is due */
 	uint8_t cmd;					/* GNSSCMD_GET_*: the request */
 	uartGnssStatus_t state;			/* gnssState while the reply is awaited */
@@ -419,8 +384,7 @@ typedef struct
 	uint32_t first_ms;				/* the first request is this long after the power up (0: with the read back of the configuration, the next one a period later) */
 } uartGnssExtraPoll_t;
 
-static const uartGnssExtraPoll_t extraPoll[GNSS_EXTRA_POLL_CNT] =
-{
+static const uartGnssExtraPoll_t extraPoll[GNSS_EXTRA_POLL_CNT] = {
 	{ GNSS_CFGREAD_ANT, GNSSCMD_GET_CFGANT_DATA, UART_GNSS_GET_CFGANT, &GNSS_Handle.cfgAntState, &GNSS_Handle.cfgAntTries, GNSS_CFGEXTRA_PERIOD_MS, 0 },
 	{ GNSS_CFGREAD_ITFM, GNSSCMD_GET_CFGITFM_DATA, UART_GNSS_GET_CFGITFM, &GNSS_Handle.cfgItfmState, &GNSS_Handle.cfgItfmTries, GNSS_CFGEXTRA_PERIOD_MS, 0 },
 	{ GNSS_CFGREAD_HW2, GNSSCMD_GET_MONHW2_DATA, UART_GNSS_GET_MONHW2, &GNSS_Handle.hw2State, &GNSS_Handle.hw2Tries, GNSS_HW2_PERIOD_MS, GNSS_HW2_FIRST_MS },
@@ -429,12 +393,9 @@ static const uartGnssExtraPoll_t extraPoll[GNSS_EXTRA_POLL_CNT] =
 	{ GNSS_CFGREAD_PRT, GNSSCMD_GET_CFGPRT_DATA, UART_GNSS_GET_CFGPRT, &GNSS_Handle.prtState, &GNSS_Handle.prtTries, GNSS_PRT_PERIOD_MS, 0 },
 };
 
-static const uartGnssExtraPoll_t* uartGnss_FindExtraPoll(uartGnssStatus_t state)
-{
-	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
-	{
-		if(extraPoll[i].state == state)
-		{
+static const uartGnssExtraPoll_t* uartGnss_FindExtraPoll(uartGnssStatus_t state) {
+	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++) {
+		if(extraPoll[i].state == state) {
 			return &extraPoll[i];
 		}
 	}
@@ -442,49 +403,39 @@ static const uartGnssExtraPoll_t* uartGnss_FindExtraPoll(uartGnssStatus_t state)
 }
 
 /* The state is one in which the reply of a read only poll is awaited */
-static uint8_t uartGnss_IsPollState(uartGnssStatus_t state)
-{
+static uint8_t uartGnss_IsPollState(uartGnssStatus_t state) {
 	return (state == UART_GNSS_GET_PVT) || (state == UART_GNSS_GET_SAT) || (state == UART_GNSS_GET_MONHW) || (state == UART_GNSS_GET_MONVER)
 			|| (state == UART_GNSS_GET_CFGPMS) || (state == UART_GNSS_GET_CFGGNSS) || (state == UART_GNSS_GET_CFGNAV5) || (uartGnss_FindExtraPoll(state) != 0);
 }
 
 /* The periodic polls start again with the power up: the first request of each is first_ms later */
-static void uartGnss_RestartExtraPolls(void)
-{
+static void uartGnss_RestartExtraPolls(void) {
 	uint32_t tick = HAL_GetTick();
 
-	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
-	{
+	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++) {
 		GNSS_Handle.extraTick[i] = (extraPoll[i].first_ms != 0) ? (tick - (extraPoll[i].period_ms - extraPoll[i].first_ms)) : tick;
 	}
 }
 
 /* Called from the state IDLE (a poll is over then): a request which did not get an answer is marked, and the requests which are due are queued */
-static void uartGnss_ExtraPollHousekeeping(void)
-{
+static void uartGnss_ExtraPollHousekeeping(void) {
 	uint32_t tick = HAL_GetTick();
 
-	if(GNSS_Handle.cfgGnssState == GNSS_CFGPOLL_POLLING)
-	{
+	if(GNSS_Handle.cfgGnssState == GNSS_CFGPOLL_POLLING) {
 		GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_NOANSWER;
 	}
 	if((!GNSS_Handle.cfgGnssValid) && (GNSS_Handle.cfgGnssState != GNSS_CFGPOLL_NONE) && (GNSS_Handle.cfgGnssState != GNSS_CFGPOLL_NAK) && GNSS_Handle.psmZeroValid
-			&& (GNSS_Handle.cfgGnssTries <= GNSS_CFGGNSS_MAX_RETRIES) && (time_elapsed_ms(GNSS_Handle.cfgGnssTick, tick) >= GNSS_CFGGNSS_RETRY_MS))
-	{
+			&& (GNSS_Handle.cfgGnssTries <= GNSS_CFGGNSS_MAX_RETRIES) && (time_elapsed_ms(GNSS_Handle.cfgGnssTick, tick) >= GNSS_CFGGNSS_RETRY_MS)) {
 		GNSS_Handle.cfgReadPending |= GNSS_CFGREAD_GNSS;
 	}
-	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
-	{
-		if(*extraPoll[i].pPollState == GNSS_CFGPOLL_POLLING)
-		{
+	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++) {
+		if(*extraPoll[i].pPollState == GNSS_CFGPOLL_POLLING) {
 			*extraPoll[i].pPollState = GNSS_CFGPOLL_NOANSWER;
 			(*extraPoll[i].pTries)++;
 		}
-		if(time_elapsed_ms(GNSS_Handle.extraTick[i], tick) >= extraPoll[i].period_ms)
-		{
+		if(time_elapsed_ms(GNSS_Handle.extraTick[i], tick) >= extraPoll[i].period_ms) {
 			GNSS_Handle.extraTick[i] = tick;
-			if((*extraPoll[i].pPollState != GNSS_CFGPOLL_NAK) && (*extraPoll[i].pTries < GNSS_CFGEXTRA_MAX_TRIES))
-			{
+			if((*extraPoll[i].pPollState != GNSS_CFGPOLL_NAK) && (*extraPoll[i].pTries < GNSS_CFGEXTRA_MAX_TRIES)) {
 				GNSS_Handle.cfgReadPending |= extraPoll[i].pendingBit;
 			}
 		}
@@ -493,23 +444,18 @@ static void uartGnss_ExtraPollHousekeeping(void)
 
 /* Polls the next message of GNSS_Handle.cfgReadPending (read only, one per call, first the read back of the configuration in the order PMS, GNSS, NAV5, then the
  * periodic polls). Returns 1 if a poll was started. A request which cannot be sent or is not answered is not repeated at once: the value stays invalid */
-static uint8_t uartGnss_StartConfigRead(void)
-{
+static uint8_t uartGnss_StartConfigRead(void) {
 	static const uint8_t order[3] = { GNSS_CFGREAD_PMS, GNSS_CFGREAD_GNSS, GNSS_CFGREAD_NAV5 };
 	static const uint8_t cmd[3] = { GNSSCMD_GET_CFGPMS_DATA, GNSSCMD_GET_CFGGNSS_DATA, GNSSCMD_GET_CFGNAV5_DATA };
 	static const uartGnssStatus_t state[3] = { UART_GNSS_GET_CFGPMS, UART_GNSS_GET_CFGGNSS, UART_GNSS_GET_CFGNAV5 };
 
-	for(uint8_t i = 0; i < 3; i++)
-	{
-		if(GNSS_Handle.cfgReadPending & order[i])
-		{
+	for(uint8_t i = 0; i < 3; i++) {
+		if(GNSS_Handle.cfgReadPending & order[i]) {
 			GNSS_Handle.cfgReadPending &= (uint16_t)~order[i];
-			if(order[i] == GNSS_CFGREAD_GNSS)
-			{
+			if(order[i] == GNSS_CFGREAD_GNSS) {
 				GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_POLLING;
 				GNSS_Handle.cfgGnssTick = HAL_GetTick();
-				if(GNSS_Handle.cfgGnssTries < 255)
-				{
+				if(GNSS_Handle.cfgGnssTries < 255) {
 					GNSS_Handle.cfgGnssTries++;
 				}
 			}
@@ -519,10 +465,8 @@ static uint8_t uartGnss_StartConfigRead(void)
 			return 1;
 		}
 	}
-	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++)
-	{
-		if(GNSS_Handle.cfgReadPending & extraPoll[i].pendingBit)
-		{
+	for(uint8_t i = 0; i < GNSS_EXTRA_POLL_CNT; i++) {
+		if(GNSS_Handle.cfgReadPending & extraPoll[i].pendingBit) {
 			GNSS_Handle.cfgReadPending &= (uint16_t)~extraPoll[i].pendingBit;
 			*extraPoll[i].pPollState = GNSS_CFGPOLL_POLLING;
 			UART_Gnss_SendCmd(extraPoll[i].cmd);
@@ -537,8 +481,7 @@ static uint8_t uartGnss_StartConfigRead(void)
 #endif
 
 /* The initialization continues with the full power command which is sent at once; the sequence of a wake up is started in UART6_HandleUART */
-static void uartGnss_StartPowerUpAfterInit(void)
-{
+static void uartGnss_StartPowerUpAfterInit(void) {
 	GNSS_Handle.pwrupWake = 0;
 	GNSS_Handle.pwrupSent = 0;
 	GNSS_Handle.wakeTries = 0;
@@ -605,14 +548,11 @@ void uartGnss_Control(void)
 									rxState = GNSSRX_DETECT_ACK_0;
 				break;
 
-		case UART_GNSS_PWRUP:		if(pUartCtrl == &Uart1Ctrl)		/* external receiver: sent with every call as before */
-									{
+		case UART_GNSS_PWRUP:		if(pUartCtrl == &Uart1Ctrl) {		/* external receiver: sent with every call as before */
 										UART_Gnss_SendCmd(GNSSCMD_MODE_NORMAL);
 										rxState = GNSSRX_DETECT_ACK_0;
 										gnssState = UART_GNSS_PWRUP;
-									}
-									else if(!GNSS_Handle.pwrupSent)
-									{
+									} else if(!GNSS_Handle.pwrupSent) {
 										uartGnss_SendFullPower();
 									}
 				break;
@@ -640,14 +580,11 @@ void uartGnss_Control(void)
 										UART_Gnss_SendCmd(GNSSCMD_MODE_PWS);
 										gnssState = UART_GNSS_PWRDOWN;
 										rxState = GNSSRX_DETECT_ACK_0;
-									}
-									else if((pUartCtrl != &Uart1Ctrl) && uartGnss_VerifyPower())
-									{
+									} else if((pUartCtrl != &Uart1Ctrl) && uartGnss_VerifyPower()) {
 										/* the full power command is sent again, the polls continue after the acknowledge */
 									}
 #ifdef GNSS_DEBUG_POLLS
-									else if(GNSS_Handle.cfgReadPending && uartGnss_StartConfigRead())
-									{
+									else if(GNSS_Handle.cfgReadPending && uartGnss_StartConfigRead()) {
 										/* a configuration message is polled instead of a cyclic request (read only) */
 									}
 #endif
@@ -658,23 +595,17 @@ void uartGnss_Control(void)
 										 * The answers are about 70 bytes (HW) and about 250 bytes (VER), the same as a NAV-SAT answer with 20 satellites, so a slot is not longer than before. */
 #ifdef GNSS_DEBUG_POLLS
 										monPollCount++;
-										if((GNSS_Handle.monStartup != 0) || (monPollCount >= GNSS_MON_POLL_INTERVAL))
-										{
+										if((GNSS_Handle.monStartup != 0) || (monPollCount >= GNSS_MON_POLL_INTERVAL)) {
 											monPollCount = 0;
-											if(GNSS_Handle.monStartup != 0)
-											{
+											if(GNSS_Handle.monStartup != 0) {
 												GNSS_Handle.monStartup--;
 											}
-											if((!GNSS_Handle.identValid) && (GNSS_Handle.monVerRequests < GNSS_MONVER_MAX_REQUESTS) && (monToggle == 0))
-											{
+											if((!GNSS_Handle.identValid) && (GNSS_Handle.monVerRequests < GNSS_MONVER_MAX_REQUESTS) && (monToggle == 0)) {
 												UART_Gnss_SendCmd(GNSSCMD_GET_MONVER_DATA);
 												gnssState = UART_GNSS_GET_MONVER;
 												GNSS_Handle.monVerRequests++;
-											}
-											else
-											{
-												if(UART_Gnss_SendCmd(GNSSCMD_GET_MONHW_DATA))
-												{
+											} else {
+												if(UART_Gnss_SendCmd(GNSSCMD_GET_MONHW_DATA)) {
 													GNSS_NotePollSent(&GNSS_Handle, GNSS_POLL_MONHW);
 												}
 												gnssState = UART_GNSS_GET_MONHW;
@@ -686,8 +617,7 @@ void uartGnss_Control(void)
 #endif
 										if(dataToggle)
 										{
-											if(UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA))
-											{
+											if(UART_Gnss_SendCmd(GNSSCMD_GET_PVT_DATA)) {
 												GNSS_NotePollSent(&GNSS_Handle, GNSS_POLL_PVT);
 											}
 											gnssState = UART_GNSS_GET_PVT;
@@ -696,8 +626,7 @@ void uartGnss_Control(void)
 										}
 										else
 										{
-											if(UART_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA))
-											{
+											if(UART_Gnss_SendCmd(GNSSCMD_GET_NAVSAT_DATA)) {
 												GNSS_NotePollSent(&GNSS_Handle, GNSS_POLL_SAT);
 											}
 											gnssState = UART_GNSS_GET_SAT;
@@ -745,14 +674,10 @@ void uartGnss_ProcessData(uint8_t data)
 	}
 
 #ifdef GNSS_DEBUG_POLLS
-	if((rxState == GNSSRX_DETECT_HEADER_0) || (rxState == GNSSRX_DETECT_ACK_0))		/* between two frames: bytes which are not the start of a frame are kept for the debug page */
-	{
-		if(data == 0xB5)
-		{
+	if((rxState == GNSSRX_DETECT_HEADER_0) || (rxState == GNSSRX_DETECT_ACK_0)) {		/* between two frames: bytes which are not the start of a frame are kept for the debug page */
+		if(data == 0xB5) {
 			GNSS_NoteJunkEnd(&GNSS_Handle);
-		}
-		else
-		{
+		} else {
 			GNSS_NoteJunkByte(&GNSS_Handle, data);
 		}
 	}
@@ -773,8 +698,7 @@ void uartGnss_ProcessData(uint8_t data)
 #endif
 										}
 #ifdef GNSS_DEBUG_POLLS
-										else if((rxState == GNSSRX_DETECT_HEADER_0) && (!rxHunting))
-										{
+										else if((rxState == GNSSRX_DETECT_HEADER_0) && (!rxHunting)) {
 											rxHunting = 1;		/* once per gap of bytes which are not the start of a frame */
 											uartGnss_NoteCause(GNSS_CAUSE_RESYNC);
 										}
@@ -787,8 +711,7 @@ void uartGnss_ProcessData(uint8_t data)
 			 	 	 	 	 	 	 	}
 										else
 										{
-											if(rxState == GNSSRX_DETECT_HEADER_1)
-											{
+											if(rxState == GNSSRX_DETECT_HEADER_1) {
 												uartGnss_NoteCause(GNSS_CAUSE_RESYNC);		/* the start byte was not followed by the second one */
 											}
 											rxState = GNSSRX_DETECT_HEADER_0;
@@ -803,8 +726,7 @@ void uartGnss_ProcessData(uint8_t data)
 											rxState = GNSSRX_DETECT_HEADER_0;
 										}
 			break;
-		case GNSSRX_DETECT_ACK_3:  if((gnssState == UART_GNSS_CONFIG_PRT) && prtSent)
-          {
+		case GNSSRX_DETECT_ACK_3:  if((gnssState == UART_GNSS_CONFIG_PRT) && prtSent) {
            ck_A = (uint8_t)(0x05u + data);
            ck_B = (uint8_t)(0x05u + ck_A);
            rxState = ((data == 0x00) || (data == 0x01)) ? GNSSRX_DETECT_LENGTH_0 : GNSSRX_DETECT_ACK_0;
@@ -854,8 +776,7 @@ void uartGnss_ProcessData(uint8_t data)
 													break;
 											}
 #ifdef GNSS_DEBUG_POLLS
-											if(uartGnss_IsPollState(gnssState))
-											{
+											if(uartGnss_IsPollState(gnssState)) {
 												rxState = GNSSRX_DETECT_HEADER_0;		/* the acknowledge of a poll: the reply is still to come (or was received) */
 											}
 #endif
@@ -864,28 +785,21 @@ void uartGnss_ProcessData(uint8_t data)
 										}
 										else
 										{
-											if(data == 0x00)		/* UBX-ACK-NAK: the receiver rejected a command, counted */
-											{
-												if(GNSS_Handle.nakCount < 255)
-												{
+											if(data == 0x00) {		/* UBX-ACK-NAK: the receiver rejected a command, counted */
+												if(GNSS_Handle.nakCount < 255) {
 													GNSS_Handle.nakCount++;
 												}
-												if(gnssState == UART_GNSS_PWRUP)
-												{
+												if(gnssState == UART_GNSS_PWRUP) {
 													GNSS_Handle.pwrupNak = 1;		/* the power up sequence is repeated */
 												}
 												uartGnss_NoteCause(GNSS_CAUSE_NAK);
 #ifdef GNSS_DEBUG_POLLS
-												if(uartGnss_IsPollState(gnssState))		/* the receiver does not support the message: the poll is over */
-												{
+												if(uartGnss_IsPollState(gnssState)) {		/* the receiver does not support the message: the poll is over */
 													const uartGnssExtraPoll_t* pExtra = uartGnss_FindExtraPoll(gnssState);
 
-													if(pExtra != 0)
-													{
+													if(pExtra != 0) {
 														*pExtra->pPollState = GNSS_CFGPOLL_NAK;
-													}
-													else if(gnssState == UART_GNSS_GET_CFGGNSS)
-													{
+													} else if(gnssState == UART_GNSS_GET_CFGGNSS) {
 														GNSS_Handle.cfgGnssState = GNSS_CFGPOLL_NAK;
 													}
 													gnssState = UART_GNSS_IDLE;
@@ -900,8 +814,7 @@ void uartGnss_ProcessData(uint8_t data)
 											rxState++;
 			 	 	 	 	 	 	 	}
 #ifdef GNSS_DEBUG_POLLS
-										else if((data == 0x05) && uartGnss_IsPollState(gnssState))
-										{
+										else if((data == 0x05) && uartGnss_IsPollState(gnssState)) {
 											rxState = GNSSRX_DETECT_ACK_3;		/* UBX-ACK-NAK instead of the reply: the receiver does not support the message */
 										}
 #endif
@@ -953,13 +866,10 @@ void uartGnss_ProcessData(uint8_t data)
 												if((ck_A_Ref == ck_A) && (ck_B_Ref == ck_B))
 												{
 													GNSS_NoteFrameReceived(&GNSS_Handle);
-             if((gnssState == UART_GNSS_CONFIG_PRT) && prtSent)
-             {
+             if((gnssState == UART_GNSS_CONFIG_PRT) && prtSent) {
               const uint8_t* f = GNSS_Handle.uartWorkingBuffer;
-              if((f[2] == 0x05) && (rxLength == 2) && (f[6] == 0x06) && (f[7] == 0x00))
-              {
-               if(f[3] == 0x01)
-               {
+              if((f[2] == 0x05) && (rxLength == 2) && (f[6] == 0x06) && (f[7] == 0x00)) {
+               if(f[3] == 0x01) {
 #ifdef GNSS_DEBUG_POLLS
                 gnssState = UART_GNSS_VERIFY_PRT;
                 GNSS_Handle.prtState = GNSS_CFGPOLL_POLLING;
@@ -968,9 +878,7 @@ void uartGnss_ProcessData(uint8_t data)
                 gnssState = UART_GNSS_IDLE;
 #endif
                 prtSent = 0;
-               }
-               else if(f[3] == 0x00)
-               {
+               } else if(f[3] == 0x00) {
                 if(GNSS_Handle.nakCount < 255) GNSS_Handle.nakCount++;
 #ifdef GNSS_DEBUG_POLLS
                 GNSS_Handle.prtState = GNSS_CFGPOLL_NAK;
@@ -1017,13 +925,10 @@ void uartGnss_ProcessData(uint8_t data)
                GNSS_Handle.prtTries = prtTries;
                if(GNSS_Handle.prtHave && GNSS_Handle.prtLength == GNSS_CFGPRT_LEN &&
                   GNSS_Handle.prtPortId == GNSS_CFGPRT_PORT && GNSS_Handle.prtBaud == 9600u &&
-                  GNSS_Handle.prtMode == 0x08D0u && GNSS_Handle.prtOutProto == 0x0001u)
-               {
+                  GNSS_Handle.prtMode == 0x08D0u && GNSS_Handle.prtOutProto == 0x0001u) {
                 GNSS_Handle.prtTries = 0;
                 gnssState = UART_GNSS_IDLE;
-               }
-               else
-               {
+               } else {
                 GNSS_Handle.prtState = GNSS_CFGPOLL_NOANSWER;
                 gnssState = UART_GNSS_CONFIG_PRT;
                }
@@ -1035,9 +940,7 @@ void uartGnss_ProcessData(uint8_t data)
 														default:
 															break;
 													}
-												}
-												else
-												{
+												} else {
 													uartGnss_NoteCause(GNSS_CAUSE_CHECKSUM);
 												}
 		             rxState = (gnssState == UART_GNSS_CONFIG_PRT) ? GNSSRX_DETECT_ACK_0 : GNSSRX_DETECT_HEADER_0;

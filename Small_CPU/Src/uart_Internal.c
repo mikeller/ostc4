@@ -155,15 +155,12 @@ void MX_USART6_UART_Init(void) {
 
 /* The HAL stops the reception of the UART in which an error (overrun, framing, noise) occurred. The error is only counted for the debug page of the main CPU,
  * the reception is restarted by the next command as before */
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
-{
-	if((huart == &huart6) && (GNSS_Handle.uartErrors < 255))
-	{
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+	if((huart == &huart6) && (GNSS_Handle.uartErrors < 255)) {
 		GNSS_Handle.uartErrors++;
 	}
 #ifdef GNSS_DEBUG_POLLS
-	if(huart == &huart6)
-	{
+	if(huart == &huart6) {
 		GNSS_NoteUartError(&GNSS_Handle, HAL_UART_GetError(huart));
 	}
 #endif
@@ -213,9 +210,7 @@ void UART6_HandleUART()
 #ifdef GNSS_DEBUG_POLLS
 			GNSS_Handle.rxReadTickValid = 0;		/* the reader is not called while the receiver is initialized: that is no gap */
 #endif
-		}
-		else if((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested()))		/* start the wake up of the receiver */
-		{
+		} else if((gnssState == UART_GNSS_INACTIVE) && (!uartGnss_isPowerDownRequested())) {		/* start the wake up of the receiver */
 			GNSS_Handle.pwrupWake = 1;
 			GNSS_Handle.pwrupSent = 0;
 			GNSS_Handle.pwrupNak = 0;
@@ -233,42 +228,30 @@ void UART6_HandleUART()
 			lastRequestTick = tick;
 			gnssState = UART_GNSS_WAKE;
 			uartGnss_SetState(gnssState);
-		}
-		else if(gnssState == UART_GNSS_WAKE)
-		{
-			if(uartGnss_isPowerDownRequested())
-			{
+		} else if(gnssState == UART_GNSS_WAKE) {
+			if(uartGnss_isPowerDownRequested()) {
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);
-			}
-			else if(!GNSS_Handle.wakeSent)
-			{
-				if(!waitingForTx)
-				{
+			} else if(!GNSS_Handle.wakeSent) {
+				if(!waitingForTx) {
 					waitingForTx = 1;
 					txWaitTick = tick;
 				}
-				if(UART_isTxIdle(&Uart6Ctrl))		/* the buffer of a transmission which is still running is not overwritten */
-				{
+				if(UART_isTxIdle(&Uart6Ctrl)) {		/* the buffer of a transmission which is still running is not overwritten */
 					txBufferUart6[0] = 0xFF;
 					txBufferUart6[1] = 0xFF;
-					if(HAL_OK == HAL_UART_Transmit_DMA(Uart6Ctrl.pHandle, Uart6Ctrl.pTxBuffer,2))
-					{
+					if(HAL_OK == HAL_UART_Transmit_DMA(Uart6Ctrl.pHandle, Uart6Ctrl.pTxBuffer,2)) {
 						GNSS_Handle.wakeSent = 1;
 						wakeTick = tick;
 						waitingForTx = 0;
 					}
-				}
-				else if(time_elapsed_ms(txWaitTick, tick) > GNSS_WAKE_TX_TIMEOUT_MS)		/* the transmitter does not get idle: do not wait for ever */
-				{
+				} else if(time_elapsed_ms(txWaitTick, tick) > GNSS_WAKE_TX_TIMEOUT_MS) {		/* the transmitter does not get idle: do not wait for ever */
 					waitingForTx = 0;
 					GNSS_Handle.wakeFailed = 1;
 					gnssState = UART_GNSS_IDLE;
 					uartGnss_SetState(gnssState);
 				}
-			}
-			else if(time_elapsed_ms(wakeTick, tick) >= GNSS_WAKE_WAIT_MS)		/* the receiver is ready for the command */
-			{
+			} else if(time_elapsed_ms(wakeTick, tick) >= GNSS_WAKE_WAIT_MS) {		/* the receiver is ready for the command */
 				GNSS_Handle.wakeSent = 0;
 				GNSS_Handle.pwrupSent = 0;
 				GNSS_Handle.pwrupNak = 0;
@@ -278,49 +261,35 @@ void UART6_HandleUART()
 				gnssState = UART_GNSS_PWRUP;
 				uartGnss_SetState(gnssState);
 			}
-		}
-		else if(gnssState == UART_GNSS_PWRUP)
-		{
-			if(uartGnss_isPowerDownRequested())
-			{
+		} else if(gnssState == UART_GNSS_PWRUP) {
+			if(uartGnss_isPowerDownRequested()) {
 				gnssState = UART_GNSS_IDLE;
 				uartGnss_SetState(gnssState);
-			}
-			else if(!GNSS_Handle.pwrupSent)		/* the command was not transmitted yet (transmitter busy): the control repeats it */
-			{
-				if(timeToTrigger == 0)		/* (a new trigger with every call would postpone the control for ever) */
-				{
+			} else if(!GNSS_Handle.pwrupSent) {		/* the command was not transmitted yet (transmitter busy): the control repeats it */
+				if(timeToTrigger == 0) {		/* (a new trigger with every call would postpone the control for ever) */
 					TriggerTick = tick;
 					timeToTrigger = 1;
 				}
-			}
-			else if(GNSS_Handle.pwrupNak || (time_elapsed_ms(GNSS_Handle.pwrupSendTick, tick) > GNSS_PWRUP_ACK_TIMEOUT_MS))		/* rejected or not acknowledged */
-			{
+			} else if(GNSS_Handle.pwrupNak || (time_elapsed_ms(GNSS_Handle.pwrupSendTick, tick) > GNSS_PWRUP_ACK_TIMEOUT_MS)) {		/* rejected or not acknowledged */
 				GNSS_Handle.pwrupNak = 0;
 				GNSS_Handle.pwrupSent = 0;
-				if(GNSS_Handle.wakeTries < GNSS_WAKE_MAX_RETRIES)
-				{
+				if(GNSS_Handle.wakeTries < GNSS_WAKE_MAX_RETRIES) {
 					GNSS_Handle.wakeTries++;
-					if(GNSS_Handle.pwrupWake)
-					{
+					if(GNSS_Handle.pwrupWake) {
 						GNSS_Handle.wakeSent = 0;
 						gnssState = UART_GNSS_WAKE;		/* wake up bytes, wait, command */
 						uartGnss_SetState(gnssState);
 					}
-				}
-				else
-				{
+				} else {
 					GNSS_Handle.wakeFailed = 1;
 					gnssState = UART_GNSS_IDLE;
 					uartGnss_SetState(gnssState);
 				}
 			}
-		}
-		else if(((retryRequest == 0)		/* timeout or error */
+		} else if(((retryRequest == 0)		/* timeout or error */
 				&& (((time_elapsed_ms(lastRequestTick,tick) > (TIMEOUT_SENSOR_ANSWER)) && (gnssState != UART_GNSS_IDLE) && (gnssState != UART_GNSS_PWRUP)
 						&& (gnssState != UART_GNSS_CONFIG_PRT) && (gnssState != UART_GNSS_VERIFY_PRT))	/* port write/readback have their own bounded timeouts */
-					|| (gnssState == UART_GNSS_ERROR))))
-		{
+					|| (gnssState == UART_GNSS_ERROR)))) {
 			/* The channel switch will cause the sensor to respond with an error message. */
 			/* The sensor needs ~30ms to recover before he is ready to receive the next command => transmission delay needed */
 
