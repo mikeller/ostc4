@@ -129,4 +129,9 @@
 /* Enable to store calculated gas consumption values in log (debug function) */
 /* #define ENABLE_GAS_USED_LOG */
 
+/* Enable to split log entry transmission into sub packages with a small delay between transmissions */
+#define ENABLE_LOG_PACKAGES
+
+
+
 #endif

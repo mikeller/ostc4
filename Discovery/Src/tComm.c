@@ -113,6 +113,9 @@ uint8_t updateSettingsAndMenuOnExit = 0;
 
 #define UART_CMD_BUF_SIZE			(30u)		/* size of buffer for command exchange */
 
+#define UART_LOG_PACKAGE_SZIE		(244u)		/* Size of log package which is transfered between delays */
+#define UART_LOG_PACKAGE_DELAY_MS	(20u)		/* Time in ms till next package is transmitted */
+
 const uint8_t id_Region1_firmware = 0xFF;
 const uint8_t id_RTE = 0xFE;
 const uint8_t id_FONT = 0x10;
@@ -857,6 +860,24 @@ uint8_t select_mode(uint8_t type)
             if(answer == HAL_OK)
                 answer  = HAL_UART_Transmit(&UartHandle, &(logCopyDataLength.u8bit.byteHigh), 1,2000);
             logCopyDataLengthTemp = logCopyDataLength.u32bit;
+
+#ifdef ENABLE_LOG_PACKAGES
+            while ((logCopyDataLengthTemp > 0) && (answer == HAL_OK))
+            {
+            	if (logCopyDataLengthTemp >= UART_LOG_PACKAGE_SZIE)
+            	{
+            		answer  = HAL_UART_Transmit(&UartHandle, (uint8_t *)logCopyDataPtrTemp, UART_LOG_PACKAGE_SZIE,1000);
+            		logCopyDataLengthTemp -= UART_LOG_PACKAGE_SZIE;
+            		logCopyDataPtrTemp += UART_LOG_PACKAGE_SZIE;
+            		HAL_Delay(UART_LOG_PACKAGE_DELAY_MS);
+            	}
+            	else
+            	{
+            		answer  = HAL_UART_Transmit(&UartHandle, (uint8_t *)logCopyDataPtrTemp, logCopyDataLengthTemp,1000);
+            		logCopyDataLengthTemp = 0;
+            	}
+            }
+#else
             while((logCopyDataLengthTemp >= 0xFFFF) && (answer == HAL_OK))
             {
                 answer  = HAL_UART_Transmit(&UartHandle, (uint8_t *)logCopyDataPtrTemp, 0xFFFF,30000);
@@ -865,6 +886,7 @@ uint8_t select_mode(uint8_t type)
             }
             if((logCopyDataLengthTemp > 0) && (answer == HAL_OK))
                 answer  = HAL_UART_Transmit(&UartHandle, (uint8_t *)logCopyDataPtrTemp, (uint16_t)logCopyDataLengthTemp,30000);
+#endif
             releaseFrame(98,logCopyDataPtr);
             if(answer == HAL_OK)
                 aTxBuffer[count++] = prompt4D4C(receiveStartByteUart);
@@ -1273,6 +1295,9 @@ uint8_t select_mode(uint8_t type)
 				sampleTotalLength -= 128;
 				if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBuffer, 128,5000)!= HAL_OK)
 					return 0;
+#ifdef ENABLE_LOG_PACKAGES
+				HAL_Delay(UART_LOG_PACKAGE_DELAY_MS);
+#endif
 			}
 			if(sampleTotalLength)
 			{
@@ -1290,6 +1315,9 @@ uint8_t select_mode(uint8_t type)
 				sampleTotalLength -= 128;
 				if(HAL_UART_Transmit(&UartHandle, (uint8_t*)aTxBuffer, 128,5000)!= HAL_OK)
 					return 0;
+#ifdef ENABLE_LOG_PACKAGES
+				HAL_Delay(UART_LOG_PACKAGE_DELAY_MS);
+#endif
 			}
 			if(sampleTotalLength)
 			{
@@ -2330,6 +2358,17 @@ uint8_t tComm_GetBTCmdStr(BTCmd cmdId, char* pCmdStr)
 									}
 									ret = 1;
 			break;
+#ifdef ENABLE_LOG_PACKAGES
+		case BT_CMD_CON_INTERVAL_MIN:	strcpy(pCmdStr,"AT+UBTLECFG=4,6\r");		/* only available for OSTC5 */
+									ret = 1;
+			break;
+		case BT_CMD_CON_INTERVAL_MAX:	strcpy(pCmdStr,"AT+UBTLECFG=5,20\r");		/* only available for OSTC5 */
+									ret = 1;
+			break;
+		case BT_CMD_PERI_NEGOTIATE: strcpy(pCmdStr,"AT+UBTLECFG=26,1\r");		/* only available for OSTC5 */
+									ret = 1;
+			break;
+#endif
 #ifdef ENABLE_PULSE_SENSOR_BT
 		case BT_CMD_REQMODE:		strcpy(pCmdStr,"AT+UBTLE?\r");		/* only available for OSTC5 */
 									ret = 1;
@@ -2441,8 +2480,20 @@ uint8_t tComm_HandleBlueModConfig()
 			case BM_CONFIG5_RESTART:	tComm_GetBTCmdStr(BT_CMD_RESTART, TxBuffer);
 				break;
 #endif
+#ifdef ENABLE_LOG_PACKAGES
+			case BM_CONFIG5_CON_INTERVAL_MIN: if(time_elapsed_ms(configTick, HAL_GetTick()) > 1100)
+										{
+											tComm_GetBTCmdStr(BT_CMD_CON_INTERVAL_MIN, TxBuffer);
+										}
+				break;
+			case BM_CONFIG5_CON_INTERVAL_MAX: tComm_GetBTCmdStr(BT_CMD_CON_INTERVAL_MAX, TxBuffer);
+				break;
+			case BM_CONFIG5_PERI_NEGOTIATE:	tComm_GetBTCmdStr(BT_CMD_PERI_NEGOTIATE, TxBuffer);
+				break;
+#endif
+
 			case BM_CONFIG5_BAUD:
-#ifndef ENABLE_PULSE_SENSOR_BT
+#if !defined ENABLE_PULSE_SENSOR_BT && !defined ENABLE_LOG_PACKAGES
 										if(time_elapsed_ms(configTick, HAL_GetTick()) > 1100)
 #endif
 										{
